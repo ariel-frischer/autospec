@@ -146,28 +146,40 @@ validate_config_file() {
     return 2
   fi
 
-  # Validate YAML syntax first
-  if ! validate_yaml_syntax "$file"; then
-    return 1
+  # Validate YAML syntax for pure YAML file (not markdown)
+  if command -v yq >/dev/null 2>&1; then
+    # Try yq v4 syntax first, then v3
+    if ! yq eval '.' "$file" >/dev/null 2>&1 && ! yq '.' "$file" >/dev/null 2>&1; then
+      echo "Error: Invalid YAML in $file" >&2
+      return 1
+    fi
+  elif command -v python3 >/dev/null 2>&1; then
+    if ! python3 -c "import yaml; yaml.safe_load(open('$file'))" >/dev/null 2>&1; then
+      echo "Error: Invalid YAML in $file" >&2
+      return 1
+    fi
+  else
+    echo "Error: No YAML validation tool available (yq or python3)" >&2
+    return 2
   fi
 
-  # Validate blank_issues_enabled if present
+  # Validate blank_issues_enabled if present (support both yq v3 and v4)
   local blank_issues
-  blank_issues=$(yq eval '.blank_issues_enabled' "$file" 2>/dev/null)
+  blank_issues=$(yq -r '.blank_issues_enabled' "$file" 2>/dev/null || yq eval '.blank_issues_enabled' "$file" 2>/dev/null)
   if [[ "$blank_issues" != "null" && "$blank_issues" != "true" && "$blank_issues" != "false" ]]; then
     echo "Error: blank_issues_enabled must be boolean (true/false)" >&2
     return 1
   fi
 
-  # Validate contact_links if present
+  # Validate contact_links if present (support both yq v3 and v4)
   local links_count
-  links_count=$(yq eval '.contact_links | length' "$file" 2>/dev/null)
+  links_count=$(yq -r '.contact_links | length' "$file" 2>/dev/null || yq eval '.contact_links | length' "$file" 2>/dev/null)
   if [[ "$links_count" != "null" && "$links_count" -gt 0 ]]; then
     for ((i=0; i<links_count; i++)); do
       local name about url
-      name=$(yq eval ".contact_links[$i].name" "$file" 2>/dev/null)
-      about=$(yq eval ".contact_links[$i].about" "$file" 2>/dev/null)
-      url=$(yq eval ".contact_links[$i].url" "$file" 2>/dev/null)
+      name=$(yq -r ".contact_links[$i].name" "$file" 2>/dev/null || yq eval ".contact_links[$i].name" "$file" 2>/dev/null)
+      about=$(yq -r ".contact_links[$i].about" "$file" 2>/dev/null || yq eval ".contact_links[$i].about" "$file" 2>/dev/null)
+      url=$(yq -r ".contact_links[$i].url" "$file" 2>/dev/null || yq eval ".contact_links[$i].url" "$file" 2>/dev/null)
 
       if [[ "$name" == "null" || "$about" == "null" || "$url" == "null" ]]; then
         echo "Error: contact_links[$i] missing required fields (name, url, about)" >&2

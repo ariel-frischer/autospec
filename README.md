@@ -360,6 +360,47 @@ This will verify that Claude CLI, Specify CLI, and Git are installed and availab
 
 See [PREREQUISITES.md](PREREQUISITES.md) for detailed installation instructions.
 
+## Issue Templates
+
+This repository provides structured issue templates to help contributors submit high-quality bug reports and feature requests.
+
+### Available Templates
+
+When creating a new issue on GitHub, you'll be prompted to choose from:
+
+- **Bug Report**: For reporting defects or unexpected behavior
+  - Includes sections for reproduction steps, expected vs actual behavior, and environment details
+  - Auto-applies labels: `bug`, `needs-triage`
+
+- **Feature Request**: For suggesting new features or enhancements
+  - Focuses on problem statements and use cases rather than implementation details
+  - Auto-applies labels: `enhancement`, `needs-discussion`
+
+### Template Configuration
+
+Templates are configured to:
+- Disable blank issues (all issues must use a template)
+- Provide links to community discussions and documentation
+- Auto-apply labels for efficient triage
+
+### For Maintainers
+
+Template files are located in `.github/ISSUE_TEMPLATE/`:
+- `bug_report.md` - Bug report template
+- `feature_request.md` - Feature request template
+- `config.yml` - Template configuration
+
+To validate templates before committing:
+
+```bash
+# Run validation tests
+./tests/github_templates/validate_all.sh
+
+# Or validate individually
+source tests/lib/validation_lib.sh
+validate_all_templates .github/ISSUE_TEMPLATE
+```
+
 ## Contributing
 
 Contributions welcome! See [CONTRIBUTORS.md](CONTRIBUTORS.md) for development guidelines.
