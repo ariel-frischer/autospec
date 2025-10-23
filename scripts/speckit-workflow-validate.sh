@@ -143,6 +143,19 @@ run_with_validation() {
     log_debug "Expected file: $expected_file"
     log_debug "Spec name: $spec_name"
 
+    # Find spec directory (may have number prefix like 002-)
+    local spec_dir=""
+    if [ -n "$spec_name" ]; then
+        spec_dir=$(find "$SPECKIT_SPECS_DIR" -maxdepth 1 -type d -name "*${spec_name}*" | head -1)
+    fi
+
+    # IDEMPOTENCY CHECK: Skip if artifact already exists
+    if [ -n "$spec_dir" ] && validate_file_exists "$expected_file" "$spec_dir"; then
+        log_info "✓ Skipping $cmd_type: $expected_file already exists in $spec_dir"
+        reset_retry_count "$spec_name" "$cmd_type"
+        return "$EXIT_SUCCESS"
+    fi
+
     # Get current retry count
     local retry_count
     retry_count=$(get_retry_count "$spec_name" "$cmd_type")
@@ -173,9 +186,10 @@ run_with_validation() {
         return "$EXIT_VALIDATION_FAILED"
     fi
 
-    # Find spec directory (may have number prefix like 002-)
-    local spec_dir
-    spec_dir=$(find "$SPECKIT_SPECS_DIR" -maxdepth 1 -type d -name "*${spec_name}*" | head -1)
+    # Re-find spec directory after command execution (may have been created)
+    if [ -z "$spec_dir" ] && [ -n "$spec_name" ]; then
+        spec_dir=$(find "$SPECKIT_SPECS_DIR" -maxdepth 1 -type d -name "*${spec_name}*" | head -1)
+    fi
 
     if [ -z "$spec_dir" ]; then
         log_error "Spec directory not found for: $spec_name"
@@ -219,8 +233,15 @@ log_info "Spec Title: $SPEC_TITLE"
 log_info "Retry limit: $RETRY_LIMIT"
 echo ""
 
-# Normalize spec name for file lookups (convert to slug)
-SPEC_NAME_SLUG=$(echo "$SPEC_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g')
+# Detect current spec from git branch or recent activity
+DETECTED_SPEC=$(detect_current_spec)
+if [ -n "$DETECTED_SPEC" ]; then
+    log_info "Detected active spec: $DETECTED_SPEC"
+    SPEC_NAME="$DETECTED_SPEC"
+else
+    log_debug "No existing spec detected, will use newly created spec"
+    SPEC_NAME=""
+fi
 
 # Step 0: Constitution (optional)
 if [ "$SKIP_CONSTITUTION" = "false" ] && [ ! -f ".specify/memory/constitution.md" ]; then
@@ -248,11 +269,19 @@ if ! run_with_validation \
     "specify" \
     "/speckit.specify $FEATURE_DESC" \
     "spec.md" \
-    "$SPEC_NAME_SLUG"; then
+    "$SPEC_NAME"; then
     log_error "Failed to create specification after $RETRY_LIMIT attempts"
     exit "$EXIT_RETRY_EXHAUSTED"
 fi
 echo ""
+
+# Re-detect spec after creation (in case it was just created)
+SPEC_NAME=$(detect_current_spec)
+if [ -z "$SPEC_NAME" ]; then
+    log_error "Could not detect spec after creation"
+    exit "$EXIT_VALIDATION_FAILED"
+fi
+log_debug "Using spec: $SPEC_NAME"
 
 # Step 2: Plan
 log_info "Step 2/3: Creating implementation plan for '$SPEC_TITLE'..."
@@ -260,7 +289,7 @@ if ! run_with_validation \
     "plan" \
     "/speckit.plan (for spec: $SPEC_TITLE)" \
     "plan.md" \
-    "$SPEC_NAME_SLUG"; then
+    "$SPEC_NAME"; then
     log_error "Failed to create plan after $RETRY_LIMIT attempts"
     exit "$EXIT_RETRY_EXHAUSTED"
 fi
@@ -272,7 +301,7 @@ if ! run_with_validation \
     "tasks" \
     "/speckit.tasks (for spec: $SPEC_TITLE)" \
     "tasks.md" \
-    "$SPEC_NAME_SLUG"; then
+    "$SPEC_NAME"; then
     log_error "Failed to generate tasks after $RETRY_LIMIT attempts"
     exit "$EXIT_RETRY_EXHAUSTED"
 fi
