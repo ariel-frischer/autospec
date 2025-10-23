@@ -517,6 +517,7 @@ If needed, legacy bash scripts are still available:
 - File system (JSON config files in ~/.autospec/config.json and .autospec/config.json, state in ~/.autospec/state/retry.json) (003-command-timeout)
 - Go 1.25.1 + Cobra CLI (v1.10.1), briandowns/spinner (v1.23.0+), golang.org/x/term (v0.25.0+) (004-workflow-progress-indicators)
 - N/A (progress state is ephemeral, displayed only during execution) (004-workflow-progress-indicators)
+- Go 1.25.1 + Cobra CLI (v1.10.1), koanf config (v2.1.2), go-playground/validator (v10.28.0), briandowns/spinner (v1.23.0) (005-high-level-docs)
 
 ## Recent Changes
 - 003-command-timeout: Added Go 1.25.1

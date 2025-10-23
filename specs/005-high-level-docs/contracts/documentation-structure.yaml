@@ -1,0 +1,306 @@
+# Documentation Structure Contract
+# Defines the required structure and validation rules for all documentation files
+
+version: "1.0.0"
+feature: "005-high-level-docs"
+date: "2025-10-23"
+
+# Documentation file requirements
+documentation_files:
+  - name: "overview.md"
+    location: "docs/overview.md"
+    purpose: "Project introduction and high-level overview"
+    max_lines: 500
+    required_sections:
+      - "What is Auto Claude SpecKit"
+      - "Key Features"
+      - "Target Audience"
+      - "Use Cases"
+    validation:
+      - exactly_one_h1: true
+      - logical_header_nesting: true
+      - no_broken_links: true
+
+  - name: "quickstart.md"
+    location: "docs/quickstart.md"
+    purpose: "Get users started in 10 minutes"
+    max_lines: 500
+    required_sections:
+      - "Prerequisites"
+      - "Installation"
+      - "Your First Workflow"
+      - "Common Commands"
+      - "Next Steps"
+    validation:
+      - exactly_one_h1: true
+      - logical_header_nesting: true
+      - all_commands_valid: true
+      - no_broken_links: true
+    diagrams:
+      - type: "workflow"
+        format: "mermaid"
+        required: true
+
+  - name: "architecture.md"
+    location: "docs/architecture.md"
+    purpose: "System design and component relationships"
+    max_lines: 500
+    required_sections:
+      - "Component Overview"
+      - "Execution Flow"
+      - "Key Patterns"
+      - "Package Structure"
+    validation:
+      - exactly_one_h1: true
+      - logical_header_nesting: true
+      - code_references_valid: true
+      - no_broken_links: true
+    diagrams:
+      - type: "architecture"
+        format: "mermaid"
+        required: true
+      - type: "sequence"
+        format: "mermaid"
+        required: true
+
+  - name: "reference.md"
+    location: "docs/reference.md"
+    purpose: "Command and configuration lookup"
+    max_lines: 500
+    required_sections:
+      - "CLI Commands"
+      - "Configuration Options"
+      - "Exit Codes"
+      - "File Locations"
+    validation:
+      - exactly_one_h1: true
+      - logical_header_nesting: true
+      - all_commands_documented: true
+      - all_config_options_documented: true
+      - no_broken_links: true
+
+  - name: "troubleshooting.md"
+    location: "docs/troubleshooting.md"
+    purpose: "Error resolution guide"
+    max_lines: 500
+    required_sections:
+      - "Common Errors"
+      - "Exit Code Reference"
+      - "Debugging Tips"
+      - "FAQ"
+    validation:
+      - exactly_one_h1: true
+      - logical_header_nesting: true
+      - no_broken_links: true
+
+# Cross-reference requirements
+cross_references:
+  overview.md:
+    links_to:
+      - "quickstart.md"
+      - "architecture.md"
+    purpose: "Guide users to next steps"
+
+  quickstart.md:
+    links_to:
+      - "reference.md"
+      - "troubleshooting.md"
+      - "architecture.md"
+    purpose: "Provide paths for deeper learning and issue resolution"
+
+  architecture.md:
+    links_to:
+      - "reference.md"
+      - "internal/cli/*"
+      - "internal/workflow/*"
+      - "internal/config/*"
+    purpose: "Connect design to implementation"
+
+  reference.md:
+    links_to:
+      - "quickstart.md"
+      - "troubleshooting.md"
+      - "internal/cli/*"
+      - "internal/config/*"
+    purpose: "Provide examples and troubleshooting context"
+
+  troubleshooting.md:
+    links_to:
+      - "reference.md"
+      - "quickstart.md"
+    purpose: "Guide users back to reference material"
+
+# Code reference format
+code_references:
+  format: "file:line"
+  pattern: "^[a-zA-Z0-9_/.-]+\\.[a-z]+:\\d+$"
+  examples:
+    - "internal/cli/root.go:42"
+    - "internal/workflow/executor.go:156"
+    - "cmd/autospec/main.go:15"
+  validation:
+    - file_exists: true
+    - line_number_valid: true
+
+# Diagram requirements
+diagrams:
+  architecture:
+    format: "mermaid"
+    type: "graph"
+    required_nodes:
+      - "CLI Layer"
+      - "Workflow Orchestration"
+      - "Configuration"
+      - "Validation"
+      - "Retry Management"
+    validation:
+      - valid_mermaid_syntax: true
+      - all_components_shown: true
+
+  workflow:
+    format: "mermaid"
+    type: "flowchart"
+    required_nodes:
+      - "specify"
+      - "plan"
+      - "tasks"
+      - "implement"
+    validation:
+      - valid_mermaid_syntax: true
+      - all_phases_shown: true
+
+  sequence:
+    format: "mermaid"
+    type: "sequenceDiagram"
+    required_participants:
+      - "User"
+      - "CLI"
+      - "Executor"
+      - "Claude"
+    validation:
+      - valid_mermaid_syntax: true
+      - key_interactions_shown: true
+
+# Validation rules
+validation_rules:
+  file_level:
+    - rule: "max_lines"
+      value: 500
+      severity: "error"
+      message: "Documentation file exceeds 500 line limit"
+
+    - rule: "exactly_one_h1"
+      severity: "error"
+      message: "File must have exactly one H1 header"
+
+    - rule: "logical_header_nesting"
+      severity: "warning"
+      message: "Headers should follow logical nesting (no skipped levels)"
+
+    - rule: "no_broken_links"
+      severity: "error"
+      message: "All internal links must resolve to existing files or sections"
+
+  content_level:
+    - rule: "all_commands_valid"
+      severity: "error"
+      message: "All bash commands must be syntactically correct"
+
+    - rule: "code_references_valid"
+      severity: "error"
+      message: "All code references must point to existing files and valid line numbers"
+
+    - rule: "all_commands_documented"
+      severity: "error"
+      message: "All CLI commands from internal/cli/ must be documented"
+
+    - rule: "all_config_options_documented"
+      severity: "error"
+      message: "All config options from internal/config/defaults.go must be documented"
+
+  diagram_level:
+    - rule: "valid_mermaid_syntax"
+      severity: "error"
+      message: "Mermaid diagram must be syntactically valid"
+
+    - rule: "all_components_shown"
+      severity: "warning"
+      message: "Architecture diagram should show all major components"
+
+# Success criteria mapping to spec requirements
+success_criteria:
+  SC-001:
+    description: "New users can understand project purpose and complete first workflow within 10 minutes"
+    validates:
+      - "overview.md exists and has required sections"
+      - "quickstart.md exists and follows 10-minute structure"
+    test_method: "Manual user testing with timer"
+
+  SC-002:
+    description: "Contributors can locate and modify code components within 5 minutes"
+    validates:
+      - "architecture.md exists and has component diagram"
+      - "architecture.md has code references to all packages"
+    test_method: "Manual contributor testing with navigation task"
+
+  SC-003:
+    description: "90% of common questions answered by FAQ or troubleshooting"
+    validates:
+      - "troubleshooting.md exists with FAQ section"
+      - "Common errors documented"
+    test_method: "Review of historical GitHub issues"
+
+  SC-004:
+    description: "Documentation coverage includes all CLI commands and config options"
+    validates:
+      - "reference.md documents all commands from internal/cli/"
+      - "reference.md documents all options from internal/config/defaults.go"
+    test_method: "Automated validation script"
+
+  SC-005:
+    description: "Each documentation file remains under 500 lines"
+    validates:
+      - "All files pass max_lines validation rule"
+    test_method: "Automated line count check"
+
+# Implementation checklist
+implementation_checklist:
+  - task: "Create docs/ directory"
+    status: "pending"
+    validates: "Project structure"
+
+  - task: "Write overview.md"
+    status: "pending"
+    validates: "SC-001"
+
+  - task: "Write quickstart.md"
+    status: "pending"
+    validates: "SC-001, SC-005"
+
+  - task: "Write architecture.md"
+    status: "pending"
+    validates: "SC-002, SC-005"
+
+  - task: "Write reference.md"
+    status: "pending"
+    validates: "SC-004, SC-005"
+
+  - task: "Write troubleshooting.md"
+    status: "pending"
+    validates: "SC-003, SC-005"
+
+  - task: "Validate all cross-references"
+    status: "pending"
+    validates: "Cross-reference requirements"
+
+  - task: "Validate all code references"
+    status: "pending"
+    validates: "Code reference format"
+
+  - task: "Validate all diagrams"
+    status: "pending"
+    validates: "Diagram requirements"
+
+  - task: "Test quickstart guide with new user"
+    status: "pending"
+    validates: "SC-001"

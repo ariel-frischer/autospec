@@ -1,0 +1,414 @@
+# Content Requirements Contract
+# Defines what information must be covered in each documentation file
+
+version: "1.0.0"
+feature: "005-high-level-docs"
+date: "2025-10-23"
+
+# Overview.md content requirements
+overview:
+  file: "docs/overview.md"
+  estimated_lines: 200
+
+  sections:
+    what_is_it:
+      required_content:
+        - "One-sentence description of Auto Claude SpecKit"
+        - "Primary problem it solves"
+        - "How it integrates with Claude and SpecKit workflows"
+      tone: "Concise, benefit-focused"
+      max_paragraphs: 3
+
+    key_features:
+      required_content:
+        - "Automated workflow validation"
+        - "Cross-platform CLI tool (Go binary)"
+        - "Configurable retry logic"
+        - "Constitution-based quality gates"
+        - "Progress indicators for long-running operations"
+      format: "Bullet list with brief explanations"
+      max_items: 8
+
+    target_audience:
+      required_content:
+        - "Developers using Claude Code"
+        - "Teams implementing SpecKit methodology"
+        - "Contributors to the project"
+      format: "Brief paragraphs"
+      max_paragraphs: 2
+
+    use_cases:
+      required_content:
+        - "Automated feature development workflow"
+        - "CI/CD integration for spec validation"
+        - "Team collaboration on structured development"
+      format: "Bullet list with examples"
+      max_items: 5
+
+# Quickstart.md content requirements
+quickstart:
+  file: "docs/quickstart.md"
+  estimated_lines: 280
+  target_completion_time: "10 minutes"
+
+  sections:
+    prerequisites:
+      required_content:
+        - "Claude CLI installed and authenticated"
+        - "Git repository (recommended)"
+        - "Basic command line familiarity"
+      validation_commands:
+        - "claude --version"
+      links_to:
+        - "troubleshooting.md#installation-issues"
+
+    installation:
+      required_content:
+        - "Build from source instructions (for contributors)"
+        - "Download binary instructions (for users)"
+        - "Installation verification command"
+      commands:
+        - "git clone <repo-url>"
+        - "make build"
+        - "make install"
+        - "autospec version"
+      success_criteria: "autospec version shows version number"
+
+    first_workflow:
+      required_steps:
+        - step: "Initialize configuration"
+          command: "autospec init"
+          expected_output: "Config file created at ~/.autospec/config.json"
+          time_estimate: "30 seconds"
+
+        - step: "Verify setup"
+          command: "autospec doctor"
+          expected_output: "All checks pass"
+          time_estimate: "30 seconds"
+
+        - step: "Create feature spec"
+          command: "autospec specify \"Feature description\""
+          expected_output: "spec.md created in specs/NNN-feature-name/"
+          time_estimate: "2 minutes"
+
+        - step: "Generate plan"
+          command: "autospec plan"
+          expected_output: "plan.md created"
+          time_estimate: "3 minutes"
+
+        - step: "Generate tasks"
+          command: "autospec tasks"
+          expected_output: "tasks.md created"
+          time_estimate: "2 minutes"
+
+        - step: "Review artifacts"
+          command: "ls specs/001-feature-name/"
+          expected_output: "spec.md, plan.md, tasks.md"
+          time_estimate: "1 minute"
+
+      total_time: "10 minutes"
+      success_criteria: "All three files exist with no errors"
+
+    common_commands:
+      required_commands:
+        - command: "autospec full"
+          description: "Complete workflow including implementation"
+        - command: "autospec workflow"
+          description: "Planning workflow (no implementation)"
+        - command: "autospec implement"
+          description: "Execute implementation phase"
+        - command: "autospec status"
+          description: "Check current feature status"
+        - command: "autospec --help"
+          description: "Show all commands"
+      format: "Table with command, description, example"
+
+    understanding_workflow:
+      required_content:
+        - "Brief explanation of each phase (specify, plan, tasks, implement)"
+        - "Visual workflow diagram showing phase progression"
+        - "Link to architecture.md for details"
+      diagram_type: "mermaid_flowchart"
+
+    configuration_basics:
+      required_settings:
+        - "claude_cmd: Claude CLI command"
+        - "max_retries: Maximum retry attempts"
+        - "specs_dir: Directory for specs"
+        - "timeout: Command timeout in seconds"
+      format: "JSON with inline comments"
+
+    troubleshooting:
+      required_issues:
+        - "claude: command not found"
+        - "autospec: command not found"
+        - "Workflow validation failed"
+        - "Spec not detected"
+      format: "Problem → Solution pairs"
+
+    next_steps:
+      required_links:
+        - "reference.md for advanced usage"
+        - "architecture.md for system design"
+        - "troubleshooting.md for issues"
+        - "CLAUDE.md for contributing"
+
+# Architecture.md content requirements
+architecture:
+  file: "docs/architecture.md"
+  estimated_lines: 450
+
+  sections:
+    component_overview:
+      required_content:
+        - "High-level system architecture diagram"
+        - "Brief description of each major component"
+        - "Component responsibilities"
+      components:
+        - "CLI Layer (internal/cli/)"
+        - "Workflow Orchestration (internal/workflow/)"
+        - "Configuration (internal/config/)"
+        - "Validation (internal/validation/)"
+        - "Retry Management (internal/retry/)"
+        - "Spec Detection (internal/spec/)"
+        - "Git Integration (internal/git/)"
+        - "Health Checks (internal/health/)"
+        - "Progress Indicators (internal/progress/)"
+      diagram_type: "mermaid_architecture"
+
+    execution_flow:
+      required_content:
+        - "Full workflow execution sequence"
+        - "Phase execution with retry logic"
+        - "Validation checkpoints"
+        - "State management"
+      diagrams:
+        - type: "sequence_diagram"
+          participants: ["User", "CLI", "Executor", "Claude", "Validator"]
+        - type: "flowchart"
+          shows: "Phase execution with retry"
+      code_references:
+        - "internal/workflow/workflow.go:RunFullWorkflow"
+        - "internal/workflow/executor.go:ExecutePhase"
+        - "internal/workflow/claude.go:ClaudeExecutor"
+
+    key_patterns:
+      required_patterns:
+        - "Retry pattern with persistent state"
+        - "Configuration layering (env → local → global → defaults)"
+        - "Spec detection strategies"
+        - "Exit code conventions"
+      format: "Pattern name → Description → Code reference"
+
+    package_structure:
+      required_content:
+        - "Purpose of each internal/ package"
+        - "Dependencies between packages"
+        - "Key files in each package"
+      format: "Package → Purpose → Key files → Links to code"
+      code_references: "Link to each package's main file"
+
+# Reference.md content requirements
+reference:
+  file: "docs/reference.md"
+  estimated_lines: 400
+
+  sections:
+    cli_commands:
+      source: "internal/cli/*.go"
+      required_for_each_command:
+        - "Command syntax"
+        - "Description"
+        - "Available flags"
+        - "Usage examples"
+        - "Exit codes"
+      commands_to_document:
+        - "autospec full"
+        - "autospec workflow"
+        - "autospec specify"
+        - "autospec plan"
+        - "autospec tasks"
+        - "autospec implement"
+        - "autospec doctor"
+        - "autospec status"
+        - "autospec config"
+        - "autospec init"
+        - "autospec version"
+      format: "Command → Description → Flags → Examples"
+
+    configuration_options:
+      source: "internal/config/defaults.go"
+      required_for_each_option:
+        - "Option name"
+        - "Description"
+        - "Default value"
+        - "Valid range/values"
+        - "Example"
+      options_to_document:
+        - "claude_cmd"
+        - "specify_cmd"
+        - "max_retries"
+        - "specs_dir"
+        - "state_dir"
+        - "timeout"
+        - "skip_preflight"
+        - "custom_claude_cmd"
+      format: "Table with option, type, default, description"
+
+    exit_codes:
+      required_codes:
+        - code: 0
+          meaning: "Success"
+        - code: 1
+          meaning: "Validation failed (retryable)"
+        - code: 2
+          meaning: "Retry limit exhausted"
+        - code: 3
+          meaning: "Invalid arguments"
+        - code: 4
+          meaning: "Missing dependencies"
+        - code: 5
+          meaning: "Command execution timeout"
+      format: "Table with code, meaning, action"
+
+    file_locations:
+      required_locations:
+        - path: "~/.autospec/config.json"
+          purpose: "Global configuration"
+        - path: ".autospec/config.json"
+          purpose: "Local configuration (repository-specific)"
+        - path: "~/.autospec/state/retry.json"
+          purpose: "Retry state tracking"
+        - path: "specs/NNN-feature-name/"
+          purpose: "Feature specification directory"
+        - path: ".specify/"
+          purpose: "SpecKit templates and configuration"
+      format: "Table with path, purpose, when created"
+
+# Troubleshooting.md content requirements
+troubleshooting:
+  file: "docs/troubleshooting.md"
+  estimated_lines: 350
+
+  sections:
+    common_errors:
+      required_errors:
+        - error: "claude: command not found"
+          cause: "Claude CLI not installed or not in PATH"
+          solution: "Install Claude CLI and ensure it's in PATH"
+          related_command: "which claude"
+
+        - error: "autospec: command not found"
+          cause: "Binary not installed or not in PATH"
+          solution: "Run 'make install' or add binary to PATH"
+          related_command: "make install"
+
+        - error: "Validation failed: spec.md not found"
+          cause: "Specify phase didn't complete successfully"
+          solution: "Check retry state, re-run autospec specify"
+          related_file: "~/.autospec/state/retry.json"
+
+        - error: "Retry limit exhausted"
+          cause: "Phase failed max_retries times"
+          solution: "Review phase output, fix underlying issue, reset retry state"
+          related_config: "max_retries"
+
+        - error: "Spec not detected"
+          cause: "Not on feature branch or no specs/ directory"
+          solution: "Checkout feature branch (NNN-feature-name) or specify spec explicitly"
+          related_command: "git branch"
+
+        - error: "Command timed out"
+          cause: "Command exceeded configured timeout"
+          solution: "Increase timeout in config or set AUTOSPEC_TIMEOUT env var"
+          related_config: "timeout"
+
+      format: "Error message → Cause → Solution → Related resources"
+
+    exit_code_reference:
+      required_content:
+        - "Link to full exit code table in reference.md"
+        - "How to interpret exit codes"
+        - "Common exit code scenarios"
+      format: "Brief explanation → Link to reference"
+
+    debugging_tips:
+      required_tips:
+        - "Enable debug logging with --debug flag"
+        - "Check retry state file"
+        - "Review config loading with 'autospec config show'"
+        - "Verify dependencies with 'autospec doctor'"
+        - "Check Claude CLI authentication"
+      format: "Tip → Command → What to look for"
+
+    faq:
+      required_questions:
+        - question: "How do I reset retry state?"
+          answer: "Delete ~/.autospec/state/retry.json or use autospec config reset"
+
+        - question: "Can I use a different Claude command?"
+          answer: "Yes, set custom_claude_cmd in config.json"
+
+        - question: "How do I skip preflight checks?"
+          answer: "Set skip_preflight: true in config or use --skip-preflight flag"
+
+        - question: "What's the difference between 'workflow' and 'full' commands?"
+          answer: "'workflow' stops after tasks.md; 'full' includes implementation"
+
+        - question: "How do I increase command timeout?"
+          answer: "Set AUTOSPEC_TIMEOUT env var or update timeout in config.json"
+
+      format: "Question → Answer (with code examples)"
+
+# Writing guidelines
+writing_guidelines:
+  tone:
+    - "Clear and direct"
+    - "Action-oriented (use imperative for commands)"
+    - "Friendly but professional"
+    - "Avoid jargon when possible"
+
+  formatting:
+    - "Use code blocks for all commands and file paths"
+    - "Use inline code for option names and values"
+    - "Use bold sparingly for emphasis"
+    - "Use tables for structured reference data"
+    - "Use bullet lists for non-sequential items"
+    - "Use numbered lists for sequential steps"
+
+  examples:
+    - "Use realistic examples (not 'foo' or 'test')"
+    - "Show actual expected output"
+    - "Provide context for why each example matters"
+
+  accessibility:
+    - "Write at 8th-grade reading level"
+    - "Provide alt text for diagrams"
+    - "Use descriptive link text (not 'click here')"
+
+# Completeness validation
+completeness_criteria:
+  overview:
+    - "All required sections present"
+    - "Key features list matches actual features"
+    - "Target audience description is accurate"
+
+  quickstart:
+    - "10-minute completion time is realistic"
+    - "All commands work as documented"
+    - "Expected output matches actual output"
+
+  architecture:
+    - "All internal/ packages documented"
+    - "All diagrams render correctly"
+    - "Code references point to valid locations"
+
+  reference:
+    - "All CLI commands documented"
+    - "All config options documented"
+    - "All exit codes documented"
+
+  troubleshooting:
+    - "Top 5 common errors covered"
+    - "All exit codes have troubleshooting guidance"
+    - "FAQ addresses common questions from issues"
