@@ -2,6 +2,7 @@ package progress
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -41,6 +42,7 @@ func (p *ProgressDisplay) StartPhase(phase PhaseInfo) error {
 			spinner.CharSets[p.symbols.SpinnerSet],
 			100*time.Millisecond,
 		)
+		p.spinner.Writer = os.Stderr // Write to stderr to avoid interfering with Claude's stdout
 		p.spinner.Suffix = " " + msg
 		p.spinner.Start()
 	} else {
@@ -88,4 +90,13 @@ func (p *ProgressDisplay) FailPhase(phase PhaseInfo, err error) error {
 
 	p.currentPhase = nil
 	return nil
+}
+
+// StopSpinner stops the spinner without showing completion/failure
+// This is useful when you want to pause progress display during interactive output
+func (p *ProgressDisplay) StopSpinner() {
+	if p.spinner != nil {
+		p.spinner.Stop()
+		p.spinner = nil
+	}
 }

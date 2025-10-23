@@ -1,5 +1,13 @@
 # TODO
 
+## Bugs/Issues
+
+- [ ] Fix spinner scrollback pollution when Claude outputs interactively
+  - Spinner frames appear throughout Claude's output in scrollback
+  - Root cause: Spinner writes to stdout concurrently with Claude's streaming output
+  - Proposed fix: Configure spinner to write to stderr instead of stdout
+  - This keeps progress visible but prevents interference between streams
+
 ## Cleanup Tasks
 
 - [ ] Remove legacy bash scripts from `scripts/` directory (deprecated in favor of Go binary)

@@ -278,8 +278,9 @@ func TestCodeReferences(t *testing.T) {
 				}
 
 				// Verify the referenced file exists (relative to repo root)
-				if _, err := os.Stat(filePath); os.IsNotExist(err) {
-					t.Errorf("%s:%d Code reference points to non-existent file: %s", path, lineNum+1, filePath)
+				fullPath := filepath.Join(repoRoot, filePath)
+				if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+					t.Errorf("%s:%d Code reference points to non-existent file: %s (checked: %s)", path, lineNum+1, filePath, fullPath)
 				}
 			}
 		}
