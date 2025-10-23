@@ -140,67 +140,58 @@ After initialization, you can use the `/speckit.*` commands in Claude Code.
 
 ### Basic Usage
 
-#### 1. Automated Workflow with Validation
-
-Run a complete SpecKit workflow with automatic validation and retry:
+#### 1. First-Time Setup
 
 ```bash
-./scripts/speckit-workflow-validate.sh my-feature
+# Create project configuration
+autospec init
+
+# Initialize SpecKit templates (if not already done)
+specify init . --ai claude --force
 ```
 
-This will:
-- Create `specs/my-feature/` directory
-- Run `/speckit.specify` and validate `spec.md` exists
-- Run `/speckit.plan` and validate `plan.md` exists
-- Run `/speckit.tasks` and validate `tasks.md` exists
-- Automatically retry up to 3 times if any file is missing
+#### 2. Run Complete Workflow
 
-**Options:**
-- `--max-retries N`: Set maximum retry attempts (default: 3)
-- `--dry-run`: Show what would be executed without running commands
-- `--spec-name NAME`: Override automatic spec name detection
-
-#### 2. Implementation Phase Validation
-
-Check if implementation phases are complete and get continuation prompts:
+The simplest way to generate a complete feature specification:
 
 ```bash
-./scripts/speckit-implement-validate.sh my-feature
+autospec workflow "Add user authentication with OAuth support"
 ```
 
-**Example output (incomplete):**
-```
-Implementation Status: INCOMPLETE
+This automatically:
+- Generates `specs/<feature-name>/spec.md` (specification)
+- Creates `specs/<feature-name>/plan.md` (implementation plan)
+- Produces `specs/<feature-name>/tasks.md` (actionable tasks)
+- Validates each artifact before proceeding
+- Retries up to 3 times if any file is missing
 
-Total tasks: 45
-Completed: 23
-Remaining: 22
+#### 3. Check Progress and Continue
 
-Incomplete phases:
-- Phase 3: User Story 1 (8 tasks remaining)
-- Phase 4: User Story 2 (14 tasks remaining)
+```bash
+# Check current implementation status
+autospec status
 
-Next steps:
-Continue implementing Phase 3: User Story 1
-Focus on completing these tasks:
-- [ ] T015 Create user authentication module
-- [ ] T016 Add login validation
-...
+# Continue implementing remaining tasks
+autospec implement
 ```
 
-**Example output (complete):**
+#### 4. Advanced Options
+
+```bash
+# Custom retry limit
+autospec workflow "feature description" --max-retries 5
+
+# Dry-run mode (see what would execute)
+autospec workflow "feature" --dry-run
+
+# Debug mode with verbose logging
+autospec --debug workflow "feature"
+
+# View current configuration
+autospec config show
 ```
-Implementation Status: COMPLETE
 
-All 45 tasks completed across 6 phases.
-Ready for final review and testing.
-```
-
-**Options:**
-- `--json`: Output results in JSON format for programmatic use
-- `--spec-name NAME`: Validate specific spec (default: auto-detect from branch)
-
-#### 3. Hook-Based Automatic Validation
+#### 5. Hook-Based Automatic Validation
 
 Enable hooks to prevent Claude from stopping until artifacts are complete:
 
@@ -322,16 +313,16 @@ See `tests/README.md` for detailed testing documentation.
 
 ```bash
 # Start workflow with automatic validation
-./scripts/speckit-workflow-validate.sh user-authentication
+autospec workflow "Add user authentication with OAuth"
 
 # Claude generates spec.md, plan.md, tasks.md with automatic retries
 # If any file is missing, workflow automatically re-prompts Claude
 
 # Check implementation status
-./scripts/speckit-implement-validate.sh user-authentication
+autospec status
 
-# Continue implementing until complete
-# Validator provides specific continuation prompts
+# Continue implementing remaining tasks
+autospec implement
 ```
 
 ### 2. Hook-Enforced Completeness
@@ -349,34 +340,31 @@ claude --settings .claude/implement-hook-settings.json
 
 ```bash
 # Validate feature completion in CI pipeline
-if ./scripts/speckit-implement-validate.sh my-feature --json | jq -e '.status == "COMPLETE"'; then
+autospec status --json | jq -e '.status == "COMPLETE"'
+if [ $? -eq 0 ]; then
   echo "Feature implementation complete"
   exit 0
 else
   echo "Feature implementation incomplete"
-  ./scripts/speckit-implement-validate.sh my-feature  # Show details
+  autospec status  # Show details
   exit 1
 fi
 ```
 
-### 4. Custom Workflows
+### 4. Working with Configuration
 
 ```bash
-# Source the library for custom scripts
-source scripts/lib/speckit-validation-lib.sh
+# Initialize project configuration
+autospec init
 
-# Use validation functions
-if validate_file_exists "spec.md" "specs/my-feature"; then
-  echo "Spec exists"
-fi
+# View current configuration
+autospec config show
 
-# Manage retry state
-increment_retry_count "my-feature" "specify"
-count=$(get_retry_count "my-feature" "specify")
+# Use custom specs directory
+autospec --specs-dir ./features workflow "new feature"
 
-# Generate continuation prompts
-prompt=$(generate_continuation_prompt "my-feature" "Phase 2" "8")
-echo "$prompt"
+# Adjust retry limits
+autospec workflow "feature" --max-retries 5
 ```
 
 ## Configuration
