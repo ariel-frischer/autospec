@@ -16,6 +16,7 @@ type Executor struct {
 	MaxRetries      int
 	ProgressDisplay *progress.ProgressDisplay // Optional progress display
 	TotalPhases     int                       // Total phases in workflow
+	Debug           bool                      // Enable debug logging
 }
 
 // Phase represents a workflow phase (specify, plan, tasks, implement)
@@ -27,6 +28,13 @@ const (
 	PhaseTasks     Phase = "tasks"
 	PhaseImplement Phase = "implement"
 )
+
+// debugLog prints a debug message if debug mode is enabled
+func (e *Executor) debugLog(format string, args ...interface{}) {
+	if e.Debug {
+		fmt.Printf("[DEBUG] "+format+"\n", args...)
+	}
+}
 
 // getPhaseNumber returns the sequential number for a phase (1-based)
 func (e *Executor) getPhaseNumber(phase Phase) int {
@@ -67,20 +75,25 @@ type PhaseResult struct {
 
 // ExecutePhase executes a workflow phase with validation and retry logic
 func (e *Executor) ExecutePhase(specName string, phase Phase, command string, validateFunc func(string) error) (*PhaseResult, error) {
+	e.debugLog("ExecutePhase called - spec: %s, phase: %s, command: %s", specName, phase, command)
 	result := &PhaseResult{
 		Phase:   phase,
 		Success: false,
 	}
 
 	// Load retry state
+	e.debugLog("Loading retry state from: %s", e.StateDir)
 	retryState, err := retry.LoadRetryState(e.StateDir, specName, string(phase), e.MaxRetries)
 	if err != nil {
+		e.debugLog("Failed to load retry state: %v", err)
 		return result, fmt.Errorf("failed to load retry state: %w", err)
 	}
+	e.debugLog("Retry state loaded - count: %d, max: %d", retryState.Count, e.MaxRetries)
 
 	// Build phase info and start progress display
 	phaseInfo := e.buildPhaseInfo(phase, retryState.Count)
 	if e.ProgressDisplay != nil {
+		e.debugLog("Starting progress display")
 		if err := e.ProgressDisplay.StartPhase(phaseInfo); err != nil {
 			// Log warning but don't fail execution
 			fmt.Printf("Warning: progress display error: %v\n", err)
@@ -92,7 +105,9 @@ func (e *Executor) ExecutePhase(specName string, phase Phase, command string, va
 	fmt.Printf("\n→ Executing: %s\n\n", fullCommand)
 
 	// Execute command
+	e.debugLog("About to call Claude.Execute()")
 	if err := e.Claude.Execute(command); err != nil {
+		e.debugLog("Claude.Execute() returned error: %v", err)
 		result.Error = fmt.Errorf("command execution failed: %w", err)
 
 		// Show failure in progress display
@@ -123,10 +138,13 @@ func (e *Executor) ExecutePhase(specName string, phase Phase, command string, va
 		result.RetryCount = retryState.Count
 		return result, result.Error
 	}
+	e.debugLog("Claude.Execute() completed successfully")
 
 	// Validate output
 	specDir := fmt.Sprintf("%s/%s", e.SpecsDir, specName) // Simplified for now
+	e.debugLog("Running validation function for spec dir: %s", specDir)
 	if err := validateFunc(specDir); err != nil {
+		e.debugLog("Validation failed: %v", err)
 		result.Error = fmt.Errorf("validation failed: %w", err)
 
 		// Show failure in progress display
@@ -149,9 +167,11 @@ func (e *Executor) ExecutePhase(specName string, phase Phase, command string, va
 		result.RetryCount = retryState.Count
 		return result, result.Error
 	}
+	e.debugLog("Validation passed!")
 
 	// Success! Show completion in progress display
 	if e.ProgressDisplay != nil {
+		e.debugLog("Showing completion in progress display")
 		phaseInfo.Status = progress.PhaseCompleted
 		if err := e.ProgressDisplay.CompletePhase(phaseInfo); err != nil {
 			// Log warning but don't fail execution
@@ -160,6 +180,7 @@ func (e *Executor) ExecutePhase(specName string, phase Phase, command string, va
 	}
 
 	// Reset retry count
+	e.debugLog("Resetting retry count")
 	if err := retry.ResetRetryCount(e.StateDir, specName, string(phase)); err != nil {
 		// Log error but don't fail - reset is not critical
 		fmt.Printf("Warning: failed to reset retry count: %v\n", err)
@@ -167,6 +188,7 @@ func (e *Executor) ExecutePhase(specName string, phase Phase, command string, va
 
 	result.Success = true
 	result.RetryCount = 0
+	e.debugLog("ExecutePhase completed successfully - returning")
 	return result, nil
 }
 

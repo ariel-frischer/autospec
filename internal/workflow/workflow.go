@@ -15,6 +15,14 @@ type WorkflowOrchestrator struct {
 	Config        *config.Configuration
 	SpecsDir      string
 	SkipPreflight bool
+	Debug         bool // Enable debug logging
+}
+
+// debugLog prints a debug message if debug mode is enabled
+func (w *WorkflowOrchestrator) debugLog(format string, args ...interface{}) {
+	if w.Debug {
+		fmt.Printf("[DEBUG] "+format+"\n", args...)
+	}
 }
 
 // NewWorkflowOrchestrator creates a new workflow orchestrator from configuration
@@ -41,6 +49,7 @@ func NewWorkflowOrchestrator(cfg *config.Configuration) *WorkflowOrchestrator {
 		MaxRetries:      cfg.MaxRetries,
 		ProgressDisplay: progressDisplay,
 		TotalPhases:     3, // Default to 3 phases (specify, plan, tasks)
+		Debug:           false, // Will be set by CLI command
 	}
 
 	return &WorkflowOrchestrator{
@@ -147,24 +156,34 @@ func (w *WorkflowOrchestrator) RunFullWorkflow(featureDescription string, resume
 	// Phase 4: Implement
 	fmt.Println("[Phase 4/4] Implement...")
 	fmt.Println("Executing: /speckit.implement")
+	w.debugLog("Starting implement phase for spec: %s", specName)
 
 	command := "/speckit.implement"
 	if resume {
 		command += " --resume"
+		w.debugLog("Resume flag enabled")
 	}
 
+	w.debugLog("Calling ExecutePhase with command: %s", command)
 	result, err := w.Executor.ExecutePhase(
 		specName,
 		PhaseImplement,
 		command,
 		func(specDir string) error {
+			w.debugLog("Running validation function for spec dir: %s", specDir)
 			tasksPath := filepath.Join(specDir, "tasks.md")
-			return w.Executor.ValidateTasksComplete(tasksPath)
+			w.debugLog("Validating tasks at: %s", tasksPath)
+			validationErr := w.Executor.ValidateTasksComplete(tasksPath)
+			w.debugLog("Validation result: %v", validationErr)
+			return validationErr
 		},
 	)
+	w.debugLog("ExecutePhase returned - result: %+v, err: %v", result, err)
 
 	if err != nil {
+		w.debugLog("Implement phase failed with error: %v", err)
 		if result.Exhausted {
+			w.debugLog("Retries exhausted")
 			// Generate continuation prompt
 			fmt.Println("\nImplementation paused.")
 			fmt.Printf("To resume: autospec full \"%s\" --resume\n", featureDescription)
@@ -174,9 +193,11 @@ func (w *WorkflowOrchestrator) RunFullWorkflow(featureDescription string, resume
 	}
 
 	// Success!
+	w.debugLog("Implement phase completed successfully")
 	fmt.Println("\n✓ All tasks completed!")
 	fmt.Println("Full workflow completed successfully!")
 	fmt.Printf("Spec: specs/%s/\n", specName)
+	w.debugLog("RunFullWorkflow exiting normally")
 
 	return nil
 }

@@ -35,6 +35,7 @@ This is equivalent to running 'autospec workflow' followed by 'autospec implemen
 		skipPreflight, _ := cmd.Flags().GetBool("skip-preflight")
 		maxRetries, _ := cmd.Flags().GetInt("max-retries")
 		resume, _ := cmd.Flags().GetBool("resume")
+		debug, _ := cmd.Flags().GetBool("debug")
 
 		// Load configuration
 		cfg, err := config.Load(configPath)
@@ -54,6 +55,13 @@ This is equivalent to running 'autospec workflow' followed by 'autospec implemen
 
 		// Create workflow orchestrator
 		orchestrator := workflow.NewWorkflowOrchestrator(cfg)
+		orchestrator.Debug = debug
+		orchestrator.Executor.Debug = debug // Propagate debug to executor
+
+		if debug {
+			fmt.Println("[DEBUG] Debug mode enabled")
+			fmt.Printf("[DEBUG] Config: %+v\n", cfg)
+		}
 
 		// Run full workflow
 		if err := orchestrator.RunFullWorkflow(featureDescription, resume); err != nil {
