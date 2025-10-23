@@ -89,6 +89,84 @@ func (w *WorkflowOrchestrator) RunCompleteWorkflow(featureDescription string) er
 	return nil
 }
 
+// RunFullWorkflow executes the complete specify → plan → tasks → implement workflow
+func (w *WorkflowOrchestrator) RunFullWorkflow(featureDescription string, resume bool) error {
+	// Run pre-flight checks
+	if ShouldRunPreflightChecks(w.SkipPreflight) {
+		if err := w.runPreflightChecks(); err != nil {
+			return err
+		}
+	}
+
+	// Phase 1: Specify
+	fmt.Println("[Phase 1/4] Specify...")
+	fmt.Printf("Executing: /speckit.specify \"%s\"\n", featureDescription)
+
+	specName, err := w.executeSpecify(featureDescription)
+	if err != nil {
+		return fmt.Errorf("specify phase failed: %w", err)
+	}
+
+	fmt.Printf("✓ Created specs/%s/spec.md\n\n", specName)
+
+	// Phase 2: Plan
+	fmt.Println("[Phase 2/4] Plan...")
+	fmt.Println("Executing: /speckit.plan")
+
+	if err := w.executePlan(specName); err != nil {
+		return fmt.Errorf("plan phase failed: %w", err)
+	}
+
+	fmt.Printf("✓ Created specs/%s/plan.md\n", specName)
+	fmt.Printf("✓ Created specs/%s/research.md\n\n", specName)
+
+	// Phase 3: Tasks
+	fmt.Println("[Phase 3/4] Tasks...")
+	fmt.Println("Executing: /speckit.tasks")
+
+	if err := w.executeTasks(specName); err != nil {
+		return fmt.Errorf("tasks phase failed: %w", err)
+	}
+
+	fmt.Printf("✓ Created specs/%s/tasks.md\n\n", specName)
+
+	// Phase 4: Implement
+	fmt.Println("[Phase 4/4] Implement...")
+	fmt.Println("Executing: /speckit.implement")
+
+	command := "/speckit.implement"
+	if resume {
+		command += " --resume"
+	}
+
+	result, err := w.Executor.ExecutePhase(
+		specName,
+		PhaseImplement,
+		command,
+		func(specDir string) error {
+			tasksPath := filepath.Join(specDir, "tasks.md")
+			return w.Executor.ValidateTasksComplete(tasksPath)
+		},
+	)
+
+	if err != nil {
+		if result.Exhausted {
+			// Generate continuation prompt
+			fmt.Println("\nImplementation paused.")
+			fmt.Printf("To resume: autospec full \"%s\" --resume\n", featureDescription)
+			return fmt.Errorf("implementation phase exhausted retries: %w", err)
+		}
+		return fmt.Errorf("implementation failed: %w", err)
+	}
+
+	// Success!
+	fmt.Println("\n✓ All tasks completed!")
+	fmt.Println("Full workflow completed successfully!")
+	fmt.Printf("Spec: specs/%s/\n", specName)
+
+	return nil
+}
+
 // runPreflightChecks runs pre-flight validation and handles user interaction
 func (w *WorkflowOrchestrator) runPreflightChecks() error {
 	fmt.Println("Running pre-flight checks...")
