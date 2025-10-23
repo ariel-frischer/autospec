@@ -239,7 +239,8 @@ func (w *WorkflowOrchestrator) executeSpecify(featureDescription string) (string
 		return "", err
 	}
 
-	return metadata.Name, nil
+	// Return full spec directory name (e.g., "003-command-timeout")
+	return fmt.Sprintf("%s-%s", metadata.Number, metadata.Name), nil
 }
 
 // executePlan executes the /speckit.plan command with optional prompt
@@ -325,7 +326,8 @@ func (w *WorkflowOrchestrator) ExecutePlan(specNameArg string, prompt string) er
 		if err != nil {
 			return fmt.Errorf("failed to detect current spec: %w", err)
 		}
-		specName = metadata.Name
+		// Use full spec directory name (e.g., "003-command-timeout")
+		specName = fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)
 		fmt.Printf("Detected spec: %s\n", specName)
 	}
 
@@ -360,7 +362,8 @@ func (w *WorkflowOrchestrator) ExecuteTasks(specNameArg string, prompt string) e
 		if err != nil {
 			return fmt.Errorf("failed to detect current spec: %w", err)
 		}
-		specName = metadata.Name
+		// Use full spec directory name (e.g., "003-command-timeout")
+		specName = fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)
 		fmt.Printf("Detected spec: %s\n", specName)
 	}
 
@@ -399,7 +402,8 @@ func (w *WorkflowOrchestrator) ExecuteImplement(specNameArg string, resume bool)
 		if err != nil {
 			return fmt.Errorf("failed to detect current spec: %w", err)
 		}
-		specName = metadata.Name
+		// Use full spec directory name (e.g., "003-command-timeout")
+		specName = fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)
 		fmt.Printf("Detected spec: %s\n", specName)
 	}
 
