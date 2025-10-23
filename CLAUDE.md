@@ -100,7 +100,10 @@ Cobra-based command structure providing user-facing commands:
 - **root.go**: Root command with global flags (`--config`, `--specs-dir`, `--debug`, etc.)
 - **full.go**: Orchestrates complete specify → plan → tasks → implement workflow
 - **workflow.go**: Orchestrates specify → plan → tasks workflow (no implementation)
-- **specify.go, plan.go, tasks.go, implement.go**: Individual phase commands
+- **specify.go**: Creates new feature specifications with optional prompt guidance
+- **plan.go**: Executes planning phase with optional prompt guidance
+- **tasks.go**: Generates tasks with optional prompt guidance
+- **implement.go**: Executes implementation with optional spec-name and prompt guidance
 - **doctor.go**: Health check command for dependencies
 - **status.go**: Reports current spec progress
 - **config.go**: Configuration management commands
@@ -229,17 +232,61 @@ Each phase follows this pattern (in `executor.go`):
 ```go
 ExecutePhase(specName, phase, command, validationFunc):
   1. Load retry state from disk
-  2. Execute command via ClaudeExecutor
-  3. Run validation function on output
-  4. If validation fails:
+  2. Display full command before execution
+  3. Execute command via ClaudeExecutor
+  4. Run validation function on output
+  5. If validation fails:
      - Increment retry count
      - Save state
      - If retries remain: retry
      - If exhausted: return error
-  5. If validation succeeds:
+  6. If validation succeeds:
      - Reset retry count
      - Return success
 ```
+
+### Prompt Injection and Command Display
+
+All SpecKit phase commands (`specify`, `plan`, `tasks`, `implement`) support optional prompt text to guide Claude's execution:
+
+**How it works:**
+1. User provides additional guidance as command arguments
+2. Prompt text is appended to the slash command
+3. Full command is displayed before execution
+4. Works with both simple and custom Claude commands
+
+**Examples:**
+```bash
+# Simple prompt injection
+autospec plan "Focus on security best practices"
+# Executes: claude -p "/speckit.plan \"Focus on security best practices\""
+
+# Custom command with prompt
+# Config: custom_claude_cmd = "claude -p {{PROMPT}} | claude-clean"
+autospec tasks "Break into small steps"
+# Executes: claude -p '/speckit.tasks "Break into small steps"' | claude-clean
+
+# Implement command with spec-name and prompt
+autospec implement 003-my-feature "Complete the tests"
+# Auto-detects spec vs prompt using pattern matching (NNN-name)
+```
+
+**Command Display:**
+Before each phase execution, the full resolved command is displayed:
+```
+→ Executing: claude -p "/speckit.plan \"Focus on security\""
+```
+
+This transparency helps with:
+- Debugging command construction
+- Understanding what's being sent to Claude
+- Verifying custom command templates work correctly
+
+**Argument Parsing (implement command):**
+The `implement` command intelligently distinguishes between spec-name and prompt:
+- Pattern `\d+-[a-z0-9-]+` → treated as spec-name (e.g., `003-my-feature`)
+- Anything else → treated as prompt text
+- Can combine: `autospec implement 003-feature "focus on docs"`
 
 ### Configuration Loading
 
