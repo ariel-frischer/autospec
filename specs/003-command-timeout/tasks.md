@@ -134,15 +134,15 @@
 
 **Purpose**: Documentation and final quality improvements
 
-- [ ] T026 [P] Update CLAUDE.md with timeout configuration documentation
+- [X] T026 [P] Update CLAUDE.md with timeout configuration documentation
   - Add timeout field to configuration section
   - Add timeout behavior to architecture overview
   - Add timeout to common development patterns
   - Add troubleshooting guide for timeouts
-- [ ] T027 [P] Update quickstart.md validation scenarios (verify documented scenarios still work)
-- [ ] T028 [P] Add timeout examples to README or user-facing docs (if applicable)
+- [X] T027 [P] Update quickstart.md validation scenarios (verify documented scenarios still work)
+- [X] T028 [P] Add timeout examples to README or user-facing docs (if applicable)
 - [ ] T029 Run quickstart.md validation to ensure all documented scenarios work correctly
-- [ ] T030 Final code review and cleanup (remove any debug code, ensure consistent error messages)
+- [X] T030 Final code review and cleanup (remove any debug code, ensure consistent error messages)
 
 ---
 

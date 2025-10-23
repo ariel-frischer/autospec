@@ -297,7 +297,22 @@ autospec config show
 # Use environment variables
 export AUTOSPEC_MAX_RETRIES=5
 export AUTOSPEC_SPECS_DIR="./features"
+export AUTOSPEC_TIMEOUT=600  # 10-minute timeout for commands
 ```
+
+### Timeout Configuration
+
+Prevent indefinite command hangs with configurable timeouts:
+
+```bash
+# Set 10-minute timeout via environment variable
+export AUTOSPEC_TIMEOUT=600
+
+# Or in config file
+echo '{"timeout": 600}' > .autospec/config.json
+```
+
+When a command exceeds the timeout, it's terminated and returns exit code 5. See [docs/timeout.md](docs/timeout.md) for detailed configuration options.
 
 See [CONTRIBUTORS.md](CONTRIBUTORS.md) for detailed configuration options.
 
