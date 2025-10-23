@@ -87,6 +87,10 @@ func (e *Executor) ExecutePhase(specName string, phase Phase, command string, va
 		}
 	}
 
+	// Display the full command before execution
+	fullCommand := e.Claude.FormatCommand(command)
+	fmt.Printf("\n→ Executing: %s\n\n", fullCommand)
+
 	// Execute command
 	if err := e.Claude.Execute(command); err != nil {
 		result.Error = fmt.Errorf("command execution failed: %w", err)

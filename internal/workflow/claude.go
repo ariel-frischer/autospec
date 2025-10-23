@@ -74,12 +74,21 @@ func (c *ClaudeExecutor) Execute(prompt string) error {
 	return nil
 }
 
-// formatCommand returns a human-readable command string for error messages
-func (c *ClaudeExecutor) formatCommand(prompt string) string {
+// FormatCommand returns a human-readable command string for display and error messages
+func (c *ClaudeExecutor) FormatCommand(prompt string) string {
 	if c.CustomClaudeCmd != "" {
 		return c.expandTemplate(prompt)
 	}
-	return fmt.Sprintf("%s %s", c.ClaudeCmd, prompt)
+
+	// Build the full command with all args
+	args := append(c.ClaudeArgs, prompt)
+	cmdParts := append([]string{c.ClaudeCmd}, args...)
+	return strings.Join(cmdParts, " ")
+}
+
+// formatCommand is a legacy alias for FormatCommand (kept for backward compatibility)
+func (c *ClaudeExecutor) formatCommand(prompt string) string {
+	return c.FormatCommand(prompt)
 }
 
 // expandTemplate replaces {{PROMPT}} placeholder with actual prompt

@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/anthropics/auto-claude-speckit/internal/config"
 	"github.com/anthropics/auto-claude-speckit/internal/workflow"
@@ -9,7 +11,7 @@ import (
 )
 
 var implementCmd = &cobra.Command{
-	Use:   "implement [spec-name]",
+	Use:   "implement [spec-name-or-prompt]",
 	Short: "Execute the implementation phase for the current spec",
 	Long: `Execute the /speckit.implement command for the current specification.
 
@@ -18,16 +20,36 @@ The implement command will:
 - Execute the implementation workflow
 - Validate that all tasks in tasks.md are completed
 - Support resuming from where it left off with --resume flag
+- Support optional prompt text to guide the implementation
+
+You can optionally provide a prompt to guide the implementation process:
+  autospec implement "Focus on documentation tasks"
+  autospec implement "Complete the remaining tests"
 
 Examples:
-  autospec implement                    # Auto-detect spec and implement
-  autospec implement --resume           # Resume implementation from where it left off
-  autospec implement 003-my-feature     # Implement specific spec`,
+  autospec implement                              # Auto-detect spec and implement
+  autospec implement --resume                     # Resume implementation from where it left off
+  autospec implement 003-my-feature               # Implement specific spec
+  autospec implement "Focus on error handling"    # Auto-detect spec with prompt guidance`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Get optional spec name from args
+		// Parse args to distinguish between spec-name and prompt
 		var specName string
+		var prompt string
+
 		if len(args) > 0 {
-			specName = args[0]
+			// Check if first arg looks like a spec name (pattern: NNN-name)
+			specNamePattern := regexp.MustCompile(`^\d+-[a-z0-9-]+$`)
+			if specNamePattern.MatchString(args[0]) {
+				// First arg is a spec name
+				specName = args[0]
+				// Remaining args are prompt
+				if len(args) > 1 {
+					prompt = strings.Join(args[1:], " ")
+				}
+			} else {
+				// All args are prompt (auto-detect spec)
+				prompt = strings.Join(args, " ")
+			}
 		}
 
 		// Get flags
@@ -55,8 +77,8 @@ Examples:
 		// Create workflow orchestrator
 		orch := workflow.NewWorkflowOrchestrator(cfg)
 
-		// Execute implement phase
-		if err := orch.ExecuteImplement(specName, resume); err != nil {
+		// Execute implement phase with optional prompt
+		if err := orch.ExecuteImplement(specName, prompt, resume); err != nil {
 			return err
 		}
 

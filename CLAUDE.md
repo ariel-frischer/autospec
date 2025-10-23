@@ -69,8 +69,13 @@ autospec workflow "Add user authentication feature"
 # Run individual phases
 autospec specify "feature description"
 autospec plan
+autospec plan "Focus on security best practices"           # With prompt guidance
 autospec tasks
+autospec tasks "Break into small incremental steps"        # With prompt guidance
 autospec implement
+autospec implement "Focus on documentation tasks"          # With prompt guidance
+autospec implement 003-my-feature                          # Specific spec
+autospec implement 003-my-feature "Complete tests"         # Spec + prompt
 
 # Check dependencies
 autospec doctor

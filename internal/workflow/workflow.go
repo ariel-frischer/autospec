@@ -397,8 +397,8 @@ func (w *WorkflowOrchestrator) ExecuteTasks(specNameArg string, prompt string) e
 	return nil
 }
 
-// ExecuteImplement runs the implementation phase
-func (w *WorkflowOrchestrator) ExecuteImplement(specNameArg string, resume bool) error {
+// ExecuteImplement runs the implementation phase with optional prompt
+func (w *WorkflowOrchestrator) ExecuteImplement(specNameArg string, prompt string, resume bool) error {
 	var specName string
 	var metadata *spec.Metadata
 	var err error
@@ -424,11 +424,24 @@ func (w *WorkflowOrchestrator) ExecuteImplement(specNameArg string, resume bool)
 	// Check progress
 	// TODO: Display progress information
 	fmt.Printf("Progress: checking tasks...\n\n")
-	fmt.Println("Executing: /speckit.implement")
 
+	// Build command with optional prompt
 	command := "/speckit.implement"
 	if resume {
 		command += " --resume"
+	}
+	if prompt != "" {
+		command = fmt.Sprintf("/speckit.implement \"%s\"", prompt)
+		if resume {
+			// If both resume and prompt, append resume after prompt
+			command = fmt.Sprintf("/speckit.implement --resume \"%s\"", prompt)
+		}
+	}
+
+	if prompt != "" {
+		fmt.Printf("Executing: /speckit.implement \"%s\"\n", prompt)
+	} else {
+		fmt.Println("Executing: /speckit.implement")
 	}
 
 	result, err := w.Executor.ExecutePhase(
