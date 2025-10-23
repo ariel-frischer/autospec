@@ -30,3 +30,15 @@ node_modules/
 package-lock.json
 
 .specify
+
+# Go binary outputs
+dist/
+*.test
+*.out
+autospec
+coverage.txt
+cover.out
+*.prof
+
+# Go build cache
+.cache/

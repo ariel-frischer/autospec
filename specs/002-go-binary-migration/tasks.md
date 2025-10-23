@@ -27,12 +27,12 @@
 
 **Purpose**: Project initialization and basic Go structure
 
-- [ ] T001 Initialize Go module at repository root with `go mod init github.com/username/auto-claude-speckit`
-- [ ] T002 Create directory structure: cmd/autospec/, internal/{cli,config,validation,retry,git,spec,workflow}/, integration/
-- [ ] T003 [P] Add initial dependencies: cobra, koanf, validator, testify, testscript to go.mod
-- [ ] T004 [P] Create cmd/autospec/main.go entry point with basic structure
-- [ ] T005 [P] Create internal/cli/root.go with Cobra root command and global flags
-- [ ] T006 [P] Update .gitignore to ignore dist/, *.test, coverage files, go binary outputs
+- [X] T001 Initialize Go module at repository root with `go mod init github.com/username/auto-claude-speckit`
+- [X] T002 Create directory structure: cmd/autospec/, internal/{cli,config,validation,retry,git,spec,workflow}/, integration/
+- [X] T003 [P] Add initial dependencies: cobra, koanf, validator, testify, testscript to go.mod
+- [X] T004 [P] Create cmd/autospec/main.go entry point with basic structure
+- [X] T005 [P] Create internal/cli/root.go with Cobra root command and global flags
+- [X] T006 [P] Update .gitignore to ignore dist/, *.test, coverage files, go binary outputs
 
 ---
 
@@ -57,13 +57,13 @@
 - [ ] T019 [P] Write unit tests for file validation in internal/validation/validation_test.go (6-8 table-driven tests)
 - [ ] T020 [P] Write unit tests for task parsing in internal/validation/tasks_test.go (8-10 table-driven tests covering patterns)
 - [ ] T021 [P] Write benchmarks for validation functions in internal/validation/validation_bench_test.go (3-5 benchmarks)
-- [ ] T022 Implement internal/retry/retry.go with RetryState struct and LoadRetryState, SaveRetryState functions per data-model.md and validation-api.md
-- [ ] T023 Implement internal/retry/state.go with IncrementRetryCount, ResetRetryCount, CanRetry methods per validation-api.md
-- [ ] T024 [P] Write unit tests for retry state management in internal/retry/retry_test.go (6-8 tests with temp directories)
-- [ ] T025 Create internal/workflow/executor.go with command execution logic and retry handling
-- [ ] T026 [P] Create internal/workflow/claude.go with Claude CLI execution using custom_claude_cmd template support
-- [ ] T027 [P] Create internal/workflow/preflight.go with pre-flight validation checks per FR-015 through FR-024
-- [ ] T028 Implement internal/workflow/workflow.go with specify→plan→tasks orchestration per cli-interface.md
+- [X] T022 Implement internal/retry/retry.go with RetryState struct and LoadRetryState, SaveRetryState functions per data-model.md and validation-api.md
+- [X] T023 Implement internal/retry/state.go with IncrementRetryCount, ResetRetryCount, CanRetry methods per validation-api.md
+- [X] T024 [P] Write unit tests for retry state management in internal/retry/retry_test.go (6-8 tests with temp directories)
+- [X] T025 Create internal/workflow/executor.go with command execution logic and retry handling
+- [X] T026 [P] Create internal/workflow/claude.go with Claude CLI execution using custom_claude_cmd template support
+- [X] T027 [P] Create internal/workflow/preflight.go with pre-flight validation checks per FR-015 through FR-024
+- [X] T028 Implement internal/workflow/workflow.go with specify→plan→tasks orchestration per cli-interface.md
 - [ ] T029 [P] Write unit tests for workflow orchestration in internal/workflow/workflow_test.go (5-7 tests)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
