@@ -19,5 +19,6 @@ func GetDefaults() map[string]interface{} {
 		"state_dir":         "~/.autospec/state",
 		"skip_preflight":    false,
 		"timeout":           0,
+		"show_progress":     false, // Progress indicators off by default (professional)
 	}
 }

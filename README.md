@@ -193,6 +193,9 @@ autospec implement
 # Custom retry limit
 autospec workflow "feature description" --max-retries 5
 
+# Show progress indicators (spinners) during execution
+autospec full "feature" --progress
+
 # Dry-run mode (see what would execute)
 autospec workflow "feature" --dry-run
 
@@ -202,6 +205,8 @@ autospec --debug workflow "feature"
 # View current configuration
 autospec config show
 ```
+
+**Progress Indicators**: Off by default due to Claude output stream pollution. Enable with `--progress` flag or set `"show_progress": true` in `.autospec/config.json`.
 
 #### 6. Hook-Based Automatic Validation
 

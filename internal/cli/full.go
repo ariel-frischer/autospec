@@ -36,6 +36,7 @@ This is equivalent to running 'autospec workflow' followed by 'autospec implemen
 		maxRetries, _ := cmd.Flags().GetInt("max-retries")
 		resume, _ := cmd.Flags().GetBool("resume")
 		debug, _ := cmd.Flags().GetBool("debug")
+		progress, _ := cmd.Flags().GetBool("progress")
 
 		// Load configuration
 		cfg, err := config.Load(configPath)
@@ -51,6 +52,11 @@ This is equivalent to running 'autospec workflow' followed by 'autospec implemen
 		// Override max-retries from flag if set
 		if cmd.Flags().Changed("max-retries") {
 			cfg.MaxRetries = maxRetries
+		}
+
+		// Override show-progress from flag if set
+		if cmd.Flags().Changed("progress") {
+			cfg.ShowProgress = progress
 		}
 
 		// Create workflow orchestrator
@@ -78,4 +84,5 @@ func init() {
 	// Command-specific flags
 	fullCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (0 = use config)")
 	fullCmd.Flags().Bool("resume", false, "Resume implementation from where it left off")
+	fullCmd.Flags().Bool("progress", false, "Show progress indicators (spinners) during execution")
 }

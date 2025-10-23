@@ -1,115 +1,122 @@
-# Feature Specification: [FEATURE NAME]
+# Feature Specification: GitHub Issue Templates
 
-**Feature Branch**: `[###-feature-name]`  
-**Created**: [DATE]  
-**Status**: Draft  
-**Input**: User description: "$ARGUMENTS"
+**Feature Branch**: `006-github-issue-templates`
+**Created**: 2025-10-23
+**Status**: Draft
+**Input**: User description: "Add issue templates (.github/ISSUE_TEMPLATE/) bug_report.md feature_request.md and config.yml"
 
 ## User Scenarios & Testing *(mandatory)*
 
-<!--
-  IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
-  Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
-  you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
-  Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
-  Think of each story as a standalone slice of functionality that can be:
-  - Developed independently
-  - Tested independently
-  - Deployed independently
-  - Demonstrated to users independently
--->
+### User Story 1 - Bug Reporter Submits Structured Bug Report (Priority: P1)
 
-### User Story 1 - [Brief Title] (Priority: P1)
+A contributor encounters a bug and needs to report it with all necessary information for maintainers to reproduce and fix the issue.
 
-[Describe this user journey in plain language]
+**Why this priority**: This is the most critical user story because bug reports are essential for project maintenance. Without proper structure, maintainers waste time requesting additional information, delaying fixes.
 
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
+**Independent Test**: Can be fully tested by creating a new issue on GitHub, selecting the bug report template, and verifying all required fields are present and deliver a complete bug report that maintainers can act on immediately.
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-2. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** a contributor encounters a bug, **When** they click "New Issue" on GitHub, **Then** they see the bug report template as an option
+2. **Given** a contributor selects the bug report template, **When** the template loads, **Then** they see structured sections for description, reproduction steps, expected behavior, actual behavior, environment details, and additional context
+3. **Given** a contributor fills out the bug report template, **When** they submit the issue, **Then** all required information is captured and maintainers can immediately understand and reproduce the problem
 
 ---
 
-### User Story 2 - [Brief Title] (Priority: P2)
+### User Story 2 - User Requests Feature with Clear Justification (Priority: P2)
 
-[Describe this user journey in plain language]
+A user or contributor wants to suggest a new feature and needs to provide sufficient context about the use case, value, and desired outcome.
 
-**Why this priority**: [Explain the value and why it has this priority level]
+**Why this priority**: Feature requests drive project evolution. Structured templates ensure requesters articulate the problem being solved, not just the solution they imagine, enabling better design discussions.
 
-**Independent Test**: [Describe how this can be tested independently]
+**Independent Test**: Can be fully tested by creating a new issue, selecting the feature request template, and verifying the template guides users to describe the problem, use case, and desired outcome rather than implementation details.
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** a user wants to suggest a feature, **When** they click "New Issue" on GitHub, **Then** they see the feature request template as an option
+2. **Given** a user selects the feature request template, **When** the template loads, **Then** they see sections for problem statement, use case, proposed solution, alternatives considered, and additional context
+3. **Given** a user fills out the feature request template, **When** they submit the issue, **Then** maintainers understand the underlying need and can evaluate the request's value and fit
 
 ---
 
-### User Story 3 - [Brief Title] (Priority: P3)
+### User Story 3 - Maintainer Manages Issue Template Configuration (Priority: P3)
 
-[Describe this user journey in plain language]
+A maintainer needs to configure which templates are available and set default behaviors for issue creation.
 
-**Why this priority**: [Explain the value and why it has this priority level]
+**Why this priority**: While important for customization, this is lower priority because default template selection works without explicit configuration. This story enables fine-tuning the issue creation experience.
 
-**Independent Test**: [Describe how this can be tested independently]
+**Independent Test**: Can be fully tested by modifying the config.yml file, pushing changes, and verifying GitHub respects the configuration (blank issues enabled/disabled, template order, etc.).
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** a maintainer wants to disable blank issues, **When** they set `blank_issues_enabled: false` in config.yml, **Then** contributors can only create issues using provided templates
+2. **Given** a maintainer wants to direct users elsewhere for questions, **When** they add a contact link in config.yml, **Then** GitHub displays the link prominently in the issue creation flow
+3. **Given** a maintainer updates template configuration, **When** they commit changes to `.github/ISSUE_TEMPLATE/config.yml`, **Then** GitHub immediately reflects the new configuration
 
 ---
-
-[Add more user stories as needed, each with an assigned priority]
 
 ### Edge Cases
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right edge cases.
--->
-
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
+- What happens when a contributor ignores template sections and deletes them?
+- How does the system handle templates when multiple templates are available?
+- What if a contributor needs to report both a bug and request a related feature?
+- How are templates discovered by new contributors who may not know they exist?
+- What happens if template files contain invalid YAML frontmatter?
 
 ## Requirements *(mandatory)*
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
--->
-
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-001**: Repository MUST include a bug report template at `.github/ISSUE_TEMPLATE/bug_report.md`
+- **FR-002**: Bug report template MUST include sections for: description, steps to reproduce, expected behavior, actual behavior, environment/system information, and additional context
+- **FR-003**: Repository MUST include a feature request template at `.github/ISSUE_TEMPLATE/feature_request.md`
+- **FR-004**: Feature request template MUST include sections for: problem statement, use case description, proposed solution, alternatives considered, and additional context
+- **FR-005**: Repository MUST include a configuration file at `.github/ISSUE_TEMPLATE/config.yml`
+- **FR-006**: Configuration file MUST specify whether blank issues are enabled or disabled
+- **FR-007**: Templates MUST use GitHub-compatible YAML frontmatter to define name, description, title prefix, and labels
+- **FR-008**: Templates MUST provide clear guidance in each section to help contributors provide complete information
+- **FR-009**: Bug report template MUST request system/environment information relevant to the project (OS, version, runtime, etc.)
+- **FR-010**: Feature request template MUST encourage users to describe the problem being solved, not just the desired implementation
+- **FR-011**: Configuration file MUST allow maintainers to add contact links for redirecting non-issue discussions (questions, support, etc.)
 
-*Example of marking unclear requirements:*
+### Key Entities
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
-
-### Key Entities *(include if feature involves data)*
-
-- **[Entity 1]**: [What it represents, key attributes without implementation]
-- **[Entity 2]**: [What it represents, relationships to other entities]
+- **Bug Report Template**: Structured form for contributors to report defects, including reproduction steps, expected vs actual behavior, and environment details
+- **Feature Request Template**: Structured form for suggesting enhancements, including problem description, use cases, and alternatives
+- **Template Configuration**: Settings file controlling issue template behavior, blank issue policy, and external contact links
 
 ## Success Criteria *(mandatory)*
 
-<!--
-  ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
--->
-
 ### Measurable Outcomes
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-001**: Contributors can create well-structured bug reports containing all information needed for reproduction in a single submission
+- **SC-002**: Feature requests include clear problem statements and use cases in at least 80% of submissions
+- **SC-003**: Maintainers spend 50% less time requesting additional information on bug reports compared to unstructured issues
+- **SC-004**: New contributors successfully use templates without additional guidance or documentation
+- **SC-005**: Issue triage time (time to understand and label issues) decreases by 40%
+
+## Assumptions *(optional)*
+
+- The repository is hosted on GitHub (templates use GitHub-specific features)
+- Contributors access issues through the GitHub web interface (templates may not apply to API or CLI issue creation)
+- Template files use standard GitHub markdown and YAML frontmatter format
+- Maintainers have write access to modify `.github/ISSUE_TEMPLATE/` directory
+- The project follows standard GitHub issue workflow (issues are primary communication channel for bugs and features)
+
+## Constraints *(optional)*
+
+- Templates must conform to GitHub's issue template syntax and format requirements
+- Template files must be located in `.github/ISSUE_TEMPLATE/` directory (GitHub convention)
+- Configuration uses `config.yml` filename (GitHub requirement)
+- Templates cannot enforce required fields (GitHub limitation - contributors can delete sections)
+- Template selection only appears when multiple templates exist or config.yml is present
+
+## Out of Scope *(optional)*
+
+- Pull request templates (separate feature)
+- Issue forms using YAML schema (alternative to markdown templates)
+- Automated issue labeling or assignment
+- Integration with external issue tracking systems
+- Custom validation or enforcement of template completion
+- Internationalization or multiple language templates
+- Discussion templates (separate GitHub feature)

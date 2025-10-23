@@ -25,6 +25,7 @@ type Configuration struct {
 	StateDir        string   `koanf:"state_dir" validate:"required"`
 	SkipPreflight   bool     `koanf:"skip_preflight"`
 	Timeout         int      `koanf:"timeout" validate:"omitempty,min=1,max=604800"`
+	ShowProgress    bool     `koanf:"show_progress"` // Show progress indicators (spinners) during execution
 }
 
 // Load loads configuration from global, local, and environment sources

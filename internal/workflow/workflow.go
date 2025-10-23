@@ -35,11 +35,13 @@ func NewWorkflowOrchestrator(cfg *config.Configuration) *WorkflowOrchestrator {
 		Timeout:         cfg.Timeout,
 	}
 
-	// Detect terminal capabilities and create progress display
-	caps := progress.DetectTerminalCapabilities()
+	// Detect terminal capabilities and create progress display (only if enabled)
 	var progressDisplay *progress.ProgressDisplay
-	if caps.IsTTY {
-		progressDisplay = progress.NewProgressDisplay(caps)
+	if cfg.ShowProgress {
+		caps := progress.DetectTerminalCapabilities()
+		if caps.IsTTY {
+			progressDisplay = progress.NewProgressDisplay(caps)
+		}
 	}
 
 	executor := &Executor{
