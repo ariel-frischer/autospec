@@ -1,0 +1,222 @@
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "dev"
+  created: "2025-12-14T00:00:00Z"
+  artifact_type: "spec"
+
+feature:
+  branch: "011-yaml-config-migration"
+  created: "2025-12-14"
+  status: "Draft"
+  input: "i want user level config at ~/.config/autospec/config.yml AND i want to keep project level config SOME_PROJECT/.autospec/config.yml -> this requires our current config.json to be converted to yml - need basic yml validation - have project level takes precedence over user level if it exists. autospec init (SHOULD generate user level config) if not yet exists, then i think autospec init SHOULD NOT create project level config by default just use user level config (but must have another way to create project level config). final item should be update documentation"
+
+user_stories:
+  - id: "US-001"
+    title: "User-level configuration initialization"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "autospec init to create a user-level configuration file at ~/.config/autospec/config.yml"
+    so_that: "I have sensible defaults that apply to all my projects without needing to configure each project individually"
+    why_this_priority: "This is the primary entry point for new users and establishes the foundation for the configuration system"
+    independent_test: "Run autospec init on a fresh system with no existing config files and verify ~/.config/autospec/config.yml is created"
+    acceptance_scenarios:
+      - given: "No configuration file exists at ~/.config/autospec/config.yml"
+        when: "I run autospec init"
+        then: "A user-level config.yml is created at ~/.config/autospec/config.yml with default values"
+      - given: "A user-level config.yml already exists"
+        when: "I run autospec init"
+        then: "The existing config is preserved and I am notified that it already exists"
+
+  - id: "US-002"
+    title: "Project-level configuration creation"
+    priority: "P1"
+    as_a: "developer working on a specific project"
+    i_want: "a way to create a project-level configuration file at .autospec/config.yml"
+    so_that: "I can override user-level settings for project-specific needs"
+    why_this_priority: "Project-level overrides are essential for teams with different project requirements"
+    independent_test: "Run the project-level config creation command in a project directory and verify .autospec/config.yml is created"
+    acceptance_scenarios:
+      - given: "I am in a project directory without .autospec/config.yml"
+        when: "I run the command to create project-level config"
+        then: "A project-level config.yml is created at .autospec/config.yml"
+      - given: "A project-level config.yml already exists"
+        when: "I run the command to create project-level config"
+        then: "The existing config is preserved and I am notified that it already exists"
+
+  - id: "US-003"
+    title: "Configuration precedence"
+    priority: "P1"
+    as_a: "developer with both user and project configurations"
+    i_want: "project-level configuration to take precedence over user-level configuration"
+    so_that: "project-specific settings override my personal defaults when working in that project"
+    why_this_priority: "This defines the core behavior of the hierarchical configuration system"
+    independent_test: "Create both config files with different values for the same setting and verify project-level value is used"
+    acceptance_scenarios:
+      - given: "User-level config sets timeout to 300"
+        when: "Project-level config sets timeout to 600"
+        then: "The effective timeout is 600"
+      - given: "User-level config sets timeout to 300"
+        when: "No project-level config exists"
+        then: "The effective timeout is 300"
+      - given: "User-level config sets timeout to 300 and claude_cmd to 'claude'"
+        when: "Project-level config only sets timeout to 600"
+        then: "The effective timeout is 600 and claude_cmd remains 'claude' from user-level"
+
+  - id: "US-004"
+    title: "YAML configuration validation"
+    priority: "P2"
+    as_a: "developer editing configuration files"
+    i_want: "autospec to validate my YAML configuration files"
+    so_that: "I catch syntax errors before they cause runtime issues"
+    why_this_priority: "Validation prevents frustrating debugging sessions but is not core functionality"
+    independent_test: "Create an invalid YAML config file and verify autospec reports the error clearly"
+    acceptance_scenarios:
+      - given: "A config.yml with valid YAML syntax and valid configuration values"
+        when: "autospec loads the configuration"
+        then: "The configuration is loaded successfully"
+      - given: "A config.yml with invalid YAML syntax"
+        when: "autospec loads the configuration"
+        then: "A clear error message indicates the syntax problem and its location"
+      - given: "A config.yml with valid YAML but invalid configuration values"
+        when: "autospec loads the configuration"
+        then: "A clear error message indicates which values are invalid and why"
+
+  - id: "US-005"
+    title: "Migration from JSON to YAML configuration"
+    priority: "P2"
+    as_a: "existing autospec user with JSON configuration"
+    i_want: "my existing JSON configuration to continue working or be migrated"
+    so_that: "I don't lose my existing settings when upgrading"
+    why_this_priority: "Important for backward compatibility but affects fewer users than new configuration system"
+    independent_test: "Create a JSON config file and verify autospec can still read it or migrates it correctly"
+    acceptance_scenarios:
+      - given: "An existing config.json file at the user or project level"
+        when: "autospec starts"
+        then: "The JSON configuration is recognized and a migration path is provided"
+        clarification_needed: "Should we auto-migrate JSON to YAML, provide a migration command, or support both formats indefinitely?"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST store user-level configuration at ~/.config/autospec/config.yml"
+      testable: true
+      acceptance_criteria: "autospec init creates config.yml at the specified path"
+    - id: "FR-002"
+      description: "MUST store project-level configuration at .autospec/config.yml"
+      testable: true
+      acceptance_criteria: "Project config command creates config.yml at the specified path"
+    - id: "FR-003"
+      description: "MUST merge configurations with project-level taking precedence over user-level"
+      testable: true
+      acceptance_criteria: "When both configs exist, project-level values override user-level for same keys"
+    - id: "FR-004"
+      description: "MUST validate YAML syntax when loading configuration files"
+      testable: true
+      acceptance_criteria: "Invalid YAML syntax produces clear error messages with line numbers"
+    - id: "FR-005"
+      description: "MUST validate configuration values against expected schema"
+      testable: true
+      acceptance_criteria: "Invalid values produce clear error messages identifying the invalid field"
+    - id: "FR-006"
+      description: "SHOULD NOT create project-level config by default during autospec init"
+      testable: true
+      acceptance_criteria: "autospec init only creates user-level config unless explicitly requested"
+    - id: "FR-007"
+      description: "MUST provide a separate mechanism to create project-level configuration"
+      testable: true
+      acceptance_criteria: "A command exists to explicitly create project-level config"
+    - id: "FR-008"
+      description: "MUST update documentation to reflect new configuration locations and format"
+      testable: true
+      acceptance_criteria: "README and CLAUDE.md accurately describe YAML config paths and precedence"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "usability"
+      description: "Configuration error messages must identify the file, line number, and nature of the error"
+      measurable_target: "100% of YAML syntax errors include file path and line number"
+    - id: "NFR-002"
+      category: "reliability"
+      description: "Configuration loading must not crash on missing or empty files"
+      measurable_target: "Application starts successfully with missing, empty, or malformed config files"
+    - id: "NFR-003"
+      category: "performance"
+      description: "Configuration loading must complete quickly"
+      measurable_target: "Configuration loading completes in under 100ms"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "New users can initialize configuration with a single command"
+      metric: "Number of commands required to set up initial configuration"
+      target: "1 command (autospec init)"
+    - id: "SC-002"
+      description: "Configuration errors are clearly reported with actionable information"
+      metric: "Error messages include file path and specific problem description"
+      target: "100% of config errors provide file path and problem description"
+    - id: "SC-003"
+      description: "Existing users with JSON configs receive clear guidance"
+      metric: "Migration path or compatibility is documented"
+      target: "Documentation explains JSON to YAML transition path"
+    - id: "SC-004"
+      description: "Configuration precedence works correctly"
+      metric: "Tests verify project-level overrides user-level"
+      target: "All precedence tests pass"
+
+key_entities:
+  - name: "UserConfiguration"
+    description: "The user-level configuration stored at ~/.config/autospec/config.yml"
+    attributes:
+      - "file_path: ~/.config/autospec/config.yml"
+      - "scope: applies to all projects unless overridden"
+      - "format: YAML"
+  - name: "ProjectConfiguration"
+    description: "The project-level configuration stored at .autospec/config.yml"
+    attributes:
+      - "file_path: .autospec/config.yml"
+      - "scope: applies only to current project"
+      - "format: YAML"
+      - "precedence: overrides user-level settings"
+  - name: "EffectiveConfiguration"
+    description: "The merged result of user and project configurations"
+    attributes:
+      - "merge_strategy: project values override user values for same keys"
+      - "fallback: defaults used when neither config specifies a value"
+
+edge_cases:
+  - scenario: "User runs autospec init when ~/.config/autospec/ directory doesn't exist"
+    expected_behavior: "Directory is created automatically before writing config.yml"
+  - scenario: "Config file exists but is empty"
+    expected_behavior: "Application uses defaults and continues without error"
+  - scenario: "Config file has valid YAML but unknown keys"
+    expected_behavior: "Unknown keys are ignored with optional warning in debug mode"
+  - scenario: "Config file has invalid value types (e.g., string instead of number for timeout)"
+    expected_behavior: "Clear error message indicating expected type for the field"
+  - scenario: "Both JSON and YAML config files exist in same location"
+    expected_behavior: "YAML takes precedence, warning issued about JSON file being ignored"
+  - scenario: "User has read permission but not write permission for config location"
+    expected_behavior: "Clear error message when attempting to create/modify config"
+  - scenario: "XDG_CONFIG_HOME is set to custom location"
+    expected_behavior: "User config is stored at $XDG_CONFIG_HOME/autospec/config.yml"
+
+assumptions:
+  - "Users are familiar with YAML syntax"
+  - "The ~/.config/ directory pattern is acceptable for user-level configuration (follows XDG Base Directory Specification)"
+  - "Environment variables (AUTOSPEC_*) will continue to take highest precedence over both config files"
+  - "All current config.json fields will be supported in config.yml with same names"
+  - "JSON format will be deprecated but may remain supported for a transition period"
+
+constraints:
+  - "Must maintain backward compatibility with environment variable overrides"
+  - "Must not break existing workflows during migration period"
+  - "Configuration format must be human-readable and editable"
+  - "Must work on Linux, macOS, and Windows (with appropriate path adjustments)"
+
+out_of_scope:
+  - "GUI configuration editor"
+  - "Configuration file encryption"
+  - "Remote/cloud configuration storage"
+  - "Configuration file versioning or history"
+  - "Automatic configuration synchronization between machines"
+  - "Interactive configuration wizard beyond basic init"
