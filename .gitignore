@@ -30,6 +30,7 @@ node_modules/
 package-lock.json
 
 .specify
+.autospec/
 
 # Go binary outputs
 dist/
@@ -42,3 +43,4 @@ cover.out
 
 # Go build cache
 .cache/
+
