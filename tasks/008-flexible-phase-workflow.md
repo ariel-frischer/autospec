@@ -288,7 +288,7 @@ func checkPrerequisites(phases PhaseConfig, specsDir string) *PreflightResult {
 
 ```bash
 # Skip with -y flag
-autospec run -pi -y
+autospec -pi -y
 
 # Or set in config
 {
@@ -296,20 +296,22 @@ autospec run -pi -y
 }
 
 # Or environment variable
-AUTOSPEC_YES=1 autospec run -pi
+AUTOSPEC_YES=1 autospec -pi
 ```
 
 ---
 
 ## Implementation Architecture
 
-### New Files
+### New/Modified Files
 
 ```
 internal/cli/
-├── run.go              # New 'run' command
-├── run_test.go         # Tests for run command
-└── phases.go           # Phase ordering and validation logic
+├── root.go             # Add phase flags to root command
+├── phases.go           # Phase ordering and validation logic
+├── phases_test.go      # Tests for phase logic
+├── preflight.go        # Branch-aware prerequisite checking
+└── preflight_test.go   # Tests for preflight logic
 ```
 
 ### Phase Configuration
@@ -322,10 +324,27 @@ type PhaseConfig struct {
     Plan      bool
     Tasks     bool
     Implement bool
+    All       bool  // -a flag, expands to all phases
 }
 
-// Returns ordered list of phases to execute
+// Normalize expands -a flag to all phases
+func (p *PhaseConfig) Normalize() {
+    if p.All {
+        p.Specify = true
+        p.Plan = true
+        p.Tasks = true
+        p.Implement = true
+    }
+}
+
+// HasAnyPhase returns true if at least one phase is selected
+func (p *PhaseConfig) HasAnyPhase() bool {
+    return p.Specify || p.Plan || p.Tasks || p.Implement || p.All
+}
+
+// GetExecutionOrder returns ordered list of phases to execute
 func (p *PhaseConfig) GetExecutionOrder() []workflow.Phase {
+    p.Normalize()
     var phases []workflow.Phase
     if p.Specify {
         phases = append(phases, workflow.PhaseSpecify)
@@ -341,125 +360,90 @@ func (p *PhaseConfig) GetExecutionOrder() []workflow.Phase {
     }
     return phases
 }
-
-// Checks for missing prerequisites and returns warnings
-func (p *PhaseConfig) GetWarnings(specsDir, specName string) []string {
-    var warnings []string
-
-    // Plan without specify (and no existing spec)
-    if p.Plan && !p.Specify {
-        if !specFileExists(specsDir, specName) {
-            warnings = append(warnings,
-                "Running plan without specify. No spec.md exists.")
-        }
-    }
-
-    // Tasks without plan (and no existing plan)
-    if p.Tasks && !p.Plan {
-        if !planFileExists(specsDir, specName) {
-            warnings = append(warnings,
-                "Running tasks without plan. No plan.md exists.")
-        }
-    }
-
-    // Implement without tasks (and no existing tasks)
-    if p.Implement && !p.Tasks {
-        if !tasksFileExists(specsDir, specName) {
-            warnings = append(warnings,
-                "Running implement without tasks. No tasks.md exists.")
-        }
-    }
-
-    return warnings
-}
 ```
 
-### Run Command
+### Root Command Integration
 
 ```go
-// internal/cli/run.go
-
-var runCmd = &cobra.Command{
-    Use:   "run [feature-description]",
-    Short: "Run custom phase combinations",
-    Long: `Execute a custom combination of SpecKit phases.
-
-Phases are always executed in canonical order:
-  specify → plan → tasks → implement
-
-Use short flags for concise commands:
-  -s  Include specify phase
-  -p  Include plan phase
-  -t  Include tasks phase
-  -i  Include implement phase
-
-Examples:
-  autospec run -spti "Add auth"    # Full workflow
-  autospec run -spi "Add feature"  # Skip tasks
-  autospec run -pi                 # Plan + implement (existing spec)`,
-    RunE: runPhases,
-}
+// internal/cli/root.go (additions)
 
 func init() {
-    rootCmd.AddCommand(runCmd)
+    // Existing global flags...
 
-    // Phase flags (combinable short flags)
-    runCmd.Flags().BoolP("specify", "s", false, "Include specify phase")
-    runCmd.Flags().BoolP("plan", "p", false, "Include plan phase")
-    runCmd.Flags().BoolP("tasks", "t", false, "Include tasks phase")
-    runCmd.Flags().BoolP("implement", "i", false, "Include implement phase")
+    // Phase flags (combinable short flags on root)
+    rootCmd.Flags().BoolP("specify", "s", false, "Include specify phase")
+    rootCmd.Flags().BoolP("plan", "p", false, "Include plan phase")
+    rootCmd.Flags().BoolP("tasks", "t", false, "Include tasks phase")
+    rootCmd.Flags().BoolP("implement", "i", false, "Include implement phase")
+    rootCmd.Flags().BoolP("all", "a", false, "Include all phases (equivalent to -spti)")
 
-    // Standard flags
-    runCmd.Flags().BoolP("resume", "r", false, "Resume from checkpoint")
-    runCmd.Flags().Int("max-retries", 0, "Maximum retry attempts")
-    runCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompts")
+    // Phase-related flags
+    rootCmd.Flags().BoolP("resume", "r", false, "Resume from checkpoint")
+    rootCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompts")
+    rootCmd.Flags().String("spec", "", "Explicitly specify spec name")
 }
 
-func runPhases(cmd *cobra.Command, args []string) error {
-    // Build phase config from flags
-    config := PhaseConfig{
-        Specify:   getBoolFlag(cmd, "specify"),
-        Plan:      getBoolFlag(cmd, "plan"),
-        Tasks:     getBoolFlag(cmd, "tasks"),
-        Implement: getBoolFlag(cmd, "implement"),
-    }
+var rootCmd = &cobra.Command{
+    Use:   "autospec [flags] [feature-description]",
+    Short: "SpecKit workflow automation",
+    Long: `Autospec orchestrates SpecKit workflow phases.
 
-    // Validate at least one phase selected
-    if !config.HasAnyPhase() {
-        return fmt.Errorf("at least one phase flag required (-s, -p, -t, -i)")
-    }
+Use phase flags to run custom combinations:
+  -s, --specify     Include specify phase
+  -p, --plan        Include plan phase
+  -t, --tasks       Include tasks phase
+  -i, --implement   Include implement phase
+  -a, --all         All phases (equivalent to -spti)
+
+Examples:
+  autospec -a "Add authentication"    # Full workflow
+  autospec -spi "Add feature"         # Skip tasks
+  autospec -pi                        # Plan + implement (existing spec)
+  autospec -i --spec 007-feature      # Implement specific spec`,
+    RunE: func(cmd *cobra.Command, args []string) error {
+        // Check if any phase flags are set
+        phases := getPhaseConfig(cmd)
+
+        if !phases.HasAnyPhase() {
+            // No phase flags - show help or run default subcommand
+            return cmd.Help()
+        }
+
+        // Phase flags present - run phase workflow
+        return runPhaseWorkflow(cmd, args, phases)
+    },
+}
+
+func runPhaseWorkflow(cmd *cobra.Command, args []string, phases PhaseConfig) error {
+    phases.Normalize()
 
     // Get feature description (required if specify phase)
     var featureDesc string
-    if config.Specify {
+    if phases.Specify {
         if len(args) == 0 {
-            return fmt.Errorf("feature description required with --specify")
+            return fmt.Errorf("feature description required with -s/--specify")
         }
         featureDesc = strings.Join(args, " ")
     }
 
-    // Check for warnings
+    // Run preflight checks (branch-aware)
+    specName, _ := cmd.Flags().GetString("spec")
+    preflight := checkPrerequisites(phases, specsDir, specName)
+
+    if preflight.Error != nil {
+        return preflight.Error
+    }
+
+    // Handle warnings with confirmation
     skipConfirm, _ := cmd.Flags().GetBool("yes")
-    warnings := config.GetWarnings(specsDir, autoDetectedSpec)
-
-    if len(warnings) > 0 && !skipConfirm {
-        // Display warnings
-        for _, w := range warnings {
-            fmt.Printf("⚠️  Warning: %s\n", w)
-        }
-
-        // Show planned phases
-        fmt.Printf("\nPhases to execute: %s\n\n",
-            formatPhaseList(config.GetExecutionOrder()))
-
-        // Prompt for confirmation
-        if !confirmContinue() {
+    if !skipConfirm && preflight.NeedsConfirmation {
+        if !displayWarningsAndConfirm(preflight) {
             return fmt.Errorf("aborted by user")
         }
     }
 
     // Execute phases
-    return executePhases(config, featureDesc)
+    return executePhases(phases, featureDesc, preflight.SpecName)
 }
 ```
 
@@ -481,33 +465,37 @@ func confirmContinue() bool {
 
 ## Backward Compatibility
 
-### Existing Commands Remain
+### Existing Subcommands
 
-The existing commands continue to work unchanged:
-- `autospec full` = `autospec run -spti`
-- `autospec workflow` = `autospec run -spt`
-- `autospec specify` = `autospec run -s`
-- `autospec plan` = `autospec run -p`
-- `autospec tasks` = `autospec run -t`
-- `autospec implement` = `autospec run -i`
+Existing subcommands continue to work unchanged:
+
+| Subcommand | Equivalent Flags | Status |
+|------------|------------------|--------|
+| `autospec full "feature"` | `autospec -a "feature"` | Keep or deprecate |
+| `autospec workflow "feature"` | `autospec -spt "feature"` | Keep or deprecate |
+| `autospec specify "feature"` | `autospec -s "feature"` | Keep (single-phase convenience) |
+| `autospec plan` | `autospec -p` | Keep (single-phase convenience) |
+| `autospec tasks` | `autospec -t` | Keep (single-phase convenience) |
+| `autospec implement` | `autospec -i` | Keep (single-phase convenience) |
+
+### Deprecation Strategy
+
+**Option A: Keep All (Recommended for now)**
+- Subcommands remain for discoverability
+- Flags are the "power user" interface
+- No breaking changes
+
+**Option B: Deprecate Multi-Phase Subcommands**
+- Deprecate `full` and `workflow` (replaced by `-a` and `-spt`)
+- Keep single-phase subcommands for simplicity
+- Print deprecation warning when used
 
 ### Migration Path
 
-1. Add `run` command alongside existing commands
-2. Update documentation to highlight `run` for custom workflows
-3. Keep existing commands as convenient aliases
-
----
-
-## Alternative Shortcuts (Optional)
-
-For very common patterns, consider additional aliases:
-
-```bash
-# Could add these if users request them
-autospec quick "feature"     # -spi (skip tasks)
-autospec validate "feature"  # -sp (specify + plan only, for review)
-```
+1. Add phase flags to root command
+2. Document flag-based approach as primary
+3. Keep subcommands working (no breaking changes)
+4. Consider deprecation warnings in future version
 
 ---
 
@@ -517,86 +505,90 @@ autospec validate "feature"  # -sp (specify + plan only, for review)
 
 - [ ] T001 Create `internal/cli/phases.go` with PhaseConfig struct
 - [ ] T002 Write tests for phase ordering logic in `phases_test.go`
-- [ ] T003 Implement `GetExecutionOrder()` method
-- [ ] T004 Implement `HasAnyPhase()` validation method
+- [ ] T003 Implement `Normalize()` method (expand -a to all phases)
+- [ ] T004 Implement `GetExecutionOrder()` method
+- [ ] T005 Implement `HasAnyPhase()` validation method
 
 ### Phase 2: Preflight Checks (Branch-Aware)
 
-- [ ] T005 Create `internal/cli/preflight.go` with PreflightResult struct
-- [ ] T006 Write tests for preflight logic in `preflight_test.go`
-- [ ] T007 Implement `checkPrerequisites()` with git branch detection
-- [ ] T008 Implement artifact existence checking (spec.md, plan.md, tasks.md)
-- [ ] T009 Implement warning generation for missing prerequisites
-- [ ] T010 Implement hint generation based on missing artifacts
-- [ ] T011 Handle Case 1: spec branch with all artifacts (no warning)
-- [ ] T012 Handle Case 2: spec branch with missing artifacts (warn + confirm)
-- [ ] T013 Handle Case 3: non-spec branch without -s (error with suggestions)
-- [ ] T014 Handle Case 4: spec branch with no artifacts (warn fresh start)
-- [ ] T015 Handle Case 5: detached HEAD / no git (fallback to recent spec)
+- [ ] T006 Create `internal/cli/preflight.go` with PreflightResult struct
+- [ ] T007 Write tests for preflight logic in `preflight_test.go`
+- [ ] T008 Implement `checkPrerequisites()` with git branch detection
+- [ ] T009 Implement artifact existence checking (spec.md, plan.md, tasks.md)
+- [ ] T010 Implement warning generation for missing prerequisites
+- [ ] T011 Implement hint generation based on missing artifacts
+- [ ] T012 Handle Case 1: spec branch with all artifacts (no warning)
+- [ ] T013 Handle Case 2: spec branch with missing artifacts (warn + confirm)
+- [ ] T014 Handle Case 3: non-spec branch without -s (error with suggestions)
+- [ ] T015 Handle Case 4: spec branch with no artifacts (warn fresh start)
+- [ ] T016 Handle Case 5: detached HEAD / no git (fallback to recent spec)
 
-### Phase 3: Run Command
+### Phase 3: Root Command Phase Flags
 
-- [ ] T016 Create `internal/cli/run.go` with command definition
-- [ ] T017 Write tests for flag parsing in `run_test.go`
-- [ ] T018 Implement flag parsing for -s, -p, -t, -i (combinable short flags)
-- [ ] T019 Add validation (at least one phase required)
-- [ ] T020 Add feature description requirement when -s is used
-- [ ] T021 Add `--spec` flag to explicitly specify spec name
+- [ ] T017 Add phase flags to root command in `root.go` (-s, -p, -t, -i, -a)
+- [ ] T018 Write tests for flag parsing in `root_test.go`
+- [ ] T019 Implement `getPhaseConfig()` helper to extract flags
+- [ ] T020 Add `runPhaseWorkflow()` function for phase execution
+- [ ] T021 Add validation (at least one phase flag required when no subcommand)
+- [ ] T022 Add feature description requirement when -s is used
+- [ ] T023 Add `--spec` flag to explicitly specify spec name
+- [ ] T024 Update root command RunE to detect phase flags vs subcommands
 
 ### Phase 4: Confirmation Flow
 
-- [ ] T022 Implement `confirmContinue()` function with stdin handling
-- [ ] T023 Write tests for confirmation logic
-- [ ] T024 Add `--yes` / `-y` flag to skip confirmation
-- [ ] T025 Add `AUTOSPEC_YES` environment variable support
-- [ ] T026 Add `skip_confirmations` config option
-- [ ] T027 Display formatted warning messages with hints
-- [ ] T028 Display phase execution plan before confirmation
+- [ ] T025 Implement `confirmContinue()` function with stdin handling
+- [ ] T026 Write tests for confirmation logic
+- [ ] T027 Add `--yes` / `-y` flag to skip confirmation
+- [ ] T028 Add `AUTOSPEC_YES` environment variable support
+- [ ] T029 Add `skip_confirmations` config option in `internal/config/`
+- [ ] T030 Implement `displayWarningsAndConfirm()` with formatted output
+- [ ] T031 Display phase execution plan before confirmation
 
 ### Phase 5: Execution Integration
 
-- [ ] T029 Integrate preflight checks before execution
-- [ ] T030 Integrate with WorkflowOrchestrator for phase execution
-- [ ] T031 Implement sequential phase execution respecting order
-- [ ] T032 Handle spec auto-detection for non-specify phases
-- [ ] T033 Create spec directory when -s is used on new branch
-- [ ] T034 Add progress display support (reuse existing progress system)
+- [ ] T032 Implement `executePhases()` function calling WorkflowOrchestrator
+- [ ] T033 Integrate preflight checks before execution
+- [ ] T034 Implement sequential phase execution respecting canonical order
+- [ ] T035 Handle spec auto-detection for non-specify phases
+- [ ] T036 Create spec directory when -s is used on new branch
+- [ ] T037 Add progress display support (reuse existing progress system)
 
 ### Phase 6: Testing & Polish
 
-- [ ] T035 Write integration tests for Case 1 (all artifacts exist)
-- [ ] T036 Write integration tests for Case 2 (missing artifacts)
-- [ ] T037 Write integration tests for Case 3 (non-spec branch)
-- [ ] T038 Write integration tests for Case 4 (fresh spec branch)
-- [ ] T039 Write integration tests for Case 5 (no git)
-- [ ] T040 Test common flag combinations (-spi, -sp, -pi, -ti, -spti)
-- [ ] T041 Update CLI help text and examples
-- [ ] T042 Update CLAUDE.md with new command documentation
+- [ ] T038 Write integration tests for Case 1 (all artifacts exist)
+- [ ] T039 Write integration tests for Case 2 (missing artifacts)
+- [ ] T040 Write integration tests for Case 3 (non-spec branch)
+- [ ] T041 Write integration tests for Case 4 (fresh spec branch)
+- [ ] T042 Write integration tests for Case 5 (no git)
+- [ ] T043 Test flag combinations: -a, -spi, -sp, -pi, -ti, -spti
+- [ ] T044 Test --spec flag with explicit spec name
+- [ ] T045 Update CLI help text and examples in root.go
+- [ ] T046 Update CLAUDE.md with new phase flag documentation
 
 ---
 
 ## Summary
 
-**Recommended Approach**: `autospec run -spi "feature"`
+**Command**: `autospec -spi "feature"` (no subcommand needed)
 
 **Key Benefits:**
-1. Concise: Combined short flags (`-spi`) are quick to type
-2. Flexible: Any phase combination supported
+1. Shortest possible: `autospec -a "feature"` for full workflow
+2. Flexible: Any phase combination with `-s`, `-p`, `-t`, `-i`
 3. Branch-aware: Smart detection of current spec from git branch
 4. Safe: Context-aware warnings when prerequisites missing
-5. User-friendly: y/N confirmation with skip option (`-y`, `AUTOSPEC_YES`, config)
+5. User-friendly: y/N confirmation with skip options (`-y`, `AUTOSPEC_YES`, config)
 6. Helpful: Clear error messages with actionable suggestions
-7. Backward compatible: Existing commands unchanged
+7. Backward compatible: Existing subcommands unchanged
 
-**Total Tasks**: 42
+**Total Tasks**: 46
 
 | Phase | Tasks | Focus |
 |-------|-------|-------|
-| 1. Core Infrastructure | 4 | PhaseConfig struct, ordering |
+| 1. Core Infrastructure | 5 | PhaseConfig struct, ordering, -a expansion |
 | 2. Preflight Checks | 11 | Branch-aware detection, 5 cases |
-| 3. Run Command | 6 | Flag parsing, validation |
+| 3. Root Command Flags | 8 | Add flags to root, validation |
 | 4. Confirmation Flow | 7 | y/N prompts, skip options |
 | 5. Execution Integration | 6 | Orchestrator integration |
-| 6. Testing & Polish | 8 | Integration tests, docs |
+| 6. Testing & Polish | 9 | Integration tests, docs |
 
-**Complexity**: Medium-High (branch-aware detection adds significant logic)
+**Complexity**: Medium-High (branch-aware detection, root command modification)

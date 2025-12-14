@@ -12,14 +12,19 @@ import (
 
 func TestDetectCurrentSpec_FromBranch(t *testing.T) {
 	// This test runs against the real git repository
-	// We're on branch "002-go-binary-migration"
+	// It verifies that DetectCurrentSpec returns valid metadata
+	// without hardcoding a specific branch (which changes during development)
 	specsDir := "/home/ari/repos/auto-claude-speckit/specs"
 	meta, err := DetectCurrentSpec(specsDir)
 	require.NoError(t, err)
-	assert.Equal(t, "002", meta.Number)
-	assert.Equal(t, "go-binary-migration", meta.Name)
-	assert.Equal(t, "002-go-binary-migration", meta.Branch)
-	assert.Contains(t, meta.Directory, "002-go-binary-migration")
+	// Verify we got valid metadata structure
+	assert.NotEmpty(t, meta.Number, "spec number should not be empty")
+	assert.NotEmpty(t, meta.Name, "spec name should not be empty")
+	assert.NotEmpty(t, meta.Branch, "branch should not be empty")
+	assert.NotEmpty(t, meta.Directory, "directory should not be empty")
+	// Verify the directory exists
+	_, err = os.Stat(meta.Directory)
+	assert.NoError(t, err, "spec directory should exist")
 }
 
 func TestDetectCurrentSpec_FromDirectory(t *testing.T) {

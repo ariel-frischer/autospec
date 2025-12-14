@@ -35,8 +35,8 @@ func TestGetCurrentBranch_Real(t *testing.T) {
 	branch, err := GetCurrentBranch()
 	require.NoError(t, err)
 	assert.NotEmpty(t, branch)
-	// We're on 002-go-binary-migration branch based on git status
-	assert.Equal(t, "002-go-binary-migration", branch)
+	// Just verify we get a valid branch name (non-empty string)
+	// Don't hardcode a specific branch since it changes during development
 }
 
 // TestGetRepositoryRoot tests retrieving the repository root path
