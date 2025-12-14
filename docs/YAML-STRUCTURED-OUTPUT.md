@@ -58,7 +58,7 @@ autospec commands install [--target <dir>] [--scripts-target <dir>]
 - `--scripts-target`: Directory for helper scripts (default: `.autospec/scripts`)
 
 **Output**:
-- Creates 6 command templates: `autospec.specify.md`, `autospec.plan.md`, `autospec.tasks.md`, `autospec.checklist.md`, `autospec.analyze.md`, `autospec.constitution.md`
+- Creates 7 command templates: `autospec.specify.md`, `autospec.plan.md`, `autospec.tasks.md`, `autospec.implement.md`, `autospec.checklist.md`, `autospec.analyze.md`, `autospec.constitution.md`
 - Creates helper scripts: `common.sh`, `check-prerequisites.sh`, `create-new-feature.sh`
 
 ### autospec commands check
@@ -224,9 +224,87 @@ The typical YAML-based workflow:
 2. **Plan**: `/autospec.plan` reads `spec.yaml` and creates `plan.yaml`
 3. **Tasks**: `/autospec.tasks` reads both and creates `tasks.yaml`
 4. **Analyze** (optional): `/autospec.analyze` checks consistency across artifacts
-5. **Implement**: `/speckit.implement` executes tasks
+5. **Implement**: `/autospec.implement` executes tasks from `tasks.yaml`
 
 Each command validates its output with `autospec yaml check` before completing.
+
+## SpecKit vs AutoSpec: Artifact Consolidation
+
+The YAML workflow (`autospec.*`) consolidates multiple markdown files from the legacy workflow (`speckit.*`) into fewer, structured YAML artifacts.
+
+### File Mapping
+
+| SpecKit (Markdown)         | AutoSpec (YAML)                          |
+|----------------------------|------------------------------------------|
+| `spec.md`                  | `spec.yaml`                              |
+| `plan.md`                  | `plan.yaml`                              |
+| `research.md`              | `plan.yaml` → `research_findings`        |
+| `data-model.md`            | `plan.yaml` → `data_model`               |
+| `contracts/*.yaml`         | `plan.yaml` → `api_contracts`            |
+| `quickstart.md`            | `plan.yaml` → `implementation_strategy`  |
+| `tasks.md`                 | `tasks.yaml`                             |
+
+### What's Consolidated
+
+**plan.yaml now contains:**
+
+```yaml
+# Previously separate: research.md
+research_findings:
+  decisions:
+    - topic: "Authentication approach"
+      decision: "JWT tokens"
+      rationale: "Stateless, scalable"
+      alternatives_considered: ["sessions", "OAuth2"]
+
+# Previously separate: data-model.md
+data_model:
+  entities:
+    - name: "User"
+      fields:
+        - name: "id"
+          type: "uuid"
+      relationships:
+        - target: "Session"
+          type: "one-to-many"
+
+# Previously separate: contracts/*.yaml
+api_contracts:
+  endpoints:
+    - method: "POST"
+      path: "/auth/login"
+      request:
+        content_type: "application/json"
+      response:
+        success_code: 200
+
+# Previously separate: quickstart.md (test scenarios)
+implementation_strategy:
+  mvp_scope:
+    phases: [1, 2, 3]
+    validation: "User can login and access protected routes"
+```
+
+### Benefits of Consolidation
+
+1. **Single source of truth**: All planning artifacts in one file
+2. **Cross-referencing**: Easy to link entities to endpoints to tasks
+3. **Programmatic access**: Query with `yq` instead of parsing markdown
+4. **Validation**: Schema-based checking catches errors early
+5. **Fewer files**: 3 YAML files vs 6+ markdown files
+
+### Command Comparison
+
+| Phase     | SpecKit Command      | AutoSpec Command      |
+|-----------|----------------------|-----------------------|
+| Specify   | `/speckit.specify`   | `/autospec.specify`   |
+| Plan      | `/speckit.plan`      | `/autospec.plan`      |
+| Tasks     | `/speckit.tasks`     | `/autospec.tasks`     |
+| Implement | `/speckit.implement` | `/autospec.implement` |
+| Analyze   | `/speckit.analyze`   | `/autospec.analyze`   |
+| Checklist | `/speckit.checklist` | `/autospec.checklist` |
+
+The `autospec.*` commands read and write YAML; `speckit.*` commands use markdown.
 
 ## Migration from Markdown
 

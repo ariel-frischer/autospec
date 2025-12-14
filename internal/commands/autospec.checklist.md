@@ -75,9 +75,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Map focus selections to category scaffolding
 
 4. **Load feature context**: Read from FEATURE_DIR:
-   - spec.yaml (or spec.md): Feature requirements and scope
-   - plan.yaml (or plan.md) if exists: Technical details, dependencies
-   - tasks.yaml (or tasks.md) if exists: Implementation tasks
+   - spec.yaml: Feature requirements and scope
+   - plan.yaml if exists: Technical details, dependencies, data model, API contracts
+   - tasks.yaml if exists: Implementation tasks
 
 5. **Generate checklist.yaml** - Create "Unit Tests for Requirements":
 

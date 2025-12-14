@@ -35,17 +35,23 @@ You **MUST** consider the user input before proceeding (if not empty).
    If the script fails, it will output an error message instructing the user to run `/autospec.plan` first.
 
 2. **Load design documents**: Read from FEATURE_DIR:
-   - **Required**: `IMPL_PLAN` - tech stack, libraries, structure
-   - **Required**: `FEATURE_SPEC` - user stories with priorities
-   - **Optional**: data-model.md (entities), contracts/ (API endpoints), research.md (decisions)
-   - Note: Not all projects have all documents. Generate tasks based on what's available.
+   - **Required**: `IMPL_PLAN` (plan.yaml) containing:
+     - `technical_context`: tech stack, libraries, constraints
+     - `data_model`: entities and relationships
+     - `api_contracts`: API endpoints and schemas
+     - `research_findings`: technical decisions
+     - `project_structure`: file organization
+   - **Required**: `FEATURE_SPEC` (spec.yaml) containing:
+     - `user_stories`: with priorities (P1, P2, P3)
+     - `requirements`: functional and non-functional
+     - `key_entities`: initial entity identification
 
 3. **Execute task generation workflow**:
-   - Extract tech stack, libraries, project structure from plan
-   - Extract user stories with their priorities (P1, P2, P3, etc.) from spec
-   - If data model exists: Extract entities and map to user stories
-   - If contracts exist: Map endpoints to user stories
-   - If research exists: Extract decisions for setup tasks
+   - Extract tech stack, libraries, project structure from plan.yaml `technical_context`
+   - Extract user stories with their priorities from spec.yaml `user_stories`
+   - Extract entities from plan.yaml `data_model` and map to user stories
+   - Map endpoints from plan.yaml `api_contracts` to user stories
+   - Extract decisions from plan.yaml `research_findings` for setup tasks
    - Generate tasks organized by user story (see Task Generation Rules below)
    - Generate dependency graph showing user story completion order
    - Create parallel execution opportunities per phase
