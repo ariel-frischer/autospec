@@ -3,7 +3,7 @@
 **Feature Branch**: `007-yaml-structured-output`
 **Created**: 2025-12-13
 **Status**: Draft
-**Input**: User description: "Create YAML structured output format for SpecKit workflow artifacts to enable schema validation, programmatic parsing, and better tooling integration"
+**Input**: User description: "Create YAML structured output format for SpecKit workflow artifacts to enable programmatic parsing and better tooling integration"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -13,12 +13,12 @@ As a developer using the SpecKit workflow, I want to generate feature specificat
 
 **Why this priority**: The specification is the foundation of the entire workflow. All other artifacts (plan, tasks, checklist) derive from it. Without a structured spec format, downstream artifacts cannot be reliably validated.
 
-**Independent Test**: Can be fully tested by running `/autospec.specify "test feature"` and verifying the output `spec.yaml` file validates against the JSON schema, contains all required fields, and can be parsed by standard YAML libraries.
+**Independent Test**: Can be fully tested by running `/autospec.specify "test feature"` and verifying the output `spec.yaml` file contains all required fields and can be parsed by standard YAML libraries.
 
 **Acceptance Scenarios**:
 
 1. **Given** a user provides a feature description, **When** they run the `/autospec.specify` command, **Then** the system creates a valid `spec.yaml` file with all required fields populated
-2. **Given** a generated `spec.yaml` file, **When** validated against the JSON schema, **Then** the validation passes with no errors
+2. **Given** a generated `spec.yaml` file, **When** checked with `autospec yaml check`, **Then** the syntax validation passes with no errors
 3. **Given** a `spec.yaml` file exists, **When** queried with standard YAML tools (yq), **Then** specific fields like user stories and requirements can be extracted reliably
 
 ---
@@ -55,19 +55,18 @@ As a developer, I want to install autospec commands into my project's `.claude/c
 
 ---
 
-### User Story 4 - Validate YAML Artifacts Against Schemas (Priority: P3)
+### User Story 4 - Validate YAML Syntax (Priority: P3)
 
-As a CI/CD engineer, I want to validate YAML artifacts against defined schemas so that I can fail builds when specifications are incomplete or malformed.
+As a CI/CD engineer, I want to validate YAML artifacts have correct syntax so that I can fail builds when files are malformed.
 
-**Why this priority**: Schema validation ensures quality gates can be automated. This is essential for team workflows where multiple contributors modify specifications.
+**Why this priority**: Syntax validation ensures quality gates can be automated. This is essential for team workflows where multiple contributors modify specifications.
 
-**Independent Test**: Can be fully tested by running `autospec yaml validate spec.yaml` on both valid and invalid files, verifying correct pass/fail results.
+**Independent Test**: Can be fully tested by running `autospec yaml check spec.yaml` on both valid and invalid files, verifying correct pass/fail results.
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid `spec.yaml` file, **When** validated with `autospec yaml validate`, **Then** the command exits with code 0 and reports success
-2. **Given** a `spec.yaml` missing required fields, **When** validated, **Then** the command exits with non-zero code and lists missing fields
-3. **Given** a `tasks.yaml` with invalid enum values, **When** validated, **Then** the command reports the specific validation errors
+1. **Given** a valid `spec.yaml` file, **When** checked with `autospec yaml check`, **Then** the command exits with code 0 and reports success
+2. **Given** a `spec.yaml` with invalid YAML syntax, **When** checked, **Then** the command exits with non-zero code and reports line number of error
 
 ---
 
@@ -86,22 +85,7 @@ As a technical architect, I want implementation plans in YAML format so that I c
 
 ---
 
-### User Story 6 - Query YAML Artifacts Programmatically (Priority: P4)
-
-As a developer building automation, I want CLI commands to query YAML artifacts so that I can extract specific information without writing custom parsing code.
-
-**Why this priority**: While users can use external tools like yq, built-in query commands provide a consistent interface and handle edge cases.
-
-**Independent Test**: Can be fully tested by running `autospec yaml query tasks.yaml '.phases[0].tasks'` and verifying correct JSON/YAML output.
-
-**Acceptance Scenarios**:
-
-1. **Given** a `tasks.yaml` file, **When** running `autospec yaml query tasks.yaml '.summary.total_tasks'`, **Then** the total task count is returned
-2. **Given** a `spec.yaml` file, **When** running `autospec yaml tasks --phase=1`, **Then** only Phase 1 tasks are extracted and displayed
-
----
-
-### User Story 7 - Migrate Existing Markdown to YAML (Priority: P5)
+### User Story 6 - Migrate Existing Markdown to YAML (Priority: P5)
 
 As an existing SpecKit user, I want to convert my existing markdown artifacts to YAML so that I can benefit from structured output without recreating specifications from scratch.
 
@@ -119,67 +103,60 @@ As an existing SpecKit user, I want to convert my existing markdown artifacts to
 ### Edge Cases
 
 - What happens when a YAML file has syntax errors (invalid YAML)?
-  - The system reports parsing errors with line numbers and does not proceed with validation
+  - Each `/autospec.*` command template includes a final step instructing Claude to validate the generated YAML by calling `autospec yaml check <file>`. If validation fails, the error is printed to the user but no automatic fix is attempted
 - How does the system handle partially filled YAML files during workflow interruption?
-  - The validation reports which required fields are missing; the file is usable for analysis but fails strict validation
-- What happens when schema versions mismatch between installed commands and YAML artifacts?
-  - The system warns about version mismatch but attempts to validate using the artifact's declared schema version
-- How does the system handle concurrent modifications to YAML artifacts?
-  - YAML write operations are atomic (write to temp file, then rename); concurrent reads are safe
+  - The partial YAML file remains on disk. On retry, Claude reads the existing file and continues from where it left off, completing missing fields rather than regenerating from scratch
+- What happens when command template versions mismatch between installed commands and generated artifacts?
+  - The system warns about version mismatch but proceeds with the installed command version
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST generate `spec.yaml` files conforming to the spec schema when `/autospec.specify` is executed
-- **FR-002**: System MUST generate `plan.yaml` files conforming to the plan schema when `/autospec.plan` is executed
-- **FR-003**: System MUST generate `tasks.yaml` files conforming to the tasks schema when `/autospec.tasks` is executed
-- **FR-004**: System MUST include `_meta` section in all generated YAML files with schema version, generator, and timestamp
-- **FR-005**: System MUST provide `autospec commands install` to copy command templates to `.claude/commands/`
-- **FR-006**: System MUST provide `autospec commands check` to compare installed commands against embedded versions
-- **FR-007**: System MUST provide `autospec yaml validate <file>` to validate YAML files against their schemas
-- **FR-008**: System MUST embed command templates and JSON schemas in the Go binary using `go:embed`
-- **FR-009**: System MUST maintain backward compatibility with existing `/speckit.*` commands producing markdown
-- **FR-010**: System MUST prefer `.yaml` files over `.md` files when both exist for the same artifact
-- **FR-011**: System MUST provide `autospec commands info` displaying version metadata including source SpecKit version
-- **FR-012**: System MUST generate JSON Schema files for each YAML artifact type (spec, plan, tasks, checklist, analysis, constitution)
+- **FR-001**: System MUST generate `spec.yaml` files when `/autospec.specify` is executed
+- **FR-002**: System MUST generate `plan.yaml` files when `/autospec.plan` is executed
+- **FR-003**: System MUST generate `tasks.yaml` files when `/autospec.tasks` is executed
+- **FR-004**: System MUST generate `checklist.yaml` files when `/autospec.checklist` is executed
+- **FR-005**: System MUST generate `analysis.yaml` files when `/autospec.analyze` is executed
+- **FR-006**: System MUST generate `constitution.yaml` files when `/autospec.constitution` is executed
+- **FR-007**: System MUST include `_meta` section in all generated YAML files with version, generator, and timestamp
+- **FR-008**: System MUST provide `autospec commands install` to copy command templates to `.claude/commands/`
+- **FR-009**: System MUST provide `autospec commands check` to compare installed commands against embedded versions
+- **FR-010**: System MUST provide `autospec yaml check <file>` to verify YAML syntax is valid (parseable) and report errors with line numbers
+- **FR-011**: System MUST embed command templates in the Go binary using `go:embed`
+- **FR-012**: System MUST provide `autospec commands info` displaying version metadata including source SpecKit version
+- **FR-013**: Command templates MUST instruct Claude to run `autospec yaml check <file>` as a final step after generating YAML artifacts
+- **FR-014**: System MUST handle older YAML artifact versions gracefully, warning on mismatch but proceeding with best-effort parsing
 
 ### Key Entities
 
-- **YAML Artifact**: A structured output file (spec.yaml, plan.yaml, tasks.yaml, etc.) containing feature workflow data with schema metadata
-- **JSON Schema**: Validation schema defining required/optional fields, types, and constraints for each artifact type
+- **YAML Artifact**: A structured output file (spec.yaml, plan.yaml, tasks.yaml, etc.) containing feature workflow data with metadata
 - **Command Template**: A markdown file defining a Claude Code slash command that generates or modifies YAML artifacts
-- **Schema Version**: Semantic version string tracking artifact structure changes, stored in `_meta.schema_version`
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: All generated YAML artifacts pass schema validation on first generation attempt
+- **SC-001**: All generated YAML artifacts pass syntax validation on first generation attempt
 - **SC-002**: Users can extract any specific field from YAML artifacts using standard tools (yq, Python yaml) without custom parsing
-- **SC-003**: Command installation completes in under 5 seconds for all 8 autospec commands
-- **SC-004**: Schema validation reports specific field-level errors, not generic parse failures
-- **SC-005**: Existing markdown-based workflows continue to function unchanged when YAML commands are installed
-- **SC-006**: 100% of required schema fields are documented with descriptions in JSON Schema files
+- **SC-003**: Command installation completes in under 5 seconds for all autospec commands
 
 ## Assumptions
 
 - Users have access to Claude Code and can execute slash commands
 - Standard YAML 1.2 format is sufficient (no need for YAML 1.1 compatibility)
-- The Go binary (`autospec`) is the authoritative source for command templates and schemas
-- Users who want programmatic access will use standard tools (yq, Python yaml library) or the CLI utilities provided
+- The Go binary (`autospec`) is the authoritative source for command templates
+- Users who want programmatic access will use standard tools (yq, Python yaml library)
 
 ## Constraints
 
 - Command templates must be markdown files compatible with Claude Code's command format
-- JSON Schema draft-07 is used for validation (widely supported)
-- YAML files must remain human-readable; complex nested structures should be documented
-- Maximum YAML file size for validation is 10MB (practical limit for specification documents)
+- YAML files must remain human-readable
+- Maximum YAML file size for syntax check is 10MB
 
 ## Out of Scope
 
 - GUI/web interface for YAML editing
 - Real-time collaborative editing of YAML artifacts
-- Automatic conversion of YAML back to markdown (export is one-way migration helper only)
-- Custom user-defined schema extensions (schemas are fixed per version)
+- Automatic conversion of YAML back to markdown (migration is one-way only)
 - Integration with specific project management tools (Jira, Linear, etc.) - this is a future feature
