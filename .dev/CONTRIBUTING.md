@@ -49,6 +49,12 @@ git push origin dev --force-with-lease
 
 ## Git Hooks
 
+Install hooks after cloning:
+
+```bash
+./.dev/scripts/setup-hooks.sh
+```
+
 ### pre-merge-commit
 
 Prevents accidentally merging `main` into `dev` branches. Suggests using `git rebase main` instead.
@@ -58,16 +64,27 @@ To bypass (if you really need to):
 git merge --no-verify main
 ```
 
+### post-merge
+
+Auto-cleans `.dev/` directory when merging to `main`. Runs automatically after `git merge dev` on main.
+
 ## Releasing
 
 Releases are made from `main`:
 
 ```bash
 git checkout main
-git merge dev
+git merge dev        # post-merge hook auto-removes .dev/
 git push origin main
-git tag v0.x.x
-git push origin v0.x.x
+make patch           # or make minor/major
 ```
 
-CI will build and publish binaries automatically.
+The `post-merge` hook automatically removes `.dev/` from the merge commit. CI will build and publish binaries automatically.
+
+Alternatively, use the autobump commands directly:
+
+```bash
+make patch   # Bump v0.0.X
+make minor   # Bump v0.X.0
+make major   # Bump vX.0.0
+```

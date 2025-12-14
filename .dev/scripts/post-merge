@@ -1,0 +1,12 @@
+#!/bin/bash
+# Auto-clean dev-only files when merging to main
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$BRANCH" = "main" ]; then
+    if [ -d ".dev" ]; then
+        git rm -rf --quiet ".dev"
+        echo "🧹 Cleaned .dev/ from main"
+        git commit --amend --no-edit --quiet
+    fi
+fi
