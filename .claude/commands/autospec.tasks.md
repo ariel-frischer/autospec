@@ -6,7 +6,7 @@ handoffs:
     agent: autospec.analyze
     prompt: Run a project analysis for consistency
   - label: Implement Project
-    agent: speckit.implement
+    agent: autospec.implement
     prompt: Start the implementation in phases
 ---
 
