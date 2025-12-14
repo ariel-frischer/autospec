@@ -480,6 +480,6 @@ AUTOSPEC_TIMEOUT=0 autospec workflow "feature"
 
 ## Further Reading
 
-- **[Quick Start Guide](./quickstart.md)**: Installation and first workflow
-- **[Architecture Overview](./architecture.md)**: System design and components
-- **[Troubleshooting](./troubleshooting.md)**: Common issues and solutions
+- **[Quick Start Guide](./QUICKSTART.md)**: Installation and first workflow
+- **[Architecture Overview](./ARCHITECTURE.md)**: System design and components
+- **[Troubleshooting](./TROUBLESHOOTING.md)**: Common issues and solutions

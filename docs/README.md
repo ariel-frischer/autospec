@@ -6,14 +6,14 @@ User-facing documentation for the autospec CLI tool.
 
 ### User Guides
 
-- **[Timeout Configuration](./timeout.md)** - Complete guide to configuring and using command timeouts
+- **[Timeout Configuration](./TIMEOUT.md)** - Complete guide to configuring and using command timeouts
   - Quick start
   - Configuration options
   - Usage examples
   - Best practices
   - Troubleshooting
 
-- **[Troubleshooting Guide](./troubleshooting.md)** - Solutions to common problems
+- **[Troubleshooting Guide](./TROUBLESHOOTING.md)** - Solutions to common problems
   - Timeout issues
   - Configuration problems
   - Workflow execution errors

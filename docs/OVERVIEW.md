@@ -89,10 +89,10 @@ Each phase includes:
 
 Ready to streamline your development workflow?
 
-- **[Quick Start Guide](./quickstart.md)**: Install and run your first workflow in 10 minutes
-- **[Architecture Overview](./architecture.md)**: Understand system design and components
-- **[Command Reference](./reference.md)**: Complete command and configuration documentation
-- **[Troubleshooting](./troubleshooting.md)**: Solve common issues and debug problems
+- **[Quick Start Guide](./QUICKSTART.md)**: Install and run your first workflow in 10 minutes
+- **[Architecture Overview](./ARCHITECTURE.md)**: Understand system design and components
+- **[Command Reference](./REFERENCE.md)**: Complete command and configuration documentation
+- **[Troubleshooting](./TROUBLESHOOTING.md)**: Solve common issues and debug problems
 
 ## Project Status
 

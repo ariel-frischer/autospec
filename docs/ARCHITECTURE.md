@@ -474,7 +474,7 @@ Areas designed for future extension:
 
 ## Further Reading
 
-- **[Quick Start Guide](./quickstart.md)**: Get started with basic usage
-- **[Command Reference](./reference.md)**: Complete command and configuration documentation
-- **[Troubleshooting](./troubleshooting.md)**: Common issues and solutions
+- **[Quick Start Guide](./QUICKSTART.md)**: Get started with basic usage
+- **[Command Reference](./REFERENCE.md)**: Complete command and configuration documentation
+- **[Troubleshooting](./TROUBLESHOOTING.md)**: Common issues and solutions
 - **[CLAUDE.md](../CLAUDE.md)**: Detailed development guidelines for contributors

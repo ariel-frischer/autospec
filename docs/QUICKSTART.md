@@ -104,7 +104,7 @@ Expected output:
 All checks passed!
 ```
 
-If any checks fail, see the [troubleshooting guide](./troubleshooting.md) for solutions.
+If any checks fail, see the [troubleshooting guide](./TROUBLESHOOTING.md) for solutions.
 
 ### Step 3: Create Your First Feature Specification (2-3 minutes)
 
@@ -209,7 +209,7 @@ Quick reference for frequently used commands:
 | `autospec doctor` | Run health checks and verify dependencies | `autospec doctor` |
 | `autospec --help` | Show all available commands | `autospec --help` |
 
-For complete command reference, see [reference.md](./reference.md).
+For complete command reference, see [REFERENCE.md](./REFERENCE.md).
 
 ## Understanding the Workflow
 
@@ -251,7 +251,7 @@ graph LR
 - Output: Completed implementation with validated progress
 - Duration: Varies by feature complexity
 
-For detailed architecture, see [architecture.md](./architecture.md).
+For detailed architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Configuration Basics
 
@@ -323,16 +323,16 @@ Quick solutions for common first-time issues:
 
 **Solution**: Increase timeout in config: `"timeout": 600` (10 minutes), or set `AUTOSPEC_TIMEOUT=600` environment variable
 
-For comprehensive troubleshooting, see [troubleshooting.md](./troubleshooting.md).
+For comprehensive troubleshooting, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
 
 ## Next Steps
 
 Now that you've completed your first workflow, explore these resources:
 
-- **[Command Reference](./reference.md)**: Learn all commands, options, and configuration settings
-- **[Architecture Overview](./architecture.md)**: Understand system design and internal components
-- **[Troubleshooting Guide](./troubleshooting.md)**: Solve common issues and debug problems
-- **[Advanced Usage](./reference.md#advanced-patterns)**: Custom commands, prompt injection, retry management
+- **[Command Reference](./REFERENCE.md)**: Learn all commands, options, and configuration settings
+- **[Architecture Overview](./ARCHITECTURE.md)**: Understand system design and internal components
+- **[Troubleshooting Guide](./TROUBLESHOOTING.md)**: Solve common issues and debug problems
+- **[Advanced Usage](./REFERENCE.md#advanced-patterns)**: Custom commands, prompt injection, retry management
 - **[Contributing](../CLAUDE.md)**: Development guidelines for contributors
 
 ## Getting Help
