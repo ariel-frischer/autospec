@@ -317,7 +317,7 @@ export AUTOSPEC_TIMEOUT=600
 echo '{"timeout": 600}' > .autospec/config.json
 ```
 
-When a command exceeds the timeout, it's terminated and returns exit code 5. See [docs/timeout.md](docs/timeout.md) for detailed configuration options.
+When a command exceeds the timeout, it's terminated and returns exit code 5. See [docs/TIMEOUT.md](docs/TIMEOUT.md) for detailed configuration options.
 
 ### Shell Completion
 
@@ -337,7 +337,7 @@ compinit
 exec zsh
 ```
 
-Supports bash, zsh, fish, and powershell. See [docs/shell-completion.md](docs/shell-completion.md) for detailed setup instructions and troubleshooting.
+Supports bash, zsh, fish, and powershell. See [docs/SHELL-COMPLETION.md](docs/SHELL-COMPLETION.md) for detailed setup instructions and troubleshooting.
 
 See [CONTRIBUTORS.md](CONTRIBUTORS.md) for detailed configuration options.
 
