@@ -1,4 +1,4 @@
-.PHONY: help build build-all install clean test test-go test-bash test-all lint lint-go lint-bash fmt vet run dev validate-workflow validate-implement deps snapshot release patch minor major h b i c t l f r d s p
+.PHONY: help build build-all install clean test test-go test-bash test-all lint lint-go lint-bash fmt vet run dev validate-workflow validate-implement deps snapshot release patch minor major version h b i c t l f r d s p v
 
 # Variables
 BINARY_NAME=autospec
@@ -33,6 +33,18 @@ PLATFORM ?= $(DETECTED_PLATFORM)
 
 help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+version: ## Show current version and release info
+	@echo "Current version: $(CURRENT_VERSION)"
+	@echo "Next patch:      v$(MAJOR).$(MINOR).$$(( $(PATCH) + 1 ))"
+	@echo "Next minor:      v$(MAJOR).$$(( $(MINOR) + 1 )).0"
+	@echo "Next major:      v$$(( $(MAJOR) + 1 )).0.0"
+	@echo ""
+	@echo "Platform:        $(PLATFORM)"
+	@echo "Commit:          $(COMMIT)"
+	@echo ""
+	@echo "Recent tags:"
+	@git tag --sort=-version:refname | head -5 || echo "  (no tags)"
 
 ##@ Build
 
@@ -179,3 +191,4 @@ r: run      ## run
 d: dev      ## dev
 s: snapshot ## snapshot
 p: patch    ## patch release
+v: version  ## version info
