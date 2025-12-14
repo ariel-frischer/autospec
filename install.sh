@@ -1,6 +1,6 @@
 #!/bin/sh
 # Auto Claude SpecKit Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/anthropics/auto-claude-speckit/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/ariel-frischer/auto-claude-speckit/main/install.sh | sh
 #
 # Environment variables:
 #   AUTOSPEC_INSTALL_DIR - Installation directory (default: /usr/local/bin)
@@ -9,7 +9,7 @@
 set -e
 
 # Configuration
-GITHUB_REPO="anthropics/auto-claude-speckit"
+GITHUB_REPO="ariel-frischer/auto-claude-speckit"
 BINARY_NAME="autospec"
 DEFAULT_INSTALL_DIR="/usr/local/bin"
 
