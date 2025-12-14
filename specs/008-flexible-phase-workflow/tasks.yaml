@@ -1,0 +1,523 @@
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "dev"
+  created: "2025-12-14T08:09:15Z"
+  artifact_type: "tasks"
+
+tasks:
+  branch: "008-flexible-phase-workflow"
+  created: "2025-12-14"
+  spec_path: "specs/008-flexible-phase-workflow/spec.yaml"
+  plan_path: "specs/008-flexible-phase-workflow/plan.yaml"
+
+summary:
+  total_tasks: 29
+  total_phases: 8
+  parallel_opportunities: 8
+  estimated_complexity: "medium"
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Create new source files and prepare project structure"
+    tasks:
+      - id: "T001"
+        title: "Create internal/workflow/phase_config.go skeleton"
+        status: "Pending"
+        type: "setup"
+        parallel: false
+        story_id: null
+        file_path: "internal/workflow/phase_config.go"
+        dependencies: []
+        acceptance_criteria:
+          - "File exists with package declaration"
+          - "Import statements prepared"
+          - "Empty struct definitions for PhaseConfig and ArtifactDependency"
+
+  - number: 2
+    title: "Foundational"
+    purpose: "Core infrastructure for phase configuration and dependency resolution"
+    tasks:
+      - id: "T002"
+        title: "Implement PhaseConfig struct in internal/workflow/phase_config.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: null
+        file_path: "internal/workflow/phase_config.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "PhaseConfig struct with Specify, Plan, Tasks, Implement bool fields"
+          - "Constructor function NewPhaseConfig()"
+          - "HasAnyPhase() method returns true if any phase is selected"
+          - "GetSelectedPhases() returns slice of selected phases in canonical order"
+
+      - id: "T003"
+        title: "Implement ArtifactDependency map in internal/workflow/phase_config.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: null
+        file_path: "internal/workflow/phase_config.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "ArtifactDependency struct with Phase, Requires, Produces fields"
+          - "GetArtifactDependencies() returns complete dependency map"
+          - "specify -> creates spec.yaml"
+          - "plan -> requires spec.yaml, creates plan.yaml"
+          - "tasks -> requires plan.yaml, creates tasks.yaml"
+          - "implement -> requires tasks.yaml"
+
+      - id: "T004"
+        title: "Implement canonical phase ordering in internal/workflow/phase_config.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: null
+        file_path: "internal/workflow/phase_config.go"
+        dependencies: ["T002"]
+        acceptance_criteria:
+          - "GetCanonicalOrder() returns phases in specify->plan->tasks->implement order"
+          - "Order is independent of which flags were set first"
+          - "Only includes phases that are selected in PhaseConfig"
+
+      - id: "T005"
+        title: "Add skip_confirmations to config in internal/config/defaults.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: null
+        file_path: "internal/config/defaults.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "skip_confirmations key added to defaults with value false"
+
+      - id: "T006"
+        title: "Add skip_confirmations field to Config struct in internal/config/config.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: null
+        file_path: "internal/config/config.go"
+        dependencies: ["T005"]
+        acceptance_criteria:
+          - "SkipConfirmations bool field added to Config struct"
+          - "Field is populated from config files and AUTOSPEC_YES env var"
+
+      - id: "T007"
+        title: "Write unit tests for phase_config in internal/workflow/phase_config_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "internal/workflow/phase_config_test.go"
+        dependencies: ["T004"]
+        acceptance_criteria:
+          - "Table-driven tests for PhaseConfig methods"
+          - "Tests for GetCanonicalOrder with various flag combinations"
+          - "Tests for GetArtifactDependencies"
+          - "All tests pass with go test ./internal/workflow/..."
+
+  - number: 3
+    title: "User Story 1 - Custom Phase Combination (US-001)"
+    purpose: "Enable running any combination of phases via individual flags"
+    story_reference: "US-001"
+    independent_test: "Run tool with -pi flags on existing spec and verify plan+implement execute in order"
+    tasks:
+      - id: "T008"
+        title: "Create internal/cli/run.go with Cobra command skeleton"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T007"]
+        acceptance_criteria:
+          - "runCmd cobra.Command defined with Use, Short, Long"
+          - "Command registered with rootCmd in init()"
+          - "Empty RunE function prepared"
+
+      - id: "T009"
+        title: "Add phase flags (-s/-p/-t/-i) to run command in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T008"]
+        acceptance_criteria:
+          - "-s/--specify flag for specify phase"
+          - "-p/--plan flag for plan phase"
+          - "-t/--tasks flag for tasks phase"
+          - "-i/--implement flag for implement phase"
+          - "Flags can be combined as -spi or -s -p -i"
+
+      - id: "T010"
+        title: "Implement phase flag parsing into PhaseConfig in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T009"]
+        acceptance_criteria:
+          - "RunE populates PhaseConfig from flags"
+          - "Calls GetCanonicalOrder() to get execution sequence"
+          - "Shows error with help if no phases selected"
+
+      - id: "T011"
+        title: "Integrate phase execution with WorkflowOrchestrator in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T010"]
+        acceptance_criteria:
+          - "Executes each phase in canonical order"
+          - "Passes feature description if specify phase included"
+          - "Uses existing WorkflowOrchestrator methods for phase execution"
+
+      - id: "T012"
+        title: "Write unit tests for run command in internal/cli/run_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/run_test.go"
+        dependencies: ["T011"]
+        acceptance_criteria:
+          - "Tests for flag parsing with various combinations"
+          - "Tests for canonical ordering regardless of flag order"
+          - "Tests for error when no phases selected"
+          - "All tests pass"
+
+  - number: 4
+    title: "User Story 2 - Run All Phases with Single Flag (US-002)"
+    purpose: "Enable running all phases with -a flag and rename full to all"
+    story_reference: "US-002"
+    independent_test: "Run tool with -a flag and verify all four phases execute"
+    tasks:
+      - id: "T013"
+        title: "Add -a/--all flag to run command in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T012"]
+        acceptance_criteria:
+          - "-a/--all flag enables all four phases"
+          - "Sets Specify, Plan, Tasks, Implement all to true"
+          - "Works identically to -spti"
+
+      - id: "T014"
+        title: "Rename internal/cli/full.go to internal/cli/all.go"
+        status: "Pending"
+        type: "refactor"
+        parallel: true
+        story_id: "US-002"
+        file_path: "internal/cli/all.go"
+        dependencies: ["T012"]
+        acceptance_criteria:
+          - "File renamed from full.go to all.go"
+          - "Command Use changed from 'full' to 'all'"
+          - "Help text updated to reflect new name"
+
+      - id: "T015"
+        title: "Add deprecated 'full' alias in internal/cli/all.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/cli/all.go"
+        dependencies: ["T014"]
+        acceptance_criteria:
+          - "fullCmd registered as alias pointing to allCmd"
+          - "Deprecation warning printed when 'full' used"
+          - "Warning suggests using 'all' instead"
+
+      - id: "T016"
+        title: "Write tests for all command and full deprecation in internal/cli/all_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/cli/all_test.go"
+        dependencies: ["T015"]
+        acceptance_criteria:
+          - "Tests for 'all' command execution"
+          - "Tests verify 'full' still works"
+          - "Tests verify deprecation warning is emitted for 'full'"
+
+  - number: 5
+    title: "User Story 3 - Safety Warnings for Missing Prerequisites (US-003)"
+    purpose: "Display warnings and prompt for confirmation when prerequisites are missing"
+    story_reference: "US-003"
+    independent_test: "Run tasks phase without plan.yaml and verify warning appears with prompt"
+    tasks:
+      - id: "T017"
+        title: "Extend PreflightResult struct in internal/workflow/preflight.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/workflow/preflight.go"
+        dependencies: ["T007"]
+        acceptance_criteria:
+          - "DetectedSpec string field added"
+          - "MissingArtifacts []string field added"
+          - "Warnings []string field added"
+          - "RequiresConfirmation bool field added"
+
+      - id: "T018"
+        title: "Implement CheckArtifactDependencies() in internal/workflow/preflight.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/workflow/preflight.go"
+        dependencies: ["T017"]
+        acceptance_criteria:
+          - "Takes PhaseConfig and specDir as parameters"
+          - "Checks if required artifacts exist for each selected phase"
+          - "Returns PreflightResult with MissingArtifacts populated"
+          - "Sets RequiresConfirmation=true if artifacts missing"
+
+      - id: "T019"
+        title: "Implement GeneratePrerequisiteWarning() in internal/workflow/preflight.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/workflow/preflight.go"
+        dependencies: ["T018"]
+        acceptance_criteria:
+          - "Generates human-readable warning message"
+          - "Lists which phases require which missing artifacts"
+          - "Suggests running earlier phases first"
+
+      - id: "T020"
+        title: "Integrate prerequisite checking in run command in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T019"]
+        acceptance_criteria:
+          - "Calls CheckArtifactDependencies() before phase execution"
+          - "Displays warning if prerequisites missing"
+          - "Prompts for confirmation using PromptUserToContinue()"
+          - "Aborts if user declines"
+
+      - id: "T021"
+        title: "Write tests for prerequisite checking in internal/workflow/preflight_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/workflow/preflight_test.go"
+        dependencies: ["T020"]
+        acceptance_criteria:
+          - "Tests for missing spec.yaml when plan phase selected"
+          - "Tests for missing plan.yaml when tasks phase selected"
+          - "Tests for all artifacts present - no warning"
+          - "All tests pass"
+
+  - number: 6
+    title: "User Story 4 - Skip Confirmation Prompts (US-004)"
+    purpose: "Enable non-interactive execution via flag, env var, or config"
+    story_reference: "US-004"
+    independent_test: "Run with -y flag when prerequisites missing and verify no prompt appears"
+    tasks:
+      - id: "T022"
+        title: "Add -y/--yes flag to run command in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-004"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T020"]
+        acceptance_criteria:
+          - "-y/--yes flag skips confirmation prompts"
+          - "Flag takes precedence over config and env var"
+
+      - id: "T023"
+        title: "Implement skip confirmation resolution in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-004"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T022"]
+        acceptance_criteria:
+          - "Checks flag first (-y)"
+          - "Checks AUTOSPEC_YES env var second"
+          - "Checks config.SkipConfirmations third"
+          - "If any is true, skips prompts"
+
+      - id: "T024"
+        title: "Write tests for skip confirmation in internal/cli/run_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-004"
+        file_path: "internal/cli/run_test.go"
+        dependencies: ["T023"]
+        acceptance_criteria:
+          - "Tests for -y flag skipping prompts"
+          - "Tests for AUTOSPEC_YES env var"
+          - "Tests for config.skip_confirmations"
+          - "Tests for precedence order"
+
+  - number: 7
+    title: "User Story 5 & 6 - Spec Selection and Detection (US-005, US-006)"
+    purpose: "Enable explicit spec selection and automatic branch-based detection"
+    story_reference: "US-005"
+    independent_test: "Pass explicit spec name flag while on different branch and verify it's used"
+    tasks:
+      - id: "T025"
+        title: "Add --spec flag to run command in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-005"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T023"]
+        acceptance_criteria:
+          - "--spec flag accepts explicit spec name"
+          - "Overrides branch-based detection"
+          - "Validates spec directory exists if specify phase not included"
+
+      - id: "T026"
+        title: "Integrate spec detection with run command in internal/cli/run.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-006"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T025"]
+        acceptance_criteria:
+          - "Uses --spec flag if provided"
+          - "Falls back to git branch detection via spec.DetectCurrentSpec()"
+          - "Shows error with suggestions if detection fails and specify not included"
+
+      - id: "T027"
+        title: "Write tests for spec detection in internal/cli/run_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-006"
+        file_path: "internal/cli/run_test.go"
+        dependencies: ["T026"]
+        acceptance_criteria:
+          - "Tests for explicit --spec flag"
+          - "Tests for branch-based detection"
+          - "Tests for error when spec not found and specify not included"
+
+  - number: 8
+    title: "Polish & Cross-Cutting Concerns"
+    purpose: "Documentation updates, integration testing, and build verification"
+    tasks:
+      - id: "T028"
+        title: "Update README.md with new CLI usage"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "README.md"
+        dependencies: ["T027"]
+        acceptance_criteria:
+          - "Document run command with all flags"
+          - "Document -a/--all shortcut"
+          - "Document deprecation of 'full' command"
+          - "Add examples for common workflows"
+
+      - id: "T029"
+        title: "Update CLAUDE.md architecture documentation"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "CLAUDE.md"
+        dependencies: ["T027"]
+        acceptance_criteria:
+          - "Document new run command in CLI Layer section"
+          - "Document phase_config.go in Workflow Orchestration section"
+          - "Update example commands throughout"
+          - "Verify make build succeeds"
+
+dependencies:
+  user_story_order:
+    - story_id: "US-001"
+      depends_on: []
+      blocks: ["US-002", "US-003", "US-004"]
+    - story_id: "US-002"
+      depends_on: ["US-001"]
+      blocks: []
+    - story_id: "US-003"
+      depends_on: ["US-001"]
+      blocks: ["US-004"]
+    - story_id: "US-004"
+      depends_on: ["US-003"]
+      blocks: []
+    - story_id: "US-005"
+      depends_on: ["US-004"]
+      blocks: []
+    - story_id: "US-006"
+      depends_on: ["US-005"]
+      blocks: []
+
+  phase_order:
+    - phase: 1
+      blocks: [2]
+    - phase: 2
+      blocks: [3, 4, 5, 6, 7]
+    - phase: 3
+      blocks: [4]
+    - phase: 4
+      blocks: [8]
+    - phase: 5
+      blocks: [6]
+    - phase: 6
+      blocks: [7]
+    - phase: 7
+      blocks: [8]
+
+parallel_execution:
+  - phase: 2
+    parallel_groups:
+      - tasks: ["T003", "T005"]
+        rationale: "Different files, no dependencies between them"
+  - phase: 4
+    parallel_groups:
+      - tasks: ["T013", "T014"]
+        rationale: "Different files, T14 is a rename while T13 adds flag to run.go"
+  - phase: 8
+    parallel_groups:
+      - tasks: ["T028", "T029"]
+        rationale: "Independent documentation files"
+
+implementation_strategy:
+  mvp_scope:
+    phases: [1, 2, 3]
+    description: "Setup + Foundational + Custom Phase Combination (US-001)"
+    validation: "Run 'autospec run -pi' on existing spec and verify both phases execute in order"
+  incremental_delivery:
+    - milestone: "Foundation Ready"
+      phases: [1, 2]
+      deliverable: "PhaseConfig infrastructure with ordering and dependency resolution"
+    - milestone: "MVP Complete"
+      phases: [1, 2, 3]
+      deliverable: "Working run command with individual phase flags (-s/-p/-t/-i)"
+    - milestone: "All Shortcuts Ready"
+      phases: [1, 2, 3, 4]
+      deliverable: "Run command with -a flag and renamed 'all' subcommand"
+    - milestone: "Safety Complete"
+      phases: [1, 2, 3, 4, 5, 6]
+      deliverable: "Full safety warnings with skip confirmation options"
+    - milestone: "Feature Complete"
+      phases: [1, 2, 3, 4, 5, 6, 7, 8]
+      deliverable: "Complete implementation with documentation"

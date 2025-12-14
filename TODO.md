@@ -50,13 +50,13 @@
   - [X] Add spinners for long-running operations
   - [X] Show checkmarks when phases complete
 
-- [ ] Unify setup into `autospec init` (single command for all initialization)
-  - [ ] Flow (in order):
+- [X] Unify setup into `autospec init` (single command for all initialization)
+  - [X] Flow (in order):
     1. Auto-install missing `.autospec/scripts/` and claude commands (no prompt)
     2. If config exists: ask "Update config?" → prompt for changes if yes
     3. If no config: create with sensible defaults
-  - [ ] Make `autospec commands install` redundant (deprecate or remove)
-  - [ ] Consider: `autospec init --force` to overwrite config without prompting
+  - [X] Make `autospec commands install` redundant (deprecated)
+  - [X] `autospec init --force` to overwrite config without prompting
 
 - [ ] Enhance `autospec status` output
   - [ ] Add visual progress indicators (✓, ⏳, ✗)

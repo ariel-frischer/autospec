@@ -8,9 +8,12 @@ import (
 )
 
 var commandsInstallCmd = &cobra.Command{
-	Use:   "install",
-	Short: "Install autospec command templates and scripts",
+	Use:        "install",
+	Short:      "Install autospec command templates and scripts (DEPRECATED: use 'autospec init')",
+	Deprecated: "use 'autospec init' instead, which handles commands, scripts, and config in one step",
 	Long: `Install autospec command templates and helper scripts.
+
+DEPRECATED: Use 'autospec init' instead, which handles commands, scripts, and config in one step.
 
 This installs:
   - Command templates (autospec.specify, autospec.plan, etc.) to .claude/commands/
@@ -19,7 +22,8 @@ This installs:
 Existing autospec files will be overwritten. Other files are preserved.
 
 Example:
-  autospec commands install
+  autospec init                                           # Recommended
+  autospec commands install                               # Deprecated
   autospec commands install --target ./custom/commands
   autospec commands install --scripts-target ./custom/scripts`,
 	RunE: runCommandsInstall,
