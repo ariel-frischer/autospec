@@ -90,16 +90,18 @@ Phases always execute in canonical order regardless of flag order:
 
 This prevents user confusion and ensures correct artifact dependencies.
 
-### Naming Discussion: `full` vs `all` vs `-a`
+### Naming: `all` Subcommand + `-a` Flag
 
-| Option | Command | Pros | Cons |
-|--------|---------|------|------|
-| Current `full` | `autospec full "feature"` | Explicit subcommand | Longer, redundant with `-a` |
-| Rename to `all` | `autospec all "feature"` | Clearer meaning | Still a subcommand |
-| Flag only | `autospec -a "feature"` | Shortest, consistent | Less discoverable |
-| Both | `autospec -a` + `autospec all` | Flexibility | Redundancy |
+Both approaches work identically:
 
-**Recommendation**: Keep `-a` flag as primary, deprecate `full` subcommand (or keep as alias for discoverability).
+```bash
+autospec all "Add feature"    # Subcommand (discoverable)
+autospec -a "Add feature"     # Flag (concise)
+```
+
+- Rename `full` → `all` (clearer meaning)
+- Keep `-a` flag for power users
+- Deprecate `full` with warning pointing to `all`
 
 ---
 
@@ -465,37 +467,38 @@ func confirmContinue() bool {
 
 ## Backward Compatibility
 
-### Existing Subcommands
+### Subcommand Changes
 
-Existing subcommands continue to work unchanged:
+| Old | New | Equivalent Flags | Status |
+|-----|-----|------------------|--------|
+| `autospec full` | `autospec all` | `autospec -a` | Rename, deprecate `full` |
+| `autospec workflow` | - | `autospec -spt` | Keep or deprecate |
+| `autospec specify` | - | `autospec -s` | Keep (discoverable) |
+| `autospec plan` | - | `autospec -p` | Keep (discoverable) |
+| `autospec tasks` | - | `autospec -t` | Keep (discoverable) |
+| `autospec implement` | - | `autospec -i` | Keep (discoverable) |
 
-| Subcommand | Equivalent Flags | Status |
-|------------|------------------|--------|
-| `autospec full "feature"` | `autospec -a "feature"` | Keep or deprecate |
-| `autospec workflow "feature"` | `autospec -spt "feature"` | Keep or deprecate |
-| `autospec specify "feature"` | `autospec -s "feature"` | Keep (single-phase convenience) |
-| `autospec plan` | `autospec -p` | Keep (single-phase convenience) |
-| `autospec tasks` | `autospec -t` | Keep (single-phase convenience) |
-| `autospec implement` | `autospec -i` | Keep (single-phase convenience) |
+### Deprecation Warnings
 
-### Deprecation Strategy
+When user runs deprecated command:
 
-**Option A: Keep All (Recommended for now)**
-- Subcommands remain for discoverability
-- Flags are the "power user" interface
-- No breaking changes
+```
+$ autospec full "Add feature"
 
-**Option B: Deprecate Multi-Phase Subcommands**
-- Deprecate `full` and `workflow` (replaced by `-a` and `-spt`)
-- Keep single-phase subcommands for simplicity
-- Print deprecation warning when used
+⚠️  'autospec full' is deprecated. Use 'autospec all' or 'autospec -a' instead.
+
+→ Executing: specify phase...
+```
+
+Command still works, just shows warning.
 
 ### Migration Path
 
-1. Add phase flags to root command
-2. Document flag-based approach as primary
-3. Keep subcommands working (no breaking changes)
-4. Consider deprecation warnings in future version
+1. Add phase flags to root command (`-s`, `-p`, `-t`, `-i`, `-a`)
+2. Rename `full` → `all` subcommand
+3. Add deprecation warning to `full` (hidden from help, still works)
+4. Keep single-phase subcommands for discoverability
+5. Document flag-based approach as primary in README/help
 
 ---
 
@@ -553,34 +556,49 @@ Existing subcommands continue to work unchanged:
 - [ ] T036 Create spec directory when -s is used on new branch
 - [ ] T037 Add progress display support (reuse existing progress system)
 
-### Phase 6: Testing & Polish
+### Phase 6: Subcommand Changes
 
-- [ ] T038 Write integration tests for Case 1 (all artifacts exist)
-- [ ] T039 Write integration tests for Case 2 (missing artifacts)
-- [ ] T040 Write integration tests for Case 3 (non-spec branch)
-- [ ] T041 Write integration tests for Case 4 (fresh spec branch)
-- [ ] T042 Write integration tests for Case 5 (no git)
-- [ ] T043 Test flag combinations: -a, -spi, -sp, -pi, -ti, -spti
-- [ ] T044 Test --spec flag with explicit spec name
-- [ ] T045 Update CLI help text and examples in root.go
-- [ ] T046 Update CLAUDE.md with new phase flag documentation
+- [ ] T038 Rename `full.go` → `all.go`, update command name to `all`
+- [ ] T039 Create deprecated `full` command that wraps `all` with warning
+- [ ] T040 Hide `full` from help output (still executable)
+- [ ] T041 Update `all` command to share logic with `-a` flag
+
+### Phase 7: Testing & Polish
+
+- [ ] T042 Write integration tests for Case 1 (all artifacts exist)
+- [ ] T043 Write integration tests for Case 2 (missing artifacts)
+- [ ] T044 Write integration tests for Case 3 (non-spec branch)
+- [ ] T045 Write integration tests for Case 4 (fresh spec branch)
+- [ ] T046 Write integration tests for Case 5 (no git)
+- [ ] T047 Test flag combinations: -a, -spi, -sp, -pi, -ti, -spti
+- [ ] T048 Test --spec flag with explicit spec name
+- [ ] T049 Test `autospec all` subcommand
+- [ ] T050 Test `autospec full` deprecation warning
+- [ ] T051 Update CLI help text and examples in root.go
+- [ ] T052 Update CLAUDE.md with new phase flag documentation
 
 ---
 
 ## Summary
 
-**Command**: `autospec -spi "feature"` (no subcommand needed)
+**Commands** (all equivalent for full workflow):
+
+```bash
+autospec all "Add feature"     # Subcommand (discoverable)
+autospec -a "Add feature"      # Flag (power user)
+autospec -spti "Add feature"   # Explicit flags
+```
 
 **Key Benefits:**
-1. Shortest possible: `autospec -a "feature"` for full workflow
-2. Flexible: Any phase combination with `-s`, `-p`, `-t`, `-i`
-3. Branch-aware: Smart detection of current spec from git branch
-4. Safe: Context-aware warnings when prerequisites missing
-5. User-friendly: y/N confirmation with skip options (`-y`, `AUTOSPEC_YES`, config)
-6. Helpful: Clear error messages with actionable suggestions
-7. Backward compatible: Existing subcommands unchanged
+1. Flexible: Any phase combination with `-s`, `-p`, `-t`, `-i`, `-a`
+2. Discoverable: Subcommands (`all`, `specify`, `plan`, `tasks`, `implement`) for new users
+3. Concise: Flags (`-spi`, `-a`) for power users
+4. Branch-aware: Smart detection of current spec from git branch
+5. Safe: Context-aware warnings when prerequisites missing
+6. User-friendly: y/N confirmation with skip options (`-y`, `AUTOSPEC_YES`, config)
+7. Helpful: Clear error messages with actionable suggestions
 
-**Total Tasks**: 46
+**Total Tasks**: 52
 
 | Phase | Tasks | Focus |
 |-------|-------|-------|
@@ -589,6 +607,7 @@ Existing subcommands continue to work unchanged:
 | 3. Root Command Flags | 8 | Add flags to root, validation |
 | 4. Confirmation Flow | 7 | y/N prompts, skip options |
 | 5. Execution Integration | 6 | Orchestrator integration |
-| 6. Testing & Polish | 9 | Integration tests, docs |
+| 6. Subcommand Changes | 4 | Rename full→all, deprecation |
+| 7. Testing & Polish | 11 | Integration tests, docs |
 
 **Complexity**: Medium-High (branch-aware detection, root command modification)
