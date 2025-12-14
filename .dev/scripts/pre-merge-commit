@@ -1,0 +1,32 @@
+#!/bin/sh
+# Prevent merging main/master into dev branches
+# Install: cp .dev/scripts/pre-merge-commit .git/hooks/
+
+current_branch=$(git branch --show-current)
+merge_head=$(git rev-parse MERGE_HEAD 2>/dev/null)
+
+# Check if we're on a dev-like branch
+case "$current_branch" in
+    dev|develop|feature/*|feat/*)
+        # Check if we're merging from main/master
+        for protected in main master; do
+            if git merge-base --is-ancestor "refs/heads/$protected" "$merge_head" 2>/dev/null; then
+                main_tip=$(git rev-parse "refs/heads/$protected" 2>/dev/null)
+                if [ "$merge_head" = "$main_tip" ]; then
+                    echo ""
+                    echo "WARNING: You're merging '$protected' into '$current_branch'"
+                    echo ""
+                    echo "   Consider using rebase instead:"
+                    echo "   git rebase $protected"
+                    echo ""
+                    echo "   To proceed anyway, use:"
+                    echo "   git merge --no-verify $protected"
+                    echo ""
+                    exit 1
+                fi
+            fi
+        done
+        ;;
+esac
+
+exit 0

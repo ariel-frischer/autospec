@@ -123,15 +123,18 @@ Current branches to consider removing before public release:
 - [x] CONTRIBUTING.md
 - [x] SECURITY.md
 - [x] CHANGELOG.md
+- [x] CODE_OF_CONDUCT.md (Contributor Covenant v2.0)
 - [x] .gitignore (updated with autospec-* patterns)
 - [x] Makefile with build/test/lint targets
-- [x] Tests exist
+- [x] Makefile autobump commands (patch/minor/major/snapshot)
+- [x] Tests exist and pass
 - [x] .github/ with issue templates, PR template, workflows
 - [x] CI/CD GitHub Actions (ci.yml, release.yml, docs.yml)
 - [x] GoReleaser configuration (.goreleaser.yml)
 - [x] README badges
 - [x] No secrets in git history
 - [x] **autospec-test binary removed from history** (9.7MB saved)
+- [x] .dev/docs/ with release documentation (releases.md, autobump.md, install.md)
 
 ### Needs Attention (Priority Order)
 
