@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anthropics/auto-claude-speckit/internal/scripts"
 	"gopkg.in/yaml.v3"
 )
 
@@ -242,4 +243,63 @@ func GetAutospecCommandNames() []string {
 		}
 	}
 	return autospecNames
+}
+
+// ScriptInstallResult represents the result of installing a script.
+type ScriptInstallResult struct {
+	ScriptName string
+	Action     string // "installed" or "updated"
+	Path       string
+}
+
+// InstallScripts installs all embedded scripts to the target directory.
+// The default target is scripts/autospec/ relative to the repo root.
+func InstallScripts(targetDir string) ([]ScriptInstallResult, error) {
+	// Ensure target directory exists
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	scriptNames, err := scripts.List()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scripts: %w", err)
+	}
+
+	var results []ScriptInstallResult
+	for _, name := range scriptNames {
+		content, err := scripts.Get(name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read script %s: %w", name, err)
+		}
+
+		targetPath := filepath.Join(targetDir, name)
+
+		action := "installed"
+		if _, err := os.Stat(targetPath); err == nil {
+			action = "updated"
+		}
+
+		// Write with executable permissions (0755)
+		if err := os.WriteFile(targetPath, content, 0755); err != nil {
+			return nil, fmt.Errorf("failed to write %s: %w", name, err)
+		}
+
+		results = append(results, ScriptInstallResult{
+			ScriptName: name,
+			Action:     action,
+			Path:       targetPath,
+		})
+	}
+
+	return results, nil
+}
+
+// GetDefaultScriptsDir returns the default path for autospec scripts.
+func GetDefaultScriptsDir() string {
+	return filepath.Join("scripts", "autospec")
+}
+
+// ListScripts returns the names of all embedded scripts.
+func ListScripts() ([]string, error) {
+	return scripts.List()
 }

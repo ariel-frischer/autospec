@@ -1,4 +1,4 @@
-.PHONY: help build build-all install clean test test-go test-bash test-all lint lint-go lint-bash fmt vet run dev validate-workflow validate-implement deps
+.PHONY: help build build-all install clean test test-go test-bash test-all lint lint-go lint-bash fmt vet run dev validate-workflow validate-implement deps h b i c t l f r d
 
 # Variables
 BINARY_NAME=autospec
@@ -123,3 +123,15 @@ clean-all: clean ## Clean everything including test artifacts
 
 release: test-all lint build-all ## Run tests, linting, and build all platforms
 	@echo "Release build complete. Binaries in ${DIST_DIR}/"
+
+##@ Abbreviations
+
+h: help     ## help
+b: build    ## build
+i: install  ## install
+c: clean    ## clean
+t: test     ## test
+l: lint     ## lint
+f: fmt      ## fmt
+r: run      ## run
+d: dev      ## dev

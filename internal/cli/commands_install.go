@@ -9,28 +9,33 @@ import (
 
 var commandsInstallCmd = &cobra.Command{
 	Use:   "install",
-	Short: "Install autospec command templates",
-	Long: `Install autospec command templates to .claude/commands/.
+	Short: "Install autospec command templates and scripts",
+	Long: `Install autospec command templates and helper scripts.
 
-This installs the embedded command templates (autospec.specify, autospec.plan,
-autospec.tasks, etc.) to the Claude Code commands directory.
+This installs:
+  - Command templates (autospec.specify, autospec.plan, etc.) to .claude/commands/
+  - Helper scripts (common.sh, check-prerequisites.sh, etc.) to scripts/autospec/
 
-Existing autospec.* files will be overwritten. Other command files are preserved.
+Existing autospec files will be overwritten. Other files are preserved.
 
 Example:
   autospec commands install
-  autospec commands install --target ./custom/commands`,
+  autospec commands install --target ./custom/commands
+  autospec commands install --scripts-target ./custom/scripts`,
 	RunE: runCommandsInstall,
 }
 
 var installTargetDir string
+var installScriptsDir string
 
 func init() {
 	commandsCmd.AddCommand(commandsInstallCmd)
-	commandsInstallCmd.Flags().StringVar(&installTargetDir, "target", "", "Target directory (default: .claude/commands)")
+	commandsInstallCmd.Flags().StringVar(&installTargetDir, "target", "", "Target directory for commands (default: .claude/commands)")
+	commandsInstallCmd.Flags().StringVar(&installScriptsDir, "scripts-target", "", "Target directory for scripts (default: scripts/autospec)")
 }
 
 func runCommandsInstall(cmd *cobra.Command, args []string) error {
+	// Install command templates
 	targetDir := installTargetDir
 	if targetDir == "" {
 		targetDir = commands.GetDefaultCommandsDir()
@@ -43,22 +48,52 @@ func runCommandsInstall(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to install templates: %w", err)
 	}
 
-	installedCount := 0
-	updatedCount := 0
+	cmdInstalledCount := 0
+	cmdUpdatedCount := 0
 
 	for _, result := range results {
 		switch result.Action {
 		case "installed":
-			installedCount++
+			cmdInstalledCount++
 			fmt.Fprintf(cmd.OutOrStdout(), "  + %s (installed)\n", result.CommandName)
 		case "updated":
-			updatedCount++
+			cmdUpdatedCount++
 			fmt.Fprintf(cmd.OutOrStdout(), "  ~ %s (updated)\n", result.CommandName)
 		}
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nDone: %d installed, %d updated\n", installedCount, updatedCount)
-	fmt.Fprintf(cmd.OutOrStdout(), "Commands are now available as /%s in Claude Code\n", "autospec.*")
+	// Install helper scripts
+	scriptsDir := installScriptsDir
+	if scriptsDir == "" {
+		scriptsDir = commands.GetDefaultScriptsDir()
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "\nInstalling helper scripts to %s...\n", scriptsDir)
+
+	scriptResults, err := commands.InstallScripts(scriptsDir)
+	if err != nil {
+		return fmt.Errorf("failed to install scripts: %w", err)
+	}
+
+	scriptInstalledCount := 0
+	scriptUpdatedCount := 0
+
+	for _, result := range scriptResults {
+		switch result.Action {
+		case "installed":
+			scriptInstalledCount++
+			fmt.Fprintf(cmd.OutOrStdout(), "  + %s (installed)\n", result.ScriptName)
+		case "updated":
+			scriptUpdatedCount++
+			fmt.Fprintf(cmd.OutOrStdout(), "  ~ %s (updated)\n", result.ScriptName)
+		}
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "\nDone:\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "  Commands: %d installed, %d updated\n", cmdInstalledCount, cmdUpdatedCount)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Scripts:  %d installed, %d updated\n", scriptInstalledCount, scriptUpdatedCount)
+	fmt.Fprintf(cmd.OutOrStdout(), "\nCommands are now available as /autospec.* in Claude Code\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "Scripts are available at %s/\n", scriptsDir)
 
 	return nil
 }

@@ -3,69 +3,231 @@ description: Generate YAML checklist for feature quality validation.
 version: "1.0.0"
 ---
 
+## Checklist Purpose: "Unit Tests for English"
+
+**CRITICAL CONCEPT**: Checklists are **UNIT TESTS FOR REQUIREMENTS WRITING** - they validate the quality, clarity, and completeness of requirements in a given domain.
+
+**NOT for verification/testing**:
+
+- NOT "Verify the button clicks correctly"
+- NOT "Test error handling works"
+- NOT "Confirm the API returns 200"
+- NOT checking if code/implementation matches the spec
+
+**FOR requirements quality validation**:
+
+- "Are visual hierarchy requirements defined for all card types?" (completeness)
+- "Is 'prominent display' quantified with specific sizing/positioning?" (clarity)
+- "Are hover state requirements consistent across all interactive elements?" (consistency)
+- "Are accessibility requirements defined for keyboard navigation?" (coverage)
+- "Does the spec define what happens when logo image fails to load?" (edge cases)
+
+**Metaphor**: If your spec is code written in English, the checklist is its unit test suite. You're testing whether the requirements are well-written, complete, unambiguous, and ready for implementation - NOT whether the implementation works.
+
 ## User Input
 
 ```text
 $ARGUMENTS
 ```
 
-## Outline
+You **MUST** consider the user input before proceeding (if not empty).
 
-1. **Setup**: Run `.specify/scripts/bash/check-prerequisites.sh --json --require-spec` to get FEATURE_DIR and SPEC_PATH.
+## Execution Steps
 
-2. **Load context**:
-   - Read SPEC_PATH (`spec.yaml` or `spec.md`) for requirements and acceptance criteria
-   - Read `contracts/yaml-schemas.yaml` for `checklist_artifact` schema
-   - Read user input for specific checklist focus areas
+1. **Setup**: Determine the current feature directory:
+   - Check current git branch name (e.g., `007-yaml-structured-output`)
+   - Set FEATURE_DIR to `specs/<branch-name>/`
+   - Verify spec.yaml (or spec.md) exists in FEATURE_DIR
+   - If no spec file exists: ERROR "No spec file found. Run /autospec.specify first."
 
-3. **Generate checklist.yaml**: Create YAML output following `checklist_artifact` schema:
+2. **Clarify intent (dynamic)**: Derive up to THREE initial contextual clarifying questions. They MUST:
+   - Be generated from the user's phrasing + extracted signals from spec/plan/tasks
+   - Only ask about information that materially changes checklist content
+   - Be skipped individually if already unambiguous in `$ARGUMENTS`
+   - Prefer precision over breadth
+
+   Generation algorithm:
+   1. Extract signals: feature domain keywords (e.g., auth, latency, UX, API), risk indicators ("critical", "must", "compliance"), stakeholder hints ("QA", "review", "security team")
+   2. Cluster signals into candidate focus areas (max 4) ranked by relevance
+   3. Identify probable audience & timing (author, reviewer, QA, release) if not explicit
+   4. Detect missing dimensions: scope breadth, depth/rigor, risk emphasis, exclusion boundaries
+   5. Formulate questions from these archetypes:
+      - Scope refinement (e.g., "Should this include integration touchpoints?")
+      - Risk prioritization (e.g., "Which risk areas need mandatory gating checks?")
+      - Depth calibration (e.g., "Lightweight sanity list or formal release gate?")
+      - Audience framing (e.g., "Author-only or peer PR review?")
+
+   Defaults when interaction impossible:
+   - Depth: Standard
+   - Audience: Reviewer (PR) if code-related; Author otherwise
+   - Focus: Top 2 relevance clusters
+
+3. **Understand user request**: Combine `$ARGUMENTS` + clarifying answers:
+   - Derive checklist theme (e.g., security, review, deploy, ux)
+   - Consolidate explicit must-have items mentioned by user
+   - Map focus selections to category scaffolding
+
+4. **Load feature context**: Read from FEATURE_DIR:
+   - spec.yaml (or spec.md): Feature requirements and scope
+   - plan.yaml (or plan.md) if exists: Technical details, dependencies
+   - tasks.yaml (or tasks.md) if exists: Implementation tasks
+
+5. **Generate checklist.yaml** - Create "Unit Tests for Requirements":
 
    ```yaml
    _meta:
      version: "1.0.0"
      generator: "autospec"
-     generator_version: "<from autospec version>"
+     generator_version: "<run autospec version to get this>"
      created: "<ISO 8601 timestamp>"
      artifact_type: "checklist"
 
    checklist:
-     feature: "<feature name>"
-     spec_path: "<path to spec>"
+     feature: "<feature name from spec>"
+     branch: "<current git branch>"
+     spec_path: "<relative path to spec file>"
+     domain: "<checklist domain: ux, api, security, performance, etc.>"
+     audience: "<author|reviewer|qa|release>"
+     depth: "<lightweight|standard|comprehensive>"
 
    categories:
-     - name: "Requirements Validation"
+     - name: "Requirement Completeness"
+       description: "Are all necessary requirements documented?"
        items:
-         - id: "REQ-001"
-           description: "Verify FR-001 implementation"
+         - id: "CHK001"
+           question: "Are all functional requirements specified for the primary user flow?"
+           quality_dimension: "completeness"
+           spec_reference: "FR-001"  # or null if checking for gap
+           gap_marker: false  # true if this is checking for missing requirement
            checked: false
            notes: ""
 
-     - name: "Testing"
-       items:
-         - id: "TEST-001"
-           description: "Unit tests pass"
+         - id: "CHK002"
+           question: "Are error handling requirements defined for all API failure modes?"
+           quality_dimension: "completeness"
+           spec_reference: null
+           gap_marker: true
            checked: false
+           notes: ""
 
-     - name: "Documentation"
+     - name: "Requirement Clarity"
+       description: "Are requirements specific and unambiguous?"
        items:
-         - id: "DOC-001"
-           description: "API documentation updated"
+         - id: "CHK003"
+           question: "Is 'fast loading' quantified with specific timing thresholds?"
+           quality_dimension: "clarity"
+           spec_reference: "NFR-001"
+           gap_marker: false
            checked: false
+           notes: ""
+
+     - name: "Requirement Consistency"
+       description: "Do requirements align without conflicts?"
+       items:
+         - id: "CHK004"
+           question: "Are navigation requirements consistent across all pages?"
+           quality_dimension: "consistency"
+           spec_reference: "FR-010"
+           gap_marker: false
+           checked: false
+           notes: ""
+
+     - name: "Acceptance Criteria Quality"
+       description: "Are success criteria measurable?"
+       items:
+         - id: "CHK005"
+           question: "Can all success criteria be objectively verified?"
+           quality_dimension: "measurability"
+           spec_reference: "SC-001"
+           gap_marker: false
+           checked: false
+           notes: ""
+
+     - name: "Scenario Coverage"
+       description: "Are all flows and cases addressed?"
+       items:
+         - id: "CHK006"
+           question: "Are requirements defined for zero-state scenarios?"
+           quality_dimension: "coverage"
+           spec_reference: null
+           gap_marker: true
+           checked: false
+           notes: ""
+
+     - name: "Edge Case Coverage"
+       description: "Are boundary conditions defined?"
+       items:
+         - id: "CHK007"
+           question: "Is fallback behavior specified when external services fail?"
+           quality_dimension: "edge_cases"
+           spec_reference: null
+           gap_marker: true
+           checked: false
+           notes: ""
+
+   summary:
+     total_items: <number>
+     completeness_items: <number>
+     clarity_items: <number>
+     consistency_items: <number>
+     coverage_items: <number>
+     gap_markers: <number>
    ```
 
-4. **Validate output**:
+6. **Write the checklist** to `FEATURE_DIR/checklists/<domain>.yaml`
+   - Create `FEATURE_DIR/checklists/` directory if it doesn't exist
+   - Use domain-based filename: `ux.yaml`, `api.yaml`, `security.yaml`, etc.
+
+7. **Validate the YAML**:
    ```bash
-   autospec yaml check specs/<feature>/checklist.yaml
+   autospec yaml check FEATURE_DIR/checklists/<domain>.yaml
    ```
    - If validation fails: fix YAML syntax errors and retry
    - If validation passes: proceed to report
 
-5. **Report**: Output checklist.yaml path and category summary.
+8. **Report**: Output:
+   - Full path to checklist.yaml
+   - Item count by category
+   - Gap markers count (requirements needing attention)
+   - Checklist domain and audience
 
-## Key Rules
+## HOW TO WRITE CHECKLIST ITEMS - "Unit Tests for English"
 
-- Output MUST be valid YAML (use `autospec yaml check` to verify)
-- Use `_meta.artifact_type: "checklist"` exactly
-- Each category should have at least one item
-- Items should be derived from the spec's requirements
-- All `checked` fields start as `false`
+**WRONG** (Testing implementation):
+- "Verify landing page displays 3 episode cards"
+- "Test hover states work on desktop"
+- "Confirm logo click navigates home"
+
+**CORRECT** (Testing requirements quality):
+- "Are the exact number and layout of featured episodes specified?" [Completeness]
+- "Is 'prominent display' quantified with specific sizing/positioning?" [Clarity]
+- "Are hover state requirements consistent across all interactive elements?" [Consistency]
+- "Are keyboard navigation requirements defined for all interactive UI?" [Coverage]
+- "Is the fallback behavior specified when logo image fails to load?" [Edge Cases]
+
+### Quality Dimensions
+
+- **completeness**: Are all necessary requirements present?
+- **clarity**: Are requirements unambiguous and specific?
+- **consistency**: Do requirements align with each other?
+- **measurability**: Can requirements be objectively verified?
+- **coverage**: Are all scenarios/edge cases addressed?
+- **edge_cases**: Are boundary conditions defined?
+
+### ABSOLUTELY PROHIBITED
+
+- Any item starting with "Verify", "Test", "Confirm", "Check" + implementation behavior
+- References to code execution, user actions, system behavior
+- "Displays correctly", "works properly", "functions as expected"
+- "Click", "navigate", "render", "load", "execute"
+- Test cases, test plans, QA procedures
+- Implementation details (frameworks, APIs, algorithms)
+
+### REQUIRED PATTERNS
+
+- "Are [requirement type] defined/specified/documented for [scenario]?"
+- "Is [vague term] quantified/clarified with specific criteria?"
+- "Are requirements consistent between [section A] and [section B]?"
+- "Can [requirement] be objectively measured/verified?"
+- "Are [edge cases/scenarios] addressed in requirements?"
+- "Does the spec define [missing aspect]?"
