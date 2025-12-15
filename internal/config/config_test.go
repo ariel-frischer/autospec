@@ -118,37 +118,49 @@ func TestExpandHomePath(t *testing.T) {
 }
 
 func TestLoad_OverridePrecedence(t *testing.T) {
-	// Create temp directories for global and local configs
+	// Create temp directories for user and project configs
 	tmpDir := t.TempDir()
-	globalDir := filepath.Join(tmpDir, ".autospec")
-	require.NoError(t, os.MkdirAll(globalDir, 0755))
 
-	// Temporarily change HOME to use our test directory
-	originalHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", originalHome)
-	os.Setenv("HOME", tmpDir)
+	// Set XDG_CONFIG_HOME to isolate user config
+	userConfigDir := filepath.Join(tmpDir, ".config", "autospec")
+	require.NoError(t, os.MkdirAll(userConfigDir, 0755))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
 
-	// Write global config
-	globalPath := filepath.Join(globalDir, "config.json")
-	globalContent := `{"max_retries": 2, "claude_cmd": "global-claude"}`
-	require.NoError(t, os.WriteFile(globalPath, []byte(globalContent), 0644))
+	// Write user config (lower priority)
+	userPath := filepath.Join(userConfigDir, "config.yml")
+	userContent := `claude_cmd: user-claude
+max_retries: 2
+specs_dir: "./specs"
+state_dir: "~/.autospec/state"
+specify_cmd: specify
+`
+	require.NoError(t, os.WriteFile(userPath, []byte(userContent), 0644))
 
-	// Write local config
-	localPath := filepath.Join(tmpDir, "local-config.json")
-	localContent := `{"max_retries": 4}`
-	require.NoError(t, os.WriteFile(localPath, []byte(localContent), 0644))
+	// Write project config (higher priority)
+	projectDir := filepath.Join(tmpDir, "project", ".autospec")
+	require.NoError(t, os.MkdirAll(projectDir, 0755))
+	projectPath := filepath.Join(projectDir, "config.yml")
+	projectContent := `max_retries: 4
+`
+	require.NoError(t, os.WriteFile(projectPath, []byte(projectContent), 0644))
+
+	// Change to project directory
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(filepath.Join(tmpDir, "project"))
 
 	// Set environment variable (highest priority)
 	t.Setenv("AUTOSPEC_MAX_RETRIES", "8")
 
-	cfg, err := Load(localPath)
+	cfg, err := LoadWithOptions(LoadOptions{
+		SkipWarnings: true,
+	})
 	require.NoError(t, err)
 
-	// Environment should win
+	// Environment should win for max_retries
 	assert.Equal(t, 8, cfg.MaxRetries)
-	// Local should override global
-	// (We can't easily test this without claude_cmd from local, so we accept global value)
-	assert.Equal(t, "global-claude", cfg.ClaudeCmd)
+	// User config value for claude_cmd (project config doesn't override it)
+	assert.Equal(t, "user-claude", cfg.ClaudeCmd)
 }
 
 // Timeout Configuration Tests
