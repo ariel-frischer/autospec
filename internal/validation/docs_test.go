@@ -399,7 +399,6 @@ func TestCommandCompleteness(t *testing.T) {
 func TestConfigCompleteness(t *testing.T) {
 	requiredConfigOptions := []string{
 		"claude_cmd",
-		"specify_cmd",
 		"max_retries",
 		"specs_dir",
 		"state_dir",

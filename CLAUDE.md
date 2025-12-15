@@ -228,7 +228,7 @@ Key settings:
 ### 4. Validation (`internal/validation/`)
 
 Fast validation functions (<10ms performance contract):
-- **validation.go**: File validation (spec.md, plan.md, tasks.md existence)
+- **validation.go**: File validation (spec.yaml, plan.yaml, tasks.yaml existence)
 - **tasks.go**: Task parsing and completion checking
 - **prompt.go**: Continuation prompt generation
 
@@ -271,21 +271,21 @@ WorkflowOrchestrator.RunFullWorkflow()
   Pre-flight checks (if not skipped)
   ↓
   Phase 1: Specify
-    → Executor.ExecutePhase(PhaseSpecify, "/speckit.specify", ValidateSpec)
+    → Executor.ExecutePhase(PhaseSpecify, "/autospec.specify", ValidateSpec)
     → ClaudeExecutor runs command via Claude CLI
-    → Validates spec.md exists
+    → Validates spec.yaml exists
     → Retries up to max_retries on failure
   ↓
   Phase 2: Plan
-    → Executor.ExecutePhase(PhasePlan, "/speckit.plan", ValidatePlan)
-    → Validates plan.md exists
+    → Executor.ExecutePhase(PhasePlan, "/autospec.plan", ValidatePlan)
+    → Validates plan.yaml exists
   ↓
   Phase 3: Tasks
-    → Executor.ExecutePhase(PhaseTasks, "/speckit.tasks", ValidateTasks)
-    → Validates tasks.md exists
+    → Executor.ExecutePhase(PhaseTasks, "/autospec.tasks", ValidateTasks)
+    → Validates tasks.yaml exists
   ↓
   Phase 4: Implement
-    → Executor.ExecutePhase(PhaseImplement, "/speckit.implement", ValidateTasksComplete)
+    → Executor.ExecutePhase(PhaseImplement, "/autospec.implement", ValidateTasksComplete)
     → Validates all tasks are checked
 ```
 

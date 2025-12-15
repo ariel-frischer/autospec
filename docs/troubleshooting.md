@@ -25,7 +25,7 @@ Error: command timed out after 5m0s: claude /autospec.workflow ...
    export AUTOSPEC_TIMEOUT=1800  # 30 minutes
 
    # Or in config file
-   echo '{"timeout": 1800}' > .autospec/config.json
+   echo 'timeout: 1800' > .autospec/config.yml
    ```
 
 2. **Check feature complexity**:
@@ -55,8 +55,8 @@ autospec config show | grep timeout
 echo $AUTOSPEC_TIMEOUT
 
 # 3. Check config files
-cat .autospec/config.json | jq .timeout
-cat ~/.autospec/config.json | jq .timeout
+cat .autospec/config.yml
+cat ~/.config/autospec/config.yml
 
 # 4. Verify autospec version
 autospec version
@@ -64,7 +64,7 @@ autospec version
 
 **Solutions**:
 - Ensure environment variable is `AUTOSPEC_TIMEOUT` (not `autospec_timeout`)
-- Check config JSON is valid: `cat .autospec/config.json | jq .`
+- Check config YAML is valid: `cat .autospec/config.yml`
 - Reload shell: `exec $SHELL` or restart terminal
 - Reinstall if necessary: `make install`
 
@@ -101,24 +101,24 @@ run_with_timeout 1800 autospec implement
 
 #### Config file not loading
 
-**Problem**: Changes to config.json have no effect.
+**Problem**: Changes to config.yml have no effect.
 
 **Diagnostics**:
 ```bash
 # 1. Check config syntax
-cat .autospec/config.json | jq .
+cat .autospec/config.yml
 
 # 2. Verify config location
-ls -la .autospec/config.json
-ls -la ~/.autospec/config.json
+ls -la .autospec/config.yml
+ls -la ~/.config/autospec/config.yml
 
 # 3. Test config loading
 autospec config show
 ```
 
 **Solutions**:
-- Ensure JSON is valid (use `jq` to validate)
-- Check file permissions: `chmod 644 .autospec/config.json`
+- Ensure YAML is valid syntax
+- Check file permissions: `chmod 644 .autospec/config.yml`
 - Verify config is in correct location
 - Remember: environment variables override config files
 
@@ -191,9 +191,9 @@ Exit code: 2
 **Problem**: Generated files don't pass validation.
 
 **Common Causes**:
-- spec.md missing or incomplete
-- plan.md missing required sections
-- tasks.md improperly formatted
+- spec.yaml missing or incomplete
+- plan.yaml missing required sections
+- tasks.yaml improperly formatted
 
 **Solutions**:
 ```bash
@@ -381,8 +381,8 @@ autospec config show | grep max_retries
 cat ~/.autospec/state/retry.json | jq .
 
 # Config files
-cat .autospec/config.json | jq .
-cat ~/.autospec/config.json | jq .
+cat .autospec/config.yml
+cat ~/.config/autospec/config.yml
 ```
 
 ### Test Individual Components
@@ -482,8 +482,8 @@ AUTOSPEC_TIMEOUT=0 autospec <command>  # Disable timeout
 ### Configuration Locations
 
 ```
-~/.autospec/config.json     # Global config
-.autospec/config.json       # Local config (project)
-~/.autospec/state/          # State files
-AUTOSPEC_*                  # Environment variables
+~/.config/autospec/config.yml  # Global config (XDG compliant)
+.autospec/config.yml           # Local config (project)
+~/.autospec/state/             # State files
+AUTOSPEC_*                     # Environment variables
 ```

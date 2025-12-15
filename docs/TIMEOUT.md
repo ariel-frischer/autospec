@@ -23,20 +23,16 @@ autospec implement
 **Local config** (project-specific):
 ```bash
 mkdir -p .autospec
-cat > .autospec/config.json << EOF
-{
-  "timeout": 600
-}
+cat > .autospec/config.yml << EOF
+timeout: 600
 EOF
 ```
 
 **Global config** (all projects):
 ```bash
-mkdir -p ~/.autospec
-cat > ~/.autospec/config.json << EOF
-{
-  "timeout": 1800
-}
+mkdir -p ~/.config/autospec
+cat > ~/.config/autospec/config.yml << EOF
+timeout: 1800
 EOF
 ```
 
@@ -60,18 +56,18 @@ EOF
 Configuration sources are applied in this order (highest to lowest priority):
 
 1. **Environment Variable**: `AUTOSPEC_TIMEOUT`
-2. **Local Config**: `.autospec/config.json` (current directory)
-3. **Global Config**: `~/.autospec/config.json` (home directory)
+2. **Local Config**: `.autospec/config.yml` (current directory)
+3. **Global Config**: `~/.config/autospec/config.yml` (home directory)
 4. **Default**: `0` (no timeout)
 
 ### Example: Multiple Configuration Sources
 
 ```bash
 # Global config: 30 minutes
-echo '{"timeout": 1800}' > ~/.autospec/config.json
+echo 'timeout: 1800' > ~/.config/autospec/config.yml
 
 # Local config: 10 minutes (overrides global)
-echo '{"timeout": 600}' > .autospec/config.json
+echo 'timeout: 600' > .autospec/config.yml
 
 # Environment variable: 5 minutes (overrides all)
 export AUTOSPEC_TIMEOUT=300
@@ -193,10 +189,10 @@ autospec config show
 echo $AUTOSPEC_TIMEOUT
 
 # Check local config
-cat .autospec/config.json | jq .timeout
+cat .autospec/config.yml
 
 # Check global config
-cat ~/.autospec/config.json | jq .timeout
+cat ~/.config/autospec/config.yml
 ```
 
 ### Test Timeout Behavior
@@ -266,7 +262,7 @@ This project's workflows typically complete in:
 **Recommended timeout**: 1800 seconds (30 minutes)
 
 ```bash
-echo '{"timeout": 1800}' > .autospec/config.json
+echo 'timeout: 1800' > .autospec/config.yml
 ```
 ```
 
@@ -352,7 +348,7 @@ autospec version
 
 **Solutions**:
 - Ensure `AUTOSPEC_TIMEOUT` environment variable is set correctly (all caps)
-- Check that config file JSON is valid
+- Check that config file YAML is valid
 - Reload shell session or restart terminal
 
 ### Issue: Want no timeout for development
@@ -366,7 +362,7 @@ export AUTOSPEC_TIMEOUT=0
 unset AUTOSPEC_TIMEOUT
 
 # Method 3: Update config
-echo '{"timeout": 0}' > .autospec/config.json
+echo 'timeout: 0' > .autospec/config.yml
 ```
 
 ## Advanced Configuration
