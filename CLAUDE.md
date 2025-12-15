@@ -460,7 +460,7 @@ When a command times out, the CLI:
 
 Example:
 ```bash
-./autospec workflow "feature" && echo "Success" || echo "Failed with code $?"
+autospec workflow "feature" && echo "Success" || echo "Failed with code $?"
 # If timeout occurs:
 # Error: command timed out after 5m0s: claude /speckit.workflow ... (hint: increase timeout in config)
 # To increase the timeout, set AUTOSPEC_TIMEOUT environment variable or update config.json:
