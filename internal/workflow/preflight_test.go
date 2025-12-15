@@ -20,10 +20,10 @@ func TestRunPreflightChecks(t *testing.T) {
 			setupFunc: func() func() {
 				// Create temporary directories
 				os.MkdirAll(".claude/commands", 0755)
-				os.MkdirAll(".specify", 0755)
+				os.MkdirAll(".autospec", 0755)
 				return func() {
 					os.RemoveAll(".claude")
-					os.RemoveAll(".specify")
+					os.RemoveAll(".autospec")
 				}
 			},
 			wantPassed:  true,
@@ -32,15 +32,15 @@ func TestRunPreflightChecks(t *testing.T) {
 		},
 		"missing .claude/commands directory": {
 			setupFunc: func() func() {
-				os.MkdirAll(".specify", 0755)
+				os.MkdirAll(".autospec", 0755)
 				return func() {
-					os.RemoveAll(".specify")
+					os.RemoveAll(".autospec")
 				}
 			},
 			wantPassed:  false,
 			wantMissing: 1,
 		},
-		"missing .specify directory": {
+		"missing .autospec directory": {
 			setupFunc: func() func() {
 				os.MkdirAll(".claude/commands", 0755)
 				return func() {
@@ -118,14 +118,14 @@ func TestGenerateMissingDirsWarning(t *testing.T) {
 		wantContains []string
 	}{
 		"with git root": {
-			missingDirs: []string{".claude/commands/", ".specify/"},
+			missingDirs: []string{".claude/commands/", ".autospec/"},
 			gitRoot:     "/home/user/project",
 			wantContains: []string{
 				"WARNING",
 				".claude/commands/",
-				".specify/",
+				".autospec/",
 				"/home/user/project",
-				"specify init",
+				"autospec init",
 			},
 		},
 		"without git root": {
@@ -134,7 +134,7 @@ func TestGenerateMissingDirsWarning(t *testing.T) {
 			wantContains: []string{
 				"WARNING",
 				".claude/commands/",
-				"specify init",
+				"autospec init",
 			},
 		},
 	}
@@ -223,10 +223,10 @@ func TestCheckDependencies(t *testing.T) {
 func TestCheckProjectStructure(t *testing.T) {
 	// Create temporary directories
 	os.MkdirAll(".claude/commands", 0755)
-	os.MkdirAll(".specify", 0755)
+	os.MkdirAll(".autospec", 0755)
 	defer func() {
 		os.RemoveAll(".claude")
-		os.RemoveAll(".specify")
+		os.RemoveAll(".autospec")
 	}()
 
 	err := CheckProjectStructure()
@@ -244,10 +244,10 @@ func TestCheckProjectStructure(t *testing.T) {
 func BenchmarkRunPreflightChecks(b *testing.B) {
 	// Setup test directories
 	os.MkdirAll(".claude/commands", 0755)
-	os.MkdirAll(".specify", 0755)
+	os.MkdirAll(".autospec", 0755)
 	defer func() {
 		os.RemoveAll(".claude")
-		os.RemoveAll(".specify")
+		os.RemoveAll(".autospec")
 	}()
 
 	// Reset timer after setup

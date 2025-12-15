@@ -62,14 +62,11 @@ autospec config show
 
 ### Configuration
 
-**Local config** (`.autospec/config.json`):
-```json
-{
-  "timeout": 600,
-  "max_retries": 3,
-  "claude_cmd": "claude",
-  "specify_cmd": "specify"
-}
+**Local config** (`.autospec/config.yml`):
+```yaml
+timeout: 600
+max_retries: 3
+claude_cmd: claude
 ```
 
 **Environment variables**:

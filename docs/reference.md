@@ -231,21 +231,6 @@ Configuration sources (priority order): Environment variables > Local config > G
 
 **Environment**: `AUTOSPEC_CLAUDE_CMD`
 
-### specify_cmd
-
-**Type**: string
-**Default**: `"specify"`
-**Description**: Command for SpecKit CLI (legacy compatibility)
-
-**Example**:
-```json
-{
-  "specify_cmd": "specify"
-}
-```
-
-**Environment**: `AUTOSPEC_SPECIFY_CMD`
-
 ### max_retries
 
 **Type**: integer

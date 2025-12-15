@@ -222,12 +222,7 @@ Exit code: 4
 # Run doctor to diagnose
 autospec doctor
 
-# Install missing dependencies
-# For claude CLI:
-npm install -g @anthropic-ai/claude-cli
-
-# For specify CLI:
-npm install -g @specify/cli
+# Install Claude CLI - see https://claude.ai/download
 ```
 
 ### Performance Issues
@@ -397,11 +392,11 @@ cat ~/.autospec/config.json | jq .
 claude --version
 echo "test" | claude
 
-# Test specify CLI
-specify --version
-
 # Test config loading
 autospec config show
+
+# Verify commands are installed
+ls .claude/commands/autospec.*.md
 ```
 
 ### Capture Full Output

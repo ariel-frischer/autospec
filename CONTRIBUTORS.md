@@ -40,26 +40,20 @@ The tool is built as a **cross-platform Go binary** with the following component
 - Pre-flight dependency checking
 
 #### 3. Validation System (`internal/validation/`)
-- File existence validation (spec.md, plan.md, tasks.md)
+- File existence validation (spec.yaml, plan.yaml, tasks.yaml)
 - Task completion parsing and checking
 - Continuation prompt generation
 - Performance-optimized (<10ms per validation)
 
 #### 4. Configuration (`internal/config/`)
 - Hierarchical config loading (env vars → local config → global config → defaults)
-- Supports `.autospec/config.json` (project) and `~/.autospec/config.json` (global)
+- Supports `.autospec/config.yml` (project) and `~/.config/autospec/config.yml` (global)
 - Configurable: Claude command, retry limits, specs directory, timeout
 
 #### 5. Retry Management (`internal/retry/`)
 - Persistent retry state tracking in `~/.autospec/state/retry.json`
 - Atomic file writes for concurrency safety
 - Per-spec:phase retry counting
-
-#### 6. Hook Scripts (`scripts/hooks/`)
-- Integrates with Claude Code's Stop hooks
-- Blocks premature stopping until artifacts complete
-- Manages retry state
-- Provides helpful error messages
 
 ### Key Packages
 
@@ -80,29 +74,30 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 
 ### Config File Format
 
-Autospec uses JSON config files with hierarchical loading:
+Autospec uses YAML config files with hierarchical loading:
 
 **Priority (highest to lowest):**
 1. Environment variables (`AUTOSPEC_*`)
-2. Local config: `.autospec/config.json` (project-specific)
-3. Global config: `~/.autospec/config.json` (user-wide)
+2. Local config: `.autospec/config.yml` (project-specific)
+3. Global config: `~/.config/autospec/config.yml` (user-wide, XDG compliant)
 4. Built-in defaults
 
 **Example config:**
-```json
-{
-  "claude_cmd": "claude",
-  "claude_args": ["-p", "--dangerously-skip-permissions", "--verbose", "--output-format", "stream-json"],
-  "custom_claude_cmd": "",
-  "specify_cmd": "specify",
-  "max_retries": 3,
-  "specs_dir": "./specs",
-  "state_dir": "~/.autospec/state",
-  "skip_preflight": false
-}
+```yaml
+claude_cmd: claude
+claude_args:
+  - -p
+  - --dangerously-skip-permissions
+  - --verbose
+  - --output-format
+  - stream-json
+custom_claude_cmd: ""
+max_retries: 3
+specs_dir: ./specs
+state_dir: ~/.autospec/state
+skip_preflight: false
+timeout: 300
 ```
-
-**Note:** The `timeout` option is defined but not currently implemented. It's reserved for future use to set command execution timeouts.
 
 ### Configuration Options
 
@@ -111,12 +106,11 @@ Autospec uses JSON config files with hierarchical loading:
 | `claude_cmd` | string | `"claude"` | Claude CLI command |
 | `claude_args` | array | `[]` | Arguments passed to Claude CLI |
 | `custom_claude_cmd` | string | `""` | Custom command with `{{PROMPT}}` placeholder |
-| `specify_cmd` | string | `"specify"` | SpecKit CLI command |
 | `max_retries` | int | `3` | Maximum retry attempts (1-10) |
 | `specs_dir` | string | `"./specs"` | Directory for feature specs |
 | `state_dir` | string | `"~/.autospec/state"` | Retry state storage |
 | `skip_preflight` | bool | `false` | Skip dependency checks |
-| `timeout` | int | `300` | Command timeout in seconds (reserved, not yet implemented) |
+| `timeout` | int | `300` | Command timeout in seconds (0 = no timeout) |
 
 ### Environment Variables
 
@@ -220,43 +214,6 @@ All commands follow consistent exit code conventions:
 
 This supports programmatic composition and CI/CD integration.
 
-## Hook Scripts
-
-Hook scripts integrate with Claude Code's hook system.
-
-### Available Hooks
-
-Located in `scripts/hooks/`:
-
-- `stop-speckit-specify.sh`: Ensures `spec.md` exists before stopping
-- `stop-speckit-plan.sh`: Ensures `plan.md` exists
-- `stop-speckit-tasks.sh`: Ensures `tasks.md` exists
-- `stop-speckit-implement.sh`: Ensures all implementation phases complete
-- `stop-speckit-clarify.sh`: Ensures clarifications are captured
-
-### Using Hooks
-
-1. Copy settings template:
-```bash
-cp .claude/spec-workflow-settings.json .claude/my-workflow-settings.json
-```
-
-2. Edit to add desired hook:
-```json
-{
-  "hooks": {
-    "stop": "/full/path/to/scripts/hooks/stop-speckit-specify.sh"
-  }
-}
-```
-
-3. Launch Claude with isolated settings:
-```bash
-claude --settings .claude/my-workflow-settings.json
-```
-
-Each hook automatically retries up to 3 times before blocking.
-
 ## Development Workflow
 
 ### Adding a New CLI Command
@@ -313,9 +270,8 @@ make lint-go
 go fmt ./...
 go vet ./...
 
-# Bash script linting (for hooks)
+# Bash script linting
 make lint-bash
-shellcheck scripts/hooks/*.sh
 ```
 
 ## Building
@@ -341,18 +297,17 @@ make dev
 3. **Add tests for new features** (table-driven tests preferred)
 4. **Add benchmarks** for performance-critical code
 5. **Update documentation**: README.md, CLAUDE.md, and this file
-6. **Follow constitution principles** in `.specify/memory/constitution.md`
+6. **Follow constitution principles** in `.autospec/memory/constitution.md`
 7. **Commit message format**: Use conventional commits style
 
 ### Constitution Principles
 
-Development follows `.specify/memory/constitution.md`:
+Development follows `.autospec/memory/constitution.md`:
 
 1. **Validation-First**: All workflow transitions validated before proceeding
-2. **Hook-Based Enforcement**: Quality gates via Claude Code hooks
-3. **Test-First Development** (NON-NEGOTIABLE): Tests written before implementation
-4. **Performance Standards**: Sub-second validation (<1s); validation functions <10ms
-5. **Idempotency & Retry Logic**: All operations idempotent; configurable retry limits
+2. **Test-First Development** (NON-NEGOTIABLE): Tests written before implementation
+3. **Performance Standards**: Sub-second validation (<1s); validation functions <10ms
+4. **Idempotency & Retry Logic**: All operations idempotent; configurable retry limits
 
 ## Performance Optimization
 

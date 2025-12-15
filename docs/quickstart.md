@@ -71,16 +71,13 @@ Create the default configuration file:
 autospec init
 ```
 
-This creates `~/.autospec/config.json` with default settings:
-```json
-{
-  "claude_cmd": "claude",
-  "specify_cmd": "specify",
-  "max_retries": 3,
-  "specs_dir": "./specs",
-  "state_dir": "~/.autospec/state",
-  "timeout": 0
-}
+This creates `~/.config/autospec/config.yml` with default settings:
+```yaml
+claude_cmd: claude
+max_retries: 3
+specs_dir: ./specs
+state_dir: ~/.autospec/state
+timeout: 0
 ```
 
 You can customize these settings later. See [Configuration Basics](#configuration-basics) for details.
@@ -117,12 +114,12 @@ autospec specify "Add dark mode toggle to user settings page"
 **What happens:**
 - Claude analyzes your feature description
 - Generates a detailed specification with requirements, acceptance criteria, and success metrics
-- Creates `specs/001-dark-mode-toggle/spec.md`
+- Creates `specs/001-dark-mode-toggle/spec.yaml`
 
 Expected output:
 ```
-→ Executing: claude -p "/speckit.specify \"Add dark mode toggle to user settings page\""
-✓ Specification created: specs/001-dark-mode-toggle/spec.md
+→ Executing: claude -p "/autospec.specify \"Add dark mode toggle to user settings page\""
+✓ Specification created: specs/001-dark-mode-toggle/spec.yaml
 ✓ Validation passed
 ```
 
@@ -140,13 +137,13 @@ autospec plan
 - Auto-detects current feature from git branch or most recent spec directory
 - Claude analyzes the specification
 - Generates technical plan with architecture, file structure, and design decisions
-- Creates `specs/001-dark-mode-toggle/plan.md`
+- Creates `specs/001-dark-mode-toggle/plan.yaml`
 
 Expected output:
 ```
 → Detected spec: 001-dark-mode-toggle
-→ Executing: claude -p "/speckit.plan"
-✓ Plan created: specs/001-dark-mode-toggle/plan.md
+→ Executing: claude -p "/autospec.plan"
+✓ Plan created: specs/001-dark-mode-toggle/plan.yaml
 ✓ Validation passed
 ```
 
@@ -163,13 +160,13 @@ autospec tasks
 **What happens:**
 - Claude analyzes the technical plan
 - Generates ordered task list with dependencies
-- Creates `specs/001-dark-mode-toggle/tasks.md`
+- Creates `specs/001-dark-mode-toggle/tasks.yaml`
 
 Expected output:
 ```
 → Detected spec: 001-dark-mode-toggle
-→ Executing: claude -p "/speckit.tasks"
-✓ Tasks created: specs/001-dark-mode-toggle/tasks.md
+→ Executing: claude -p "/autospec.tasks"
+✓ Tasks created: specs/001-dark-mode-toggle/tasks.yaml
 ✓ Validation passed
 ```
 
@@ -185,13 +182,13 @@ ls specs/001-dark-mode-toggle/
 
 Expected output:
 ```
-spec.md  plan.md  tasks.md
+spec.yaml  plan.yaml  tasks.yaml
 ```
 
 Open and review each file to understand the workflow:
-- **spec.md**: High-level requirements and acceptance criteria
-- **plan.md**: Technical architecture and design decisions
-- **tasks.md**: Ordered implementation tasks
+- **spec.yaml**: High-level requirements and acceptance criteria
+- **plan.yaml**: Technical architecture and design decisions
+- **tasks.yaml**: Ordered implementation tasks
 
 **Success!** You've completed your first workflow. You now have a fully-specified feature ready for implementation.
 
@@ -233,21 +230,21 @@ graph LR
 
 **1. Specify**: Transform natural language feature description into a structured specification
 - Input: Feature description (e.g., "Add dark mode toggle")
-- Output: `spec.md` with requirements, acceptance criteria, success metrics
+- Output: `spec.yaml` with requirements, acceptance criteria, success metrics
 - Duration: 2-3 minutes
 
 **2. Plan**: Generate technical implementation plan from specification
-- Input: `spec.md`
-- Output: `plan.md` with architecture, file structure, design decisions
+- Input: `spec.yaml`
+- Output: `plan.yaml` with architecture, file structure, design decisions
 - Duration: 3-4 minutes
 
 **3. Tasks**: Break down plan into ordered, actionable tasks
-- Input: `plan.md`
-- Output: `tasks.md` with task list, dependencies, execution order
+- Input: `plan.yaml`
+- Output: `tasks.yaml` with task list, dependencies, execution order
 - Duration: 2-3 minutes
 
 **4. Implement**: Execute tasks with Claude's assistance
-- Input: `tasks.md`
+- Input: `tasks.yaml`
 - Output: Completed implementation with validated progress
 - Duration: Varies by feature complexity
 
@@ -255,36 +252,34 @@ For detailed architecture, see [ARCHITECTURE.md](./architecture.md).
 
 ## Configuration Basics
 
-Essential configuration options (stored in `~/.autospec/config.json` or `.autospec/config.json`):
+Essential configuration options (stored in `~/.config/autospec/config.yml` or `.autospec/config.yml`):
 
-```json
-{
-  // Claude CLI command (default: "claude")
-  // Customize if you have Claude CLI in a non-standard location
-  "claude_cmd": "claude",
+```yaml
+# Claude CLI command (default: "claude")
+# Customize if you have Claude CLI in a non-standard location
+claude_cmd: claude
 
-  // Maximum retry attempts (default: 3, range: 1-10)
-  // Controls how many times to retry on validation failure
-  "max_retries": 3,
+# Maximum retry attempts (default: 3, range: 1-10)
+# Controls how many times to retry on validation failure
+max_retries: 3
 
-  // Specs directory (default: "./specs")
-  // Where feature specifications are stored
-  "specs_dir": "./specs",
+# Specs directory (default: "./specs")
+# Where feature specifications are stored
+specs_dir: ./specs
 
-  // Command timeout in seconds (default: 0 = no timeout)
-  // Set to limit long-running operations (range: 0 or 1-604800)
-  "timeout": 0,
+# Command timeout in seconds (default: 0 = no timeout)
+# Set to limit long-running operations (range: 0 or 1-604800)
+timeout: 0
 
-  // Skip preflight dependency checks (default: false)
-  // Set to true to bypass health checks
-  "skip_preflight": false
-}
+# Skip preflight dependency checks (default: false)
+# Set to true to bypass health checks
+skip_preflight: false
 ```
 
 **Configuration Priority** (highest to lowest):
 1. Environment variables (`AUTOSPEC_*`)
-2. Local config (`.autospec/config.json` in current directory)
-3. Global config (`~/.autospec/config.json` in home directory)
+2. Local config (`.autospec/config.yml` in current directory)
+3. Global config (`~/.config/autospec/config.yml` in home directory)
 4. Default values
 
 For complete configuration reference, see [reference.md](./reference.md#configuration-options).
@@ -303,7 +298,7 @@ Quick solutions for common first-time issues:
 
 **Solution**: Run `sudo make install` to copy binary to `/usr/local/bin`, or add the binary directory to your PATH
 
-### "Validation failed: spec.md not found"
+### "Validation failed: spec file not found"
 **Problem**: Workflow phase failed to create expected output file
 
 **Solution**: Check error messages from previous command. If retry limit exhausted, reset retry state: `rm ~/.autospec/state/retry.json`

@@ -123,7 +123,7 @@ func TestInvalidFlagCombination(t *testing.T) {
 }
 
 func TestTimeoutError(t *testing.T) {
-	err := TimeoutError("5m", "claude /speckit.plan")
+	err := TimeoutError("5m", "claude /autospec.plan")
 
 	if err.Category != Runtime {
 		t.Errorf("Expected Runtime category, got %v", err.Category)

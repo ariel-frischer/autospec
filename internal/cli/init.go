@@ -160,6 +160,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Step 4: Handle constitution
 	constitutionExists := handleConstitution(out)
 
+	// Step 5: Check .gitignore for .autospec
+	checkGitignore(out)
+
 	printSummary(out, constitutionExists)
 	return nil
 }
@@ -303,6 +306,33 @@ func copyConstitution(src, dst string) error {
 	}
 
 	return nil
+}
+
+// checkGitignore checks if .gitignore exists and contains .autospec entry.
+// If not, prints a recommendation to add it.
+func checkGitignore(out io.Writer) {
+	gitignorePath := ".gitignore"
+
+	data, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		// .gitignore doesn't exist - no recommendation needed
+		return
+	}
+
+	content := string(data)
+	// Check for .autospec or .autospec/ in the file
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == ".autospec" || line == ".autospec/" || strings.HasPrefix(line, ".autospec/") {
+			// Already has .autospec entry
+			return
+		}
+	}
+
+	// .gitignore exists but doesn't have .autospec
+	fmt.Fprintf(out, "\n💡 Recommendation: Consider adding .autospec/ to your .gitignore\n")
+	fmt.Fprintf(out, "   This prevents accidental commit of local configuration and state files.\n")
 }
 
 func printSummary(out io.Writer, constitutionExists bool) {

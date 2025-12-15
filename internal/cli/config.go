@@ -109,7 +109,6 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		"claude_args":        cfg.ClaudeArgs,
 		"use_api_key":        cfg.UseAPIKey,
 		"custom_claude_cmd":  cfg.CustomClaudeCmd,
-		"specify_cmd":        cfg.SpecifyCmd,
 		"max_retries":        cfg.MaxRetries,
 		"specs_dir":          cfg.SpecsDir,
 		"state_dir":          cfg.StateDir,

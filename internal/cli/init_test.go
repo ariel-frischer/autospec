@@ -325,3 +325,83 @@ func TestHandleConstitution(t *testing.T) {
 		assert.Contains(t, buf.String(), "not found")
 	})
 }
+
+func TestCheckGitignore(t *testing.T) {
+	t.Run("no gitignore file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		origWd, _ := os.Getwd()
+		defer os.Chdir(origWd)
+		os.Chdir(tmpDir)
+
+		var buf bytes.Buffer
+		checkGitignore(&buf)
+
+		// Should not print anything if .gitignore doesn't exist
+		assert.Empty(t, buf.String())
+	})
+
+	t.Run("gitignore without autospec", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		origWd, _ := os.Getwd()
+		defer os.Chdir(origWd)
+		os.Chdir(tmpDir)
+
+		// Create .gitignore without .autospec
+		require.NoError(t, os.WriteFile(".gitignore", []byte("node_modules/\n*.log\n"), 0644))
+
+		var buf bytes.Buffer
+		checkGitignore(&buf)
+
+		// Should print recommendation
+		assert.Contains(t, buf.String(), "Recommendation")
+		assert.Contains(t, buf.String(), ".autospec/")
+	})
+
+	t.Run("gitignore with .autospec", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		origWd, _ := os.Getwd()
+		defer os.Chdir(origWd)
+		os.Chdir(tmpDir)
+
+		// Create .gitignore with .autospec
+		require.NoError(t, os.WriteFile(".gitignore", []byte("node_modules/\n.autospec/\n*.log\n"), 0644))
+
+		var buf bytes.Buffer
+		checkGitignore(&buf)
+
+		// Should not print anything
+		assert.Empty(t, buf.String())
+	})
+
+	t.Run("gitignore with .autospec no trailing slash", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		origWd, _ := os.Getwd()
+		defer os.Chdir(origWd)
+		os.Chdir(tmpDir)
+
+		// Create .gitignore with .autospec (no trailing slash)
+		require.NoError(t, os.WriteFile(".gitignore", []byte(".autospec\n"), 0644))
+
+		var buf bytes.Buffer
+		checkGitignore(&buf)
+
+		// Should not print anything
+		assert.Empty(t, buf.String())
+	})
+
+	t.Run("gitignore with .autospec subdirectory pattern", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		origWd, _ := os.Getwd()
+		defer os.Chdir(origWd)
+		os.Chdir(tmpDir)
+
+		// Create .gitignore with .autospec subdirectory pattern
+		require.NoError(t, os.WriteFile(".gitignore", []byte(".autospec/state/\n"), 0644))
+
+		var buf bytes.Buffer
+		checkGitignore(&buf)
+
+		// Should not print anything - subdirectory pattern counts
+		assert.Empty(t, buf.String())
+	})
+}
