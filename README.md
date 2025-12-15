@@ -304,6 +304,9 @@ autospec config show
 | Retry limit hit | Increase: `autospec run -a "feature" --max-retries 5` |
 | Command timeout | Set `AUTOSPEC_TIMEOUT=600` or update config |
 | Commands not found | Run `autospec init` to install commands and scripts |
+| Claude permission denied | Allow commands in `~/.claude/settings.json` (see [troubleshooting](docs/troubleshooting.md#claude-permission-denied--command-blocked)) |
+
+> ⚠️ **Note:** You can add `--dangerously-skip-permissions` to `claude_args` in config, but sandbox recommended. Bypasses ALL safety checks—never use with credentials or production data.
 
 ## 📝 Issue Templates
 

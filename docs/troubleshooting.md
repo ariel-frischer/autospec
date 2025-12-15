@@ -229,7 +229,7 @@ autospec doctor
 
 **Problem**: Claude blocks commands (can't respond to approval prompts).
 
-**Solutions**: Allow commands in `~/.claude/settings.json`: `{"permissions":{"allow":["Bash(mkdir:*)", "Edit", "Write", "Read"]}}`. For sandboxed CI only: add `--dangerously-skip-permissions` to `claude_args`. **WARNING**: bypasses ALL safety checks—never use with API keys/credentials/production data.
+**Solutions**: Allow commands in `~/.claude/settings.json`: `{"permissions":{"allow":["Bash(mkdir:*)", "Edit", "Write", "Read"]}}`. Or add `--dangerously-skip-permissions` to `claude_args` (sandbox recommended). **WARNING**: bypasses ALL safety checks—never use with API keys/credentials/production data.
 
 ### Performance Issues
 
