@@ -6,7 +6,6 @@ func GetDefaults() map[string]interface{} {
 		"claude_cmd": "claude",
 		"claude_args": []string{
 			"-p",
-			"--dangerously-skip-permissions",
 			"--verbose",
 			"--output-format",
 			"stream-json",

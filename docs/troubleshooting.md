@@ -225,6 +225,12 @@ autospec doctor
 # Install Claude CLI - see https://claude.ai/download
 ```
 
+#### Claude permission denied / command blocked
+
+**Problem**: Claude blocks commands (can't respond to approval prompts).
+
+**Solutions**: Allow commands in `~/.claude/settings.json`: `{"permissions":{"allow":["Bash(mkdir:*)", "Edit", "Write", "Read"]}}`. For sandboxed CI only: add `--dangerously-skip-permissions` to `claude_args`. **WARNING**: bypasses ALL safety checks—never use with API keys/credentials/production data.
+
 ### Performance Issues
 
 #### Commands running very slowly
