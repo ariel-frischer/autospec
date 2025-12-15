@@ -1,0 +1,205 @@
+feature:
+  branch: "013-uninstall-command"
+  created: "2025-12-15"
+  status: "Draft"
+  input: "Create a new uninstall command with y/N prompt - should be a full uninstall (not project uninstall) - removes user config stuff and binary. Review install.sh first."
+
+user_stories:
+  - id: "US-001"
+    title: "Full autospec uninstallation"
+    priority: "P1"
+    as_a: "user who installed autospec"
+    i_want: "to completely remove autospec from my system"
+    so_that: "I can cleanly uninstall the tool and free up disk space without leaving orphaned files"
+    why_this_priority: "Core functionality - the primary purpose of the uninstall command"
+    independent_test: "Run uninstall on a system with autospec installed and verify all files are removed"
+    acceptance_scenarios:
+      - given: "autospec is installed on my system"
+        when: "I run 'autospec uninstall'"
+        then: "I am prompted with a confirmation message defaulting to No (y/N)"
+      - given: "I confirm the uninstall prompt with 'y'"
+        when: "the uninstall proceeds"
+        then: "the autospec binary is removed from the installation directory"
+      - given: "I confirm the uninstall prompt with 'y'"
+        when: "the uninstall proceeds"
+        then: "user configuration directory (~/.config/autospec/) is removed"
+      - given: "I confirm the uninstall prompt with 'y'"
+        when: "the uninstall proceeds"
+        then: "state directory (~/.autospec/) is removed"
+      - given: "I am prompted for confirmation"
+        when: "I press Enter or type 'n' or 'N'"
+        then: "the uninstall is cancelled and no files are removed"
+
+  - id: "US-002"
+    title: "Non-interactive uninstall"
+    priority: "P2"
+    as_a: "user running automated scripts"
+    i_want: "to uninstall autospec without interactive prompts"
+    so_that: "I can include uninstallation in automated workflows"
+    why_this_priority: "Important for CI/CD and scripting scenarios but not the primary use case"
+    independent_test: "Run uninstall with --yes flag and verify it completes without prompting"
+    acceptance_scenarios:
+      - given: "autospec is installed"
+        when: "I run 'autospec uninstall --yes'"
+        then: "uninstallation proceeds without prompting for confirmation"
+      - given: "autospec is installed"
+        when: "I run 'autospec uninstall -y'"
+        then: "uninstallation proceeds without prompting for confirmation"
+
+  - id: "US-003"
+    title: "Dry-run uninstall preview"
+    priority: "P2"
+    as_a: "cautious user"
+    i_want: "to preview what will be removed before actually uninstalling"
+    so_that: "I can verify the correct files will be deleted"
+    why_this_priority: "Safety feature that helps users understand what will happen"
+    independent_test: "Run uninstall with --dry-run and verify files are listed but not removed"
+    acceptance_scenarios:
+      - given: "autospec is installed"
+        when: "I run 'autospec uninstall --dry-run'"
+        then: "a list of files and directories that would be removed is displayed"
+      - given: "I run 'autospec uninstall --dry-run'"
+        when: "the command completes"
+        then: "no files are actually removed from the system"
+
+  - id: "US-004"
+    title: "Clear uninstall feedback"
+    priority: "P1"
+    as_a: "user uninstalling autospec"
+    i_want: "to see clear progress and results"
+    so_that: "I know what was removed and the uninstallation completed successfully"
+    why_this_priority: "User experience - essential for trust and transparency"
+    independent_test: "Run uninstall and verify output shows each removal step and final status"
+    acceptance_scenarios:
+      - given: "I confirm the uninstall"
+        when: "each item is being removed"
+        then: "I see status output for each removal target (success or failure)"
+      - given: "uninstallation completes"
+        when: "all items have been processed"
+        then: "I see a summary indicating successful completion"
+      - given: "some items fail to be removed"
+        when: "the uninstall encounters errors"
+        then: "I see clear error messages indicating what failed and why"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST implement 'autospec uninstall' command"
+      testable: true
+      acceptance_criteria: "Running 'autospec uninstall' starts the uninstall workflow"
+    - id: "FR-002"
+      description: "MUST prompt user with confirmation defaulting to No (y/N)"
+      testable: true
+      acceptance_criteria: "User sees '[y/N]' prompt and pressing Enter cancels"
+    - id: "FR-003"
+      description: "MUST remove the autospec binary from its installed location"
+      testable: true
+      acceptance_criteria: "Binary at /usr/local/bin/autospec (or AUTOSPEC_INSTALL_DIR) is deleted"
+    - id: "FR-004"
+      description: "MUST remove user configuration directory (~/.config/autospec/)"
+      testable: true
+      acceptance_criteria: "Directory ~/.config/autospec/ no longer exists after uninstall"
+    - id: "FR-005"
+      description: "MUST remove state directory (~/.autospec/)"
+      testable: true
+      acceptance_criteria: "Directory ~/.autospec/ no longer exists after uninstall"
+    - id: "FR-006"
+      description: "MUST support --yes/-y flag to skip confirmation prompt"
+      testable: true
+      acceptance_criteria: "Running with --yes flag proceeds without user input"
+    - id: "FR-007"
+      description: "MUST support --dry-run flag to preview removals without executing"
+      testable: true
+      acceptance_criteria: "Running with --dry-run shows files but removes nothing"
+    - id: "FR-008"
+      description: "MUST detect binary location automatically"
+      testable: true
+      acceptance_criteria: "Command finds the running binary's location without requiring explicit path"
+    - id: "FR-009"
+      description: "SHOULD require elevated privileges (sudo) only when necessary"
+      testable: true
+      acceptance_criteria: "If binary is in system directory, prompts for sudo; if in user directory, no sudo needed"
+    - id: "FR-010"
+      description: "MUST NOT remove project-level files (.autospec/ in projects)"
+      testable: true
+      acceptance_criteria: "Running uninstall does not touch .autospec/ directories in projects"
+  non_functional:
+    - id: "NFR-001"
+      category: "usability"
+      description: "Uninstall command should complete within 5 seconds under normal conditions"
+      measurable_target: "< 5 seconds total execution time"
+    - id: "NFR-002"
+      category: "reliability"
+      description: "Uninstall should handle missing files gracefully"
+      measurable_target: "No errors when files are already absent"
+    - id: "NFR-003"
+      category: "usability"
+      description: "Error messages should clearly indicate the issue and suggest resolution"
+      measurable_target: "All error messages include actionable guidance"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Users can fully remove autospec from their system with a single command"
+      metric: "Command removes all autospec-related files"
+      target: "100% of installation artifacts removed (binary, user config, state)"
+    - id: "SC-002"
+      description: "Users can preview what will be removed before committing"
+      metric: "Dry-run shows accurate list of files to be removed"
+      target: "Dry-run output matches actual removal targets"
+    - id: "SC-003"
+      description: "Uninstall is safe by default"
+      metric: "Default confirmation prevents accidental removal"
+      target: "Pressing Enter without input cancels the operation"
+    - id: "SC-004"
+      description: "Automated workflows can uninstall without interaction"
+      metric: "--yes flag bypasses confirmation"
+      target: "Exit code 0 with --yes flag on successful uninstall"
+
+key_entities:
+  - name: "Removal Target"
+    description: "A file or directory that should be removed during uninstall"
+    attributes:
+      - "path: absolute path to the target"
+      - "type: binary | config_dir | state_dir"
+      - "exists: whether the target currently exists"
+      - "requires_sudo: whether elevated privileges are needed"
+
+edge_cases:
+  - scenario: "Binary installed in non-standard location"
+    expected_behavior: "Detect actual binary location from running process and remove it"
+  - scenario: "User config directory doesn't exist"
+    expected_behavior: "Skip with informational message, continue to next target"
+  - scenario: "State directory doesn't exist"
+    expected_behavior: "Skip with informational message, continue to next target"
+  - scenario: "Permission denied when removing binary"
+    expected_behavior: "Prompt user to run with sudo or report specific permission error"
+  - scenario: "User cancels during confirmation"
+    expected_behavior: "Exit cleanly with message 'Uninstall cancelled' and exit code 0"
+  - scenario: "Running uninstall when autospec was installed via package manager"
+    expected_behavior: "Warn user that package manager uninstall may be more appropriate"
+
+assumptions:
+  - "Binary is installed via install.sh or 'make install', not via system package manager"
+  - "User has permission to read the directories being targeted"
+  - "Standard Unix paths apply (~/.config for XDG config, ~/.autospec for state)"
+  - "The uninstall command can determine its own binary location at runtime"
+
+constraints:
+  - "Must work on Linux and macOS"
+  - "Cannot remove files the user doesn't have permission to remove (without sudo)"
+  - "Must not delete any project-specific files (only user-level and system-level)"
+
+out_of_scope:
+  - "Windows support (consistent with install.sh which doesn't support Windows shell)"
+  - "Project-level cleanup (use 'autospec clean' for that)"
+  - "Uninstalling autospec installed via Homebrew or other package managers"
+  - "Automatic detection of package manager installations"
+  - "Rollback or undo functionality"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "dev"
+  created: "2025-12-15T22:45:00Z"
+  artifact_type: "spec"

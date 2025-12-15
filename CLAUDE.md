@@ -599,3 +599,8 @@ Fully migrated Go binary with:
 
 ## Recent Changes
 - 003-command-timeout: Added Go 1.25.1
+
+## Important Notes
+
+### Embedded Scripts
+The `.autospec/scripts/` directory is created by `autospec init`, which copies templates from `internal/cli/.autospec/scripts/`. When modifying scripts like `create-new-feature.sh`, update the source template in `internal/cli/.autospec/scripts/` so changes apply to newly initialized projects.
