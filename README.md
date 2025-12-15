@@ -17,7 +17,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), aut
 |---------|---------------|----------|
 | Output Format | Markdown | **YAML** (machine-readable) |
 | Validation | Manual review | **Automatic** with retry logic |
-| CI/CD Integration | Limited | **First-class** with exit codes |
+| Scripting Support | Basic | **Standardized** exit codes |
 | Phase Orchestration | Manual | **Automated** with dependencies |
 | Progress Tracking | None | **Built-in** status & task updates |
 | Dependencies | Requires SpecKit CLI | **Self-contained** (only needs Claude CLI) |
@@ -139,8 +139,8 @@ autospec run -a -y "Feature description"
 # 🎯 Complete workflow (all phases)
 autospec all "Add feature description"
 
-# 📋 Planning only (no implementation)
-autospec workflow "Add feature description"
+# 📋 Prepare for implementation (no implementation)
+autospec prep "Add feature description"
 
 # 🔨 Implementation only
 autospec implement

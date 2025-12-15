@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var workflowCmd = &cobra.Command{
-	Use:   "workflow <feature-description>",
-	Short: "Run complete specify → plan → tasks workflow",
-	Long: `Run the complete SpecKit workflow with automatic validation and retry.
+var prepCmd = &cobra.Command{
+	Use:   "prep <feature-description>",
+	Short: "Prepare for implementation: specify → plan → tasks",
+	Long: `Prepare for implementation by running specify, plan, and tasks phases.
 
 This command will:
 1. Run pre-flight checks (unless --skip-preflight)
@@ -24,12 +24,14 @@ This command will:
 6. Execute /autospec.tasks
 7. Validate tasks.yaml exists
 
-Each phase is validated and will retry up to max_retries times if validation fails.`,
-	Example: `  # Generate spec, plan, and tasks (no implementation)
-  autospec workflow "Add user authentication feature"
+Each phase is validated and will retry up to max_retries times if validation fails.
 
-  # Useful for review before implementation
-  autospec workflow "Refactor database layer"`,
+This is useful when you want to review the generated artifacts before implementation.`,
+	Example: `  # Prepare spec, plan, and tasks for review before implementation
+  autospec prep "Add user authentication feature"
+
+  # Prepare artifacts for review
+  autospec prep "Refactor database layer"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		featureDescription := args[0]
@@ -67,7 +69,7 @@ Each phase is validated and will retry up to max_retries times if validation fai
 		// Create workflow orchestrator
 		orchestrator := workflow.NewWorkflowOrchestrator(cfg)
 
-		// Run complete workflow
+		// Run complete workflow (specify → plan → tasks, no implementation)
 		if err := orchestrator.RunCompleteWorkflow(featureDescription); err != nil {
 			return err
 		}
@@ -77,8 +79,8 @@ Each phase is validated and will retry up to max_retries times if validation fai
 }
 
 func init() {
-	rootCmd.AddCommand(workflowCmd)
+	rootCmd.AddCommand(prepCmd)
 
 	// Command-specific flags
-	workflowCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (0 = use config)")
+	prepCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (0 = use config)")
 }

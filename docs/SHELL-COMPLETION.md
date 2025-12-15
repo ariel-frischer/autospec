@@ -4,7 +4,7 @@ autospec provides built-in shell completion support for `bash`, `zsh`, `fish`, a
 
 ## Features
 
-- **Automatic command completion**: Tab-complete all commands (`full`, `workflow`, `specify`, `plan`, `tasks`, `implement`, etc.)
+- **Automatic command completion**: Tab-complete all commands (`full`, `prep`, `specify`, `plan`, `tasks`, `implement`, etc.)
 - **Flag completion**: Complete command flags (e.g., `--max-retries`, `--debug`, `--specs-dir`)
 - **Stays in sync**: Automatically updates as commands change
 - **Multiple shells**: Works with bash, zsh, fish, and powershell
@@ -120,7 +120,7 @@ autospec <TAB>
 
 # Should show:
 # full       -- Run complete workflow: specify → plan → tasks → implement
-# workflow   -- Run workflow: specify → plan → tasks (no implementation)
+# prep       -- Prepare for implementation: specify → plan → tasks
 # specify    -- Generate feature specification
 # plan       -- Generate implementation plan
 # tasks      -- Generate task list
@@ -141,7 +141,7 @@ autospec <TAB>
 Complete flags for any command:
 
 ```bash
-autospec workflow --<TAB>
+autospec prep --<TAB>
 
 # Shows:
 # --max-retries    -- Maximum number of retry attempts

@@ -39,7 +39,7 @@ The tool automates the SpecKit methodology—a systematic approach to feature de
 ### 1. Feature Development
 Transform a feature idea into a complete specification, technical plan, and task breakdown:
 ```bash
-autospec workflow "Add user authentication with OAuth support"
+autospec prep "Add user authentication with OAuth support"
 ```
 
 ### 2. Full Implementation

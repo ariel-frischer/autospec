@@ -28,20 +28,20 @@ autospec full "Export data to CSV" --skip-preflight
 
 **Exit Codes**: 0 (success), 1 (validation failed), 2 (retries exhausted), 3 (invalid args), 4 (missing deps), 5 (timeout)
 
-### autospec workflow
+### autospec prep
 
-Execute planning workflow: specify → plan → tasks (no implementation)
+Prepare for implementation: specify → plan → tasks (no implementation)
 
-**Syntax**: `autospec workflow "<feature description>" [flags]`
+**Syntax**: `autospec prep "<feature description>" [flags]`
 
-**Description**: Creates specification and generates plan/tasks without executing implementation.
+**Description**: Creates specification and generates plan/tasks for review before implementation.
 
 **Flags**: Same as `autospec full`
 
 **Examples**:
 ```bash
-autospec workflow "Add user profile page"
-autospec workflow "Implement caching layer" --max-retries 5
+autospec prep "Add user profile page"
+autospec prep "Implement caching layer" --max-retries 5
 ```
 
 **Exit Codes**: 0 (success), 1 (validation failed), 2 (retries exhausted), 3 (invalid args), 4 (missing deps), 5 (timeout)
@@ -330,7 +330,7 @@ Standardized exit codes for programmatic composition and CI/CD integration:
 **Examples**:
 ```bash
 # Check exit code in bash
-autospec workflow "feature"
+autospec prep "feature"
 if [ $? -eq 0 ]; then
     echo "Success"
 elif [ $? -eq 2 ]; then
@@ -424,9 +424,9 @@ Use exit codes for automated workflows:
 
 ```yaml
 # GitHub Actions example
-- name: Run autospec workflow
+- name: Run autospec prep
   run: |
-    autospec workflow "feature" || exit 1
+    autospec prep "feature" || exit 1
 
 - name: Check status
   run: autospec status
@@ -444,7 +444,7 @@ AUTOSPEC_TIMEOUT=60 autospec doctor
 AUTOSPEC_TIMEOUT=3600 autospec full "complex feature"
 
 # No timeout (default)
-AUTOSPEC_TIMEOUT=0 autospec workflow "feature"
+AUTOSPEC_TIMEOUT=0 autospec prep "feature"
 ```
 
 ## Further Reading

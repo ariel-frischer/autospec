@@ -39,8 +39,8 @@ make install
 # Check dependencies
 autospec doctor
 
-# Run workflow
-autospec workflow "Add user authentication feature"
+# Prepare for implementation
+autospec prep "Add user authentication feature"
 ```
 
 ### Common Tasks

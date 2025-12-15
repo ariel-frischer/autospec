@@ -131,7 +131,7 @@ internal/
 ├── cli/                    # Cobra-based CLI commands
 │   ├── root.go            # Root command + global flags
 │   ├── full.go            # autospec full command
-│   ├── workflow.go        # autospec workflow command
+│   ├── prep.go            # autospec prep command
 │   ├── specify.go         # autospec specify command
 │   ├── plan.go            # autospec plan command
 │   ├── tasks.go           # autospec tasks command

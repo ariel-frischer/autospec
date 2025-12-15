@@ -68,8 +68,8 @@ autospec run -ns "Create constitution"                     # Constitution + spec
 # Run complete workflow: specify → plan → tasks → implement
 autospec all "Add user authentication feature"             # Shortcut for run -a
 
-# Run workflow without implementation: specify → plan → tasks
-autospec workflow "Add user authentication feature"
+# Prepare for implementation (specify → plan → tasks, no implementation)
+autospec prep "Add user authentication feature"
 
 # Run individual core phases
 autospec specify "feature description"
@@ -123,6 +123,13 @@ autospec config migrate --dry-run
 
 # Show version
 autospec version
+
+# Clean up autospec files from a project
+autospec clean --dry-run                                   # Preview files to be removed
+autospec clean                                             # Remove with confirmation
+autospec clean --yes                                       # Remove without confirmation
+autospec clean --keep-specs                                # Preserve specs/ directory
+autospec clean --keep-specs --yes                          # Remove all except specs/ without confirmation
 ```
 
 ## Architecture Overview
@@ -135,7 +142,7 @@ Cobra-based command structure providing user-facing commands:
 - **root.go**: Root command with global flags (`--config`, `--specs-dir`, `--debug`, etc.)
 - **run.go**: Flexible phase selection with core and optional phase flags
 - **all.go**: Orchestrates complete specify → plan → tasks → implement workflow
-- **workflow.go**: Orchestrates specify → plan → tasks workflow (no implementation)
+- **prep.go**: Orchestrates specify → plan → tasks workflow (no implementation)
 - **specify.go**: Creates new feature specifications with optional prompt guidance
 - **plan.go**: Executes planning phase with optional prompt guidance
 - **tasks.go**: Generates tasks with optional prompt guidance
@@ -145,6 +152,7 @@ Cobra-based command structure providing user-facing commands:
 - **checklist.go**: Generates custom checklist for feature
 - **analyze.go**: Cross-artifact consistency and quality analysis
 - **update_task.go**: Updates individual task status in tasks.yaml during implementation
+- **clean.go**: Removes autospec files from a project (.autospec/, .claude/commands/autospec*.md, specs/)
 - **doctor.go**: Health check command for dependencies
 - **status.go**: Reports current spec progress
 - **config.go**: Configuration management commands
@@ -443,9 +451,9 @@ When a command times out, the CLI:
 
 Example:
 ```bash
-autospec workflow "feature" && echo "Success" || echo "Failed with code $?"
+autospec prep "feature" && echo "Success" || echo "Failed with code $?"
 # If timeout occurs:
-# Error: command timed out after 5m0s: claude /autospec.workflow ... (hint: increase timeout in config)
+# Error: command timed out after 5m0s: claude /autospec.prep ... (hint: increase timeout in config)
 # To increase the timeout, set AUTOSPEC_TIMEOUT environment variable or update config.yml:
 #   export AUTOSPEC_TIMEOUT=600  # 10 minutes
 #   or edit .autospec/config.yml and set "timeout: 600"
@@ -527,7 +535,7 @@ This ensures consistent code style across the codebase. The command runs `go fmt
 
 ```bash
 # Enable debug logging
-autospec --debug workflow "feature"
+autospec --debug prep "feature"
 autospec -d plan
 
 # Check retry state
@@ -537,7 +545,7 @@ cat ~/.autospec/state/retry.json
 autospec config show
 
 # Verbose output
-autospec --verbose workflow "feature"
+autospec --verbose prep "feature"
 
 # Timeout-specific debugging
 echo $AUTOSPEC_TIMEOUT           # Check environment variable
@@ -548,7 +556,7 @@ cat ~/.config/autospec/config.yml  # Check global config
 AUTOSPEC_TIMEOUT=5 autospec specify "test"  # Should timeout quickly
 
 # Disable timeout temporarily
-AUTOSPEC_TIMEOUT=0 autospec workflow "feature"  # No timeout
+AUTOSPEC_TIMEOUT=0 autospec prep "feature"  # No timeout
 ```
 
 ## Project Status

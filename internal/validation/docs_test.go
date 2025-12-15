@@ -363,7 +363,7 @@ func TestMermaidDiagrams(t *testing.T) {
 func TestCommandCompleteness(t *testing.T) {
 	requiredCommands := []string{
 		"autospec full",
-		"autospec workflow",
+		"autospec prep",
 		"autospec specify",
 		"autospec plan",
 		"autospec tasks",

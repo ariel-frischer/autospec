@@ -13,7 +13,7 @@ The autospec CLI supports configurable timeouts for Claude command execution to 
 export AUTOSPEC_TIMEOUT=600
 
 # Run commands with timeout
-autospec workflow "Add user authentication"
+autospec prep "Add user authentication"
 autospec plan
 autospec implement
 ```
@@ -82,10 +82,10 @@ export AUTOSPEC_TIMEOUT=300
 
 ```bash
 # Default: no timeout
-autospec workflow "feature"
+autospec prep "feature"
 
 # With 5-minute timeout
-AUTOSPEC_TIMEOUT=300 autospec workflow "feature"
+AUTOSPEC_TIMEOUT=300 autospec prep "feature"
 
 # With 30-minute timeout
 AUTOSPEC_TIMEOUT=1800 autospec implement
@@ -114,7 +114,7 @@ set -e
 # Prevent indefinite hangs in CI
 export AUTOSPEC_TIMEOUT=600  # 10 minutes max
 
-autospec workflow "feature description"
+autospec prep "feature description"
 exit_code=$?
 
 if [ $exit_code -eq 5 ]; then
@@ -136,7 +136,7 @@ timeout=300
 for attempt in 1 2 3; do
     echo "Attempt $attempt with ${timeout}s timeout"
 
-    AUTOSPEC_TIMEOUT=$timeout autospec workflow "complex feature"
+    AUTOSPEC_TIMEOUT=$timeout autospec prep "complex feature"
     exit_code=$?
 
     if [ $exit_code -eq 5 ]; then
@@ -210,11 +210,11 @@ echo "Exit code: $?"  # Should be 5
 
 ```bash
 # Disable timeout for debugging
-AUTOSPEC_TIMEOUT=0 autospec workflow "feature"
+AUTOSPEC_TIMEOUT=0 autospec prep "feature"
 
 # Or unset the environment variable
 unset AUTOSPEC_TIMEOUT
-autospec workflow "feature"
+autospec prep "feature"
 ```
 
 ## Best Practices
@@ -225,7 +225,7 @@ Begin with a reasonable timeout (e.g., 10 minutes) and adjust based on actual co
 
 ```bash
 # Track how long commands actually take
-time autospec workflow "feature"
+time autospec prep "feature"
 
 # Set timeout to 2x the typical duration
 # If commands typically take 5 minutes, set timeout to 10 minutes
@@ -273,7 +273,7 @@ Keep track of timeout occurrences:
 
 ```bash
 # In CI/CD, log timeout information
-autospec workflow "feature" 2>&1 | tee autospec.log
+autospec prep "feature" 2>&1 | tee autospec.log
 if [ $? -eq 5 ]; then
     echo "TIMEOUT OCCURRED" >> timeout-incidents.log
     date >> timeout-incidents.log
@@ -296,7 +296,7 @@ The autospec CLI uses standardized exit codes:
 ### Handling Timeout Exit Code in Scripts
 
 ```bash
-autospec workflow "feature"
+autospec prep "feature"
 case $? in
     0)
         echo "Success"
@@ -415,7 +415,7 @@ else
     timeout=300   # 5 minutes
 fi
 
-AUTOSPEC_TIMEOUT=$timeout autospec workflow "$feature_description"
+AUTOSPEC_TIMEOUT=$timeout autospec prep "$feature_description"
 ```
 
 ## See Also

@@ -9,7 +9,7 @@
 **Problem**: Commands fail with exit code 5 and timeout error message.
 
 ```
-Error: command timed out after 5m0s: claude /autospec.workflow ...
+Error: command timed out after 5m0s: claude /autospec.prep ...
 ```
 
 **Causes**:
@@ -332,13 +332,13 @@ git status
 **Solutions**:
 ```bash
 # Enable verbose output
-autospec --verbose workflow "feature"
+autospec --verbose prep "feature"
 
 # Enable debug logging
-autospec --debug workflow "feature"
+autospec --debug prep "feature"
 
 # Check if output is being redirected
-autospec workflow "feature" 2>&1 | tee output.log
+autospec prep "feature" 2>&1 | tee output.log
 ```
 
 #### Error messages unclear
@@ -363,7 +363,7 @@ cat ~/.autospec/state/retry.json | jq .
 
 ```bash
 # Global debug flag
-autospec --debug workflow "feature"
+autospec --debug prep "feature"
 
 # Per-command debugging
 autospec -d plan
@@ -409,10 +409,10 @@ ls .claude/commands/autospec.*.md
 
 ```bash
 # Capture stdout and stderr
-autospec workflow "feature" 2>&1 | tee full-output.log
+autospec prep "feature" 2>&1 | tee full-output.log
 
 # Capture with timestamps
-autospec workflow "feature" 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee output.log
+autospec prep "feature" 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee output.log
 ```
 
 ## Getting Help

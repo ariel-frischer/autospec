@@ -199,7 +199,7 @@ Quick reference for frequently used commands:
 | Command | Description | Example |
 |---------|-------------|---------|
 | `autospec full "..."` | Complete workflow: specify → plan → tasks → implement | `autospec full "Add user auth"` |
-| `autospec workflow "..."` | Partial workflow: specify → plan → tasks (no implementation) | `autospec workflow "Add export"` |
+| `autospec prep "..."` | Prepare for implementation: specify → plan → tasks (no implementation) | `autospec prep "Add export"` |
 | `autospec implement` | Execute implementation phase for current feature | `autospec implement` |
 | `autospec implement <spec>` | Execute implementation for specific spec | `autospec implement 001-dark-mode` |
 | `autospec status` | Check current feature status and progress | `autospec status` |

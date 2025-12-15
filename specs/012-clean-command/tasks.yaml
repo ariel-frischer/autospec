@@ -1,0 +1,244 @@
+tasks:
+    branch: "012-clean-command"
+    created: "2025-12-15"
+    spec_path: "specs/012-clean-command/spec.yaml"
+    plan_path: "specs/012-clean-command/plan.yaml"
+summary:
+    total_tasks: 12
+    total_phases: 5
+    parallel_opportunities: 4
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create clean package directory structure"
+      tasks:
+        - id: "T001"
+          title: "Create internal/clean package directory"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/clean/"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/clean/ exists"
+    - number: 2
+      title: "Foundational - Core Clean Logic"
+      purpose: "Implement file detection and removal logic that all user stories depend on"
+      tasks:
+        - id: "T002"
+          title: "Implement CleanTarget and CleanResult types in internal/clean/clean.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/clean/clean.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "CleanTarget struct with Path, Type, Description fields exists"
+            - "CleanResult struct with Target, Success, Error fields exists"
+            - "Type constants for 'directory' and 'file' are defined"
+        - id: "T003"
+          title: "Implement FindAutospecFiles() function in internal/clean/clean.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/clean/clean.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "Function detects .autospec/ directory if it exists"
+            - "Function detects .claude/commands/autospec*.md files using filepath.Glob"
+            - "Function detects specs/ directory if it exists"
+            - "Function accepts keepSpecs bool parameter to exclude specs/"
+            - "Returns slice of CleanTarget with correct Type and Description"
+            - "Only returns targets that actually exist on filesystem"
+        - id: "T004"
+          title: "Implement RemoveFiles() function in internal/clean/clean.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/clean/clean.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "Function accepts slice of CleanTarget"
+            - "Uses os.RemoveAll for directories"
+            - "Uses os.Remove for individual files"
+            - "Continues after individual failures"
+            - "Returns slice of CleanResult with success/error for each target"
+            - "Cleans up empty .claude/commands/ and .claude/ directories after removal"
+    - number: 3
+      title: "User Story 1 & 2 - Remove autospec files with preview"
+      purpose: "Enable developers to remove autospec files and preview what will be removed"
+      story_reference: "US-001, US-002"
+      independent_test: "Run clean command with --dry-run and verify file list, then run without flag and verify removal"
+      tasks:
+        - id: "T005"
+          title: "Implement clean command Cobra definition in internal/cli/clean.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/clean.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Cobra command with Use: 'clean', Short description defined"
+            - "Long description explains command purpose and what files are removed"
+            - "Command registered in init() function"
+            - "Example usage shown in command examples"
+        - id: "T006"
+          title: "Add --dry-run and --yes flags to clean command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/clean.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "--dry-run flag (-n) shows files without removing them"
+            - "--yes flag (-y) skips confirmation prompt"
+            - "Without --yes, user is prompted using promptYesNo() from init.go"
+            - "Dry-run mode displays 'Would remove:' prefix for each file"
+            - "Dry-run exits with success after displaying file list"
+        - id: "T007"
+          title: "Implement clean command RunE logic with file removal and output"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/clean.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Calls FindAutospecFiles() to get targets"
+            - "Displays 'No autospec files found' if no targets exist"
+            - "Shows file list before removal (or in dry-run)"
+            - "Prompts for confirmation unless --yes flag is set"
+            - "Calls RemoveFiles() and displays results"
+            - "Shows summary with count of removed/failed items"
+            - "Returns exit code 0 on success, appropriate error codes on failure"
+    - number: 4
+      title: "User Story 3 - Preserve specs directory"
+      purpose: "Allow users to keep specs/ while removing other autospec files"
+      story_reference: "US-003"
+      independent_test: "Run clean with --keep-specs and verify specs/ remains while .autospec/ is removed"
+      tasks:
+        - id: "T008"
+          title: "Add --keep-specs flag to clean command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/clean.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "--keep-specs flag (-k) preserves specs/ directory"
+            - "Flag is passed to FindAutospecFiles() function"
+            - "When set, specs/ is not included in removal targets"
+            - "Output indicates specs/ will be preserved when flag is used"
+    - number: 5
+      title: "Polish & Integration"
+      purpose: "Register command, update documentation, and verify cross-platform behavior"
+      tasks:
+        - id: "T009"
+          title: "Register clean command in internal/cli/root.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/root.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "rootCmd.AddCommand(cleanCmd) called in init()"
+            - "Command appears in autospec --help output"
+        - id: "T010"
+          title: "Add unit tests for internal/clean/clean.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/clean/clean_test.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Table-driven tests for FindAutospecFiles()"
+            - "Tests for RemoveFiles() with temporary directories"
+            - "Tests for edge cases: no files found, permission errors, partial failures"
+            - "Tests for keepSpecs parameter behavior"
+            - "Tests run successfully with go test ./internal/clean/"
+        - id: "T011"
+          title: "Add CLI tests for clean command in internal/cli/clean_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/clean_test.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "Tests for --dry-run flag output"
+            - "Tests for --yes flag behavior"
+            - "Tests for --keep-specs flag behavior"
+            - "Tests for 'no files found' case"
+            - "Tests run successfully with go test ./internal/cli/ -run TestClean"
+        - id: "T012"
+          title: "Update CLAUDE.md with clean command documentation"
+          status: "Completed"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "CLAUDE.md"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "Clean command added to 'Using the CLI' section"
+            - "All flags documented: --dry-run, --yes, --keep-specs"
+            - "Example usage shown"
+            - "Brief description of what files are removed"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-003"]
+        - story_id: "US-002"
+          depends_on: []
+          blocks: []
+        - story_id: "US-003"
+          depends_on: ["US-001"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4]
+        - phase: 3
+          blocks: [4, 5]
+        - phase: 4
+          blocks: [5]
+parallel_execution:
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T009", "T010", "T011", "T012"]
+          rationale: "Command registration, tests, and docs can be done independently after core implementation"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Core Logic + Basic clean command with dry-run"
+        validation: "Run 'autospec clean --dry-run' on a project with .autospec/ and verify file listing"
+    incremental_delivery:
+        - milestone: "Core Logic Ready"
+          phases: [1, 2]
+          deliverable: "FindAutospecFiles() and RemoveFiles() functions working"
+        - milestone: "MVP Complete"
+          phases: [1, 2, 3]
+          deliverable: "Basic clean command with --dry-run and --yes flags"
+        - milestone: "Full Feature"
+          phases: [1, 2, 3, 4]
+          deliverable: "Complete clean command with --keep-specs flag"
+        - milestone: "Production Ready"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Full command with tests, docs, and integration"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "dev (148e640)"
+    created: "2025-12-15T14:45:00Z"
+    artifact_type: "tasks"

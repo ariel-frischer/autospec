@@ -1,0 +1,216 @@
+plan:
+  branch: "012-clean-command"
+  created: "2025-12-15"
+  spec_path: "specs/012-clean-command/spec.yaml"
+
+summary: |
+  This plan implements the `autospec clean` command that safely removes all autospec-related
+  files from a project. The command follows existing CLI patterns in the codebase, using Cobra
+  for command structure and providing safety features like --dry-run preview and confirmation
+  prompts. The implementation leverages the existing promptYesNo() function from init.go and
+  follows the established exit code conventions. Files targeted for removal include .autospec/
+  directory, .claude/commands/autospec*.md files, and optionally the specs/ directory (with
+  --keep-specs flag to preserve it).
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI command framework - already used throughout codebase"
+    - name: "path/filepath"
+      version: "stdlib"
+      purpose: "Cross-platform file path manipulation"
+    - name: "os"
+      version: "stdlib"
+      purpose: "File system operations (RemoveAll, Remove, Stat)"
+  storage: "None"
+  testing:
+    framework: "testing (stdlib)"
+    approach: |
+      Unit tests using table-driven tests for file detection logic.
+      Integration tests using temporary directories to verify actual file removal.
+      Tests for edge cases like permission errors and missing files.
+  target_platform: "Linux, macOS, Windows (cross-platform)"
+  project_type: "cli"
+  performance_goals: "Execution time < 5 seconds for typical projects with < 1000 autospec files"
+  constraints:
+    - "Must not require elevated/root privileges"
+    - "Must work across Linux, macOS, and Windows"
+    - "Must follow existing autospec CLI patterns and conventions"
+    - "Must use existing confirmation prompt patterns (--yes flag)"
+    - "Must never delete files outside project root directory"
+  scale_scope: "Single project cleanup, typically < 100 files"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Tests will be written before implementation as per constitution requirements"
+    - name: "Validation-First"
+      status: "PASS"
+      notes: "File existence validation before removal; dry-run mode for preview"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "File operations are fast; target < 5s aligns with spec NFR-002"
+    - name: "Idempotency & Retry Logic"
+      status: "PASS"
+      notes: "Command is idempotent - running twice on empty project succeeds with 'no files found'"
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Will use exit code 0 for success, existing error codes for failures"
+    - name: "Hierarchical Configuration"
+      status: "N/A"
+      notes: "Clean command does not modify configuration hierarchy"
+    - name: "Atomic File Operations"
+      status: "PASS"
+      notes: "Uses os.RemoveAll for directories; individual file removes are atomic"
+
+research_findings:
+  decisions:
+    - topic: "File removal approach"
+      decision: "Use os.RemoveAll for directories, os.Remove for individual files"
+      rationale: "Standard Go approach; RemoveAll handles nested content; cross-platform compatible"
+      alternatives_considered:
+        - "Shell commands (rm -rf) - not cross-platform"
+        - "Third-party libraries - unnecessary complexity"
+    - topic: "Confirmation prompt implementation"
+      decision: "Reuse existing promptYesNo() function from init.go"
+      rationale: "Consistent UX with existing commands; DRY principle; already tested"
+      alternatives_considered:
+        - "New prompt implementation - unnecessary duplication"
+        - "External prompt library - adds dependency"
+    - topic: "File detection strategy"
+      decision: "Use filepath.Glob for pattern matching (.claude/commands/autospec*.md)"
+      rationale: "Cross-platform; handles wildcards; standard library"
+      alternatives_considered:
+        - "Manual directory iteration - more code, same result"
+        - "Regular expressions - overkill for simple patterns"
+    - topic: "Output format"
+      decision: "Show files to be removed, then summary after completion"
+      rationale: "Matches dry-run preview format; provides clear feedback"
+      alternatives_considered:
+        - "Silent operation - poor UX"
+        - "Verbose per-file output - too noisy for default"
+    - topic: "Error handling for partial failures"
+      decision: "Continue with remaining files after individual failures, report all errors at end"
+      rationale: "Maximizes cleanup; user sees complete picture; matches spec edge case requirement"
+      alternatives_considered:
+        - "Fail fast on first error - leaves project in inconsistent state"
+        - "Rollback on any failure - complex and not typical for cleanup commands"
+
+data_model:
+  entities:
+    - name: "CleanTarget"
+      description: "Represents a file or directory to be removed during clean operation"
+      fields:
+        - name: "Path"
+          type: "string"
+          description: "Absolute or relative path to the file/directory"
+          constraints: "Must be within project root"
+        - name: "Type"
+          type: "string"
+          description: "Type of target: 'directory' or 'file'"
+          constraints: "One of: directory, file"
+        - name: "Description"
+          type: "string"
+          description: "Human-readable description for display"
+          constraints: "Non-empty"
+      relationships: []
+    - name: "CleanResult"
+      description: "Result of attempting to remove a target"
+      fields:
+        - name: "Target"
+          type: "CleanTarget"
+          description: "The target that was processed"
+          constraints: "Non-nil"
+        - name: "Success"
+          type: "bool"
+          description: "Whether removal succeeded"
+          constraints: "None"
+        - name: "Error"
+          type: "error"
+          description: "Error if removal failed"
+          constraints: "Nil if Success is true"
+      relationships:
+        - target: "CleanTarget"
+          type: "one-to-one"
+          description: "Each result corresponds to exactly one target"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Update CLI command documentation with clean command usage"
+  source_code:
+    - path: "internal/cli/clean.go"
+      description: "Main clean command implementation with Cobra command definition"
+    - path: "internal/clean/clean.go"
+      description: "Core clean logic: file detection, removal, and result tracking"
+  tests:
+    - path: "internal/cli/clean_test.go"
+      description: "CLI command tests including flag parsing and output verification"
+    - path: "internal/clean/clean_test.go"
+      description: "Unit tests for file detection and removal logic"
+
+implementation_phases:
+  - phase: 1
+    name: "Core Clean Logic"
+    goal: "Implement file detection and removal logic in internal/clean package"
+    deliverables:
+      - "internal/clean/clean.go with CleanTarget, CleanResult types"
+      - "FindAutospecFiles() function to detect all removable files"
+      - "RemoveFiles() function with error collection"
+      - "internal/clean/clean_test.go with unit tests"
+  - phase: 2
+    name: "CLI Command Implementation"
+    goal: "Implement autospec clean command with all flags and confirmation flow"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "internal/cli/clean.go with Cobra command definition"
+      - "--dry-run, --yes, --keep-specs flags"
+      - "Confirmation prompt integration"
+      - "internal/cli/clean_test.go with command tests"
+  - phase: 3
+    name: "Integration and Documentation"
+    goal: "Integrate command into root, add documentation, verify cross-platform"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Register clean command in root.go init()"
+      - "Update CLAUDE.md with command usage"
+      - "Cross-platform testing verification"
+
+risks:
+  - risk: "Permission errors on Windows with locked files"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Graceful error handling with clear messages; user can close applications and retry"
+  - risk: "Accidental deletion of non-autospec files"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Strict file pattern matching; dry-run preview; confirmation prompt; no recursive delete outside known paths"
+  - risk: "Race condition if autospec is running during clean"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Files in use may fail to delete; errors reported but not critical"
+
+open_questions:
+  - question: "Should we add a --verbose flag for detailed output?"
+    context: "Could be useful for debugging but adds complexity"
+    proposed_resolution: "Defer to future enhancement; use existing --debug flag if needed"
+  - question: "Should empty .claude/commands/ directory be removed?"
+    context: "Spec says preserve if non-autospec files exist, but what if only autospec files existed?"
+    proposed_resolution: "Remove empty .claude/commands/ and .claude/ directories only if they become empty after cleanup"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "dev (148e640)"
+  created: "2025-12-15T14:30:00Z"
+  artifact_type: "plan"
