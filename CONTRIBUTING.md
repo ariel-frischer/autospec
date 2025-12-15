@@ -107,6 +107,9 @@ cd autospec
 # Install dependencies
 go mod download
 
+# Install git hooks (important for dev branch workflow)
+make dev-setup
+
 # Build the binary
 make build
 
@@ -119,6 +122,42 @@ make lint
 # Install locally for testing
 make install
 ```
+
+### Branch Workflow
+
+- **`main`** - Stable release branch (no `.dev/` files)
+- **`dev`** - Development branch (has `.dev/` files)
+
+| Action | Allowed |
+|--------|---------|
+| Merge `dev` -> `main` | Yes |
+| Rebase `dev` from `main` | Yes (preferred) |
+| Merge `main` -> `dev` | No (use rebase) |
+
+The `dev` branch contains `.dev/` files (docs, scripts, specs) that shouldn't exist on `main`. Using rebase instead of merge keeps history clean and avoids conflicts with these files.
+
+**Syncing dev with main after a release:**
+```bash
+git checkout dev
+git rebase main
+git push origin dev --force-with-lease
+```
+
+### Git Hooks
+
+Install hooks after cloning:
+```bash
+make dev-setup
+# or: ./scripts/setup-hooks.sh
+```
+
+**pre-merge-commit** - Prevents accidentally merging `main` into `dev` branches. Warns that merging will lose `.dev/` files (since they get deleted on main) and suggests using `git rebase main` instead to preserve them. To bypass: `git merge --no-verify main`
+
+**post-merge** - Auto-cleans `.dev/` directory when merging to `main`. Runs automatically after `git merge dev` on main.
+
+**pre-rebase** - Backs up `.dev/` directory before rebasing on the `dev` branch. This ensures `.dev/` files aren't lost during rebase operations.
+
+**post-rewrite** - Restores `.dev/` directory after rebasing on the `dev` branch. Works together with `pre-rebase` to preserve development files.
 
 ### Project Structure
 

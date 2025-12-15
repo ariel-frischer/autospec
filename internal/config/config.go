@@ -30,7 +30,6 @@ type Configuration struct {
 	ClaudeArgs        []string `koanf:"claude_args"`
 	UseAPIKey         bool     `koanf:"use_api_key"`
 	CustomClaudeCmd   string   `koanf:"custom_claude_cmd"`
-	SpecifyCmd        string   `koanf:"specify_cmd"`
 	MaxRetries        int      `koanf:"max_retries"`
 	SpecsDir          string   `koanf:"specs_dir"`
 	StateDir          string   `koanf:"state_dir"`

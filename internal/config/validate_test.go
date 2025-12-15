@@ -163,7 +163,6 @@ func TestValidateYAMLSyntaxFromBytes_Empty(t *testing.T) {
 func TestValidateConfigValues_Valid(t *testing.T) {
 	cfg := &Configuration{
 		ClaudeCmd:  "claude",
-		SpecifyCmd: "specify",
 		MaxRetries: 3,
 		SpecsDir:   "./specs",
 		StateDir:   "~/.autospec/state",
@@ -178,7 +177,6 @@ func TestValidateConfigValues_Valid(t *testing.T) {
 func TestValidateConfigValues_MissingRequired(t *testing.T) {
 	cfg := &Configuration{
 		ClaudeCmd:  "", // Missing required field
-		SpecifyCmd: "specify",
 		MaxRetries: 3,
 		SpecsDir:   "./specs",
 		StateDir:   "~/.autospec/state",
