@@ -34,7 +34,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 2. **Load context**:
    - Read the spec file at `FEATURE_SPEC`
-   - Read project constitution if exists (`.specify/memory/constitution.md` or `CLAUDE.md`)
+   - Read project constitution if exists (`.autospec/memory/constitution.yaml` or `CLAUDE.md`)
    - Extract: feature description, user stories, requirements, constraints
 
 3. **Execute plan workflow**:

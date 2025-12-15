@@ -22,8 +22,8 @@ You are creating or updating the project constitution. This file defines the non
 Follow this execution flow:
 
 1. **Load existing context**:
-   - Check if `.specify/memory/constitution.yaml` exists
-   - Check if `.specify/memory/constitution.md` exists (for migration)
+   - Check if `.autospec/memory/constitution.yaml` exists
+   - Check if `.autospec/memory/constitution.md` exists (for migration)
    - Check if `CLAUDE.md` exists at project root
    - Extract any existing principles, governance rules, or project guidelines
 
@@ -162,12 +162,12 @@ Follow this execution flow:
      follow_up_todos: []
    ```
 
-4. **Write the constitution** to `.specify/memory/constitution.yaml`
-   - Create `.specify/memory/` directory if it doesn't exist
+4. **Write the constitution** to `.autospec/memory/constitution.yaml`
+   - Create `.autospec/memory/` directory if it doesn't exist
 
 5. **Validate the YAML**:
    ```bash
-   autospec yaml check .specify/memory/constitution.yaml
+   autospec yaml check .autospec/memory/constitution.yaml
    ```
    - If validation fails: fix YAML syntax errors and retry
    - If validation passes: proceed to report
