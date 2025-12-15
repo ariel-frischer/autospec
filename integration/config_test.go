@@ -22,7 +22,6 @@ func TestCrossPlatformConfigLoading(t *testing.T) {
 		"default config": {
 			configContent: `{
 				"claude_cmd": "claude",
-				"specify_cmd": "specify",
 				"max_retries": 3,
 				"specs_dir": "./specs",
 				"state_dir": "~/.autospec/state",
@@ -34,7 +33,6 @@ func TestCrossPlatformConfigLoading(t *testing.T) {
 		"custom specs dir": {
 			configContent: `{
 				"claude_cmd": "claude",
-				"specify_cmd": "specify",
 				"max_retries": 5,
 				"specs_dir": "./my-specs",
 				"state_dir": "~/.autospec/state",
@@ -46,7 +44,6 @@ func TestCrossPlatformConfigLoading(t *testing.T) {
 		"env var override": {
 			configContent: `{
 				"claude_cmd": "claude",
-				"specify_cmd": "specify",
 				"max_retries": 3,
 				"specs_dir": "./specs",
 				"state_dir": "~/.autospec/state",
@@ -103,7 +100,6 @@ func TestCrossPlatformPathHandling(t *testing.T) {
 	// Test with relative path
 	configContent := `{
 		"claude_cmd": "claude",
-		"specify_cmd": "specify",
 		"max_retries": 3,
 		"specs_dir": "./specs",
 		"state_dir": "~/.autospec/state",
@@ -147,7 +143,6 @@ func TestHomeDirectoryExpansion(t *testing.T) {
 	// Config with ~/ in state_dir
 	configContent := `{
 		"claude_cmd": "claude",
-		"specify_cmd": "specify",
 		"max_retries": 3,
 		"specs_dir": "./specs",
 		"state_dir": "~/.autospec/state",

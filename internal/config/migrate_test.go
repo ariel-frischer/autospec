@@ -122,7 +122,6 @@ func TestMigrateJSONToYAML_PreservesAllFields(t *testing.T) {
 		"claude_args": ["-p", "--verbose"],
 		"use_api_key": true,
 		"custom_claude_cmd": "wrapper {{PROMPT}}",
-		"specify_cmd": "specify",
 		"max_retries": 5,
 		"specs_dir": "./custom/specs",
 		"state_dir": "~/.custom/state",

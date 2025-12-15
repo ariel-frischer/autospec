@@ -41,7 +41,6 @@ func TestLoad_LocalOverride(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "custom-claude", cfg.ClaudeCmd)
 	assert.Equal(t, 5, cfg.MaxRetries)
-	assert.Equal(t, "specify", cfg.SpecifyCmd) // Default value preserved
 }
 
 func TestLoad_EnvOverride(t *testing.T) {
@@ -132,7 +131,6 @@ func TestLoad_OverridePrecedence(t *testing.T) {
 max_retries: 2
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
-specify_cmd: specify
 `
 	require.NoError(t, os.WriteFile(userPath, []byte(userContent), 0644))
 
@@ -310,7 +308,6 @@ func TestLoad_YAMLConfig(t *testing.T) {
 max_retries: 5
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
-specify_cmd: "specify"
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0644)
 	require.NoError(t, err)
@@ -335,7 +332,6 @@ func TestLoad_YAMLConfigWithNestedValues(t *testing.T) {
 claude_args:
   - "-p"
   - "--verbose"
-specify_cmd: specify
 max_retries: 3
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
@@ -407,7 +403,7 @@ func TestLoad_LegacyJSONWithWarning(t *testing.T) {
 
 	// Create legacy JSON config in project directory
 	require.NoError(t, os.MkdirAll(filepath.Dir(legacyPath), 0755))
-	jsonContent := `{"max_retries": 5, "claude_cmd": "claude", "specify_cmd": "specify", "specs_dir": "./specs", "state_dir": "~/.autospec/state"}`
+	jsonContent := `{"max_retries": 5, "claude_cmd": "claude", "specs_dir": "./specs", "state_dir": "~/.autospec/state"}`
 	require.NoError(t, os.WriteFile(legacyPath, []byte(jsonContent), 0644))
 
 	// Change to temp directory to simulate being in a project
@@ -441,7 +437,6 @@ func TestLoad_YAMLTakesPrecedenceOverJSON(t *testing.T) {
 
 	// Write both YAML and JSON configs
 	yamlContent := `claude_cmd: yaml-claude
-specify_cmd: specify
 max_retries: 7
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
@@ -505,7 +500,6 @@ func TestLoad_UserAndProjectPrecedence(t *testing.T) {
 max_retries: 2
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
-specify_cmd: specify
 timeout: 100
 `
 	userConfigPath := filepath.Join(userConfigDir, "config.yml")
@@ -552,7 +546,6 @@ func TestLoad_EnvOverridesAll(t *testing.T) {
 max_retries: 5
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
-specify_cmd: specify
 `
 	projectConfigPath := filepath.Join(projectDir, "config.yml")
 	require.NoError(t, os.WriteFile(projectConfigPath, []byte(projectConfig), 0644))

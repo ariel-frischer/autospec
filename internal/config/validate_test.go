@@ -218,7 +218,6 @@ func TestValidateConfigValues_InvalidMaxRetries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Configuration{
 				ClaudeCmd:  "claude",
-				SpecifyCmd: "specify",
 				MaxRetries: tt.maxRetries,
 				SpecsDir:   "./specs",
 				StateDir:   "~/.autospec/state",
@@ -235,7 +234,6 @@ func TestValidateConfigValues_InvalidMaxRetries(t *testing.T) {
 func TestValidateConfigValues_InvalidCustomClaudeCmd(t *testing.T) {
 	cfg := &Configuration{
 		ClaudeCmd:       "claude",
-		SpecifyCmd:      "specify",
 		MaxRetries:      3,
 		SpecsDir:        "./specs",
 		StateDir:        "~/.autospec/state",
@@ -264,7 +262,6 @@ func TestValidateConfigValues_InvalidCustomClaudeCmd(t *testing.T) {
 func TestValidateConfigValues_ValidCustomClaudeCmd(t *testing.T) {
 	cfg := &Configuration{
 		ClaudeCmd:       "claude",
-		SpecifyCmd:      "specify",
 		MaxRetries:      3,
 		SpecsDir:        "./specs",
 		StateDir:        "~/.autospec/state",

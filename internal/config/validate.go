@@ -111,13 +111,6 @@ func ValidateConfigValues(cfg *Configuration, filePath string) error {
 			Message:  "is required",
 		}
 	}
-	if cfg.SpecifyCmd == "" {
-		return &ValidationError{
-			FilePath: filePath,
-			Field:    "specify_cmd",
-			Message:  "is required",
-		}
-	}
 	if cfg.SpecsDir == "" {
 		return &ValidationError{
 			FilePath: filePath,
