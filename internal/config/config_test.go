@@ -164,7 +164,11 @@ state_dir: "~/.autospec/state"
 // Timeout Configuration Tests
 
 func TestLoad_TimeoutDefaults(t *testing.T) {
-	t.Parallel()
+	// Cannot use t.Parallel() with t.Setenv()
+	// Use temp HOME to avoid loading real user config
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
 
 	cfg, err := Load("")
 	require.NoError(t, err)

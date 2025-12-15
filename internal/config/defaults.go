@@ -17,7 +17,7 @@ func GetDefaults() map[string]interface{} {
 		"specs_dir":          "./specs",
 		"state_dir":          "~/.autospec/state",
 		"skip_preflight":     false,
-		"timeout":            2400, // 40 minutes default
+		"timeout":            2400,  // 40 minutes default
 		"show_progress":      false, // Progress indicators off by default (professional)
 		"skip_confirmations": false, // Confirmation prompts enabled by default
 	}
