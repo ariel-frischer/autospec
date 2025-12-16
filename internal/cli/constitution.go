@@ -52,6 +52,11 @@ This command has no prerequisites - it can be run at any time.`,
 			return cliErr
 		}
 
+		// Create notification handler early so we can notify on any error
+		notifHandler := notify.NewHandler(cfg.Notifications)
+		startTime := time.Now()
+		notifHandler.SetStartTime(startTime)
+
 		// Override skip-preflight from flag if set
 		if cmd.Flags().Changed("skip-preflight") {
 			cfg.SkipPreflight = skipPreflight
@@ -64,14 +69,7 @@ This command has no prerequisites - it can be run at any time.`,
 
 		// Create workflow orchestrator
 		orch := workflow.NewWorkflowOrchestrator(cfg)
-
-		// Create notification handler and attach to executor
-		notifHandler := notify.NewHandler(cfg.Notifications)
 		orch.Executor.NotificationHandler = notifHandler
-
-		// Track command start time
-		startTime := time.Now()
-		notifHandler.SetStartTime(startTime)
 
 		// Execute constitution stage
 		execErr := orch.ExecuteConstitution(prompt)

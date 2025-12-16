@@ -58,6 +58,18 @@ Prerequisites:
 			return cliErr
 		}
 
+		// Create notification handler early so we can notify on any error
+		notifHandler := notify.NewHandler(cfg.Notifications)
+		startTime := time.Now()
+		notifHandler.SetStartTime(startTime)
+
+		// Helper to send error notification and return
+		notifyAndReturn := func(err error) error {
+			duration := time.Since(startTime)
+			notifHandler.OnCommandComplete("analyze", false, duration)
+			return err
+		}
+
 		// Override skip-preflight from flag if set
 		if cmd.Flags().Changed("skip-preflight") {
 			cfg.SkipPreflight = skipPreflight
@@ -73,14 +85,14 @@ Prerequisites:
 		if !constitutionCheck.Exists {
 			fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
 			cmd.SilenceUsage = true
-			return NewExitError(ExitInvalidArguments)
+			return notifyAndReturn(NewExitError(ExitInvalidArguments))
 		}
 
 		// Auto-detect current spec and verify all required artifacts exist
 		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
 		if err != nil {
 			cmd.SilenceUsage = true
-			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
+			return notifyAndReturn(fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err))
 		}
 
 		// Validate all required artifacts exist (spec.yaml, plan.yaml, tasks.yaml)
@@ -88,19 +100,12 @@ Prerequisites:
 		if !prereqResult.Valid {
 			fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
 			cmd.SilenceUsage = true
-			return NewExitError(ExitInvalidArguments)
+			return notifyAndReturn(NewExitError(ExitInvalidArguments))
 		}
 
 		// Create workflow orchestrator
 		orch := workflow.NewWorkflowOrchestrator(cfg)
-
-		// Create notification handler and attach to executor
-		notifHandler := notify.NewHandler(cfg.Notifications)
 		orch.Executor.NotificationHandler = notifHandler
-
-		// Track command start time
-		startTime := time.Now()
-		notifHandler.SetStartTime(startTime)
 
 		// Execute analyze stage
 		specName := fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)

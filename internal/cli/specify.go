@@ -58,6 +58,18 @@ The feature description should be a clear, concise description of what you want 
 			return cliErr
 		}
 
+		// Create notification handler early so we can notify on any error
+		notifHandler := notify.NewHandler(cfg.Notifications)
+		startTime := time.Now()
+		notifHandler.SetStartTime(startTime)
+
+		// Helper to send error notification and return
+		notifyAndReturn := func(err error) error {
+			duration := time.Since(startTime)
+			notifHandler.OnCommandComplete("specify", false, duration)
+			return err
+		}
+
 		// Override skip-preflight from flag if set
 		if cmd.Flags().Changed("skip-preflight") {
 			cfg.SkipPreflight = skipPreflight
@@ -72,19 +84,12 @@ The feature description should be a clear, concise description of what you want 
 		constitutionCheck := workflow.CheckConstitutionExists()
 		if !constitutionCheck.Exists {
 			fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
-			return NewExitError(ExitInvalidArguments)
+			return notifyAndReturn(NewExitError(ExitInvalidArguments))
 		}
 
 		// Create workflow orchestrator
 		orch := workflow.NewWorkflowOrchestrator(cfg)
-
-		// Create notification handler and attach to executor
-		notifHandler := notify.NewHandler(cfg.Notifications)
 		orch.Executor.NotificationHandler = notifHandler
-
-		// Track command start time
-		startTime := time.Now()
-		notifHandler.SetStartTime(startTime)
 
 		// Execute specify stage
 		specName, execErr := orch.ExecuteSpecify(featureDescription)
