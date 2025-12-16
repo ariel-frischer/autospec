@@ -66,47 +66,78 @@ func init() {
 func runNewFeature(cmd *cobra.Command, args []string) error {
 	featureDescription := args[0]
 
-	// Get specs directory
+	specsDir, err := resolveSpecsDir(cmd)
+	if err != nil {
+		return err
+	}
+
+	hasGit := initGitForNewFeature()
+
+	branchNumber, err := determineBranchNumber(specsDir)
+	if err != nil {
+		return err
+	}
+
+	branchName := generateBranchName(featureDescription, branchNumber)
+
+	if err := createGitBranch(branchName, hasGit); err != nil {
+		return err
+	}
+
+	specFile, err := setupFeatureDirectory(specsDir, branchName)
+	if err != nil {
+		return err
+	}
+
+	return outputNewFeatureResult(branchName, specFile, branchNumber)
+}
+
+// resolveSpecsDir gets and resolves the specs directory to an absolute path
+func resolveSpecsDir(cmd *cobra.Command) (string, error) {
 	specsDir, err := cmd.Flags().GetString("specs-dir")
 	if err != nil || specsDir == "" {
 		specsDir = "./specs"
 	}
 
-	// Make specs directory absolute
 	if !filepath.IsAbs(specsDir) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return fmt.Errorf("failed to get current directory: %w", err)
+			return "", fmt.Errorf("failed to get current directory: %w", err)
 		}
 		specsDir = filepath.Join(cwd, specsDir)
 	}
 
-	// Check if we have git
-	hasGit := git.IsGitRepository()
+	return specsDir, nil
+}
 
-	// Fetch all remotes if in git repo (to get latest branch info)
+// initGitForNewFeature checks for git and fetches remotes
+func initGitForNewFeature() bool {
+	hasGit := git.IsGitRepository()
 	if hasGit {
 		git.FetchAllRemotes() // Ignore errors, just try to get latest
 	}
+	return hasGit
+}
 
-	// Determine branch number
-	var branchNumber string
+// determineBranchNumber determines the branch number from flag or auto-detection
+func determineBranchNumber(specsDir string) (string, error) {
 	if newFeatureNumber != "" {
-		// Validate and use provided number
 		num, err := strconv.Atoi(newFeatureNumber)
 		if err != nil || num < 0 {
-			return fmt.Errorf("invalid --number value: must be a positive integer")
+			return "", fmt.Errorf("invalid --number value: must be a positive integer")
 		}
-		branchNumber = fmt.Sprintf("%03d", num)
-	} else {
-		// Auto-detect next number
-		branchNumber, err = spec.GetNextBranchNumber(specsDir)
-		if err != nil {
-			return fmt.Errorf("failed to determine next branch number: %w", err)
-		}
+		return fmt.Sprintf("%03d", num), nil
 	}
 
-	// Generate branch suffix
+	branchNumber, err := spec.GetNextBranchNumber(specsDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to determine next branch number: %w", err)
+	}
+	return branchNumber, nil
+}
+
+// generateBranchName creates the full branch name from description and number
+func generateBranchName(featureDescription, branchNumber string) string {
 	var branchSuffix string
 	if newFeatureShortName != "" {
 		branchSuffix = spec.CleanBranchName(newFeatureShortName)
@@ -114,45 +145,43 @@ func runNewFeature(cmd *cobra.Command, args []string) error {
 		branchSuffix = spec.GenerateBranchName(featureDescription)
 	}
 
-	// Create full branch name
 	branchName := spec.FormatBranchName(branchNumber, branchSuffix)
+	return spec.TruncateBranchName(branchName)
+}
 
-	// Truncate if necessary
-	branchName = spec.TruncateBranchName(branchName)
-
-	// Create git branch if in git repo
+// createGitBranch creates the git branch if in a git repository
+func createGitBranch(branchName string, hasGit bool) error {
 	if hasGit {
 		if err := git.CreateBranch(branchName); err != nil {
-			// If branch already exists, warn but continue
 			fmt.Fprintf(os.Stderr, "[specify] Warning: %v\n", err)
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "[specify] Warning: Git repository not detected; skipped branch creation for %s\n", branchName)
 	}
+	return nil
+}
 
-	// Create feature directory
+// setupFeatureDirectory creates the feature directory and returns spec file path
+func setupFeatureDirectory(specsDir, branchName string) (string, error) {
 	featureDir := spec.GetFeatureDirectory(specsDir, branchName)
 	if err := os.MkdirAll(featureDir, 0755); err != nil {
-		return fmt.Errorf("failed to create feature directory: %w", err)
+		return "", fmt.Errorf("failed to create feature directory: %w", err)
 	}
 
-	// Spec file path (created by autospec specify command, not this one)
 	specFile := filepath.Join(featureDir, "spec.yaml")
-
-	// Set SPECIFY_FEATURE environment variable
 	os.Setenv("SPECIFY_FEATURE", branchName)
 
-	// Get version and timestamp
-	autospecVersion := fmt.Sprintf("autospec %s", Version)
-	createdDate := time.Now().UTC().Format(time.RFC3339)
+	return specFile, nil
+}
 
-	// Output
+// outputNewFeatureResult formats and outputs the result
+func outputNewFeatureResult(branchName, specFile, branchNumber string) error {
 	output := NewFeatureOutput{
 		BranchName:      branchName,
 		SpecFile:        specFile,
 		FeatureNum:      branchNumber,
-		AutospecVersion: autospecVersion,
-		CreatedDate:     createdDate,
+		AutospecVersion: fmt.Sprintf("autospec %s", Version),
+		CreatedDate:     time.Now().UTC().Format(time.RFC3339),
 	}
 
 	if newFeatureJSON {
@@ -161,13 +190,18 @@ func runNewFeature(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to encode JSON: %w", err)
 		}
 	} else {
-		fmt.Printf("BRANCH_NAME: %s\n", output.BranchName)
-		fmt.Printf("SPEC_FILE: %s\n", output.SpecFile)
-		fmt.Printf("FEATURE_NUM: %s\n", output.FeatureNum)
-		fmt.Printf("AUTOSPEC_VERSION: %s\n", output.AutospecVersion)
-		fmt.Printf("CREATED_DATE: %s\n", output.CreatedDate)
-		fmt.Printf("SPECIFY_FEATURE environment variable set to: %s\n", branchName)
+		printNewFeatureText(output, branchName)
 	}
 
 	return nil
+}
+
+// printNewFeatureText prints the output in text format
+func printNewFeatureText(output NewFeatureOutput, branchName string) {
+	fmt.Printf("BRANCH_NAME: %s\n", output.BranchName)
+	fmt.Printf("SPEC_FILE: %s\n", output.SpecFile)
+	fmt.Printf("FEATURE_NUM: %s\n", output.FeatureNum)
+	fmt.Printf("AUTOSPEC_VERSION: %s\n", output.AutospecVersion)
+	fmt.Printf("CREATED_DATE: %s\n", output.CreatedDate)
+	fmt.Printf("SPECIFY_FEATURE environment variable set to: %s\n", branchName)
 }

@@ -45,83 +45,106 @@ type BranchInfo struct {
 // It filters out HEAD pointers and duplicates
 func GetAllBranches() ([]BranchInfo, error) {
 	if !IsGitRepository() {
-		return nil, nil // Return empty list for non-git repos
+		return nil, nil
 	}
 
-	cmd := exec.Command("git", "branch", "-a", "--format=%(refname:short)")
-	output, err := cmd.Output()
+	lines, err := getBranchLines()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list branches: %w", err)
+		return nil, err
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	seen := make(map[string]bool)
-	var branches []BranchInfo
+	branches := collectBranches(lines)
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		// Skip HEAD pointers
-		if strings.Contains(line, "HEAD") {
-			continue
-		}
-
-		var info BranchInfo
-
-		// Check if it's a remote branch
-		if strings.HasPrefix(line, "remotes/") {
-			line = strings.TrimPrefix(line, "remotes/")
-			parts := strings.SplitN(line, "/", 2)
-			if len(parts) == 2 {
-				info.Remote = parts[0]
-				info.Name = parts[1]
-				info.IsRemote = true
-			} else {
-				continue
-			}
-		} else if strings.Contains(line, "/") {
-			// Handle format like "origin/branch-name" without remotes/ prefix
-			parts := strings.SplitN(line, "/", 2)
-			if len(parts) == 2 {
-				info.Remote = parts[0]
-				info.Name = parts[1]
-				info.IsRemote = true
-			} else {
-				info.Name = line
-			}
-		} else {
-			info.Name = line
-			info.IsRemote = false
-		}
-
-		// Skip duplicates (prefer local over remote)
-		key := info.Name
-		if seen[key] && !info.IsRemote {
-			// Replace remote with local
-			for i, b := range branches {
-				if b.Name == info.Name && b.IsRemote {
-					branches[i] = info
-					break
-				}
-			}
-			continue
-		}
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		branches = append(branches, info)
-	}
-
-	// Sort branches by name for consistent output
 	sort.Slice(branches, func(i, j int) bool {
 		return branches[i].Name < branches[j].Name
 	})
 
 	return branches, nil
+}
+
+// getBranchLines retrieves raw branch lines from git
+func getBranchLines() ([]string, error) {
+	cmd := exec.Command("git", "branch", "-a", "--format=%(refname:short)")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list branches: %w", err)
+	}
+	return strings.Split(strings.TrimSpace(string(output)), "\n"), nil
+}
+
+// collectBranches parses branch lines and deduplicates them
+func collectBranches(lines []string) []BranchInfo {
+	seen := make(map[string]bool)
+	var branches []BranchInfo
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.Contains(line, "HEAD") {
+			continue
+		}
+
+		info := parseBranchLine(line)
+		if info == nil {
+			continue
+		}
+
+		branches = addBranchWithDedup(branches, *info, seen)
+	}
+
+	return branches
+}
+
+// parseBranchLine parses a single branch line into BranchInfo
+func parseBranchLine(line string) *BranchInfo {
+	var info BranchInfo
+
+	if strings.HasPrefix(line, "remotes/") {
+		line = strings.TrimPrefix(line, "remotes/")
+		parts := strings.SplitN(line, "/", 2)
+		if len(parts) != 2 {
+			return nil
+		}
+		info.Remote = parts[0]
+		info.Name = parts[1]
+		info.IsRemote = true
+	} else if strings.Contains(line, "/") {
+		parts := strings.SplitN(line, "/", 2)
+		if len(parts) == 2 {
+			info.Remote = parts[0]
+			info.Name = parts[1]
+			info.IsRemote = true
+		} else {
+			info.Name = line
+		}
+	} else {
+		info.Name = line
+		info.IsRemote = false
+	}
+
+	return &info
+}
+
+// addBranchWithDedup adds a branch, handling duplicates (prefer local over remote)
+func addBranchWithDedup(branches []BranchInfo, info BranchInfo, seen map[string]bool) []BranchInfo {
+	key := info.Name
+
+	if seen[key] && !info.IsRemote {
+		// Replace remote with local
+		for i, b := range branches {
+			if b.Name == info.Name && b.IsRemote {
+				branches[i] = info
+				break
+			}
+		}
+		return branches
+	}
+
+	if seen[key] {
+		return branches
+	}
+
+	seen[key] = true
+	return append(branches, info)
 }
 
 // GetBranchNames returns just the names of all branches (local and remote, deduplicated)

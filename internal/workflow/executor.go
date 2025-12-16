@@ -93,120 +93,128 @@ type PhaseResult struct {
 // ExecutePhase executes a workflow phase with validation and retry logic
 func (e *Executor) ExecutePhase(specName string, phase Phase, command string, validateFunc func(string) error) (*PhaseResult, error) {
 	e.debugLog("ExecutePhase called - spec: %s, phase: %s, command: %s", specName, phase, command)
-	result := &PhaseResult{
-		Phase:   phase,
-		Success: false,
-	}
+	result := &PhaseResult{Phase: phase, Success: false}
 
 	// Load retry state
-	e.debugLog("Loading retry state from: %s", e.StateDir)
-	retryState, err := retry.LoadRetryState(e.StateDir, specName, string(phase), e.MaxRetries)
+	retryState, err := e.loadPhaseRetryState(specName, phase)
 	if err != nil {
-		e.debugLog("Failed to load retry state: %v", err)
-		return result, fmt.Errorf("failed to load retry state: %w", err)
+		return result, err
 	}
-	e.debugLog("Retry state loaded - count: %d, max: %d", retryState.Count, e.MaxRetries)
 
 	// Build phase info and start progress display
 	phaseInfo := e.buildPhaseInfo(phase, retryState.Count)
-	if e.ProgressDisplay != nil {
-		e.debugLog("Starting progress display")
-		if err := e.ProgressDisplay.StartPhase(phaseInfo); err != nil {
-			// Log warning but don't fail execution
-			fmt.Printf("Warning: progress display error: %v\n", err)
-		}
-	}
+	e.startProgressDisplay(phaseInfo)
 
-	// Display the full command before execution
-	fullCommand := e.Claude.FormatCommand(command)
-	fmt.Printf("\n→ Executing: %s\n\n", fullCommand)
-
-	// Execute command
-	e.debugLog("About to call Claude.Execute()")
+	// Display and execute command
+	e.displayCommandExecution(command)
 	if err := e.Claude.Execute(command); err != nil {
-		e.debugLog("Claude.Execute() returned error: %v", err)
-		result.Error = fmt.Errorf("command execution failed: %w", err)
-
-		// Show failure in progress display
-		if e.ProgressDisplay != nil {
-			e.ProgressDisplay.FailPhase(phaseInfo, result.Error)
-		}
-
-		// Increment retry count
-		if incrementErr := retryState.Increment(); incrementErr != nil {
-			// Check if it's a retry exhausted error
-			if exhaustedErr, ok := incrementErr.(*retry.RetryExhaustedError); ok {
-				result.Exhausted = true
-				result.RetryCount = exhaustedErr.Count
-
-				// Save state before returning
-				retry.SaveRetryState(e.StateDir, retryState)
-
-				return result, fmt.Errorf("retry limit exhausted: %w", err)
-			}
-			return result, incrementErr
-		}
-
-		// Save incremented retry state
-		if saveErr := retry.SaveRetryState(e.StateDir, retryState); saveErr != nil {
-			return result, fmt.Errorf("failed to save retry state: %w", saveErr)
-		}
-
-		result.RetryCount = retryState.Count
-		return result, result.Error
+		return e.handleExecutionError(result, retryState, phaseInfo, err)
 	}
 	e.debugLog("Claude.Execute() completed successfully")
 
 	// Validate output
-	specDir := fmt.Sprintf("%s/%s", e.SpecsDir, specName) // Simplified for now
-	e.debugLog("Running validation function for spec dir: %s", specDir)
+	specDir := fmt.Sprintf("%s/%s", e.SpecsDir, specName)
 	if err := validateFunc(specDir); err != nil {
-		e.debugLog("Validation failed: %v", err)
-		result.Error = fmt.Errorf("validation failed: %w", err)
-
-		// Show failure in progress display
-		if e.ProgressDisplay != nil {
-			e.ProgressDisplay.FailPhase(phaseInfo, result.Error)
-		}
-
-		// Increment retry count
-		if incrementErr := retryState.Increment(); incrementErr != nil {
-			if exhaustedErr, ok := incrementErr.(*retry.RetryExhaustedError); ok {
-				result.Exhausted = true
-				result.RetryCount = exhaustedErr.Count
-				retry.SaveRetryState(e.StateDir, retryState)
-				return result, fmt.Errorf("validation failed and retry exhausted: %w", err)
-			}
-			return result, incrementErr
-		}
-
-		retry.SaveRetryState(e.StateDir, retryState)
-		result.RetryCount = retryState.Count
-		return result, result.Error
+		return e.handleValidationError(result, retryState, phaseInfo, err)
 	}
 	e.debugLog("Validation passed!")
 
-	// Success! Show completion in progress display
+	// Handle success
+	e.completePhaseSuccess(result, phaseInfo, specName, phase)
+	return result, nil
+}
+
+// loadPhaseRetryState loads retry state for a phase
+func (e *Executor) loadPhaseRetryState(specName string, phase Phase) (*retry.RetryState, error) {
+	e.debugLog("Loading retry state from: %s", e.StateDir)
+	retryState, err := retry.LoadRetryState(e.StateDir, specName, string(phase), e.MaxRetries)
+	if err != nil {
+		e.debugLog("Failed to load retry state: %v", err)
+		return nil, fmt.Errorf("failed to load retry state: %w", err)
+	}
+	e.debugLog("Retry state loaded - count: %d, max: %d", retryState.Count, e.MaxRetries)
+	return retryState, nil
+}
+
+// startProgressDisplay initializes progress display for a phase
+func (e *Executor) startProgressDisplay(phaseInfo progress.PhaseInfo) {
+	if e.ProgressDisplay != nil {
+		e.debugLog("Starting progress display")
+		if err := e.ProgressDisplay.StartPhase(phaseInfo); err != nil {
+			fmt.Printf("Warning: progress display error: %v\n", err)
+		}
+	}
+}
+
+// displayCommandExecution shows the command being executed
+func (e *Executor) displayCommandExecution(command string) {
+	fullCommand := e.Claude.FormatCommand(command)
+	fmt.Printf("\n→ Executing: %s\n\n", fullCommand)
+	e.debugLog("About to call Claude.Execute()")
+}
+
+// handleExecutionError handles command execution failure
+func (e *Executor) handleExecutionError(result *PhaseResult, retryState *retry.RetryState, phaseInfo progress.PhaseInfo, err error) (*PhaseResult, error) {
+	e.debugLog("Claude.Execute() returned error: %v", err)
+	result.Error = fmt.Errorf("command execution failed: %w", err)
+
+	if e.ProgressDisplay != nil {
+		e.ProgressDisplay.FailPhase(phaseInfo, result.Error)
+	}
+
+	return e.handleRetryIncrement(result, retryState, err, "retry limit exhausted")
+}
+
+// handleValidationError handles validation failure
+func (e *Executor) handleValidationError(result *PhaseResult, retryState *retry.RetryState, phaseInfo progress.PhaseInfo, err error) (*PhaseResult, error) {
+	e.debugLog("Validation failed: %v", err)
+	result.Error = fmt.Errorf("validation failed: %w", err)
+
+	if e.ProgressDisplay != nil {
+		e.ProgressDisplay.FailPhase(phaseInfo, result.Error)
+	}
+
+	return e.handleRetryIncrement(result, retryState, err, "validation failed and retry exhausted")
+}
+
+// handleRetryIncrement increments retry count and handles exhaustion
+func (e *Executor) handleRetryIncrement(result *PhaseResult, retryState *retry.RetryState, originalErr error, exhaustedMsg string) (*PhaseResult, error) {
+	if incrementErr := retryState.Increment(); incrementErr != nil {
+		if exhaustedErr, ok := incrementErr.(*retry.RetryExhaustedError); ok {
+			result.Exhausted = true
+			result.RetryCount = exhaustedErr.Count
+			retry.SaveRetryState(e.StateDir, retryState)
+			return result, fmt.Errorf("%s: %w", exhaustedMsg, originalErr)
+		}
+		return result, incrementErr
+	}
+
+	if saveErr := retry.SaveRetryState(e.StateDir, retryState); saveErr != nil {
+		return result, fmt.Errorf("failed to save retry state: %w", saveErr)
+	}
+
+	result.RetryCount = retryState.Count
+	return result, result.Error
+}
+
+// completePhaseSuccess handles successful phase completion
+func (e *Executor) completePhaseSuccess(result *PhaseResult, phaseInfo progress.PhaseInfo, specName string, phase Phase) {
 	if e.ProgressDisplay != nil {
 		e.debugLog("Showing completion in progress display")
 		phaseInfo.Status = progress.PhaseCompleted
 		if err := e.ProgressDisplay.CompletePhase(phaseInfo); err != nil {
-			// Log warning but don't fail execution
 			fmt.Printf("Warning: progress display error: %v\n", err)
 		}
 	}
 
-	// Reset retry count
 	e.debugLog("Resetting retry count")
 	if err := retry.ResetRetryCount(e.StateDir, specName, string(phase)); err != nil {
-		// Log error but don't fail - reset is not critical
 		fmt.Printf("Warning: failed to reset retry count: %v\n", err)
 	}
 
 	result.Success = true
 	result.RetryCount = 0
 	e.debugLog("ExecutePhase completed successfully - returning")
-	return result, nil
 }
 
 // ExecuteWithRetry executes a command and automatically retries on failure

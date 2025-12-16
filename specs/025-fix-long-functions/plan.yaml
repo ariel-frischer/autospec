@@ -1,0 +1,256 @@
+plan:
+  branch: "025-fix-long-functions"
+  created: "2025-12-16"
+  spec_path: "specs/025-fix-long-functions/spec.yaml"
+
+summary: |
+  This implementation plan details the systematic refactoring of 13 long functions across the autospec codebase
+  that exceed the project's 40-line guideline. The refactoring focuses on extracting focused helper functions
+  while preserving all existing functionality and maintaining backward compatibility.
+
+  The approach prioritizes the workflow package (core orchestration logic) first, followed by CLI commands,
+  then the config package, and finally the git package. Each function is analyzed to identify logical groupings
+  that can be extracted into helper functions with clear single responsibilities. Helper functions remain
+  unexported and co-located with their calling functions to maintain encapsulation.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI (v1.10.1)"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI command structure"
+    - name: "github.com/knadh/koanf/v2"
+      version: "v2.3.0"
+      purpose: "Configuration management"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing and generation"
+  storage: "File system (YAML config and state files)"
+  testing:
+    framework: "go test"
+    approach: "Run existing tests after each refactoring to ensure no regressions. No new tests required as this is pure refactoring."
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Maintain <10ms validation functions, <1s user-facing operations. No performance regression."
+  constraints:
+    - "Must not change external API signatures or command-line interface behavior"
+    - "Must maintain backward compatibility with existing configuration and state files"
+    - "Must work within the existing package structure"
+    - "Each refactored helper function should be under 40 lines"
+    - "Helper functions should be unexported (lowercase) unless they have broader utility"
+  scale_scope: "Pure refactoring of 13 functions across 4 packages"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "N/A"
+      notes: "This is pure refactoring - existing tests validate correctness. No new functionality being added."
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "No changes to workflow validation. Existing artifact validation remains intact."
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Refactoring does not introduce new code paths that could degrade performance. Function call overhead is negligible in Go."
+    - name: "Idempotency and Retry Logic"
+      status: "PASS"
+      notes: "Retry logic implementation unchanged. Only internal code organization is modified."
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Exit code handling remains unchanged in all refactored functions."
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "Run 'make fmt' after refactoring to ensure consistent formatting."
+
+research_findings:
+  decisions:
+    - topic: "Helper function naming convention"
+      decision: "Use descriptive verb-noun names that indicate the specific responsibility"
+      rationale: "Go convention for unexported helpers. Makes code self-documenting."
+      alternatives_considered:
+        - "Generic names like 'helper1', 'helper2'"
+        - "Prefix-based names like 'doX', 'handleY'"
+    - topic: "Helper function placement"
+      decision: "Keep helpers in the same file as the parent function unless a logical grouping warrants a new file"
+      rationale: "Maintains locality of reference and keeps related code together"
+      alternatives_considered:
+        - "Create separate helper files for each package"
+        - "Group all helpers at the end of the file"
+    - topic: "Error handling in helper functions"
+      decision: "Return errors from helpers to be handled by the parent function"
+      rationale: "Maintains existing error flow and allows parent function to add context if needed"
+      alternatives_considered:
+        - "Handle errors within helper functions"
+        - "Use panic/recover for internal errors"
+    - topic: "Parameter passing strategy"
+      decision: "Pass only required parameters to helpers, not entire struct pointers unless necessary"
+      rationale: "Improves testability and makes dependencies explicit"
+      alternatives_considered:
+        - "Always pass the receiver struct"
+        - "Use closures to capture state"
+
+data_model:
+  entities:
+    - name: "Long Function"
+      description: "A function identified for refactoring based on line count"
+      fields:
+        - name: "file_path"
+          type: "string"
+          description: "Path to the Go file containing the function"
+          constraints: "Must be a valid file path"
+        - name: "function_name"
+          type: "string"
+          description: "Name of the function to refactor"
+          constraints: "Must be a valid Go identifier"
+        - name: "current_lines"
+          type: "int"
+          description: "Current line count of the function"
+          constraints: "Must be > 40 (our target threshold)"
+        - name: "severity"
+          type: "string"
+          description: "Category based on line count"
+          constraints: "Critical (>100) or Serious (80-100)"
+      relationships:
+        - target: "Helper Function"
+          type: "one-to-many"
+          description: "Each long function is refactored into multiple helper functions"
+    - name: "Helper Function"
+      description: "A new function extracted to reduce the parent function's complexity"
+      fields:
+        - name: "name"
+          type: "string"
+          description: "Descriptive name indicating single responsibility"
+          constraints: "lowercase, unexported by default"
+        - name: "lines"
+          type: "int"
+          description: "Line count of the helper"
+          constraints: "Should be < 40 lines"
+        - name: "parent_function"
+          type: "string"
+          description: "The function this helper was extracted from"
+          constraints: "Must reference a Long Function"
+
+api_contracts:
+  endpoints: []  # No API changes - this is pure internal refactoring
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Main developer documentation - no changes required"
+  source_code:
+    - path: "internal/workflow/workflow.go"
+      description: "Contains 4 functions to refactor (ExecuteImplementWithTasks, RunFullWorkflow, ExecuteImplementFromPhase, ExecuteImplementWithPhases)"
+    - path: "internal/workflow/executor.go"
+      description: "Contains ExecutePhase function to refactor"
+    - path: "internal/cli/new_feature.go"
+      description: "Contains runNewFeature function to refactor"
+    - path: "internal/cli/uninstall.go"
+      description: "Contains runUninstall function to refactor"
+    - path: "internal/cli/config.go"
+      description: "Contains runConfigMigrate function to refactor"
+    - path: "internal/cli/update_agent_context.go"
+      description: "Contains runUpdateAgentContext function to refactor"
+    - path: "internal/cli/init.go"
+      description: "Contains runInit function to refactor"
+    - path: "internal/cli/run.go"
+      description: "Contains executePhases function to refactor"
+    - path: "internal/config/config.go"
+      description: "Contains LoadWithOptions function to refactor"
+    - path: "internal/git/git.go"
+      description: "Contains GetAllBranches function to refactor"
+  tests:
+    - path: "internal/workflow/*_test.go"
+      description: "Existing workflow tests - run after refactoring"
+    - path: "internal/cli/*_test.go"
+      description: "Existing CLI tests - run after refactoring"
+    - path: "internal/config/*_test.go"
+      description: "Existing config tests - run after refactoring"
+    - path: "internal/git/*_test.go"
+      description: "Existing git tests - run after refactoring"
+
+implementation_phases:
+  - phase: 1
+    name: "Critical Workflow Functions"
+    goal: "Refactor the 4 most severe workflow package violations (>100 lines) to improve core orchestration code readability"
+    deliverables:
+      - "Refactor ExecuteImplementWithTasks (125 lines) into task validation, execution loop, and summary helpers"
+      - "Refactor ExecutePhase (117 lines) into retry state handling, command execution, and validation helpers"
+      - "Refactor RunFullWorkflow (102 lines) into phase execution and summary helpers"
+      - "Run 'go test ./internal/workflow/...' to verify no regressions"
+  - phase: 2
+    name: "Critical CLI Functions"
+    goal: "Refactor CLI commands exceeding 100 lines to improve command handler readability"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Refactor runNewFeature (108 lines) into validation, git operations, and output helpers"
+      - "Refactor runUninstall (110 lines) into target collection, confirmation, and removal helpers"
+      - "Run 'go test ./internal/cli/...' to verify no regressions"
+  - phase: 3
+    name: "Critical Config Function"
+    goal: "Refactor the configuration loading function for better maintainability"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Refactor LoadWithOptions (105 lines) into user config loading, project config loading, and env var handling helpers"
+      - "Run 'go test ./internal/config/...' to verify no regressions"
+  - phase: 4
+    name: "Serious Workflow Functions"
+    goal: "Refactor remaining workflow functions in the 80-100 line range"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Refactor ExecuteImplementFromPhase (90 lines) into phase iteration and completion verification helpers"
+      - "Refactor ExecuteImplementWithPhases (81 lines) into similar helpers (share code where possible)"
+      - "Run 'go test ./internal/workflow/...' to verify no regressions"
+  - phase: 5
+    name: "Serious CLI Functions"
+    goal: "Refactor remaining CLI functions in the 80-100 line range"
+    dependencies:
+      - "Phase 4"
+    deliverables:
+      - "Refactor runConfigMigrate (90 lines) into migration logic and summary helpers"
+      - "Refactor runUpdateAgentContext (87 lines) into validation, update, and output helpers"
+      - "Refactor runInit (79 lines) into initialization step helpers"
+      - "Refactor executePhases (78 lines) into phase dispatch and summary helpers"
+      - "Run 'go test ./internal/cli/...' to verify no regressions"
+  - phase: 6
+    name: "Serious Git Function and Final Validation"
+    goal: "Complete refactoring and run full test suite"
+    dependencies:
+      - "Phase 5"
+    deliverables:
+      - "Refactor GetAllBranches (80 lines) into branch parsing and deduplication helpers"
+      - "Run 'make fmt' to ensure consistent formatting"
+      - "Run 'go test ./...' to verify complete test suite passes"
+      - "Run 'make lint' to verify no new linting errors"
+
+risks:
+  - risk: "Accidental behavior change during refactoring"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Run tests after each function refactoring. Existing tests provide comprehensive coverage for these functions."
+  - risk: "Helper function line count still exceeds 40 lines"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Accept slightly over 40 lines if function has necessary error handling. 50 lines is acceptable maximum."
+  - risk: "Merge conflicts with concurrent development"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Work incrementally, commit after each function refactoring. Rebase frequently if needed."
+
+open_questions:
+  - question: "Should any helper functions be exported for testing?"
+    context: "Unexported helpers can't be unit tested directly, but the parent functions are already tested"
+    proposed_resolution: "Keep helpers unexported. Test coverage comes from parent function tests."
+  - question: "Should common patterns between similar functions be extracted into shared utilities?"
+    context: "ExecuteImplementFromPhase and ExecuteImplementWithPhases have similar structure"
+    proposed_resolution: "Extract shared helpers where natural, but avoid over-abstraction. Readability is the priority."
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T09:44:19Z"
+  artifact_type: "plan"

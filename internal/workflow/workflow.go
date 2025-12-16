@@ -69,45 +69,15 @@ func NewWorkflowOrchestrator(cfg *config.Configuration) *WorkflowOrchestrator {
 
 // RunCompleteWorkflow executes the full specify → plan → tasks workflow
 func (w *WorkflowOrchestrator) RunCompleteWorkflow(featureDescription string) error {
-	// Run pre-flight checks
-	if ShouldRunPreflightChecks(w.SkipPreflight) {
-		if err := w.runPreflightChecks(); err != nil {
-			return err
-		}
+	if err := w.runPreflightIfNeeded(); err != nil {
+		return err
 	}
 
-	// Phase 1: Specify
-	fmt.Println("[Phase 1/3] Specify...")
-	fmt.Printf("Executing: /autospec.specify \"%s\"\n", featureDescription)
-
-	specName, err := w.executeSpecify(featureDescription)
+	specName, err := w.executeSpecifyPlanTasks(featureDescription, 3)
 	if err != nil {
-		return fmt.Errorf("specify phase failed: %w", err)
+		return err
 	}
 
-	fmt.Printf("✓ Created specs/%s/spec.yaml\n\n", specName)
-
-	// Phase 2: Plan
-	fmt.Println("[Phase 2/3] Plan...")
-	fmt.Println("Executing: /autospec.plan")
-
-	if err := w.executePlan(specName, ""); err != nil {
-		return fmt.Errorf("plan phase failed: %w", err)
-	}
-
-	fmt.Printf("✓ Created specs/%s/plan.yaml\n\n", specName)
-
-	// Phase 3: Tasks
-	fmt.Println("[Phase 3/3] Tasks...")
-	fmt.Println("Executing: /autospec.tasks")
-
-	if err := w.executeTasks(specName, ""); err != nil {
-		return fmt.Errorf("tasks phase failed: %w", err)
-	}
-
-	fmt.Printf("✓ Created specs/%s/tasks.yaml\n\n", specName)
-
-	// Success!
 	fmt.Println("Workflow completed successfully!")
 	fmt.Printf("Spec: specs/%s/\n", specName)
 	fmt.Println("Next: autospec implement")
@@ -117,92 +87,126 @@ func (w *WorkflowOrchestrator) RunCompleteWorkflow(featureDescription string) er
 
 // RunFullWorkflow executes the complete specify → plan → tasks → implement workflow
 func (w *WorkflowOrchestrator) RunFullWorkflow(featureDescription string, resume bool) error {
-	// Set total phases for full workflow
 	w.Executor.TotalPhases = 4
 
-	// Run pre-flight checks
-	if ShouldRunPreflightChecks(w.SkipPreflight) {
-		if err := w.runPreflightChecks(); err != nil {
-			return err
-		}
+	if err := w.runPreflightIfNeeded(); err != nil {
+		return err
 	}
 
+	// Execute specify → plan → tasks phases
+	specName, err := w.executeSpecifyPlanTasks(featureDescription, 4)
+	if err != nil {
+		return err
+	}
+
+	// Execute implement phase
+	if err := w.executeImplementPhase(specName, featureDescription, resume); err != nil {
+		return err
+	}
+
+	// Print success summary
+	w.printFullWorkflowSummary(specName)
+	return nil
+}
+
+// runPreflightIfNeeded runs preflight checks if enabled
+func (w *WorkflowOrchestrator) runPreflightIfNeeded() error {
+	if ShouldRunPreflightChecks(w.SkipPreflight) {
+		return w.runPreflightChecks()
+	}
+	return nil
+}
+
+// executeSpecifyPlanTasks runs specify, plan, and tasks phases sequentially
+func (w *WorkflowOrchestrator) executeSpecifyPlanTasks(featureDescription string, totalPhases int) (string, error) {
 	// Phase 1: Specify
-	fmt.Println("[Phase 1/4] Specify...")
+	fmt.Printf("[Phase 1/%d] Specify...\n", totalPhases)
 	fmt.Printf("Executing: /autospec.specify \"%s\"\n", featureDescription)
 
 	specName, err := w.executeSpecify(featureDescription)
 	if err != nil {
-		return fmt.Errorf("specify phase failed: %w", err)
+		return "", fmt.Errorf("specify phase failed: %w", err)
 	}
-
 	fmt.Printf("✓ Created specs/%s/spec.yaml\n\n", specName)
 
 	// Phase 2: Plan
-	fmt.Println("[Phase 2/4] Plan...")
+	fmt.Printf("[Phase 2/%d] Plan...\n", totalPhases)
 	fmt.Println("Executing: /autospec.plan")
 
 	if err := w.executePlan(specName, ""); err != nil {
-		return fmt.Errorf("plan phase failed: %w", err)
+		return "", fmt.Errorf("plan phase failed: %w", err)
 	}
-
 	fmt.Printf("✓ Created specs/%s/plan.yaml\n\n", specName)
 
 	// Phase 3: Tasks
-	fmt.Println("[Phase 3/4] Tasks...")
+	fmt.Printf("[Phase 3/%d] Tasks...\n", totalPhases)
 	fmt.Println("Executing: /autospec.tasks")
 
 	if err := w.executeTasks(specName, ""); err != nil {
-		return fmt.Errorf("tasks phase failed: %w", err)
+		return "", fmt.Errorf("tasks phase failed: %w", err)
 	}
-
 	fmt.Printf("✓ Created specs/%s/tasks.yaml\n\n", specName)
 
-	// Phase 4: Implement
+	return specName, nil
+}
+
+// executeImplementPhase runs the implement phase with resume support
+func (w *WorkflowOrchestrator) executeImplementPhase(specName, featureDescription string, resume bool) error {
 	fmt.Println("[Phase 4/4] Implement...")
 	fmt.Println("Executing: /autospec.implement")
 	w.debugLog("Starting implement phase for spec: %s", specName)
 
+	command := w.buildImplementCommand(resume)
+	result, err := w.Executor.ExecutePhase(specName, PhaseImplement, command, w.validateTasksComplete)
+
+	w.debugLog("ExecutePhase returned - result: %+v, err: %v", result, err)
+
+	if err != nil {
+		return w.handleImplementError(result, featureDescription, err)
+	}
+
+	w.debugLog("Implement phase completed successfully")
+	return nil
+}
+
+// buildImplementCommand constructs the implement command with optional resume flag
+func (w *WorkflowOrchestrator) buildImplementCommand(resume bool) string {
 	command := "/autospec.implement"
 	if resume {
 		command += " --resume"
 		w.debugLog("Resume flag enabled")
 	}
-
 	w.debugLog("Calling ExecutePhase with command: %s", command)
-	result, err := w.Executor.ExecutePhase(
-		specName,
-		PhaseImplement,
-		command,
-		func(specDir string) error {
-			w.debugLog("Running validation function for spec dir: %s", specDir)
-			tasksPath := validation.GetTasksFilePath(specDir)
-			w.debugLog("Validating tasks at: %s", tasksPath)
-			validationErr := w.Executor.ValidateTasksComplete(tasksPath)
-			w.debugLog("Validation result: %v", validationErr)
-			return validationErr
-		},
-	)
-	w.debugLog("ExecutePhase returned - result: %+v, err: %v", result, err)
+	return command
+}
 
-	if err != nil {
-		w.debugLog("Implement phase failed with error: %v", err)
-		if result.Exhausted {
-			w.debugLog("Retries exhausted")
-			// Generate continuation prompt
-			fmt.Println("\nImplementation paused.")
-			fmt.Printf("To resume: autospec full \"%s\" --resume\n", featureDescription)
-			return fmt.Errorf("implementation phase exhausted retries: %w", err)
-		}
-		return fmt.Errorf("implementation failed: %w", err)
+// validateTasksComplete is a validation function for implement phase
+func (w *WorkflowOrchestrator) validateTasksComplete(specDir string) error {
+	w.debugLog("Running validation function for spec dir: %s", specDir)
+	tasksPath := validation.GetTasksFilePath(specDir)
+	w.debugLog("Validating tasks at: %s", tasksPath)
+	validationErr := w.Executor.ValidateTasksComplete(tasksPath)
+	w.debugLog("Validation result: %v", validationErr)
+	return validationErr
+}
+
+// handleImplementError handles implement phase errors including retry exhaustion
+func (w *WorkflowOrchestrator) handleImplementError(result *PhaseResult, featureDescription string, err error) error {
+	w.debugLog("Implement phase failed with error: %v", err)
+	if result.Exhausted {
+		w.debugLog("Retries exhausted")
+		fmt.Println("\nImplementation paused.")
+		fmt.Printf("To resume: autospec full \"%s\" --resume\n", featureDescription)
+		return fmt.Errorf("implementation phase exhausted retries: %w", err)
 	}
+	return fmt.Errorf("implementation failed: %w", err)
+}
 
-	// Success!
-	w.debugLog("Implement phase completed successfully")
+// printFullWorkflowSummary prints the completion summary for full workflow
+func (w *WorkflowOrchestrator) printFullWorkflowSummary(specName string) {
 	fmt.Println("\n✓ All tasks completed!")
 	fmt.Println()
 
-	// Show task completion stats
 	specDir := filepath.Join(w.SpecsDir, specName)
 	tasksPath := validation.GetTasksFilePath(specDir)
 	stats, statsErr := validation.GetTaskStats(tasksPath)
@@ -215,8 +219,6 @@ func (w *WorkflowOrchestrator) RunFullWorkflow(featureDescription string, resume
 	fmt.Println("Completed 4 workflow phase(s): specify → plan → tasks → implement")
 	fmt.Printf("Spec: specs/%s/\n", specName)
 	w.debugLog("RunFullWorkflow exiting normally")
-
-	return nil
 }
 
 // runPreflightChecks runs pre-flight validation and handles user interaction
@@ -535,7 +537,6 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithPhases(specName string, metad
 	specDir := filepath.Join(w.SpecsDir, specName)
 	tasksPath := validation.GetTasksFilePath(specDir)
 
-	// Get phase information
 	phases, err := validation.GetPhaseInfo(tasksPath)
 	if err != nil {
 		return fmt.Errorf("failed to get phase info: %w", err)
@@ -545,83 +546,102 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithPhases(specName string, metad
 		return fmt.Errorf("no phases found in tasks.yaml")
 	}
 
-	totalPhases := len(phases)
-
-	// Find the first incomplete phase
 	firstIncomplete, _, err := validation.GetFirstIncompletePhase(tasksPath)
 	if err != nil {
 		return fmt.Errorf("failed to check phase completion: %w", err)
 	}
 
-	// If all phases are complete, nothing to do
 	if firstIncomplete == 0 {
 		fmt.Println("✓ All phases already complete!")
 		return nil
 	}
 
-	// Display skip message if starting from a later phase
 	if firstIncomplete > 1 {
 		fmt.Printf("Phases 1-%d complete, starting from phase %d\n\n", firstIncomplete-1, firstIncomplete)
 	}
 
-	// Execute each phase starting from the first incomplete
+	return w.executePhaseLoop(specName, tasksPath, phases, firstIncomplete, len(phases), prompt)
+}
+
+// executePhaseLoop executes phases from startPhase to end
+func (w *WorkflowOrchestrator) executePhaseLoop(specName, tasksPath string, phases []validation.PhaseInfo, startPhase, totalPhases int, prompt string) error {
 	for _, phase := range phases {
-		if phase.Number < firstIncomplete {
-			continue // Skip already complete phases
+		if phase.Number < startPhase {
+			continue
 		}
 
-		// Get tasks for this phase to display task IDs
-		phaseTasks, taskErr := validation.GetTasksForPhase(tasksPath, phase.Number)
-		taskIDs := make([]string, 0, len(phaseTasks))
-		if taskErr == nil {
-			for _, t := range phaseTasks {
-				taskIDs = append(taskIDs, t.ID)
-			}
+		if err := w.executeAndVerifyPhase(specName, tasksPath, phase, totalPhases, prompt); err != nil {
+			return err
 		}
-
-		// Display pre-phase summary with task count, IDs, and status
-		displayInfo := validation.BuildPhaseDisplayInfo(phase, totalPhases, taskIDs)
-		fmt.Println(validation.FormatPhaseHeader(displayInfo))
-
-		// Execute this phase
-		err := w.executeSinglePhaseSession(specName, phase.Number, prompt)
-		if err != nil {
-			return fmt.Errorf("phase %d failed: %w", phase.Number, err)
-		}
-
-		// Re-read phase info to get updated task counts
-		updatedPhases, rereadErr := validation.GetPhaseInfo(tasksPath)
-		var updatedPhase *validation.PhaseInfo
-		if rereadErr == nil {
-			for _, p := range updatedPhases {
-				if p.Number == phase.Number {
-					updatedPhase = &p
-					break
-				}
-			}
-		}
-
-		// Verify phase completion
-		complete, verifyErr := validation.IsPhaseComplete(tasksPath, phase.Number)
-		if verifyErr != nil {
-			return fmt.Errorf("failed to verify phase %d completion: %w", phase.Number, verifyErr)
-		}
-
-		if !complete {
-			fmt.Printf("\n⚠ Phase %d has incomplete tasks. Run 'autospec implement --phase %d' to continue.\n", phase.Number, phase.Number)
-			return fmt.Errorf("phase %d did not complete all tasks", phase.Number)
-		}
-
-		// Display completion message with task counts
-		if updatedPhase != nil {
-			fmt.Println(validation.FormatPhaseCompletion(phase.Number, updatedPhase.CompletedTasks, updatedPhase.TotalTasks, updatedPhase.BlockedTasks))
-		} else {
-			fmt.Printf("✓ Phase %d complete\n", phase.Number)
-		}
-		fmt.Println()
 	}
 
-	// Show final summary
+	printPhasesSummary(tasksPath)
+	return nil
+}
+
+// executeAndVerifyPhase executes a single phase and verifies completion
+func (w *WorkflowOrchestrator) executeAndVerifyPhase(specName, tasksPath string, phase validation.PhaseInfo, totalPhases int, prompt string) error {
+	taskIDs := getTaskIDsForPhase(tasksPath, phase.Number)
+	displayInfo := validation.BuildPhaseDisplayInfo(phase, totalPhases, taskIDs)
+	fmt.Println(validation.FormatPhaseHeader(displayInfo))
+
+	if err := w.executeSinglePhaseSession(specName, phase.Number, prompt); err != nil {
+		return fmt.Errorf("phase %d failed: %w", phase.Number, err)
+	}
+
+	updatedPhase := getUpdatedPhaseInfo(tasksPath, phase.Number)
+
+	complete, verifyErr := validation.IsPhaseComplete(tasksPath, phase.Number)
+	if verifyErr != nil {
+		return fmt.Errorf("failed to verify phase %d completion: %w", phase.Number, verifyErr)
+	}
+
+	if !complete {
+		fmt.Printf("\n⚠ Phase %d has incomplete tasks. Run 'autospec implement --phase %d' to continue.\n", phase.Number, phase.Number)
+		return fmt.Errorf("phase %d did not complete all tasks", phase.Number)
+	}
+
+	printPhaseCompletion(phase.Number, updatedPhase)
+	fmt.Println()
+	return nil
+}
+
+// getTaskIDsForPhase returns task IDs for a given phase
+func getTaskIDsForPhase(tasksPath string, phaseNumber int) []string {
+	phaseTasks, taskErr := validation.GetTasksForPhase(tasksPath, phaseNumber)
+	taskIDs := make([]string, 0, len(phaseTasks))
+	if taskErr == nil {
+		for _, t := range phaseTasks {
+			taskIDs = append(taskIDs, t.ID)
+		}
+	}
+	return taskIDs
+}
+
+// getUpdatedPhaseInfo re-reads phase info to get updated task counts
+func getUpdatedPhaseInfo(tasksPath string, phaseNumber int) *validation.PhaseInfo {
+	updatedPhases, rereadErr := validation.GetPhaseInfo(tasksPath)
+	if rereadErr == nil {
+		for _, p := range updatedPhases {
+			if p.Number == phaseNumber {
+				return &p
+			}
+		}
+	}
+	return nil
+}
+
+// printPhaseCompletion prints the phase completion message
+func printPhaseCompletion(phaseNumber int, updatedPhase *validation.PhaseInfo) {
+	if updatedPhase != nil {
+		fmt.Println(validation.FormatPhaseCompletion(phaseNumber, updatedPhase.CompletedTasks, updatedPhase.TotalTasks, updatedPhase.BlockedTasks))
+	} else {
+		fmt.Printf("✓ Phase %d complete\n", phaseNumber)
+	}
+}
+
+// printPhasesSummary prints the final phase execution summary
+func printPhasesSummary(tasksPath string) {
 	fmt.Println("✓ All phases completed!")
 	fmt.Println()
 	stats, statsErr := validation.GetTaskStats(tasksPath)
@@ -629,8 +649,6 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithPhases(specName string, metad
 		fmt.Println("Task Summary:")
 		fmt.Print(validation.FormatTaskSummary(stats))
 	}
-
-	return nil
 }
 
 // ExecuteImplementSinglePhase runs only a specific phase
@@ -638,7 +656,6 @@ func (w *WorkflowOrchestrator) ExecuteImplementSinglePhase(specName string, meta
 	specDir := filepath.Join(w.SpecsDir, specName)
 	tasksPath := validation.GetTasksFilePath(specDir)
 
-	// Get total phases for validation
 	totalPhases, err := validation.GetTotalPhases(tasksPath)
 	if err != nil {
 		return fmt.Errorf("failed to get total phases: %w", err)
@@ -648,69 +665,50 @@ func (w *WorkflowOrchestrator) ExecuteImplementSinglePhase(specName string, meta
 		return fmt.Errorf("phase %d is out of range (valid: 1-%d)", phaseNumber, totalPhases)
 	}
 
-	// Get phase info
+	phaseInfo, err := getPhaseByNumber(tasksPath, phaseNumber)
+	if err != nil {
+		return err
+	}
+
+	return w.executeSinglePhaseAndReport(specName, tasksPath, *phaseInfo, totalPhases, prompt)
+}
+
+// getPhaseByNumber retrieves a specific phase by number
+func getPhaseByNumber(tasksPath string, phaseNumber int) (*validation.PhaseInfo, error) {
 	phases, err := validation.GetPhaseInfo(tasksPath)
 	if err != nil {
-		return fmt.Errorf("failed to get phase info: %w", err)
+		return nil, fmt.Errorf("failed to get phase info: %w", err)
 	}
 
-	var phaseInfo *validation.PhaseInfo
 	for _, p := range phases {
 		if p.Number == phaseNumber {
-			phaseInfo = &p
-			break
+			return &p, nil
 		}
 	}
+	return nil, fmt.Errorf("phase %d not found", phaseNumber)
+}
 
-	if phaseInfo == nil {
-		return fmt.Errorf("phase %d not found", phaseNumber)
-	}
-
-	// Get tasks for this phase to display task IDs
-	phaseTasks, taskErr := validation.GetTasksForPhase(tasksPath, phaseNumber)
-	taskIDs := make([]string, 0, len(phaseTasks))
-	if taskErr == nil {
-		for _, t := range phaseTasks {
-			taskIDs = append(taskIDs, t.ID)
-		}
-	}
-
-	// Display pre-phase summary with task count, IDs, and status
-	displayInfo := validation.BuildPhaseDisplayInfo(*phaseInfo, totalPhases, taskIDs)
+// executeSinglePhaseAndReport executes one phase and reports result (doesn't fail on incomplete)
+func (w *WorkflowOrchestrator) executeSinglePhaseAndReport(specName, tasksPath string, phase validation.PhaseInfo, totalPhases int, prompt string) error {
+	taskIDs := getTaskIDsForPhase(tasksPath, phase.Number)
+	displayInfo := validation.BuildPhaseDisplayInfo(phase, totalPhases, taskIDs)
 	fmt.Println(validation.FormatPhaseHeader(displayInfo))
 
-	// Execute the specific phase
-	err = w.executeSinglePhaseSession(specName, phaseNumber, prompt)
-	if err != nil {
-		return fmt.Errorf("phase %d failed: %w", phaseNumber, err)
+	if err := w.executeSinglePhaseSession(specName, phase.Number, prompt); err != nil {
+		return fmt.Errorf("phase %d failed: %w", phase.Number, err)
 	}
 
-	// Re-read phase info to get updated task counts
-	updatedPhases, rereadErr := validation.GetPhaseInfo(tasksPath)
-	var updatedPhase *validation.PhaseInfo
-	if rereadErr == nil {
-		for _, p := range updatedPhases {
-			if p.Number == phaseNumber {
-				updatedPhase = &p
-				break
-			}
-		}
-	}
+	updatedPhase := getUpdatedPhaseInfo(tasksPath, phase.Number)
 
-	// Verify phase completion
-	complete, verifyErr := validation.IsPhaseComplete(tasksPath, phaseNumber)
+	complete, verifyErr := validation.IsPhaseComplete(tasksPath, phase.Number)
 	if verifyErr != nil {
-		return fmt.Errorf("failed to verify phase %d completion: %w", phaseNumber, verifyErr)
+		return fmt.Errorf("failed to verify phase %d completion: %w", phase.Number, verifyErr)
 	}
 
 	if complete {
-		if updatedPhase != nil {
-			fmt.Println(validation.FormatPhaseCompletion(phaseNumber, updatedPhase.CompletedTasks, updatedPhase.TotalTasks, updatedPhase.BlockedTasks))
-		} else {
-			fmt.Printf("✓ Phase %d complete\n", phaseNumber)
-		}
+		printPhaseCompletion(phase.Number, updatedPhase)
 	} else {
-		fmt.Printf("⚠ Phase %d has incomplete tasks\n", phaseNumber)
+		fmt.Printf("⚠ Phase %d has incomplete tasks\n", phase.Number)
 	}
 
 	return nil
@@ -721,7 +719,6 @@ func (w *WorkflowOrchestrator) ExecuteImplementFromPhase(specName string, metada
 	specDir := filepath.Join(w.SpecsDir, specName)
 	tasksPath := validation.GetTasksFilePath(specDir)
 
-	// Get total phases for validation
 	totalPhases, err := validation.GetTotalPhases(tasksPath)
 	if err != nil {
 		return fmt.Errorf("failed to get total phases: %w", err)
@@ -731,7 +728,6 @@ func (w *WorkflowOrchestrator) ExecuteImplementFromPhase(specName string, metada
 		return fmt.Errorf("phase %d is out of range (valid: 1-%d)", startPhase, totalPhases)
 	}
 
-	// Get phase info
 	phases, err := validation.GetPhaseInfo(tasksPath)
 	if err != nil {
 		return fmt.Errorf("failed to get phase info: %w", err)
@@ -739,73 +735,7 @@ func (w *WorkflowOrchestrator) ExecuteImplementFromPhase(specName string, metada
 
 	fmt.Printf("Starting from phase %d of %d\n\n", startPhase, totalPhases)
 
-	// Execute each phase starting from startPhase
-	for _, phase := range phases {
-		if phase.Number < startPhase {
-			continue // Skip phases before startPhase
-		}
-
-		// Get tasks for this phase to display task IDs
-		phaseTasks, taskErr := validation.GetTasksForPhase(tasksPath, phase.Number)
-		taskIDs := make([]string, 0, len(phaseTasks))
-		if taskErr == nil {
-			for _, t := range phaseTasks {
-				taskIDs = append(taskIDs, t.ID)
-			}
-		}
-
-		// Display pre-phase summary with task count, IDs, and status
-		displayInfo := validation.BuildPhaseDisplayInfo(phase, totalPhases, taskIDs)
-		fmt.Println(validation.FormatPhaseHeader(displayInfo))
-
-		// Execute this phase
-		err := w.executeSinglePhaseSession(specName, phase.Number, prompt)
-		if err != nil {
-			return fmt.Errorf("phase %d failed: %w", phase.Number, err)
-		}
-
-		// Re-read phase info to get updated task counts
-		updatedPhases, rereadErr := validation.GetPhaseInfo(tasksPath)
-		var updatedPhase *validation.PhaseInfo
-		if rereadErr == nil {
-			for _, p := range updatedPhases {
-				if p.Number == phase.Number {
-					updatedPhase = &p
-					break
-				}
-			}
-		}
-
-		// Verify phase completion
-		complete, verifyErr := validation.IsPhaseComplete(tasksPath, phase.Number)
-		if verifyErr != nil {
-			return fmt.Errorf("failed to verify phase %d completion: %w", phase.Number, verifyErr)
-		}
-
-		if !complete {
-			fmt.Printf("\n⚠ Phase %d has incomplete tasks. Run 'autospec implement --phase %d' to continue.\n", phase.Number, phase.Number)
-			return fmt.Errorf("phase %d did not complete all tasks", phase.Number)
-		}
-
-		// Display completion message with task counts
-		if updatedPhase != nil {
-			fmt.Println(validation.FormatPhaseCompletion(phase.Number, updatedPhase.CompletedTasks, updatedPhase.TotalTasks, updatedPhase.BlockedTasks))
-		} else {
-			fmt.Printf("✓ Phase %d complete\n", phase.Number)
-		}
-		fmt.Println()
-	}
-
-	// Show final summary
-	fmt.Println("✓ All phases completed!")
-	fmt.Println()
-	stats, statsErr := validation.GetTaskStats(tasksPath)
-	if statsErr == nil && stats.TotalTasks > 0 {
-		fmt.Println("Task Summary:")
-		fmt.Print(validation.FormatTaskSummary(stats))
-	}
-
-	return nil
+	return w.executePhaseLoop(specName, tasksPath, phases, startPhase, totalPhases, prompt)
 }
 
 // ExecuteImplementWithTasks runs each task in a separate Claude session
@@ -813,50 +743,18 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithTasks(specName string, metada
 	specDir := filepath.Join(w.SpecsDir, specName)
 	tasksPath := validation.GetTasksFilePath(specDir)
 
-	// Get all tasks from tasks.yaml
-	allTasks, err := validation.GetAllTasks(tasksPath)
+	// Get and validate tasks
+	orderedTasks, allTasks, err := w.getOrderedTasksForExecution(tasksPath)
 	if err != nil {
-		return fmt.Errorf("failed to get tasks: %w", err)
-	}
-
-	if len(allTasks) == 0 {
-		return fmt.Errorf("no tasks found in tasks.yaml")
-	}
-
-	// Get tasks in dependency order
-	orderedTasks, err := validation.GetTasksInDependencyOrder(allTasks)
-	if err != nil {
-		return fmt.Errorf("failed to order tasks by dependencies: %w", err)
+		return err
 	}
 
 	totalTasks := len(orderedTasks)
 
 	// Find starting index based on fromTask
-	startIdx := 0
-	if fromTask != "" {
-		found := false
-		for i, task := range orderedTasks {
-			if task.ID == fromTask {
-				startIdx = i
-				found = true
-				break
-			}
-		}
-		if !found {
-			// List available task IDs
-			taskIDs := make([]string, len(orderedTasks))
-			for i, t := range orderedTasks {
-				taskIDs[i] = t.ID
-			}
-			return fmt.Errorf("task %s not found in tasks.yaml (available: %v)", fromTask, taskIDs)
-		}
-
-		// Validate that fromTask's dependencies are met
-		fromTaskItem, _ := validation.GetTaskByID(allTasks, fromTask)
-		met, unmetDeps := validation.ValidateTaskDependenciesMet(*fromTaskItem, allTasks)
-		if !met {
-			return fmt.Errorf("cannot start from task %s: dependencies not met (%v)", fromTask, unmetDeps)
-		}
+	startIdx, err := w.findTaskStartIndex(orderedTasks, allTasks, fromTask)
+	if err != nil {
+		return err
 	}
 
 	// Display skip message if starting from a later task
@@ -865,65 +763,147 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithTasks(specName string, metada
 	}
 
 	// Execute each task starting from startIdx
-	completedCount := 0
+	if err := w.executeTaskLoop(specName, tasksPath, orderedTasks, startIdx, totalTasks, prompt); err != nil {
+		return err
+	}
+
+	// Show final summary
+	printTasksSummary(tasksPath)
+	return nil
+}
+
+// getOrderedTasksForExecution retrieves and orders tasks by dependencies
+func (w *WorkflowOrchestrator) getOrderedTasksForExecution(tasksPath string) ([]validation.TaskItem, []validation.TaskItem, error) {
+	allTasks, err := validation.GetAllTasks(tasksPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get tasks: %w", err)
+	}
+
+	if len(allTasks) == 0 {
+		return nil, nil, fmt.Errorf("no tasks found in tasks.yaml")
+	}
+
+	orderedTasks, err := validation.GetTasksInDependencyOrder(allTasks)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to order tasks by dependencies: %w", err)
+	}
+
+	return orderedTasks, allTasks, nil
+}
+
+// findTaskStartIndex finds the starting index for task execution
+func (w *WorkflowOrchestrator) findTaskStartIndex(orderedTasks, allTasks []validation.TaskItem, fromTask string) (int, error) {
+	if fromTask == "" {
+		return 0, nil
+	}
+
+	// Find task index
+	startIdx := -1
+	for i, task := range orderedTasks {
+		if task.ID == fromTask {
+			startIdx = i
+			break
+		}
+	}
+
+	if startIdx == -1 {
+		taskIDs := make([]string, len(orderedTasks))
+		for i, t := range orderedTasks {
+			taskIDs[i] = t.ID
+		}
+		return 0, fmt.Errorf("task %s not found in tasks.yaml (available: %v)", fromTask, taskIDs)
+	}
+
+	// Validate that fromTask's dependencies are met
+	fromTaskItem, _ := validation.GetTaskByID(allTasks, fromTask)
+	met, unmetDeps := validation.ValidateTaskDependenciesMet(*fromTaskItem, allTasks)
+	if !met {
+		return 0, fmt.Errorf("cannot start from task %s: dependencies not met (%v)", fromTask, unmetDeps)
+	}
+
+	return startIdx, nil
+}
+
+// executeTaskLoop executes tasks from startIdx to end
+func (w *WorkflowOrchestrator) executeTaskLoop(specName, tasksPath string, orderedTasks []validation.TaskItem, startIdx, totalTasks int, prompt string) error {
 	for i := startIdx; i < len(orderedTasks); i++ {
 		task := orderedTasks[i]
 
-		// Skip already completed tasks
-		if task.Status == "Completed" || task.Status == "completed" {
-			fmt.Printf("✓ Task %d/%d: %s - %s (already completed)\n", i+1, totalTasks, task.ID, task.Title)
-			completedCount++
-			continue
-		}
-
-		// Skip blocked tasks
-		if task.Status == "Blocked" || task.Status == "blocked" {
-			fmt.Printf("⚠ Task %d/%d: %s - %s (blocked)\n", i+1, totalTasks, task.ID, task.Title)
+		// Handle completed and blocked tasks
+		if shouldSkipTask(task, i, totalTasks) {
 			continue
 		}
 
 		fmt.Printf("[Task %d/%d] %s - %s\n", i+1, totalTasks, task.ID, task.Title)
 
-		// Validate dependencies before executing
-		// Re-read tasks to get fresh status
-		freshTasks, err := validation.GetAllTasks(tasksPath)
-		if err != nil {
-			return fmt.Errorf("failed to refresh tasks: %w", err)
-		}
-
-		met, unmetDeps := validation.ValidateTaskDependenciesMet(task, freshTasks)
-		if !met {
-			fmt.Printf("⚠ Skipping task %s: dependencies not met (%v)\n", task.ID, unmetDeps)
-			continue
-		}
-
-		// Execute this task in a fresh Claude session
-		err = w.executeSingleTaskSession(specName, task.ID, task.Title, prompt)
-		if err != nil {
-			return fmt.Errorf("task %s failed: %w", task.ID, err)
-		}
-
-		// Verify task completion by re-reading tasks.yaml
-		freshTasks, err = validation.GetAllTasks(tasksPath)
-		if err != nil {
-			return fmt.Errorf("failed to verify task completion: %w", err)
-		}
-
-		freshTask, err := validation.GetTaskByID(freshTasks, task.ID)
-		if err != nil {
-			return fmt.Errorf("failed to find task %s after execution: %w", task.ID, err)
-		}
-
-		if freshTask.Status != "Completed" && freshTask.Status != "completed" {
-			fmt.Printf("\n⚠ Task %s did not complete (status: %s). Run 'autospec implement --tasks --from-task %s' to retry.\n", task.ID, freshTask.Status, task.ID)
-			return fmt.Errorf("task %s did not complete after execution (status: %s)", task.ID, freshTask.Status)
+		// Execute and verify task
+		if err := w.executeAndVerifyTask(specName, tasksPath, task, prompt); err != nil {
+			return err
 		}
 
 		fmt.Printf("✓ Task %s complete\n\n", task.ID)
-		completedCount++
+	}
+	return nil
+}
+
+// shouldSkipTask checks if a task should be skipped and prints appropriate message
+func shouldSkipTask(task validation.TaskItem, idx, totalTasks int) bool {
+	if task.Status == "Completed" || task.Status == "completed" {
+		fmt.Printf("✓ Task %d/%d: %s - %s (already completed)\n", idx+1, totalTasks, task.ID, task.Title)
+		return true
+	}
+	if task.Status == "Blocked" || task.Status == "blocked" {
+		fmt.Printf("⚠ Task %d/%d: %s - %s (blocked)\n", idx+1, totalTasks, task.ID, task.Title)
+		return true
+	}
+	return false
+}
+
+// executeAndVerifyTask executes a single task and verifies completion
+func (w *WorkflowOrchestrator) executeAndVerifyTask(specName, tasksPath string, task validation.TaskItem, prompt string) error {
+	// Validate dependencies before executing
+	freshTasks, err := validation.GetAllTasks(tasksPath)
+	if err != nil {
+		return fmt.Errorf("failed to refresh tasks: %w", err)
 	}
 
-	// Show final summary
+	met, unmetDeps := validation.ValidateTaskDependenciesMet(task, freshTasks)
+	if !met {
+		fmt.Printf("⚠ Skipping task %s: dependencies not met (%v)\n", task.ID, unmetDeps)
+		return nil
+	}
+
+	// Execute this task in a fresh Claude session
+	if err := w.executeSingleTaskSession(specName, task.ID, task.Title, prompt); err != nil {
+		return fmt.Errorf("task %s failed: %w", task.ID, err)
+	}
+
+	// Verify task completion
+	return w.verifyTaskCompletion(tasksPath, task.ID)
+}
+
+// verifyTaskCompletion checks that a task completed successfully
+func (w *WorkflowOrchestrator) verifyTaskCompletion(tasksPath, taskID string) error {
+	freshTasks, err := validation.GetAllTasks(tasksPath)
+	if err != nil {
+		return fmt.Errorf("failed to verify task completion: %w", err)
+	}
+
+	freshTask, err := validation.GetTaskByID(freshTasks, taskID)
+	if err != nil {
+		return fmt.Errorf("failed to find task %s after execution: %w", taskID, err)
+	}
+
+	if freshTask.Status != "Completed" && freshTask.Status != "completed" {
+		fmt.Printf("\n⚠ Task %s did not complete (status: %s). Run 'autospec implement --tasks --from-task %s' to retry.\n", taskID, freshTask.Status, taskID)
+		return fmt.Errorf("task %s did not complete after execution (status: %s)", taskID, freshTask.Status)
+	}
+
+	return nil
+}
+
+// printTasksSummary prints the final task execution summary
+func printTasksSummary(tasksPath string) {
 	fmt.Println("✓ All tasks processed!")
 	fmt.Println()
 	stats, statsErr := validation.GetTaskStats(tasksPath)
@@ -931,8 +911,6 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithTasks(specName string, metada
 		fmt.Println("Task Summary:")
 		fmt.Print(validation.FormatTaskSummary(stats))
 	}
-
-	return nil
 }
 
 // executeSingleTaskSession executes a single task in a fresh Claude session

@@ -258,83 +258,125 @@ func printDryRunPreview(phaseConfig *workflow.PhaseConfig, featureDescription st
 	return nil
 }
 
+// phaseExecutionContext holds state during phase execution
+type phaseExecutionContext struct {
+	orchestrator       *workflow.WorkflowOrchestrator
+	featureDescription string
+	resume             bool
+	specName           string
+	specDir            string
+	ranImplement       bool
+}
+
 // executePhases executes the selected phases in order
 func executePhases(orchestrator *workflow.WorkflowOrchestrator, phaseConfig *workflow.PhaseConfig, featureDescription string, specMetadata *spec.Metadata, resume, debug bool) error {
 	phases := phaseConfig.GetCanonicalOrder()
-	totalPhases := len(phases)
-	orchestrator.Executor.TotalPhases = totalPhases
+	orchestrator.Executor.TotalPhases = len(phases)
 
-	var specName string
-	var specDir string
-	if specMetadata != nil {
-		specName = fmt.Sprintf("%s-%s", specMetadata.Number, specMetadata.Name)
-		specDir = specMetadata.Directory
+	ctx := &phaseExecutionContext{
+		orchestrator:       orchestrator,
+		featureDescription: featureDescription,
+		resume:             resume,
 	}
 
-	ranImplement := false
+	if specMetadata != nil {
+		ctx.specName = fmt.Sprintf("%s-%s", specMetadata.Number, specMetadata.Name)
+		ctx.specDir = specMetadata.Directory
+	}
 
 	for i, phase := range phases {
-		fmt.Printf("[Phase %d/%d] %s...\n", i+1, totalPhases, phase)
-
-		switch phase {
-		// Core phases
-		case workflow.PhaseSpecify:
-			name, err := orchestrator.ExecuteSpecify(featureDescription)
-			if err != nil {
-				return fmt.Errorf("specify phase failed: %w", err)
-			}
-			specName = name
-			specDir = filepath.Join(orchestrator.SpecsDir, name)
-			// Update specMetadata for subsequent phases
-			specMetadata = &spec.Metadata{
-				Name:      name,
-				Directory: specDir,
-			}
-
-		case workflow.PhasePlan:
-			if err := orchestrator.ExecutePlan(specName, featureDescription); err != nil {
-				return fmt.Errorf("plan phase failed: %w", err)
-			}
-
-		case workflow.PhaseTasks:
-			if err := orchestrator.ExecuteTasks(specName, featureDescription); err != nil {
-				return fmt.Errorf("tasks phase failed: %w", err)
-			}
-
-		case workflow.PhaseImplement:
-			// Use default phase options when called from run command (single-session mode)
-			phaseOpts := workflow.PhaseExecutionOptions{}
-			if err := orchestrator.ExecuteImplement(specName, featureDescription, resume, phaseOpts); err != nil {
-				return fmt.Errorf("implement phase failed: %w", err)
-			}
-			ranImplement = true
-
-		// Optional phases
-		case workflow.PhaseConstitution:
-			if err := orchestrator.ExecuteConstitution(featureDescription); err != nil {
-				return fmt.Errorf("constitution phase failed: %w", err)
-			}
-
-		case workflow.PhaseClarify:
-			if err := orchestrator.ExecuteClarify(specName, featureDescription); err != nil {
-				return fmt.Errorf("clarify phase failed: %w", err)
-			}
-
-		case workflow.PhaseChecklist:
-			if err := orchestrator.ExecuteChecklist(specName, featureDescription); err != nil {
-				return fmt.Errorf("checklist phase failed: %w", err)
-			}
-
-		case workflow.PhaseAnalyze:
-			if err := orchestrator.ExecuteAnalyze(specName, featureDescription); err != nil {
-				return fmt.Errorf("analyze phase failed: %w", err)
-			}
+		fmt.Printf("[Phase %d/%d] %s...\n", i+1, len(phases), phase)
+		if err := ctx.executePhase(phase); err != nil {
+			return err
 		}
 	}
 
-	// Print summary
-	printWorkflowSummary(phases, specName, specDir, ranImplement)
+	printWorkflowSummary(phases, ctx.specName, ctx.specDir, ctx.ranImplement)
+	return nil
+}
 
+// executePhase dispatches to the appropriate phase handler
+func (ctx *phaseExecutionContext) executePhase(phase workflow.Phase) error {
+	switch phase {
+	case workflow.PhaseSpecify:
+		return ctx.executeSpecify()
+	case workflow.PhasePlan:
+		return ctx.executePlan()
+	case workflow.PhaseTasks:
+		return ctx.executeTasks()
+	case workflow.PhaseImplement:
+		return ctx.executeImplement()
+	case workflow.PhaseConstitution:
+		return ctx.executeConstitution()
+	case workflow.PhaseClarify:
+		return ctx.executeClarify()
+	case workflow.PhaseChecklist:
+		return ctx.executeChecklist()
+	case workflow.PhaseAnalyze:
+		return ctx.executeAnalyze()
+	default:
+		return fmt.Errorf("unknown phase: %s", phase)
+	}
+}
+
+func (ctx *phaseExecutionContext) executeSpecify() error {
+	name, err := ctx.orchestrator.ExecuteSpecify(ctx.featureDescription)
+	if err != nil {
+		return fmt.Errorf("specify phase failed: %w", err)
+	}
+	ctx.specName = name
+	ctx.specDir = filepath.Join(ctx.orchestrator.SpecsDir, name)
+	return nil
+}
+
+func (ctx *phaseExecutionContext) executePlan() error {
+	if err := ctx.orchestrator.ExecutePlan(ctx.specName, ctx.featureDescription); err != nil {
+		return fmt.Errorf("plan phase failed: %w", err)
+	}
+	return nil
+}
+
+func (ctx *phaseExecutionContext) executeTasks() error {
+	if err := ctx.orchestrator.ExecuteTasks(ctx.specName, ctx.featureDescription); err != nil {
+		return fmt.Errorf("tasks phase failed: %w", err)
+	}
+	return nil
+}
+
+func (ctx *phaseExecutionContext) executeImplement() error {
+	phaseOpts := workflow.PhaseExecutionOptions{}
+	if err := ctx.orchestrator.ExecuteImplement(ctx.specName, ctx.featureDescription, ctx.resume, phaseOpts); err != nil {
+		return fmt.Errorf("implement phase failed: %w", err)
+	}
+	ctx.ranImplement = true
+	return nil
+}
+
+func (ctx *phaseExecutionContext) executeConstitution() error {
+	if err := ctx.orchestrator.ExecuteConstitution(ctx.featureDescription); err != nil {
+		return fmt.Errorf("constitution phase failed: %w", err)
+	}
+	return nil
+}
+
+func (ctx *phaseExecutionContext) executeClarify() error {
+	if err := ctx.orchestrator.ExecuteClarify(ctx.specName, ctx.featureDescription); err != nil {
+		return fmt.Errorf("clarify phase failed: %w", err)
+	}
+	return nil
+}
+
+func (ctx *phaseExecutionContext) executeChecklist() error {
+	if err := ctx.orchestrator.ExecuteChecklist(ctx.specName, ctx.featureDescription); err != nil {
+		return fmt.Errorf("checklist phase failed: %w", err)
+	}
+	return nil
+}
+
+func (ctx *phaseExecutionContext) executeAnalyze() error {
+	if err := ctx.orchestrator.ExecuteAnalyze(ctx.specName, ctx.featureDescription); err != nil {
+		return fmt.Errorf("analyze phase failed: %w", err)
+	}
 	return nil
 }
 

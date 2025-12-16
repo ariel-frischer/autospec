@@ -151,7 +151,6 @@ func runConfigMigrate(cmd *cobra.Command, args []string) error {
 	userOnly, _ := cmd.Flags().GetBool("user")
 	projectOnly, _ := cmd.Flags().GetBool("project")
 
-	// Default to migrating both if neither flag is set
 	migrateUser := !projectOnly || userOnly
 	migrateProject := !userOnly || projectOnly
 
@@ -162,57 +161,64 @@ func runConfigMigrate(cmd *cobra.Command, args []string) error {
 
 	var migrated, skipped int
 
-	// Migrate user config
 	if migrateUser {
-		result, err := config.MigrateUserConfig(dryRun)
+		m, s, err := migrateConfigLevel(out, config.MigrateUserConfig, dryRun)
 		if err != nil {
 			return fmt.Errorf("failed to migrate user config: %w", err)
 		}
-
-		if result.Success {
-			fmt.Fprintf(out, "✓ %s\n", result.Message)
-			migrated++
-
-			// Remove legacy file if not dry run
-			if !dryRun {
-				if err := config.RemoveLegacyConfig(result.SourcePath, dryRun); err != nil {
-					fmt.Fprintf(out, "  Warning: failed to backup legacy file: %v\n", err)
-				} else {
-					fmt.Fprintf(out, "  Legacy file backed up to %s.bak\n", result.SourcePath)
-				}
-			}
-		} else {
-			fmt.Fprintf(out, "- %s\n", result.Message)
-			skipped++
-		}
+		migrated += m
+		skipped += s
 	}
 
-	// Migrate project config
 	if migrateProject {
-		result, err := config.MigrateProjectConfig(dryRun)
+		m, s, err := migrateConfigLevel(out, config.MigrateProjectConfig, dryRun)
 		if err != nil {
 			return fmt.Errorf("failed to migrate project config: %w", err)
 		}
-
-		if result.Success {
-			fmt.Fprintf(out, "✓ %s\n", result.Message)
-			migrated++
-
-			// Remove legacy file if not dry run
-			if !dryRun {
-				if err := config.RemoveLegacyConfig(result.SourcePath, dryRun); err != nil {
-					fmt.Fprintf(out, "  Warning: failed to backup legacy file: %v\n", err)
-				} else {
-					fmt.Fprintf(out, "  Legacy file backed up to %s.bak\n", result.SourcePath)
-				}
-			}
-		} else {
-			fmt.Fprintf(out, "- %s\n", result.Message)
-			skipped++
-		}
+		migrated += m
+		skipped += s
 	}
 
-	// Summary
+	printMigrationSummary(out, migrated, skipped, dryRun)
+	return nil
+}
+
+// migrateConfigLevel migrates a config level (user or project) and returns counts
+func migrateConfigLevel(out interface {
+	Write(p []byte) (n int, err error)
+}, migrateFunc func(bool) (*config.MigrationResult, error), dryRun bool) (migrated, skipped int, err error) {
+	result, err := migrateFunc(dryRun)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if result.Success {
+		fmt.Fprintf(out, "✓ %s\n", result.Message)
+		if !dryRun {
+			backupLegacyConfig(out, result.SourcePath)
+		}
+		return 1, 0, nil
+	}
+
+	fmt.Fprintf(out, "- %s\n", result.Message)
+	return 0, 1, nil
+}
+
+// backupLegacyConfig backs up the legacy config file
+func backupLegacyConfig(out interface {
+	Write(p []byte) (n int, err error)
+}, sourcePath string) {
+	if err := config.RemoveLegacyConfig(sourcePath, false); err != nil {
+		fmt.Fprintf(out, "  Warning: failed to backup legacy file: %v\n", err)
+	} else {
+		fmt.Fprintf(out, "  Legacy file backed up to %s.bak\n", sourcePath)
+	}
+}
+
+// printMigrationSummary prints the migration summary
+func printMigrationSummary(out interface {
+	Write(p []byte) (n int, err error)
+}, migrated, skipped int, dryRun bool) {
 	fmt.Fprintln(out)
 	if migrated > 0 {
 		if dryRun {
@@ -224,7 +230,6 @@ func runConfigMigrate(cmd *cobra.Command, args []string) error {
 
 	if migrated == 0 && skipped > 0 {
 		fmt.Fprintln(out, "No JSON configs found to migrate.")
-		// Check if YAML configs exist
 		if userPath, _ := config.UserConfigPath(); fileExistsCheck(userPath) {
 			fmt.Fprintf(out, "User config already exists at: %s\n", userPath)
 		}
@@ -232,8 +237,6 @@ func runConfigMigrate(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(out, "Project config already exists at: %s\n", config.ProjectConfigPath())
 		}
 	}
-
-	return nil
 }
 
 // fileExistsCheck returns true if the file exists

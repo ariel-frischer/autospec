@@ -59,91 +59,122 @@ func init() {
 }
 
 func runUpdateAgentContext(cmd *cobra.Command, args []string) error {
-	// Load config
 	configPath, _ := cmd.Flags().GetString("config")
+
+	cfg, err := loadAgentContextConfig(configPath)
+	if err != nil {
+		return err
+	}
+
+	repoRoot, err := getGitRepoRoot()
+	if err != nil {
+		return err
+	}
+
+	metadata, err := detectSpecForAgentContext(cfg.SpecsDir)
+	if err != nil {
+		return err
+	}
+
+	specName := fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)
+	planPath := filepath.Join(metadata.Directory, "plan.yaml")
+
+	planData, err := parseAgentPlanData(planPath)
+	if err != nil {
+		return err
+	}
+
+	if err := validateAgentFlag(); err != nil {
+		return err
+	}
+
+	results, updateErr := executeAgentUpdates(repoRoot, planData)
+	output := buildCommandOutput(specName, planPath, planData, results, updateErr)
+
+	if updateAgentContextJSONFlag {
+		return outputJSON(output)
+	}
+	return outputText(output)
+}
+
+// loadAgentContextConfig loads config for agent context command
+func loadAgentContextConfig(configPath string) (*config.Configuration, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		cliErr := clierrors.ConfigParseError(configPath, err)
 		if !updateAgentContextJSONFlag {
 			clierrors.PrintError(cliErr)
 		}
-		return outputError(cliErr, updateAgentContextJSONFlag)
+		return nil, outputError(cliErr, updateAgentContextJSONFlag)
 	}
+	return cfg, nil
+}
 
-	// Get repository root
+// getGitRepoRoot gets the git repository root
+func getGitRepoRoot() (string, error) {
 	repoRoot, err := git.GetRepositoryRoot()
 	if err != nil {
 		cliErr := fmt.Errorf("not in a git repository: %w. Run this command from within a git repository", err)
 		if !updateAgentContextJSONFlag {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", cliErr)
 		}
-		return outputError(cliErr, updateAgentContextJSONFlag)
+		return "", outputError(cliErr, updateAgentContextJSONFlag)
 	}
+	return repoRoot, nil
+}
 
-	// Detect current spec
-	metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+// detectSpecForAgentContext detects the current spec
+func detectSpecForAgentContext(specsDir string) (*spec.Metadata, error) {
+	metadata, err := spec.DetectCurrentSpec(specsDir)
 	if err != nil {
-		cliErr := fmt.Errorf("failed to detect spec: %w\nEnsure you're on a feature branch or have spec directories in %s", err, cfg.SpecsDir)
+		cliErr := fmt.Errorf("failed to detect spec: %w\nEnsure you're on a feature branch or have spec directories in %s", err, specsDir)
 		if !updateAgentContextJSONFlag {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", cliErr)
 		}
-		return outputError(cliErr, updateAgentContextJSONFlag)
+		return nil, outputError(cliErr, updateAgentContextJSONFlag)
 	}
+	return metadata, nil
+}
 
-	specName := fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)
-
-	// Find plan.yaml
-	planPath := filepath.Join(metadata.Directory, "plan.yaml")
-
-	// Parse plan.yaml
+// parseAgentPlanData parses plan.yaml for agent context
+func parseAgentPlanData(planPath string) (*agent.PlanData, error) {
 	planData, err := agent.ParsePlanData(planPath)
 	if err != nil {
 		cliErr := fmt.Errorf("failed to parse plan.yaml: %w", err)
 		if !updateAgentContextJSONFlag {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", cliErr)
 		}
+		return nil, outputError(cliErr, updateAgentContextJSONFlag)
+	}
+	return planData, nil
+}
+
+// validateAgentFlag validates the agent flag if provided
+func validateAgentFlag() error {
+	if updateAgentContextAgentFlag == "" {
+		return nil
+	}
+	if _, err := agent.GetAgentByID(updateAgentContextAgentFlag); err != nil {
+		validAgents := strings.Join(agent.GetAllAgentIDs(), ", ")
+		cliErr := fmt.Errorf("invalid agent: %q\nValid agents: %s", updateAgentContextAgentFlag, validAgents)
+		if !updateAgentContextJSONFlag {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", cliErr)
+		}
 		return outputError(cliErr, updateAgentContextJSONFlag)
 	}
+	return nil
+}
 
-	// Validate agent flag if provided
+// executeAgentUpdates performs the agent file updates
+func executeAgentUpdates(repoRoot string, planData *agent.PlanData) ([]agent.UpdateResult, error) {
 	if updateAgentContextAgentFlag != "" {
-		if _, err := agent.GetAgentByID(updateAgentContextAgentFlag); err != nil {
-			validAgents := strings.Join(agent.GetAllAgentIDs(), ", ")
-			cliErr := fmt.Errorf("invalid agent: %q\nValid agents: %s", updateAgentContextAgentFlag, validAgents)
-			if !updateAgentContextJSONFlag {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", cliErr)
-			}
-			return outputError(cliErr, updateAgentContextJSONFlag)
-		}
-	}
-
-	// Update agent files
-	var results []agent.UpdateResult
-	var updateErr error
-
-	if updateAgentContextAgentFlag != "" {
-		// Update single agent
 		result, err := agent.UpdateSingleAgent(updateAgentContextAgentFlag, repoRoot, planData)
-		if err != nil {
-			updateErr = err
-		}
 		if result != nil {
-			results = append(results, *result)
+			return []agent.UpdateResult{*result}, err
 		}
-	} else {
-		// Update all existing agents
-		results, updateErr = agent.UpdateAllAgents(repoRoot, planData)
+		return nil, err
 	}
-
-	// Build output
-	output := buildCommandOutput(specName, planPath, planData, results, updateErr)
-
-	// Output results
-	if updateAgentContextJSONFlag {
-		return outputJSON(output)
-	}
-
-	return outputText(output)
+	return agent.UpdateAllAgents(repoRoot, planData)
 }
 
 func buildCommandOutput(specName, planPath string, planData *agent.PlanData, results []agent.UpdateResult, updateErr error) agent.CommandOutput {

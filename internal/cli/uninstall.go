@@ -50,21 +50,11 @@ func init() {
 func runUninstall(cmd *cobra.Command, args []string) error {
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 	yes, _ := cmd.Flags().GetBool("yes")
-
 	out := cmd.OutOrStdout()
 
-	// Get all uninstall targets
-	targets, err := uninstall.GetUninstallTargets()
+	targets, existingTargets, err := collectUninstallTargets()
 	if err != nil {
-		return fmt.Errorf("failed to detect uninstall targets: %w", err)
-	}
-
-	// Check if any targets exist
-	var existingTargets []uninstall.UninstallTarget
-	for _, target := range targets {
-		if target.Exists {
-			existingTargets = append(existingTargets, target)
-		}
+		return err
 	}
 
 	if len(existingTargets) == 0 {
@@ -72,7 +62,40 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Display what will be removed
+	requiresSudo := displayUninstallTargets(out, targets, dryRun)
+
+	if dryRun {
+		return nil
+	}
+
+	if !confirmUninstall(cmd, out, requiresSudo, yes) {
+		return nil
+	}
+
+	return executeUninstall(out, targets)
+}
+
+// collectUninstallTargets gets all targets and filters existing ones
+func collectUninstallTargets() ([]uninstall.UninstallTarget, []uninstall.UninstallTarget, error) {
+	targets, err := uninstall.GetUninstallTargets()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to detect uninstall targets: %w", err)
+	}
+
+	var existingTargets []uninstall.UninstallTarget
+	for _, target := range targets {
+		if target.Exists {
+			existingTargets = append(existingTargets, target)
+		}
+	}
+
+	return targets, existingTargets, nil
+}
+
+// displayUninstallTargets shows what will be removed and returns if sudo is needed
+func displayUninstallTargets(out interface {
+	Write(p []byte) (n int, err error)
+}, targets []uninstall.UninstallTarget, dryRun bool) bool {
 	if dryRun {
 		fmt.Fprintln(out, "Would remove:")
 	} else {
@@ -95,49 +118,69 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(out, "  [%s] %s - %s%s\n", target.Type, target.Path, status, sudoHint)
 	}
 
-	// Show hint about project cleanup
 	fmt.Fprintln(out, "\nNote: To clean up project-level files, run 'autospec clean' in each project directory.")
+	return requiresSudo
+}
 
-	// In dry-run mode, exit after displaying
-	if dryRun {
-		return nil
-	}
-
-	// Warn about sudo if needed
+// confirmUninstall handles sudo warning and user confirmation
+func confirmUninstall(cmd *cobra.Command, out interface {
+	Write(p []byte) (n int, err error)
+}, requiresSudo, yes bool) bool {
 	if requiresSudo {
 		fmt.Fprintln(out, "\nWarning: Some files require elevated privileges to remove.")
 		fmt.Fprintln(out, "You may need to re-run with: sudo autospec uninstall")
 	}
 
-	// Prompt for confirmation unless --yes is set
 	if !yes {
 		fmt.Fprintln(out)
 		if !promptYesNo(cmd, "Uninstall autospec?") {
 			fmt.Fprintln(out, "Uninstall cancelled.")
-			return nil
+			return false
 		}
 	}
+	return true
+}
 
-	// Remove targets
+// executeUninstall removes targets and displays results
+func executeUninstall(out interface {
+	Write(p []byte) (n int, err error)
+}, targets []uninstall.UninstallTarget) error {
 	fmt.Fprintln(out)
 	results := uninstall.RemoveTargets(targets)
 
-	// Display results
-	var successCount, failCount, skippedCount int
+	successCount, failCount, skippedCount := displayRemovalResults(out, results)
+
+	printUninstallSummary(out, successCount, failCount, skippedCount)
+
+	if failCount > 0 {
+		return fmt.Errorf("%d items could not be removed", failCount)
+	}
+	return nil
+}
+
+// displayRemovalResults shows individual removal outcomes and returns counts
+func displayRemovalResults(out interface {
+	Write(p []byte) (n int, err error)
+}, results []uninstall.UninstallResult) (success, fail, skipped int) {
 	for _, result := range results {
 		if !result.Target.Exists {
-			skippedCount++
+			skipped++
 			fmt.Fprintf(out, "- Skipped: %s (not found)\n", result.Target.Path)
 		} else if result.Success {
-			successCount++
+			success++
 			fmt.Fprintf(out, "✓ Removed: %s\n", result.Target.Path)
 		} else {
-			failCount++
+			fail++
 			fmt.Fprintf(out, "✗ Failed: %s (%v)\n", result.Target.Path, result.Error)
 		}
 	}
+	return success, fail, skipped
+}
 
-	// Summary
+// printUninstallSummary displays the final uninstall summary
+func printUninstallSummary(out interface {
+	Write(p []byte) (n int, err error)
+}, successCount, failCount, skippedCount int) {
 	fmt.Fprintf(out, "\nSummary: %d removed", successCount)
 	if skippedCount > 0 {
 		fmt.Fprintf(out, ", %d skipped", skippedCount)
@@ -147,13 +190,7 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintln(out)
 
-	if failCount > 0 {
-		return fmt.Errorf("%d items could not be removed", failCount)
-	}
-
 	if successCount > 0 {
 		fmt.Fprintln(out, "\nautospec has been uninstalled.")
 	}
-
-	return nil
 }

@@ -57,10 +57,24 @@ func init() {
 func runInit(cmd *cobra.Command, args []string) error {
 	project, _ := cmd.Flags().GetBool("project")
 	force, _ := cmd.Flags().GetBool("force")
-
 	out := cmd.OutOrStdout()
 
-	// Step 1: Install commands (silent, no prompt)
+	if err := installCommandTemplates(out); err != nil {
+		return err
+	}
+
+	if err := initializeConfig(out, project, force); err != nil {
+		return err
+	}
+
+	constitutionExists := handleConstitution(out)
+	checkGitignore(out)
+	printSummary(out, constitutionExists)
+	return nil
+}
+
+// installCommandTemplates installs command templates and prints status
+func installCommandTemplates(out io.Writer) error {
 	cmdDir := commands.GetDefaultCommandsDir()
 	cmdResults, err := commands.InstallTemplates(cmdDir)
 	if err != nil {
@@ -73,64 +87,63 @@ func runInit(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Fprintf(out, "✓ Commands: up to date\n")
 	}
+	return nil
+}
 
-	// Step 2: Handle config
-	var configPath string
-
-	if project {
-		// Project-level config
-		configPath = config.ProjectConfigPath()
-	} else {
-		// User-level config (default)
-		var err error
-		configPath, err = config.UserConfigPath()
-		if err != nil {
-			return fmt.Errorf("failed to get user config path: %w", err)
-		}
+// initializeConfig creates or updates config file
+func initializeConfig(out io.Writer, project, force bool) error {
+	configPath, err := getConfigPath(project)
+	if err != nil {
+		return err
 	}
 
-	configExists := false
-	var existingConfig map[string]interface{}
-	if data, err := os.ReadFile(configPath); err == nil {
-		configExists = true
-		yaml.Unmarshal(data, &existingConfig)
-	}
+	configExists := fileExistsCheck(configPath)
 
 	if configExists && !force {
-		// Config exists - just mention it and move on
 		fmt.Fprintf(out, "✓ Config: exists at %s\n", configPath)
-	} else {
-		// Create new config with defaults
-		if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
-			return fmt.Errorf("failed to create config directory: %w", err)
-		}
-
-		defaults := config.GetDefaults()
-		data, err := yaml.Marshal(defaults)
-		if err != nil {
-			return fmt.Errorf("failed to serialize config: %w", err)
-		}
-
-		// Add a header comment to the YAML file
-		header := "# Autospec Configuration\n# See 'autospec config show' for all available options\n\n"
-		if err := os.WriteFile(configPath, []byte(header+string(data)), 0644); err != nil {
-			return fmt.Errorf("failed to write config: %w", err)
-		}
-
-		if configExists {
-			fmt.Fprintf(out, "✓ Config: overwritten at %s\n", configPath)
-		} else {
-			fmt.Fprintf(out, "✓ Config: created at %s\n", configPath)
-		}
+		return nil
 	}
 
-	// Step 3: Handle constitution
-	constitutionExists := handleConstitution(out)
+	if err := writeDefaultConfig(configPath); err != nil {
+		return err
+	}
 
-	// Step 4: Check .gitignore for .autospec
-	checkGitignore(out)
+	if configExists {
+		fmt.Fprintf(out, "✓ Config: overwritten at %s\n", configPath)
+	} else {
+		fmt.Fprintf(out, "✓ Config: created at %s\n", configPath)
+	}
+	return nil
+}
 
-	printSummary(out, constitutionExists)
+// getConfigPath returns the appropriate config path based on project flag
+func getConfigPath(project bool) (string, error) {
+	if project {
+		return config.ProjectConfigPath(), nil
+	}
+	configPath, err := config.UserConfigPath()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user config path: %w", err)
+	}
+	return configPath, nil
+}
+
+// writeDefaultConfig writes the default configuration to the given path
+func writeDefaultConfig(configPath string) error {
+	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	defaults := config.GetDefaults()
+	data, err := yaml.Marshal(defaults)
+	if err != nil {
+		return fmt.Errorf("failed to serialize config: %w", err)
+	}
+
+	header := "# Autospec Configuration\n# See 'autospec config show' for all available options\n\n"
+	if err := os.WriteFile(configPath, []byte(header+string(data)), 0644); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
 	return nil
 }
 

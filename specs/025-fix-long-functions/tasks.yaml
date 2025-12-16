@@ -1,0 +1,328 @@
+tasks:
+    branch: "025-fix-long-functions"
+    created: "2025-12-16"
+    spec_path: "specs/025-fix-long-functions/spec.yaml"
+    plan_path: "specs/025-fix-long-functions/plan.yaml"
+summary:
+    total_tasks: 17
+    total_phases: 8
+    parallel_opportunities: 4
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Verify baseline and prepare for refactoring"
+      tasks:
+        - id: "T001"
+          title: "Run full test suite to establish baseline"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "."
+          dependencies: []
+          acceptance_criteria:
+            - "go test ./... passes with 100% success"
+            - "make lint passes without errors"
+            - "Baseline established for regression testing"
+    - number: 2
+      title: "User Story 1 - Refactor critical long functions in workflow package"
+      purpose: "Refactor the 4 most severe workflow package violations (>100 lines and 125-line function) to improve core orchestration code readability"
+      story_reference: "US-001"
+      independent_test: "Each refactored function can be unit tested in isolation. The existing workflow tests should pass after refactoring."
+      tasks:
+        - id: "T002"
+          title: "Refactor ExecuteImplementWithTasks (125 lines) in internal/workflow/workflow.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "ExecuteImplementWithTasks is split into helper functions"
+            - "No single function exceeds 40 lines"
+            - "Helpers extracted: task validation, execution loop, progress tracking, summary generation"
+            - "go test ./internal/workflow/... passes"
+        - id: "T003"
+          title: "Refactor ExecutePhase (117 lines) in internal/workflow/executor.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "ExecutePhase is broken into pre-execute, execute, and post-execute helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: retry state handling, command execution, validation, logging"
+            - "go test ./internal/workflow/... passes"
+        - id: "T004"
+          title: "Refactor RunFullWorkflow (102 lines) in internal/workflow/workflow.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "RunFullWorkflow extracts orchestration logic into focused helper functions"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: phase execution, summary generation, progress reporting"
+            - "go test ./internal/workflow/... passes"
+        - id: "T005"
+          title: "Run workflow package tests to verify US-001 refactoring"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "go test ./internal/workflow/... passes with 100% success"
+            - "No new linting errors in workflow package"
+    - number: 3
+      title: "User Story 2 - Refactor critical long functions in CLI package"
+      purpose: "Refactor CLI commands exceeding 100 lines to improve command handler readability"
+      story_reference: "US-002"
+      independent_test: "Each CLI command can be tested by running the existing CLI tests after refactoring."
+      tasks:
+        - id: "T006"
+          title: "Refactor runNewFeature (108 lines) in internal/cli/new_feature.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/new_feature.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "runNewFeature extracts validation, git operations, and output formatting into separate helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: input validation, git branch creation, directory setup, output formatting"
+            - "go test ./internal/cli/... passes"
+        - id: "T007"
+          title: "Refactor runUninstall (110 lines) in internal/cli/uninstall.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/uninstall.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "runUninstall extracts confirmation prompts, file removal logic, and reporting into separate helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: target collection, user confirmation, removal execution, summary output"
+            - "go test ./internal/cli/... passes"
+        - id: "T008"
+          title: "Run CLI package tests to verify US-002 refactoring"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "go test ./internal/cli/... passes with 100% success"
+            - "No new linting errors in CLI package"
+    - number: 4
+      title: "User Story 3 - Refactor critical long function in config package"
+      purpose: "Refactor the configuration loading function for better maintainability"
+      story_reference: "US-003"
+      independent_test: "The existing config tests should pass after refactoring."
+      tasks:
+        - id: "T009"
+          title: "Refactor LoadWithOptions (105 lines) in internal/config/config.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/config/config.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "LoadWithOptions is split into helpers for loading defaults, files, and environment variables"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: loadDefaults, loadUserConfig, loadProjectConfig, applyEnvOverrides"
+            - "go test ./internal/config/... passes"
+    - number: 5
+      title: "User Story 4 - Refactor serious long functions in workflow package"
+      purpose: "Refactor remaining workflow functions in the 80-100 line range"
+      story_reference: "US-004"
+      independent_test: "Existing workflow tests should pass after refactoring."
+      tasks:
+        - id: "T010"
+          title: "Refactor ExecuteImplementFromPhase (90 lines) in internal/workflow/workflow.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "ExecuteImplementFromPhase is split into focused helpers under 40 lines each"
+            - "Helpers extracted: phase iteration, execution, completion verification"
+            - "go test ./internal/workflow/... passes"
+        - id: "T011"
+          title: "Refactor ExecuteImplementWithPhases (81 lines) in internal/workflow/workflow.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: true
+          story_id: "US-004"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "ExecuteImplementWithPhases extracts phase iteration and execution logic into helpers"
+            - "Each helper function is under 40 lines"
+            - "Share helper code with ExecuteImplementFromPhase where natural"
+            - "go test ./internal/workflow/... passes"
+    - number: 6
+      title: "User Story 5 - Refactor serious long functions in CLI package"
+      purpose: "Refactor remaining CLI functions in the 80-100 line range"
+      story_reference: "US-005"
+      independent_test: "CLI tests should pass after refactoring."
+      tasks:
+        - id: "T012"
+          title: "Refactor runConfigMigrate (90 lines) in internal/cli/config.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/cli/config.go"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "runConfigMigrate extracts migration logic into smaller helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: config detection, migration execution, summary output"
+            - "go test ./internal/cli/... passes"
+        - id: "T013"
+          title: "Refactor runUpdateAgentContext (87 lines) in internal/cli/update_agent_context.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/cli/update_agent_context.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "runUpdateAgentContext extracts agent file updates into separate helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: validation, file processing, output formatting"
+            - "go test ./internal/cli/... passes"
+        - id: "T014"
+          title: "Refactor runInit (79 lines) in internal/cli/init.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/cli/init.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "runInit extracts initialization steps into helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: path determination, file creation, summary output"
+            - "go test ./internal/cli/... passes"
+        - id: "T015"
+          title: "Refactor executePhases (78 lines) in internal/cli/run.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/cli/run.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "executePhases extracts phase execution logic into helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: phase dispatch, execution, summary generation"
+            - "go test ./internal/cli/... passes"
+    - number: 7
+      title: "User Story 6 - Refactor serious long function in git package"
+      purpose: "Complete refactoring of git utility function"
+      story_reference: "US-006"
+      independent_test: "Git package tests should pass after refactoring."
+      tasks:
+        - id: "T016"
+          title: "Refactor GetAllBranches (80 lines) in internal/git/git.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-006"
+          file_path: "internal/git/git.go"
+          dependencies: ["T013", "T014", "T015"]
+          acceptance_criteria:
+            - "GetAllBranches extracts branch parsing and filtering into separate helpers"
+            - "Each helper function is under 40 lines"
+            - "Helpers extracted: branch parsing, deduplication, sorting"
+            - "go test ./internal/git/... passes"
+    - number: 8
+      title: "Final Validation"
+      purpose: "Run full test suite and linting to ensure all refactoring is complete and correct"
+      tasks:
+        - id: "T017"
+          title: "Run full test suite and linting validation"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "."
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "go test ./... passes with 100% success"
+            - "make fmt runs successfully"
+            - "make lint passes without new errors"
+            - "All 13 refactored functions are now under 40 lines each"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: ["US-003"]
+        - story_id: "US-003"
+          depends_on: ["US-002"]
+          blocks: ["US-004"]
+        - story_id: "US-004"
+          depends_on: ["US-003"]
+          blocks: ["US-005"]
+        - story_id: "US-005"
+          depends_on: ["US-004"]
+          blocks: ["US-006"]
+        - story_id: "US-006"
+          depends_on: ["US-005"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+        - phase: 6
+          blocks: [7]
+        - phase: 7
+          blocks: [8]
+parallel_execution:
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T013", "T014", "T015"]
+          rationale: "Different CLI files with no dependencies between them. All depend on T012 being complete."
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2]
+        description: "Setup + Critical Workflow Functions (US-001) - addresses the most severe violations"
+        validation: "go test ./internal/workflow/... passes and all 4 critical workflow functions are under 40 lines"
+    incremental_delivery:
+        - milestone: "Critical Functions Complete"
+          phases: [1, 2, 3, 4]
+          deliverable: "All 6 Critical (>100 line) functions refactored across workflow, CLI, and config packages"
+        - milestone: "All Refactoring Complete"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8]
+          deliverable: "All 13 target functions refactored, full test suite passes, code formatted and linted"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T09:46:33Z"
+    artifact_type: "tasks"
