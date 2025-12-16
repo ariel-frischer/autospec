@@ -292,6 +292,12 @@ Key settings:
 - `state_dir`: Retry state storage (default: "~/.autospec/state")
 - `timeout`: Command execution timeout in seconds (default: 2400 = 40 minutes, valid range: 0 or 1-604800 (7 days))
 - `skip_confirmations`: Skip confirmation prompts (default: false, can also be set via AUTOSPEC_YES env var)
+- `implement_method`: Default execution mode for `autospec implement` command (default: "phases")
+  - Valid values: `single-session`, `phases`, `tasks`
+  - `single-session`: All tasks in one Claude session (legacy behavior)
+  - `phases`: Each phase in separate Claude session (cost-efficient, better context isolation)
+  - `tasks`: Each task in separate Claude session (maximum isolation)
+  - Precedence: CLI flags (`--phases`, `--tasks`) > env var (`AUTOSPEC_IMPLEMENT_METHOD`) > config file > default
 
 **Timeout Behavior**:
 - `0`: No timeout (infinite wait)

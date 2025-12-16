@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -475,6 +476,105 @@ func TestExtractTasksForPhase(t *testing.T) {
 		tasks, err := extractTasksForPhase(tasksFile, 1)
 		require.NoError(t, err)
 		assert.Len(t, tasks, 1)
+	})
+}
+
+func TestEnsureContextDirGitignored(t *testing.T) {
+	// Save current directory
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	tests := map[string]struct {
+		gitignoreContent string
+		expectWarning    bool
+	}{
+		"exact context path": {
+			gitignoreContent: ".autospec/context/\n",
+			expectWarning:    false,
+		},
+		"context path without trailing slash": {
+			gitignoreContent: ".autospec/context\n",
+			expectWarning:    false,
+		},
+		"parent directory with trailing slash": {
+			gitignoreContent: ".autospec/\n",
+			expectWarning:    false,
+		},
+		"parent directory without trailing slash": {
+			gitignoreContent: ".autospec\n",
+			expectWarning:    false,
+		},
+		"parent with wildcard": {
+			gitignoreContent: ".autospec/*\n",
+			expectWarning:    false,
+		},
+		"globstar pattern": {
+			gitignoreContent: ".autospec/**/context\n",
+			expectWarning:    false,
+		},
+		"unrelated patterns only": {
+			gitignoreContent: "node_modules/\n*.log\n",
+			expectWarning:    true,
+		},
+		"empty gitignore": {
+			gitignoreContent: "",
+			expectWarning:    true,
+		},
+		"mixed patterns with parent": {
+			gitignoreContent: "node_modules/\n.autospec/\n*.log\n",
+			expectWarning:    false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			require.NoError(t, os.Chdir(tmpDir))
+			defer func() { _ = os.Chdir(origDir) }()
+
+			// Create .gitignore with test content
+			require.NoError(t, os.WriteFile(".gitignore", []byte(tc.gitignoreContent), 0644))
+
+			// Capture stderr to check for warning
+			oldStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+
+			EnsureContextDirGitignored()
+
+			w.Close()
+			os.Stderr = oldStderr
+
+			outBytes, _ := io.ReadAll(r)
+			output := string(outBytes)
+
+			if tc.expectWarning {
+				assert.Contains(t, output, "Warning:", "expected warning for gitignore content: %q", tc.gitignoreContent)
+			} else {
+				assert.Empty(t, output, "expected no warning for gitignore content: %q", tc.gitignoreContent)
+			}
+		})
+	}
+
+	t.Run("no gitignore file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		require.NoError(t, os.Chdir(tmpDir))
+		defer func() { _ = os.Chdir(origDir) }()
+
+		// Capture stderr
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		EnsureContextDirGitignored()
+
+		w.Close()
+		os.Stderr = oldStderr
+
+		outBytes, _ := io.ReadAll(r)
+		output := string(outBytes)
+
+		assert.Contains(t, output, ".gitignore not found")
 	})
 }
 

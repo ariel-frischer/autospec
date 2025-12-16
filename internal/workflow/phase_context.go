@@ -55,6 +55,8 @@ func GetContextFilePath(phaseNumber int) (string, error) {
 
 // EnsureContextDirGitignored checks if .autospec/context/ is in .gitignore
 // and warns if not. It does not modify .gitignore automatically.
+// It also recognizes parent directory patterns (e.g., .autospec/) that would
+// implicitly cover the context directory.
 func EnsureContextDirGitignored() {
 	gitignorePath := ".gitignore"
 
@@ -65,12 +67,22 @@ func EnsureContextDirGitignored() {
 		return
 	}
 
-	// Check if pattern is already present
-	patterns := []string{".autospec/context/", ".autospec/context", ".autospec/**/context"}
+	// Check if pattern is already present - includes both specific patterns
+	// and parent directory patterns that would cover the context directory
+	patterns := []string{
+		// Specific context patterns
+		".autospec/context/",
+		".autospec/context",
+		".autospec/**/context",
+		// Parent directory patterns that implicitly cover context/
+		".autospec/",
+		".autospec",
+		".autospec/*",
+	}
 	contentStr := string(content)
 	for _, pattern := range patterns {
 		if containsLine(contentStr, pattern) {
-			return // Already gitignored
+			return // Already gitignored (directly or via parent)
 		}
 	}
 

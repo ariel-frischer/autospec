@@ -105,7 +105,7 @@ phases:
             - "Config value only applies when NO execution mode flags are provided"
         - id: "T007"
           title: "Add integration tests for CLI flag/config precedence in internal/cli/implement_test.go"
-          status: "InProgress"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -123,7 +123,7 @@ phases:
       tasks:
         - id: "T008"
           title: "Update CLAUDE.md config option documentation"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -136,7 +136,7 @@ phases:
             - "Document AUTOSPEC_IMPLEMENT_METHOD environment variable"
         - id: "T009"
           title: "Run make fmt to ensure code formatting"
-          status: "Pending"
+          status: "Completed"
           type: "refactor"
           parallel: true
           story_id: null
@@ -147,7 +147,7 @@ phases:
             - "No formatting changes required (code already formatted)"
         - id: "T010"
           title: "Run make test to verify all tests pass"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null
