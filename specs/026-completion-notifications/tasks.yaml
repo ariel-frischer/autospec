@@ -300,7 +300,7 @@ phases:
       tasks:
         - id: "T020"
           title: "Add notification config examples to docs/reference.md"
-          status: "Pending"
+          status: "InProgress"
           type: "documentation"
           parallel: true
           story_id: null
