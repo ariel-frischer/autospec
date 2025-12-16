@@ -300,7 +300,7 @@ errors.New("max retries cannot be negative")
 ### P1 - High (Next Sprint)
 
 1. Add `t.Parallel()` to all 198 missing test cases
-2. Convert 25 slice-based tests to map-based pattern
+2. ~~Convert 25 slice-based tests to map-based pattern~~ DONE
 3. Add missing benchmarks for validation functions with <10ms contract
 
 ### P2 - Medium (Backlog)
