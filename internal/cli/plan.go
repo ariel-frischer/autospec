@@ -81,6 +81,6 @@ You can optionally provide a prompt to guide the planning process.`,
 }
 
 func init() {
-	planCmd.GroupID = GroupCorePhases
+	planCmd.GroupID = GroupCoreStages
 	rootCmd.AddCommand(planCmd)
 }

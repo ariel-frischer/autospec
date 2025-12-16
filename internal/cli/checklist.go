@@ -90,6 +90,6 @@ Prerequisites:
 }
 
 func init() {
-	checklistCmd.GroupID = GroupOptionalPhases
+	checklistCmd.GroupID = GroupOptionalStages
 	rootCmd.AddCommand(checklistCmd)
 }

@@ -164,7 +164,7 @@ The --tasks mode provides maximum context isolation:
 }
 
 func init() {
-	implementCmd.GroupID = GroupCorePhases
+	implementCmd.GroupID = GroupCoreStages
 	rootCmd.AddCommand(implementCmd)
 
 	// Command-specific flags

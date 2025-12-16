@@ -106,6 +106,6 @@ Prerequisites:
 }
 
 func init() {
-	analyzeCmd.GroupID = GroupOptionalPhases
+	analyzeCmd.GroupID = GroupOptionalStages
 	rootCmd.AddCommand(analyzeCmd)
 }

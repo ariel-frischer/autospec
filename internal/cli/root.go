@@ -10,12 +10,12 @@ import (
 
 // Command group IDs for organizing help output
 const (
-	GroupGettingStarted = "getting-started"
-	GroupWorkflows      = "workflows"
-	GroupCorePhases     = "core-phases"
-	GroupOptionalPhases = "optional-phases"
-	GroupConfiguration  = "configuration"
-	GroupInternal       = "internal"
+	GroupGettingStarted  = "getting-started"
+	GroupWorkflows       = "workflows"
+	GroupCoreStages      = "core-stages"
+	GroupOptionalStages  = "optional-stages"
+	GroupConfiguration   = "configuration"
+	GroupInternal        = "internal"
 )
 
 var rootCmd = &cobra.Command{
@@ -56,8 +56,8 @@ func init() {
 	// Define command groups in display order
 	rootCmd.AddGroup(&cobra.Group{ID: GroupGettingStarted, Title: "Getting Started:"})
 	rootCmd.AddGroup(&cobra.Group{ID: GroupWorkflows, Title: "Workflows:"})
-	rootCmd.AddGroup(&cobra.Group{ID: GroupCorePhases, Title: "Core Phases:"})
-	rootCmd.AddGroup(&cobra.Group{ID: GroupOptionalPhases, Title: "Optional Phases:"})
+	rootCmd.AddGroup(&cobra.Group{ID: GroupCoreStages, Title: "Core Stages:"})
+	rootCmd.AddGroup(&cobra.Group{ID: GroupOptionalStages, Title: "Optional Stages:"})
 	rootCmd.AddGroup(&cobra.Group{ID: GroupConfiguration, Title: "Configuration:"})
 	rootCmd.AddGroup(&cobra.Group{ID: GroupInternal, Title: "Internal Commands:"})
 
