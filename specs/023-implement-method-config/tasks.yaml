@@ -1,0 +1,220 @@
+tasks:
+  branch: "023-implement-method-config"
+  created: "2025-12-16"
+  spec_path: "specs/023-implement-method-config/spec.yaml"
+  plan_path: "specs/023-implement-method-config/plan.yaml"
+
+summary:
+  total_tasks: 10
+  total_phases: 4
+  parallel_opportunities: 2
+  estimated_complexity: "medium"
+
+phases:
+  - number: 1
+    title: "Configuration Infrastructure"
+    purpose: "Add ImplementMethod field to config with validation"
+    tasks:
+      - id: "T001"
+        title: "Add ImplementMethod field to Configuration struct in internal/config/config.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: null
+        file_path: "internal/config/config.go"
+        dependencies: []
+        acceptance_criteria:
+          - "Configuration struct has ImplementMethod string field"
+          - "Field has koanf tag: koanf:\"implement_method\""
+          - "Field has descriptive comment documenting valid values"
+
+      - id: "T002"
+        title: "Add default value 'phases' for implement_method in internal/config/defaults.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: null
+        file_path: "internal/config/defaults.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "GetDefaults() returns implement_method: 'phases'"
+          - "Comment documents that this changes default behavior from legacy single-session"
+
+      - id: "T003"
+        title: "Add validation for implement_method enum values in internal/config/validate.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: null
+        file_path: "internal/config/validate.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "ValidateConfigValues validates ImplementMethod field"
+          - "Only accepts: 'single-session', 'phases', 'tasks', or empty string"
+          - "Empty string is valid (uses default)"
+          - "Invalid values return ValidationError listing all valid options"
+
+      - id: "T004"
+        title: "Add unit tests for implement_method validation in internal/config/validate_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "internal/config/validate_test.go"
+        dependencies: ["T003"]
+        acceptance_criteria:
+          - "Tests valid values: single-session, phases, tasks"
+          - "Tests empty string is valid (uses default)"
+          - "Tests invalid value produces error with valid options listed"
+          - "All tests pass with go test"
+
+  - number: 2
+    title: "User Story 1 - Configure default implementation execution method"
+    purpose: "Allow developers to configure the default execution method for implement command"
+    story_reference: "US-001"
+    independent_test: "Set implement_method in config, run autospec implement without flags, verify correct execution mode is used"
+    tasks:
+      - id: "T005"
+        title: "Update implement.go to read config value when no execution mode flags provided"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/implement.go"
+        dependencies: ["T002", "T003"]
+        acceptance_criteria:
+          - "When no --phases, --tasks, --phase, --from-phase, --from-task flags provided, read cfg.ImplementMethod"
+          - "If ImplementMethod is 'phases', set runAllPhases = true"
+          - "If ImplementMethod is 'tasks', set taskMode = true"
+          - "If ImplementMethod is 'single-session' or empty, use default (no phase/task mode)"
+          - "Update command Long description to document config-driven default behavior"
+
+  - number: 3
+    title: "User Story 2 - Override config default with CLI flags"
+    purpose: "Allow CLI flags to override the configured default execution method"
+    story_reference: "US-002"
+    independent_test: "Set implement_method: phases in config, run autospec implement --tasks, verify tasks mode is used"
+    tasks:
+      - id: "T006"
+        title: "Ensure CLI flags take precedence over config implement_method"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/cli/implement.go"
+        dependencies: ["T005"]
+        acceptance_criteria:
+          - "If --phases flag is set, use phases mode regardless of config"
+          - "If --tasks flag is set, use tasks mode regardless of config"
+          - "If --phase N flag is set, use single phase mode regardless of config"
+          - "If --from-phase N flag is set, use from-phase mode regardless of config"
+          - "If --from-task flag is set, use task mode regardless of config"
+          - "Config value only applies when NO execution mode flags are provided"
+
+      - id: "T007"
+        title: "Add integration tests for CLI flag/config precedence in internal/cli/implement_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/cli/implement_test.go"
+        dependencies: ["T006"]
+        acceptance_criteria:
+          - "Test: config phases + no flags = phases mode"
+          - "Test: config phases + --tasks = tasks mode"
+          - "Test: config tasks + --phases = phases mode"
+          - "Test: config single-session + --phases = phases mode"
+          - "Test: no config (default) + no flags = phases mode (new default)"
+
+  - number: 4
+    title: "Polish & Documentation"
+    purpose: "Update documentation and ensure code quality"
+    tasks:
+      - id: "T008"
+        title: "Update CLAUDE.md config option documentation"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "CLAUDE.md"
+        dependencies: ["T006"]
+        acceptance_criteria:
+          - "Document implement_method config option with all valid values"
+          - "Document default value is 'phases'"
+          - "Document precedence: CLI flags > env var > config file > default"
+          - "Document AUTOSPEC_IMPLEMENT_METHOD environment variable"
+
+      - id: "T009"
+        title: "Run make fmt to ensure code formatting"
+        status: "Pending"
+        type: "refactor"
+        parallel: true
+        story_id: null
+        file_path: null
+        dependencies: ["T007"]
+        acceptance_criteria:
+          - "make fmt runs without errors"
+          - "No formatting changes required (code already formatted)"
+
+      - id: "T010"
+        title: "Run make test to verify all tests pass"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: null
+        dependencies: ["T008", "T009"]
+        acceptance_criteria:
+          - "make test passes with no failures"
+          - "All new validation and CLI tests pass"
+          - "No regression in existing tests"
+
+dependencies:
+  user_story_order:
+    - story_id: "US-001"
+      depends_on: []
+      blocks: ["US-002"]
+    - story_id: "US-002"
+      depends_on: ["US-001"]
+      blocks: []
+    - story_id: "US-003"
+      depends_on: []
+      blocks: []
+      notes: "Backward compatibility is satisfied by single-session option, tested implicitly"
+
+  phase_order:
+    - phase: 1
+      blocks: [2, 3]
+    - phase: 2
+      blocks: [3]
+    - phase: 3
+      blocks: [4]
+
+parallel_execution:
+  - phase: 4
+    parallel_groups:
+      - tasks: ["T008", "T009"]
+        rationale: "Documentation and formatting are independent tasks"
+
+implementation_strategy:
+  mvp_scope:
+    phases: [1, 2]
+    description: "Configuration infrastructure + basic config-driven execution"
+    validation: "Run autospec implement with implement_method: phases in config and verify phases mode is used"
+  incremental_delivery:
+    - milestone: "Config Infrastructure Ready"
+      phases: [1]
+      deliverable: "ImplementMethod field added to config with validation"
+    - milestone: "Config-Driven Default"
+      phases: [1, 2]
+      deliverable: "implement command uses config value when no flags provided"
+    - milestone: "Full Feature Complete"
+      phases: [1, 2, 3, 4]
+      deliverable: "Complete feature with CLI override, tests, and documentation"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T08:57:42Z"
+  artifact_type: "tasks"

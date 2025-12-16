@@ -1,0 +1,186 @@
+plan:
+  branch: "023-implement-method-config"
+  created: "2025-12-16"
+  spec_path: "specs/023-implement-method-config/spec.yaml"
+
+summary: |
+  This feature adds a new configuration option `implement_method` that sets the
+  default execution mode for the `autospec implement` command. The key change
+  is switching the default behavior from "single-session" (all tasks in one
+  Claude session) to "phases" (each phase in a separate session).
+
+  This addresses cost efficiency and context isolation concerns: running in phases
+  mode reduces token costs by preventing context accumulation and improves LLM
+  performance by providing fresh context per phase. The implementation follows
+  existing config patterns using koanf with YAML format, adds validation via
+  go-playground/validator-style checks, and ensures CLI flags always override
+  the configured default.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "koanf"
+      version: "v2.3.0"
+      purpose: "Configuration loading with YAML/JSON support and environment variable overrides"
+    - name: "cobra"
+      version: "v1.10.1"
+      purpose: "CLI framework for command structure and flag handling"
+    - name: "yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing for configuration files"
+  storage: "File system (YAML config files)"
+  testing:
+    framework: "Go testing package"
+    approach: "Table-driven unit tests for validation, integration tests for CLI behavior"
+  target_platform: "Linux, macOS, Windows (cross-platform Go binary)"
+  project_type: "cli"
+  performance_goals: "Validation <10ms, CLI startup <50ms"
+  constraints:
+    - "Must maintain backward compatibility with single-session behavior"
+    - "Must follow existing config patterns (koanf, mapstructure tags)"
+    - "Must follow existing validation patterns in internal/config/validate.go"
+    - "Environment variable naming must follow AUTOSPEC_ prefix convention"
+  scale_scope: "Single-user CLI tool, no distributed state"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Tests will be written before implementation for config validation and CLI behavior"
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Config validation ensures invalid implement_method values are rejected before execution"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Validation is a simple string comparison (<10ms guaranteed)"
+    - name: "Idempotency and Retry Logic"
+      status: "N/A"
+      notes: "Config loading is inherently idempotent, no retry logic needed"
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Invalid config values will return exit code 3 (invalid arguments)"
+    - name: "YAML-First Artifacts"
+      status: "PASS"
+      notes: "Config uses YAML format, follows existing patterns"
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "All code will pass go fmt and go vet before commit"
+    - name: "Cross-Platform Compatibility"
+      status: "PASS"
+      notes: "No platform-specific code changes required"
+    - name: "Explicit Dependencies"
+      status: "PASS"
+      notes: "No new dependencies required"
+    - name: "Documentation Standards"
+      status: "PASS"
+      notes: "CLAUDE.md already documents config options, will be updated"
+
+research_findings:
+  decisions:
+    - topic: "Default value for implement_method"
+      decision: "'phases' as the default"
+      rationale: "Provides cost efficiency (less context accumulation) and better LLM performance (fresh context per phase) as documented in docs/research/claude-opus-4.5-context-performance.md"
+      alternatives_considered:
+        - "'single-session' - legacy behavior, but suboptimal for cost and performance"
+        - "'tasks' - maximum isolation but may be overkill for most specs"
+    - topic: "Config field type"
+      decision: "String field with enum validation"
+      rationale: "Follows existing pattern of string fields with custom validation (like CustomClaudeCmd), allows clear error messages listing valid values"
+      alternatives_considered:
+        - "Integer enum with constants - less readable in YAML config files"
+        - "Boolean flags (like skip_preflight) - doesn't support three states cleanly"
+    - topic: "Override precedence"
+      decision: "CLI flags > env var > config file > default"
+      rationale: "Follows existing config hierarchy pattern for max_retries, timeout, etc."
+      alternatives_considered:
+        - "CLI flags only - would require flags for every invocation"
+        - "Config only - would not allow per-invocation overrides"
+
+data_model:
+  entities:
+    - name: "Configuration"
+      description: "Main configuration struct for autospec CLI"
+      fields:
+        - name: "ImplementMethod"
+          type: "string"
+          description: "Default execution mode for implement command"
+          constraints: "Must be one of: single-session, phases, tasks"
+      relationships: []
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Developer documentation with config option reference (needs update)"
+  source_code:
+    - path: "internal/config/config.go"
+      description: "Configuration struct definition with ImplementMethod field"
+    - path: "internal/config/defaults.go"
+      description: "Default values including implement_method: phases"
+    - path: "internal/config/validate.go"
+      description: "Validation logic for implement_method enum values"
+    - path: "internal/cli/implement.go"
+      description: "Implement command using config default when no flags specified"
+  tests:
+    - path: "internal/config/validate_test.go"
+      description: "Unit tests for implement_method validation"
+    - path: "internal/cli/implement_test.go"
+      description: "Integration tests for CLI flag/config interaction"
+
+implementation_phases:
+  - phase: 1
+    name: "Configuration Infrastructure"
+    goal: "Add ImplementMethod field to config with validation"
+    deliverables:
+      - "Add ImplementMethod field to Configuration struct in config.go"
+      - "Add default value 'phases' in defaults.go"
+      - "Add validation for valid values in validate.go"
+      - "Add unit tests for validation logic"
+  - phase: 2
+    name: "CLI Integration"
+    goal: "Update implement command to use config default"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Update implement.go to read config value when no execution mode flags provided"
+      - "Ensure CLI flags override config value"
+      - "Add integration tests for flag/config precedence"
+  - phase: 3
+    name: "Documentation and Cleanup"
+    goal: "Update documentation and run final checks"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Update CLAUDE.md config option documentation"
+      - "Run make fmt to ensure code formatting"
+      - "Run make test to verify all tests pass"
+
+risks:
+  - risk: "Breaking change for existing users who rely on single-session default"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Users can set implement_method: single-session in config to restore old behavior"
+  - risk: "Environment variable naming conflict"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "AUTOSPEC_IMPLEMENT_METHOD follows established naming convention"
+  - risk: "Run command also needs updating for implement phase execution"
+    likelihood: "high"
+    impact: "medium"
+    mitigation: "Ensure run command's PhaseImplement case reads config value when not overridden"
+
+open_questions:
+  - question: "Should --single-session be added as explicit CLI flag?"
+    context: "Currently only --phases and --tasks flags exist, no explicit flag for single-session mode"
+    proposed_resolution: "Not needed for MVP - users can configure via config file. Add later if user demand exists."
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T08:56:04Z"
+  artifact_type: "plan"
