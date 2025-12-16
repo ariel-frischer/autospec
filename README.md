@@ -61,14 +61,14 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
 |------|-------------|
 | [Claude Code CLI](https://code.claude.com/docs/en/setup) | AI-powered coding assistant |
 | Git | Version control |
-| [claude-clean](https://github.com/ariel-frischer/claude-clean) (cclean) | Beautiful terminal parser for Claude Code's streaming JSON output (optional) |
-| [bubblewrap](https://github.com/containers/bubblewrap) (Linux) / Seatbelt (macOS) | OS-level sandboxing for Claude Code. See [Claude Settings](docs/claude-settings.md) (optional) |
-| Go 1.21+ | For building from source (optional) |
-| make | For Makefile commands (optional) |
+| [claude-clean](https://github.com/ariel-frischer/claude-clean) (cclean) (optional) | Beautiful terminal parser for Claude Code's streaming JSON output |
+| [bubblewrap](https://github.com/containers/bubblewrap) (Linux) / Seatbelt (macOS) (optional) | OS-level sandboxing for Claude Code. See [Claude Settings](docs/claude-settings.md) |
+| Go 1.21+ (optional) | For building from source |
+| make (optional) | For Makefile commands |
 
 ### Initialize Your Project
 
-Check dependencies:
+Navigate to your git repo/project directory, then check dependencies:
 
 ```bash
 autospec doctor
