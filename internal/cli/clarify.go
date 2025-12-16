@@ -16,7 +16,7 @@ import (
 var clarifyCmd = &cobra.Command{
 	Use:     "clarify [optional-prompt]",
 	Aliases: []string{"cl"},
-	Short:   "Refine the specification by asking clarification questions",
+	Short:   "Refine the specification by asking clarification questions (cl)",
 	Long: `Execute the /autospec.clarify command for the current specification.
 
 The clarify command will:

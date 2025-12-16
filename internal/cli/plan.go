@@ -14,7 +14,7 @@ import (
 var planCmd = &cobra.Command{
 	Use:     "plan [optional-prompt]",
 	Aliases: []string{"p"},
-	Short:   "Execute the planning phase for the current spec",
+	Short:   "Execute the planning phase for the current spec (p)",
 	Long: `Execute the /autospec.plan command for the current specification.
 
 The plan command will:

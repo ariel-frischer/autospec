@@ -14,7 +14,7 @@ import (
 var specifyCmd = &cobra.Command{
 	Use:     "specify <feature-description>",
 	Aliases: []string{"spec", "s"},
-	Short:   "Execute the specification phase for a new feature",
+	Short:   "Execute the specification phase for a new feature (spec, s)",
 	Long: `Execute the /autospec.specify command to create a new feature specification.
 
 The specify command will:

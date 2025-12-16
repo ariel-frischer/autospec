@@ -15,7 +15,7 @@ import (
 var statusCmd = &cobra.Command{
 	Use:          "status [spec-name]",
 	Aliases:      []string{"st"},
-	Short:        "Show implementation progress for current feature",
+	Short:        "Show implementation progress for current feature (st)",
 	Args:         cobra.MaximumNArgs(1),
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {

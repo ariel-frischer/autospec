@@ -16,7 +16,7 @@ import (
 var analyzeCmd = &cobra.Command{
 	Use:     "analyze [optional-prompt]",
 	Aliases: []string{"az"},
-	Short:   "Perform cross-artifact consistency and quality analysis",
+	Short:   "Perform cross-artifact consistency and quality analysis (az)",
 	Long: `Execute the /autospec.analyze command for the current specification.
 
 The analyze command will:

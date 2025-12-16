@@ -12,7 +12,7 @@ import (
 var constitutionCmd = &cobra.Command{
 	Use:     "constitution [optional-prompt]",
 	Aliases: []string{"const"},
-	Short:   "Create or update the project constitution",
+	Short:   "Create or update the project constitution (const)",
 	Long: `Execute the /autospec.constitution command to create or update the project constitution.
 
 The constitution command will:

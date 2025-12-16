@@ -14,7 +14,7 @@ import (
 var tasksCmd = &cobra.Command{
 	Use:     "tasks [optional-prompt]",
 	Aliases: []string{"t"},
-	Short:   "Execute the task generation phase for the current spec",
+	Short:   "Execute the task generation phase for the current spec (t)",
 	Long: `Execute the /autospec.tasks command for the current specification.
 
 The tasks command will:
