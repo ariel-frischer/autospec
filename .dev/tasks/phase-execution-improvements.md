@@ -431,7 +431,9 @@ After implementation:
 
 ## Extension: Task-Level Context Injection
 
-The same approach applies to `--tasks` mode (per-task execution). Each task session would receive:
+> **Note**: Task-level execution (`--tasks`, `--from-task`, `--task` flags) was implemented in spec 021-task-level-execution. The context injection optimization below is a **future enhancement** to reduce file reads per task session.
+
+The same context injection approach applies to `--tasks` mode (per-task execution). Each task session would receive:
 
 ```yaml
 # Auto-generated task context
