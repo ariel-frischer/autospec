@@ -25,7 +25,7 @@ const (
 var rootCmd = &cobra.Command{
 	Use:   "autospec",
 	Short: "autospec workflow automation",
-	Long:  `autospec workflow automation
+	Long: `autospec workflow automation
 
 Automated spec-driven development. Define features in YAML, generate implementation
 plans and tasks, then execute with Claude Code.

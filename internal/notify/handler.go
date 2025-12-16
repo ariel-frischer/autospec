@@ -103,16 +103,27 @@ func isCI() bool {
 }
 
 // isInteractive checks if the session is interactive (has TTY).
-// Returns false if stdin is not a terminal, indicating non-interactive mode.
+// Checks stdout rather than stdin because CLI tools often have stdin piped
+// while stdout remains connected to the terminal.
 func isInteractive() bool {
+	// Check stdout first (most reliable for CLI tools)
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		return true
+	}
+	// Fall back to stderr (also commonly connected to terminal)
+	if term.IsTerminal(int(os.Stderr.Fd())) {
+		return true
+	}
+	// Finally check stdin
 	return term.IsTerminal(int(os.Stdin.Fd()))
 }
 
 // dispatch sends a notification asynchronously with a timeout.
 // It respects the configured notification type (sound, visual, or both).
 // Notification failures are logged but do not block command execution.
+// Timeout is set to 5 seconds to allow audio files to play completely.
 func (h *Handler) dispatch(n Notification) {
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	done := make(chan struct{})

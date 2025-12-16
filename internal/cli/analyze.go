@@ -72,12 +72,14 @@ Prerequisites:
 		constitutionCheck := workflow.CheckConstitutionExists()
 		if !constitutionCheck.Exists {
 			fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
+			cmd.SilenceUsage = true
 			return NewExitError(ExitInvalidArguments)
 		}
 
 		// Auto-detect current spec and verify all required artifacts exist
 		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
 		if err != nil {
+			cmd.SilenceUsage = true
 			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
 		}
 
@@ -85,6 +87,7 @@ Prerequisites:
 		prereqResult := workflow.ValidateStagePrerequisites(workflow.StageAnalyze, metadata.Directory)
 		if !prereqResult.Valid {
 			fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
+			cmd.SilenceUsage = true
 			return NewExitError(ExitInvalidArguments)
 		}
 
