@@ -140,18 +140,17 @@ func TestNewFeatureOutput_KeysMatchShellScript(t *testing.T) {
 }
 
 func TestNewFeatureNumber_Validation(t *testing.T) {
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		number    string
 		expectErr bool
 	}{
-		{"valid number", "5", false},
-		{"zero", "0", false},
-		{"large number", "999", false},
+		"valid number": {number: "5", expectErr: false},
+		"zero":         {number: "0", expectErr: false},
+		"large number": {number: "999", expectErr: false},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create temp directory
 			tmpDir, err := os.MkdirTemp("", "autospec-test-*")
 			require.NoError(t, err)

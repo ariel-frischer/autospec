@@ -24,18 +24,17 @@ func TestAllCmdRegistration(t *testing.T) {
 
 func TestAllCmdFlags(t *testing.T) {
 	// Test that all expected flags are registered
-	flags := []struct {
-		name      string
+	flags := map[string]struct {
 		shorthand string
 		usage     string
 	}{
-		{"max-retries", "r", "Override max retry attempts"},
-		{"resume", "", "Resume implementation"},
-		{"progress", "", "Show progress indicators"},
+		"max-retries": {shorthand: "r", usage: "Override max retry attempts"},
+		"resume":      {shorthand: "", usage: "Resume implementation"},
+		"progress":    {shorthand: "", usage: "Show progress indicators"},
 	}
 
-	for _, flag := range flags {
-		t.Run("flag "+flag.name, func(t *testing.T) {
+	for flagName, flag := range flags {
+		t.Run("flag "+flagName, func(t *testing.T) {
 			f := allCmd.Flags().Lookup(flag.name)
 			require.NotNil(t, f, "flag %s should exist", flag.name)
 			if flag.shorthand != "" {

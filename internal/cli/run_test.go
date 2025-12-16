@@ -10,40 +10,35 @@ import (
 // implement_method config setting, matching the behavior of 'autospec implement'.
 // This prevents regression of the bug where run.go hardcoded single-session mode.
 func TestRunImplementMethodConfig(t *testing.T) {
-	tests := []struct {
-		name             string
+	tests := map[string]struct {
 		implementMethod  string
 		wantRunAllPhases bool
 		wantTaskMode     bool
 	}{
-		{
-			name:             "phases config sets RunAllPhases=true",
+		"phases config sets RunAllPhases=true": {
 			implementMethod:  "phases",
 			wantRunAllPhases: true,
 			wantTaskMode:     false,
 		},
-		{
-			name:             "tasks config sets TaskMode=true",
+		"tasks config sets TaskMode=true": {
 			implementMethod:  "tasks",
 			wantRunAllPhases: false,
 			wantTaskMode:     true,
 		},
-		{
-			name:             "single-session config leaves both false",
+		"single-session config leaves both false": {
 			implementMethod:  "single-session",
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
 		},
-		{
-			name:             "empty config leaves both false (uses default elsewhere)",
+		"empty config leaves both false (uses default elsewhere)": {
 			implementMethod:  "",
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Replicate the logic from run.go executeStages() StageImplement case
 			// This is the exact logic that was fixed to respect implement_method
 			phaseOpts := workflow.PhaseExecutionOptions{}
@@ -113,13 +108,11 @@ func TestRunAndImplementConsistency(t *testing.T) {
 }
 
 func TestStageConfigFromFlags(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		config   *workflow.StageConfig
 		expected []workflow.Stage
 	}{
-		{
-			name: "core stages only (-spti)",
+		"core stages only (-spti)": {
 			config: &workflow.StageConfig{
 				Specify:   true,
 				Plan:      true,
@@ -133,8 +126,7 @@ func TestStageConfigFromFlags(t *testing.T) {
 				workflow.StageImplement,
 			},
 		},
-		{
-			name: "constitution and specify (-ns)",
+		"constitution and specify (-ns)": {
 			config: &workflow.StageConfig{
 				Constitution: true,
 				Specify:      true,
@@ -144,8 +136,7 @@ func TestStageConfigFromFlags(t *testing.T) {
 				workflow.StageSpecify,
 			},
 		},
-		{
-			name: "specify, clarify, plan (-srp)",
+		"specify, clarify, plan (-srp)": {
 			config: &workflow.StageConfig{
 				Specify: true,
 				Clarify: true,
@@ -157,8 +148,7 @@ func TestStageConfigFromFlags(t *testing.T) {
 				workflow.StagePlan,
 			},
 		},
-		{
-			name: "tasks, checklist, analyze, implement (-tlzi)",
+		"tasks, checklist, analyze, implement (-tlzi)": {
 			config: &workflow.StageConfig{
 				Tasks:     true,
 				Checklist: true,
@@ -172,8 +162,7 @@ func TestStageConfigFromFlags(t *testing.T) {
 				workflow.StageImplement,
 			},
 		},
-		{
-			name: "all stages with checklist (-a -l) - core + optional",
+		"all stages with checklist (-a -l) - core + optional": {
 			config: &workflow.StageConfig{
 				Specify:   true,
 				Plan:      true,
@@ -189,8 +178,7 @@ func TestStageConfigFromFlags(t *testing.T) {
 				workflow.StageImplement,
 			},
 		},
-		{
-			name: "all 8 stages in canonical order",
+		"all 8 stages in canonical order": {
 			config: &workflow.StageConfig{
 				Constitution: true,
 				Specify:      true,
@@ -214,8 +202,8 @@ func TestStageConfigFromFlags(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			got := tt.config.GetCanonicalOrder()
 			if len(got) != len(tt.expected) {
 				t.Errorf("GetCanonicalOrder() returned %d stages, want %d", len(got), len(tt.expected))
@@ -266,40 +254,34 @@ func TestOptionalStagesWithAll(t *testing.T) {
 
 func TestOptionalStageHasAnyStage(t *testing.T) {
 	// Test that HasAnyStage returns true for optional stages only
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		config   *workflow.StageConfig
 		expected bool
 	}{
-		{
-			name:     "no stages",
+		"no stages": {
 			config:   &workflow.StageConfig{},
 			expected: false,
 		},
-		{
-			name:     "only constitution",
+		"only constitution": {
 			config:   &workflow.StageConfig{Constitution: true},
 			expected: true,
 		},
-		{
-			name:     "only clarify",
+		"only clarify": {
 			config:   &workflow.StageConfig{Clarify: true},
 			expected: true,
 		},
-		{
-			name:     "only checklist",
+		"only checklist": {
 			config:   &workflow.StageConfig{Checklist: true},
 			expected: true,
 		},
-		{
-			name:     "only analyze",
+		"only analyze": {
 			config:   &workflow.StageConfig{Analyze: true},
 			expected: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			if got := tt.config.HasAnyStage(); got != tt.expected {
 				t.Errorf("HasAnyStage() = %v, want %v", got, tt.expected)
 			}

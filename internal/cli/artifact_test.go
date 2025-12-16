@@ -262,19 +262,18 @@ func TestArtifactCommand_CircularDependency(t *testing.T) {
 }
 
 func TestExitCode(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		err      error
 		expected int
 	}{
-		{"nil error", nil, ExitSuccess},
-		{"exit error 1", &exitError{code: 1}, 1},
-		{"exit error 3", &exitError{code: 3}, 3},
-		{"generic error", fmt.Errorf("some error"), ExitValidationFailed},
+		"nil error":     {err: nil, expected: ExitSuccess},
+		"exit error 1":  {err: &exitError{code: 1}, expected: 1},
+		"exit error 3":  {err: &exitError{code: 3}, expected: 3},
+		"generic error": {err: fmt.Errorf("some error"), expected: ExitValidationFailed},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			if got := ExitCode(tt.err); got != tt.expected {
 				t.Errorf("ExitCode() = %d, want %d", got, tt.expected)
 			}
@@ -301,8 +300,7 @@ func TestParseArtifactArgs(t *testing.T) {
 		f.Close()
 	}
 
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		args        []string
 		specsDir    string
 		wantType    validation.ArtifactType
@@ -310,54 +308,47 @@ func TestParseArtifactArgs(t *testing.T) {
 		wantErr     bool
 		errContains string
 	}{
-		{
-			name:     "explicit type and path",
+		"explicit type and path": {
 			args:     []string{"plan", filepath.Join(specDir, "plan.yaml")},
 			specsDir: specsDir,
 			wantType: validation.ArtifactTypePlan,
 			wantPath: filepath.Join(specDir, "plan.yaml"),
 			wantErr:  false,
 		},
-		{
-			name:     "path only - spec.yaml",
+		"path only - spec.yaml": {
 			args:     []string{filepath.Join(specDir, "spec.yaml")},
 			specsDir: specsDir,
 			wantType: validation.ArtifactTypeSpec,
 			wantPath: filepath.Join(specDir, "spec.yaml"),
 			wantErr:  false,
 		},
-		{
-			name:     "path only - plan.yaml",
+		"path only - plan.yaml": {
 			args:     []string{filepath.Join(specDir, "plan.yaml")},
 			specsDir: specsDir,
 			wantType: validation.ArtifactTypePlan,
 			wantPath: filepath.Join(specDir, "plan.yaml"),
 			wantErr:  false,
 		},
-		{
-			name:     "path only - tasks.yaml",
+		"path only - tasks.yaml": {
 			args:     []string{filepath.Join(specDir, "tasks.yaml")},
 			specsDir: specsDir,
 			wantType: validation.ArtifactTypeTasks,
 			wantPath: filepath.Join(specDir, "tasks.yaml"),
 			wantErr:  false,
 		},
-		{
-			name:        "invalid type",
+		"invalid type": {
 			args:        []string{"unknown"},
 			specsDir:    specsDir,
 			wantErr:     true,
 			errContains: "invalid artifact type",
 		},
-		{
-			name:        "unrecognized filename",
+		"unrecognized filename": {
 			args:        []string{"config.yaml"},
 			specsDir:    specsDir,
 			wantErr:     true,
 			errContains: "unrecognized artifact filename",
 		},
-		{
-			name:        "no arguments",
+		"no arguments": {
 			args:        []string{},
 			specsDir:    specsDir,
 			wantErr:     true,
@@ -365,8 +356,8 @@ func TestParseArtifactArgs(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			got, err := parseArtifactArgs(tt.args, tt.specsDir)
 
 			if (err != nil) != tt.wantErr {
