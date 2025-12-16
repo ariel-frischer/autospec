@@ -1,0 +1,333 @@
+tasks:
+    branch: "017-update-agent-context-go"
+    created: "2025-12-16"
+    spec_path: "specs/017-update-agent-context-go/spec.yaml"
+    plan_path: "specs/017-update-agent-context-go/plan.yaml"
+summary:
+    total_tasks: 18
+    total_phases: 5
+    parallel_opportunities: 6
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create internal/agent package structure"
+      tasks:
+        - id: "T001"
+          title: "Create internal/agent directory"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/agent/"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/agent exists"
+            - "Package follows existing codebase structure patterns"
+    - number: 2
+      title: "Foundational"
+      purpose: "Core data types and plan.yaml parsing that ALL user stories depend on"
+      tasks:
+        - id: "T002"
+          title: "Create internal/agent/types.go with AgentType, PlanData, UpdateResult, CommandOutput structs"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/agent/types.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "AgentType struct with ID, FilePath, DisplayName fields"
+            - "PlanData struct with Language, Framework, Database, ProjectType, Branch fields"
+            - "UpdateResult struct with FilePath, Created, TechnologiesAdded, Error fields"
+            - "CommandOutput struct for JSON output with Success, SpecName, PlanPath, Technologies, UpdatedFiles, Errors fields"
+            - "SupportedAgents constant/map with all 17 agent types from FR-004"
+        - id: "T003"
+          title: "Create internal/agent/types_test.go with unit tests for type validation"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/agent/types_test.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "Test validates AgentType file path resolution for each supported agent"
+            - "Test validates PlanData field accessors"
+            - "Table-driven test pattern consistent with codebase"
+        - id: "T004"
+          title: "Create internal/agent/parse.go with ParsePlanData function"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/agent/parse.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "ParsePlanData reads plan.yaml and extracts technical_context fields (FR-001)"
+            - "Extracts Language from technical_context.language"
+            - "Extracts Framework from technical_context.primary_dependencies[0].name"
+            - "Extracts Database/Storage from technical_context.storage"
+            - "Extracts ProjectType from technical_context.project_type"
+            - "Extracts Branch from plan.branch"
+            - "Returns clear error when plan.yaml doesn't exist"
+        - id: "T005"
+          title: "Create internal/agent/parse_test.go with unit tests for plan.yaml parsing"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/agent/parse_test.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Test extraction of all four technology fields from sample plan.yaml"
+            - "Test handling of missing/empty technology fields"
+            - "Test error case when plan.yaml doesn't exist"
+            - "Test error case when plan.yaml has invalid YAML"
+    - number: 3
+      title: "User Story 1 - Update agent context files from plan.yaml"
+      purpose: "Core functionality to update all or existing agent context files"
+      story_reference: "US-001"
+      independent_test: "Run command after creating plan.yaml and verify agent context files are updated with technology information"
+      tasks:
+        - id: "T006"
+          title: "Create internal/agent/template.go with embedded default template"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/agent/template.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "Embeds default agent file template using Go embed (FR-003)"
+            - "GetDefaultTemplate function returns template content"
+            - "Template includes ## Active Technologies and ## Recent Changes sections"
+            - "Template includes **Last updated** field"
+        - id: "T007"
+          title: "Create internal/agent/template_test.go with unit tests for template"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/agent/template_test.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Test validates template contains required sections"
+            - "Test validates placeholder replacement"
+        - id: "T008"
+          title: "Create internal/agent/agent.go with UpdateAgentFile function"
+          status: "InProgress"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/agent/agent.go"
+          dependencies: ["T004", "T006"]
+          acceptance_criteria:
+            - "UpdateAgentFile reads existing file, updates sections, writes atomically (FR-002)"
+            - "Appends to ## Active Technologies section without duplicating entries"
+            - "Updates ## Recent Changes with max 3 entries, newest first (FR-005)"
+            - "Updates **Last updated** timestamp (FR-006)"
+            - "Uses temp file + rename for atomic writes (NFR-002)"
+            - "Preserves content outside of managed sections"
+            - "Creates file from template if doesn't exist (FR-003)"
+            - "Creates missing sections if they don't exist in file"
+        - id: "T009"
+          title: "Add UpdateAllAgents function to internal/agent/agent.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/agent/agent.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "UpdateAllAgents iterates all agent types and updates existing files"
+            - "Returns slice of UpdateResult for each processed file"
+            - "Skips agent files that don't exist (only updates existing)"
+            - "Creates CLAUDE.md from template if no agent files exist"
+        - id: "T010"
+          title: "Create internal/agent/agent_test.go with unit tests for agent file operations"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/agent/agent_test.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "Test UpdateAgentFile correctly appends to Active Technologies"
+            - "Test UpdateAgentFile updates Recent Changes with max 3 entries"
+            - "Test UpdateAgentFile updates timestamp"
+            - "Test UpdateAgentFile preserves other content"
+            - "Test UpdateAllAgents processes all existing agent files"
+            - "Test creates CLAUDE.md when no agent files exist"
+            - "Test atomic write behavior (uses temp file)"
+            - "Uses mock file system for isolation"
+    - number: 4
+      title: "User Story 2 - Update specific agent context file"
+      purpose: "Enable selective updates for specific AI assistants"
+      story_reference: "US-002"
+      independent_test: "Run command with --agent flag and verify only the specified agent file is modified"
+      tasks:
+        - id: "T011"
+          title: "Add GetAgentByID function to internal/agent/types.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/agent/types.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "GetAgentByID returns AgentType for given identifier"
+            - "Returns error for unknown agent types with suggestion"
+            - "Supports all 17 agent types from FR-004"
+        - id: "T012"
+          title: "Add UpdateSingleAgent function to internal/agent/agent.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/agent/agent.go"
+          dependencies: ["T008", "T011"]
+          acceptance_criteria:
+            - "UpdateSingleAgent updates only the specified agent file"
+            - "Creates file from template if doesn't exist"
+            - "Returns UpdateResult with created=true if new file"
+        - id: "T013"
+          title: "Add unit tests for single agent updates to internal/agent/agent_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/agent/agent_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Test UpdateSingleAgent only modifies specified file"
+            - "Test creates agent file when doesn't exist"
+            - "Test error handling for invalid agent identifier"
+        - id: "T014"
+          title: "Create internal/cli/update_agent_context.go with Cobra command"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/update_agent_context.go"
+          dependencies: ["T009", "T012"]
+          acceptance_criteria:
+            - "Command registered as 'update-agent-context' subcommand"
+            - "--agent flag to specify single agent type"
+            - "Uses internal/spec for spec detection (FR-007, FR-009)"
+            - "Uses internal/git for repository root detection (FR-009)"
+            - "Proper exit codes (0 success, 1 validation fail, 3 invalid args, 4 missing deps)"
+            - "Clear error messages with remediation hints (NFR-003)"
+        - id: "T015"
+          title: "Create internal/cli/update_agent_context_test.go with CLI tests"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/update_agent_context_test.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Test command executes without error when plan.yaml exists"
+            - "Test --agent flag filters to single agent"
+            - "Test error when plan.yaml missing"
+            - "Test error for invalid --agent value"
+    - number: 5
+      title: "User Story 3 - JSON output for integration"
+      purpose: "Enable programmatic consumption of command output"
+      story_reference: "US-003"
+      independent_test: "Run command with --json flag and validate output is valid JSON with expected fields"
+      tasks:
+        - id: "T016"
+          title: "Add --json flag and JSON output to internal/cli/update_agent_context.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/update_agent_context.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "--json flag produces JSON output instead of text (FR-008)"
+            - "JSON includes success, specName, planPath, technologies, updatedFiles, errors"
+            - "Valid JSON parseable by jq and other tools"
+            - "Follows existing JSON output patterns in codebase"
+        - id: "T017"
+          title: "Add unit tests for JSON output to internal/cli/update_agent_context_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/update_agent_context_test.go"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "Test --json flag produces valid JSON"
+            - "Test JSON structure matches CommandOutput schema"
+            - "Test JSON contains all expected fields"
+        - id: "T018"
+          title: "Update CLAUDE.md with update-agent-context command documentation"
+          status: "Pending"
+          type: "documentation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "CLAUDE.md"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "Command documented in ### Using the CLI section"
+            - "Usage examples for basic, --agent, and --json flags"
+            - "Documents exit codes"
+            - "Follows existing documentation patterns"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002", "US-003"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: ["US-003"]
+        - story_id: "US-003"
+          depends_on: ["US-002"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4, 5]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T004", "T006"]
+          rationale: "Parse and template functions have no dependencies on each other, only on types"
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T006"]
+          rationale: "Template can be developed in parallel with tests for types"
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T011"]
+          rationale: "GetAgentByID can be added to types.go independently"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + Update all agent files (US-001)"
+        validation: "Run autospec update-agent-context in test project with plan.yaml; verify CLAUDE.md updated"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "Data types and plan.yaml parsing complete; can extract technology info"
+        - milestone: "Core Feature Complete"
+          phases: [1, 2, 3]
+          deliverable: "Can update all agent context files with technology info from plan.yaml"
+        - milestone: "Targeted Updates"
+          phases: [1, 2, 3, 4]
+          deliverable: "Can update specific agent file with --agent flag"
+        - milestone: "Full Feature Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "All functionality including --json output and documentation"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T03:40:04Z"
+    artifact_type: "tasks"

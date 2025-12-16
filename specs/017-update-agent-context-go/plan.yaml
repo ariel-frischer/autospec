@@ -1,0 +1,298 @@
+plan:
+  branch: "017-update-agent-context-go"
+  created: "2025-12-16"
+  spec_path: "specs/017-update-agent-context-go/spec.yaml"
+
+summary: |
+  Migrate the update-agent-context.sh shell script to a native Go CLI command that
+  integrates with the existing autospec command structure. The implementation will
+  parse plan.yaml files (not plan.md as in the shell script) to extract technology
+  information and update AI agent context files (CLAUDE.md, GEMINI.md, etc.) with
+  the extracted data. The Go implementation will reuse existing packages for spec
+  detection, git operations, and validation patterns while providing atomic file
+  writes, JSON output support, and proper error handling.
+
+technical_context:
+  language: "Go 1.25.1"
+  framework: "Cobra CLI v1.10.1"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI command structure and flag parsing"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing for plan.yaml files"
+    - name: "github.com/go-playground/validator"
+      version: "v10.28.0"
+      purpose: "Input validation (existing dependency)"
+  storage: "None"
+  testing:
+    framework: "Go testing package"
+    approach: "Unit tests with table-driven patterns, mocks for file system operations"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "< 1000ms for projects with < 10 agent files (per NFR-001)"
+  constraints:
+    - "Must maintain backward compatibility with existing agent file formats"
+    - "Must not modify content outside of Active Technologies, Recent Changes, and Last updated sections"
+    - "Must preserve manual additions users have made to their agent files"
+    - "Go standard library preferred; minimize external dependencies"
+    - "Tests must be unit tests with mocks only - no integration/e2e tests (cost constraint)"
+  scale_scope: "Single repository with up to 20 agent files"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Tests will be written before implementation as specified in task ordering"
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Plan parsing includes validation; missing plan.yaml triggers clear error"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "< 1s execution time requirement aligns with < 1s user-facing operation contract"
+    - name: "Idempotency and Retry Logic"
+      status: "PASS"
+      notes: "File updates use atomic temp file + rename pattern per NFR-002"
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Will use existing exit code conventions (0, 1, 3, 4)"
+    - name: "YAML-First Artifacts"
+      status: "PASS"
+      notes: "Parses plan.yaml (YAML format, not legacy plan.md Markdown)"
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "make fmt will be run before commit"
+    - name: "Cross-Platform Compatibility"
+      status: "PASS"
+      notes: "Using filepath.Join and os package for platform-agnostic paths"
+
+research_findings:
+  decisions:
+    - topic: "Agent file template location"
+      decision: "Embed template in Go binary via internal/scripts or create in internal/agent package"
+      rationale: "Shell script uses .specify/templates/agent-file-template.md which may not exist; embedding ensures template is always available"
+      alternatives_considered:
+        - "Keep external template file (requires init to be run first)"
+        - "Hard-code template in Go code (less maintainable)"
+    - topic: "Plan.yaml vs plan.md parsing"
+      decision: "Parse plan.yaml using YAML structure, not plan.md markdown"
+      rationale: "Spec explicitly mentions plan.yaml with technical_context section; existing codebase uses YAML artifacts"
+      alternatives_considered:
+        - "Parse plan.md markdown (legacy approach, inconsistent with codebase)"
+    - topic: "Package organization"
+      decision: "Create new internal/agent package for agent file logic, CLI command in internal/cli"
+      rationale: "Follows existing pattern of separating business logic from CLI layer"
+      alternatives_considered:
+        - "Put all logic in internal/cli (violates separation of concerns)"
+        - "Extend internal/validation package (doesn't fit purpose)"
+    - topic: "Section detection in agent files"
+      decision: "Use regex patterns to find ## Active Technologies and ## Recent Changes sections"
+      rationale: "Shell script approach works; markdown headers are reliable markers"
+      alternatives_considered:
+        - "Parse full markdown AST (overkill for simple section detection)"
+    - topic: "Atomic file writes"
+      decision: "Use temp file + rename pattern per existing retry state implementation"
+      rationale: "Constitution principle PRIN-004 requires atomic writes; existing pattern in internal/retry"
+      alternatives_considered:
+        - "Direct file write (risk of corruption on failure)"
+
+data_model:
+  entities:
+    - name: "AgentType"
+      description: "Enumeration of supported AI agent types with file paths and display names"
+      fields:
+        - name: "ID"
+          type: "string"
+          description: "Short identifier (claude, gemini, copilot, etc.)"
+          constraints: "Must match valid agent type names"
+        - name: "FilePath"
+          type: "string"
+          description: "Relative path to context file from repo root"
+          constraints: "Must be a valid relative file path"
+        - name: "DisplayName"
+          type: "string"
+          description: "Human-readable name for logging"
+          constraints: "Non-empty string"
+      relationships:
+        - target: "UpdateResult"
+          type: "one-to-many"
+          description: "Each agent type can have multiple update results over time"
+
+    - name: "PlanData"
+      description: "Parsed technology information from plan.yaml technical_context"
+      fields:
+        - name: "Language"
+          type: "string"
+          description: "Programming language from technical_context.language"
+          constraints: "May be empty if not specified"
+        - name: "Framework"
+          type: "string"
+          description: "Framework from primary_dependencies first entry"
+          constraints: "May be empty if not specified"
+        - name: "Database"
+          type: "string"
+          description: "Storage technology from technical_context.storage"
+          constraints: "May be 'None' or empty if not applicable"
+        - name: "ProjectType"
+          type: "string"
+          description: "Project type from technical_context.project_type"
+          constraints: "cli|web|mobile|library|service or empty"
+        - name: "Branch"
+          type: "string"
+          description: "Git branch from plan.branch"
+          constraints: "Non-empty string"
+      relationships:
+        - target: "UpdateResult"
+          type: "one-to-many"
+          description: "Plan data is used to generate update results"
+
+    - name: "UpdateResult"
+      description: "Result of updating a single agent context file"
+      fields:
+        - name: "FilePath"
+          type: "string"
+          description: "Absolute path to the updated file"
+          constraints: "Must be a valid file path"
+        - name: "Created"
+          type: "bool"
+          description: "True if file was created, false if updated"
+          constraints: "Boolean value"
+        - name: "TechnologiesAdded"
+          type: "[]string"
+          description: "List of technology entries added"
+          constraints: "May be empty if no new technologies"
+        - name: "Error"
+          type: "error"
+          description: "Error if update failed"
+          constraints: "Nil on success"
+      relationships: []
+
+    - name: "CommandOutput"
+      description: "Structured output for --json flag"
+      fields:
+        - name: "Success"
+          type: "bool"
+          description: "Overall success status"
+          constraints: "True if all updates succeeded"
+        - name: "SpecName"
+          type: "string"
+          description: "Detected spec name"
+          constraints: "Format: NNN-name"
+        - name: "PlanPath"
+          type: "string"
+          description: "Path to plan.yaml used"
+          constraints: "Valid file path"
+        - name: "Technologies"
+          type: "PlanData"
+          description: "Extracted technology information"
+          constraints: "Non-nil"
+        - name: "UpdatedFiles"
+          type: "[]UpdateResult"
+          description: "List of file update results"
+          constraints: "Non-nil array"
+        - name: "Errors"
+          type: "[]string"
+          description: "List of error messages if any"
+          constraints: "May be empty"
+      relationships: []
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Update CLI command documentation section"
+  source_code:
+    - path: "internal/agent/"
+      description: "New package for agent file management logic"
+    - path: "internal/agent/types.go"
+      description: "AgentType enum, PlanData struct, UpdateResult struct"
+    - path: "internal/agent/agent.go"
+      description: "Core agent file update logic"
+    - path: "internal/agent/parse.go"
+      description: "Plan.yaml parsing to extract technology info"
+    - path: "internal/agent/template.go"
+      description: "Agent file template management"
+    - path: "internal/cli/update_agent_context.go"
+      description: "CLI command implementation"
+  tests:
+    - path: "internal/agent/agent_test.go"
+      description: "Unit tests for agent file update logic"
+    - path: "internal/agent/parse_test.go"
+      description: "Unit tests for plan.yaml parsing"
+    - path: "internal/agent/template_test.go"
+      description: "Unit tests for template management"
+    - path: "internal/cli/update_agent_context_test.go"
+      description: "Unit tests for CLI command"
+
+implementation_phases:
+  - phase: 1
+    name: "Core Data Types and Parsing"
+    goal: "Establish data structures and plan.yaml parsing logic"
+    deliverables:
+      - "internal/agent/types.go with AgentType, PlanData, UpdateResult structs"
+      - "internal/agent/parse.go with ParsePlanData function"
+      - "internal/agent/parse_test.go with table-driven tests"
+
+  - phase: 2
+    name: "Agent File Operations"
+    goal: "Implement agent file reading, updating, and creation"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "internal/agent/agent.go with UpdateAgentFile, UpdateAllAgents functions"
+      - "internal/agent/template.go with embedded template and creation logic"
+      - "internal/agent/agent_test.go and template_test.go with mock file system tests"
+
+  - phase: 3
+    name: "CLI Command Integration"
+    goal: "Create autospec update-agent-context command"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "internal/cli/update_agent_context.go with Cobra command"
+      - "--agent and --json flags"
+      - "Proper exit codes and error messages"
+      - "internal/cli/update_agent_context_test.go"
+
+  - phase: 4
+    name: "Documentation and Polish"
+    goal: "Update documentation and ensure production readiness"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Updated CLAUDE.md with command documentation"
+      - "Final code review and formatting (make fmt)"
+      - "Performance validation (< 1s execution)"
+
+risks:
+  - risk: "Template file path inconsistency"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Embed template in binary; fallback to creating minimal template"
+  - risk: "Agent file format variations"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Use robust regex patterns; handle missing sections by appending"
+  - risk: "plan.yaml schema differences from plan.md"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Spec explicitly defines plan.yaml fields; use existing validation patterns"
+
+open_questions:
+  - question: "Should command also support plan.md for backward compatibility?"
+    context: "Shell script parses plan.md markdown, but codebase uses plan.yaml"
+    proposed_resolution: "Only support plan.yaml; plan.md is legacy and inconsistent with codebase"
+  - question: "Should missing template result in error or minimal default?"
+    context: "Template may not exist if autospec init wasn't run"
+    proposed_resolution: "Embed default template in binary; always available"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T03:37:55Z"
+  artifact_type: "plan"
