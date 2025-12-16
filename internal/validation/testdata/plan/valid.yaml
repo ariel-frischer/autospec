@@ -1,0 +1,197 @@
+# Valid golden plan.yaml fixture
+# This file contains all required and common optional fields
+# Expected: validation passes with no errors
+# Summary: 3 implementation phases, 2 data model entities
+
+plan:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  spec_path: "specs/001-example-feature/spec.yaml"
+
+summary: |
+  This plan implements user authentication with email/password login and
+  password reset functionality. The implementation uses bcrypt for password
+  hashing and JWT tokens for session management.
+
+technical_context:
+  language: "Go 1.25.1"
+  framework: "Cobra CLI (v1.10.1)"
+  primary_dependencies:
+    - name: "golang.org/x/crypto/bcrypt"
+      version: "latest"
+      purpose: "Password hashing"
+    - name: "github.com/golang-jwt/jwt/v5"
+      version: "v5.2.0"
+      purpose: "JWT token generation and validation"
+  storage: "PostgreSQL with GORM"
+  testing:
+    framework: "Go testing with testify"
+    approach: "Table-driven unit tests with mock database"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Login < 500ms p99"
+  constraints:
+    - "Must use existing user database schema"
+    - "Must not store plain-text passwords"
+  scale_scope: "Single instance, up to 10,000 users"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Plan includes tests before implementation"
+    - name: "Security Requirements"
+      status: "PASS"
+      notes: "Uses bcrypt, implements rate limiting"
+
+research_findings:
+  decisions:
+    - topic: "Password hashing algorithm"
+      decision: "Use bcrypt with cost factor 12"
+      rationale: "Industry standard, adaptive cost factor"
+      alternatives_considered:
+        - "Argon2 (more complex to implement)"
+        - "SHA-256 (not designed for passwords)"
+
+    - topic: "Session management"
+      decision: "Use JWT tokens with 24h expiry"
+      rationale: "Stateless, scalable, standard practice"
+      alternatives_considered:
+        - "Server-side sessions (requires session store)"
+
+data_model:
+  entities:
+    - name: "User"
+      description: "A registered user with credentials"
+      fields:
+        - name: "id"
+          type: "UUID"
+          description: "Unique identifier"
+          constraints: "Primary key, auto-generated"
+        - name: "email"
+          type: "string"
+          description: "User email address"
+          constraints: "Unique, not null, valid email format"
+        - name: "password_hash"
+          type: "string"
+          description: "Bcrypt hash of password"
+          constraints: "Not null"
+      relationships:
+        - target: "Session"
+          type: "one-to-many"
+          description: "User has many sessions"
+
+    - name: "Session"
+      description: "An active authentication session"
+      fields:
+        - name: "id"
+          type: "UUID"
+          description: "Session identifier"
+          constraints: "Primary key"
+        - name: "user_id"
+          type: "UUID"
+          description: "Reference to user"
+          constraints: "Foreign key to User"
+        - name: "token"
+          type: "string"
+          description: "JWT token"
+          constraints: "Not null"
+        - name: "expires_at"
+          type: "timestamp"
+          description: "Token expiration time"
+          constraints: "Not null"
+      relationships:
+        - target: "User"
+          type: "many-to-one"
+          description: "Session belongs to user"
+
+api_contracts:
+  endpoints:
+    - method: "POST"
+      path: "/api/v1/auth/login"
+      description: "Authenticate user"
+      request_body:
+        content_type: "application/json"
+        schema:
+          email: "string (required)"
+          password: "string (required)"
+      responses:
+        - status: 200
+          description: "Login successful"
+          body:
+            token: "string"
+            expires_at: "ISO8601 timestamp"
+        - status: 401
+          description: "Invalid credentials"
+        - status: 429
+          description: "Rate limit exceeded"
+
+project_structure:
+  documentation:
+    - path: "docs/auth.md"
+      description: "Authentication API documentation"
+  source_code:
+    - path: "internal/auth/handler.go"
+      description: "HTTP handlers for auth endpoints"
+    - path: "internal/auth/service.go"
+      description: "Business logic for authentication"
+    - path: "internal/auth/repository.go"
+      description: "Database operations for users"
+  tests:
+    - path: "internal/auth/handler_test.go"
+      description: "Handler unit tests"
+    - path: "internal/auth/service_test.go"
+      description: "Service unit tests"
+
+implementation_phases:
+  - phase: 1
+    name: "Foundation"
+    goal: "Set up authentication infrastructure"
+    deliverables:
+      - "User model and database migration"
+      - "Password hashing utility functions"
+      - "JWT token generation and validation"
+
+  - phase: 2
+    name: "Core Authentication"
+    goal: "Implement login functionality"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Login endpoint handler"
+      - "Authentication service"
+      - "Rate limiting middleware"
+
+  - phase: 3
+    name: "Password Reset"
+    goal: "Implement password reset flow"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Password reset request endpoint"
+      - "Email service integration"
+      - "Reset token validation"
+
+risks:
+  - risk: "Email service unavailability"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Queue emails for retry, provide alternative recovery"
+
+  - risk: "JWT secret key exposure"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Use environment variables, rotate keys regularly"
+
+open_questions:
+  - question: "Should we support remember me functionality?"
+    context: "Extends session duration for user convenience"
+    proposed_resolution: "Add optional longer-lived refresh tokens"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T11:00:00Z"
+  artifact_type: "plan"

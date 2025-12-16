@@ -1,0 +1,25 @@
+# Missing required field fixture: plan section
+# Expected error type: missing_field
+# Expected error message: "missing required field: plan"
+# Expected error line: 1 (document root)
+
+summary: |
+  This plan implements user authentication.
+
+technical_context:
+  language: "Go 1.25.1"
+  framework: "Cobra CLI"
+
+implementation_phases:
+  - phase: 1
+    name: "Foundation"
+    goal: "Set up infrastructure"
+    deliverables:
+      - "Basic setup"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "plan"

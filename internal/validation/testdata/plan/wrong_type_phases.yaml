@@ -1,0 +1,25 @@
+# Type mismatch fixture: implementation_phases as string instead of list
+# Expected error type: wrong_type
+# Expected error message: "wrong type for field 'implementation_phases': expected array, got string"
+# Expected error line: 15
+
+plan:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  spec_path: "specs/001-example-feature/spec.yaml"
+
+summary: |
+  This plan implements user authentication.
+
+technical_context:
+  language: "Go 1.25.1"
+  framework: "Cobra CLI"
+
+implementation_phases: "This should be a list, not a string"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "plan"

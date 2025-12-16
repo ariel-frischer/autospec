@@ -1,0 +1,5 @@
+# Empty YAML fixture: completely empty file (just this comment)
+# Expected error type: empty_file
+# Expected error message: "file is empty or contains only comments"
+# Expected error line: 0
+

@@ -1,0 +1,23 @@
+# Type mismatch fixture: user_stories as string instead of list
+# Expected error type: wrong_type
+# Expected error message: "wrong type for field 'user_stories': expected array, got string"
+# Expected error line: 9
+
+feature:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  status: "Draft"
+
+user_stories: "This should be a list, not a string"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST support login"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "spec"

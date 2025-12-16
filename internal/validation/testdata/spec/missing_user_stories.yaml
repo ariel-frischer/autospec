@@ -1,0 +1,21 @@
+# Missing required field fixture: user_stories section
+# Expected error type: missing_field
+# Expected error message: "missing required field: user_stories"
+# Expected error line: 1 (document root)
+
+feature:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  status: "Draft"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST support login"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "spec"

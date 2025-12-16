@@ -1,0 +1,53 @@
+# Invalid dependency reference fixture: circular dependency T001->T002->T003->T001
+# Expected error type: circular_dependency
+# Expected error message: "circular dependency detected: T001 -> T002 -> T003 -> T001"
+# Expected error line: 26 (first task in cycle)
+
+tasks:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  spec_path: "specs/001-example-feature/spec.yaml"
+  plan_path: "specs/001-example-feature/plan.yaml"
+
+summary:
+  total_tasks: 3
+  total_phases: 1
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Initialize project"
+    tasks:
+      - id: "T001"
+        title: "Create user model"
+        status: "Pending"
+        type: "setup"
+        parallel: false
+        dependencies: ["T003"]
+        acceptance_criteria:
+          - "Model created"
+
+      - id: "T002"
+        title: "Implement password hashing"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "Password hashing works"
+
+      - id: "T003"
+        title: "Create auth service"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        dependencies: ["T002"]
+        acceptance_criteria:
+          - "Auth service created"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "tasks"

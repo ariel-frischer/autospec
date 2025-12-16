@@ -1,0 +1,119 @@
+# Valid golden spec.yaml fixture
+# This file contains all required and common optional fields
+# Expected: validation passes with no errors
+# Summary: 2 user stories, 3 functional requirements, 2 key entities
+
+feature:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  status: "Draft"
+  input: "Add user authentication to the application"
+
+user_stories:
+  - id: "US-001"
+    title: "User can log in with email and password"
+    priority: "P1"
+    as_a: "registered user"
+    i_want: "to log in with my email and password"
+    so_that: "I can access my account"
+    why_this_priority: "Core functionality required for all authenticated features"
+    independent_test: "Login with valid credentials returns success"
+    acceptance_scenarios:
+      - given: "I have a registered account"
+        when: "I submit valid credentials"
+        then: "I am logged in and redirected to dashboard"
+      - given: "I enter an incorrect password"
+        when: "I submit the login form"
+        then: "I see an error message and can retry"
+
+  - id: "US-002"
+    title: "User can reset forgotten password"
+    priority: "P2"
+    as_a: "user who forgot their password"
+    i_want: "to reset my password via email"
+    so_that: "I can regain access to my account"
+    why_this_priority: "Important for user recovery but not blocking core functionality"
+    independent_test: "Password reset email is sent to valid email address"
+    acceptance_scenarios:
+      - given: "I have a registered account"
+        when: "I request a password reset"
+        then: "I receive an email with a reset link"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST support email/password authentication"
+      testable: true
+      acceptance_criteria: "Users can log in with valid email and password"
+
+    - id: "FR-002"
+      description: "MUST hash passwords before storage"
+      testable: true
+      acceptance_criteria: "Passwords are stored using bcrypt with cost factor 12"
+
+    - id: "FR-003"
+      description: "SHOULD support password reset via email"
+      testable: true
+      acceptance_criteria: "Reset link expires after 24 hours"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "performance"
+      description: "Login must complete within 500ms"
+      measurable_target: "p99 login latency < 500ms"
+
+    - id: "NFR-002"
+      category: "security"
+      description: "Must rate limit login attempts"
+      measurable_target: "Max 5 attempts per minute per IP"
+
+key_entities:
+  - name: "User"
+    description: "A registered user with credentials"
+    attributes:
+      - "id (UUID)"
+      - "email (string, unique)"
+      - "password_hash (string)"
+      - "created_at (timestamp)"
+
+  - name: "Session"
+    description: "An active user session"
+    attributes:
+      - "id (UUID)"
+      - "user_id (UUID)"
+      - "token (string)"
+      - "expires_at (timestamp)"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Users can authenticate successfully"
+      metric: "Login success rate"
+      target: ">99% for valid credentials"
+
+edge_cases:
+  - scenario: "User enters email with different case"
+    expected_behavior: "Email comparison is case-insensitive"
+
+  - scenario: "Session token expires during active use"
+    expected_behavior: "User is prompted to log in again"
+
+assumptions:
+  - "Email service is available for password reset"
+  - "Database supports unique constraints on email"
+
+constraints:
+  - "Must use existing user database schema"
+  - "Cannot store plain-text passwords"
+
+out_of_scope:
+  - "OAuth/social login integration"
+  - "Two-factor authentication"
+  - "Biometric authentication"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "spec"

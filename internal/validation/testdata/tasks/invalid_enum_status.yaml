@@ -1,0 +1,35 @@
+# Invalid enum fixture: task status not in valid values
+# Expected error type: invalid_enum
+# Expected error message: "invalid value for field 'phases[0].tasks[0].status': 'Done', expected one of: Pending, InProgress, Completed, Blocked"
+# Expected error line: 22
+
+tasks:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  spec_path: "specs/001-example-feature/spec.yaml"
+  plan_path: "specs/001-example-feature/plan.yaml"
+
+summary:
+  total_tasks: 1
+  total_phases: 1
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Initialize project"
+    tasks:
+      - id: "T001"
+        title: "Create user model"
+        status: "Done"
+        type: "setup"
+        parallel: false
+        dependencies: []
+        acceptance_criteria:
+          - "Model created"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "tasks"

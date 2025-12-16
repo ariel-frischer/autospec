@@ -1,0 +1,8 @@
+# Malformed YAML fixture: unclosed quote
+# Expected error type: yaml_parse_error
+# Expected error message: "yaml: line 7: found unexpected end of stream"
+# Expected error line: 7
+
+feature:
+  branch: "001-example-feature
+  created: "2025-01-15"

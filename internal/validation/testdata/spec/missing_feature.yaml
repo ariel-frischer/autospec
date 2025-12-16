@@ -1,0 +1,28 @@
+# Missing required field fixture: feature section
+# Expected error type: missing_field
+# Expected error message: "missing required field: feature"
+# Expected error line: 1 (document root)
+
+user_stories:
+  - id: "US-001"
+    title: "User can log in"
+    priority: "P1"
+    as_a: "user"
+    i_want: "to log in"
+    so_that: "I can access my account"
+    acceptance_scenarios:
+      - given: "I have an account"
+        when: "I enter credentials"
+        then: "I am logged in"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST support login"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "spec"

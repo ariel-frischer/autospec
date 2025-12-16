@@ -1,0 +1,642 @@
+tasks:
+    branch: "015-artifact-validation"
+    created: "2025-12-16"
+    spec_path: "specs/015-artifact-validation/spec.yaml"
+    plan_path: "specs/015-artifact-validation/plan.yaml"
+summary:
+    total_tasks: 38
+    total_phases: 8
+    parallel_opportunities: 12
+    estimated_complexity: "high"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Project initialization and testdata directory structure"
+      tasks:
+        - id: "T001"
+          title: "Create testdata directory structure for validation fixtures"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/validation/testdata/"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory structure exists: testdata/{spec,plan,tasks,common}/"
+            - "Each subdirectory has .gitkeep or initial fixture file"
+    - number: 2
+      title: "Foundational - Test Fixtures (US-007)"
+      purpose: "Create comprehensive test fixtures BEFORE any implementation code"
+      story_reference: "US-007"
+      independent_test: "Each fixture file is parseable YAML and contains required header comment"
+      tasks:
+        - id: "T002"
+          title: "Create valid golden spec fixture (internal/validation/testdata/spec/valid.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/spec/valid.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "File contains complete spec.yaml structure with all required fields"
+            - "Header comment documents this as valid golden file"
+            - "Includes feature, user_stories, requirements, key_entities sections"
+        - id: "T003"
+          title: "Create valid golden plan fixture (internal/validation/testdata/plan/valid.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/plan/valid.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "File contains complete plan.yaml structure with all required fields"
+            - "Header comment documents this as valid golden file"
+            - "Includes plan, summary, technical_context, implementation_phases sections"
+        - id: "T004"
+          title: "Create valid golden tasks fixture (internal/validation/testdata/tasks/valid.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/tasks/valid.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "File contains complete tasks.yaml structure with all required fields"
+            - "Header comment documents this as valid golden file"
+            - "Includes tasks, summary, phases with valid task IDs and dependencies"
+        - id: "T005"
+          title: "Create missing required field fixtures for spec (internal/validation/testdata/spec/missing_*.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/spec/missing_feature.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "missing_feature.yaml - spec without 'feature' section"
+            - "missing_user_stories.yaml - spec without 'user_stories' section"
+            - "Each has header comment with expected error type and line number"
+        - id: "T006"
+          title: "Create missing required field fixtures for plan (internal/validation/testdata/plan/missing_*.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/plan/missing_summary.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "missing_summary.yaml - plan without 'summary' section"
+            - "missing_technical_context.yaml - plan without 'technical_context' section"
+            - "Each has header comment with expected error type and line number"
+        - id: "T007"
+          title: "Create missing required field fixtures for tasks (internal/validation/testdata/tasks/missing_*.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/tasks/missing_phases.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "missing_phases.yaml - tasks without 'phases' section"
+            - "missing_summary.yaml - tasks without 'summary' section"
+            - "Each has header comment with expected error type and line number"
+        - id: "T008"
+          title: "Create type mismatch fixtures (internal/validation/testdata/*/wrong_type_*.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/spec/wrong_type_user_stories.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "spec/wrong_type_user_stories.yaml - user_stories as string instead of list"
+            - "plan/wrong_type_phases.yaml - implementation_phases as string instead of list"
+            - "tasks/wrong_type_tasks.yaml - tasks in phase as string instead of list"
+            - "Each has header comment with expected vs actual type"
+        - id: "T009"
+          title: "Create invalid enum value fixtures (internal/validation/testdata/*/invalid_enum_*.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/spec/invalid_enum_priority.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "spec/invalid_enum_priority.yaml - priority with invalid value"
+            - "tasks/invalid_enum_status.yaml - task status not in Pending|InProgress|Completed"
+            - "tasks/invalid_enum_type.yaml - task type not in setup|implementation|test|documentation|refactor"
+        - id: "T010"
+          title: "Create invalid dependency reference fixtures (internal/validation/testdata/tasks/invalid_dep_*.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/tasks/invalid_dep_nonexistent.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "invalid_dep_nonexistent.yaml - task depends on T999 which doesn't exist"
+            - "invalid_dep_self.yaml - task T001 depends on itself"
+            - "invalid_dep_circular.yaml - T001->T002->T003->T001 circular dependency"
+        - id: "T011"
+          title: "Create malformed YAML fixtures (internal/validation/testdata/common/malformed_*.yaml)"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-007"
+          file_path: "internal/validation/testdata/common/malformed_indent.yaml"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "malformed_indent.yaml - invalid indentation"
+            - "malformed_colon.yaml - missing colon after key"
+            - "malformed_unclosed.yaml - unclosed quote"
+            - "empty.yaml - completely empty file"
+            - "Each has header comment with expected parse error"
+    - number: 3
+      title: "Foundational - Schema Definitions"
+      purpose: "Define artifact schemas that drive validation logic"
+      tasks:
+        - id: "T012"
+          title: "Create schema definitions (internal/validation/schema.go)"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/validation/schema.go"
+          dependencies: ["T002", "T003", "T004"]
+          acceptance_criteria:
+            - "SchemaField struct with Name, Type, Required, Pattern, Enum fields"
+            - "SpecSchema with all required/optional fields for spec.yaml"
+            - "PlanSchema with all required/optional fields for plan.yaml"
+            - "TasksSchema with all required/optional fields for tasks.yaml"
+            - "GetSchema(artifactType) function returns appropriate schema"
+        - id: "T013"
+          title: "Create schema tests (internal/validation/schema_test.go)"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/validation/schema_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests verify each schema has required top-level fields defined"
+            - "Tests verify enum fields have valid values listed"
+            - "Tests verify GetSchema returns correct schema for each type"
+    - number: 4
+      title: "User Story 1 - Validate Spec Artifact (US-001)"
+      purpose: "Implement spec.yaml validation with line numbers and hints"
+      story_reference: "US-001"
+      independent_test: "Run validation on valid and invalid spec.yaml files"
+      tasks:
+        - id: "T014"
+          title: "Create ArtifactValidator interface and base types (internal/validation/artifact.go)"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/validation/artifact.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "ArtifactValidator interface with Validate(path) ValidationResult"
+            - "ValidationError struct with Path, Line, Column, Message, Expected, Actual, Hint"
+            - "ValidationResult struct with Valid, Errors, Summary"
+            - "ArtifactSummary struct with Type and Counts map"
+            - "NewArtifactValidator(artifactType) factory function"
+        - id: "T015"
+          title: "Implement spec validator (internal/validation/artifact_spec.go)"
+          status: "InProgress"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/validation/artifact_spec.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Validates required fields: feature, user_stories, requirements"
+            - "Validates field types (user_stories is list, etc.)"
+            - "Returns line numbers for errors using yaml.v3 Node API"
+            - "Returns summary with story count, requirement count on success"
+            - "Provides hints for missing required fields"
+        - id: "T016"
+          title: "Create spec validator tests (internal/validation/artifact_spec_test.go)"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/validation/artifact_spec_test.go"
+          dependencies: ["T015"]
+          acceptance_criteria:
+            - "Tests using testdata/spec/valid.yaml pass validation"
+            - "Tests using testdata/spec/missing_*.yaml fail with correct error messages"
+            - "Tests using testdata/spec/wrong_type_*.yaml fail with type mismatch errors"
+            - "Tests verify line numbers in error messages"
+            - "Tests verify summary counts on valid artifacts"
+    - number: 5
+      title: "User Story 2 - Validate Plan Artifact (US-002)"
+      purpose: "Implement plan.yaml validation with line numbers and hints"
+      story_reference: "US-002"
+      independent_test: "Run validation on valid and invalid plan.yaml files"
+      tasks:
+        - id: "T017"
+          title: "Implement plan validator (internal/validation/artifact_plan.go)"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/validation/artifact_plan.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Validates required fields: plan, summary, technical_context, implementation_phases"
+            - "Validates field types (implementation_phases is list, etc.)"
+            - "Returns line numbers for errors using yaml.v3 Node API"
+            - "Returns summary with phase count, component count on success"
+            - "Provides hints for missing required fields"
+        - id: "T018"
+          title: "Create plan validator tests (internal/validation/artifact_plan_test.go)"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/validation/artifact_plan_test.go"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "Tests using testdata/plan/valid.yaml pass validation"
+            - "Tests using testdata/plan/missing_*.yaml fail with correct error messages"
+            - "Tests using testdata/plan/wrong_type_*.yaml fail with type mismatch errors"
+            - "Tests verify line numbers in error messages"
+            - "Tests verify summary counts on valid artifacts"
+    - number: 6
+      title: "User Story 3 - Validate Tasks Artifact (US-003)"
+      purpose: "Implement tasks.yaml validation with cross-reference checking"
+      story_reference: "US-003"
+      independent_test: "Run validation on tasks.yaml with valid and invalid dependency references"
+      tasks:
+        - id: "T019"
+          title: "Implement tasks validator (internal/validation/artifact_tasks.go)"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/validation/artifact_tasks.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Validates required fields: tasks, summary, phases"
+            - "Validates task dependencies reference existing task IDs"
+            - "Validates task status enum values"
+            - "Validates task type enum values"
+            - "Returns line numbers for dependency errors"
+            - "Returns summary with task count, pending count, completed count"
+        - id: "T020"
+          title: "Implement circular dependency detection"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/validation/artifact_tasks.go"
+          dependencies: ["T019"]
+          acceptance_criteria:
+            - "Detects self-references (T001 depends on T001)"
+            - "Detects circular chains (T001->T002->T003->T001)"
+            - "Error message lists the cycle path"
+            - "Returns line number of the task causing the cycle"
+        - id: "T021"
+          title: "Create tasks validator tests (internal/validation/artifact_tasks_test.go)"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/validation/artifact_tasks_test.go"
+          dependencies: ["T020"]
+          acceptance_criteria:
+            - "Tests using testdata/tasks/valid.yaml pass validation"
+            - "Tests using testdata/tasks/missing_*.yaml fail with correct error messages"
+            - "Tests using testdata/tasks/invalid_dep_*.yaml fail with reference errors"
+            - "Tests using testdata/tasks/invalid_enum_*.yaml fail with enum errors"
+            - "Tests verify circular dependency detection"
+            - "Tests verify summary counts on valid artifacts"
+    - number: 7
+      title: "User Story 4 - Schema Display (US-004)"
+      purpose: "Implement --schema flag to print artifact schemas"
+      story_reference: "US-004"
+      independent_test: "Run --schema flag for each artifact type"
+      tasks:
+        - id: "T022"
+          title: "Create artifact CLI command (internal/cli/artifact.go)"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T016", "T018", "T021"]
+          acceptance_criteria:
+            - "Command accepts artifact type as first argument (spec, plan, tasks)"
+            - "Command accepts file path as second argument"
+            - "Rejects unknown artifact types with clear error and valid options"
+            - "Rejects missing file with clear error message"
+            - "Returns exit code 0 on success, 1 on validation failure, 3 on invalid args"
+        - id: "T023"
+          title: "Implement validation output formatting (internal/cli/artifact.go)"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T022"]
+          acceptance_criteria:
+            - "Success output shows artifact type, summary counts, checkmark"
+            - "Error output shows each error with line number, path, message, hint"
+            - "Errors are formatted for terminal readability"
+            - "Color coding for success/error when terminal supports it"
+        - id: "T024"
+          title: "Implement --schema flag (internal/cli/artifact.go)"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T023"]
+          acceptance_criteria:
+            - "Flag prints human-readable schema for artifact type"
+            - "Shows field names, types, required status"
+            - "Shows enum values for enum fields"
+            - "Works without file path argument (schema is type-level)"
+        - id: "T025"
+          title: "Create CLI tests (internal/cli/artifact_test.go)"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/artifact_test.go"
+          dependencies: ["T024"]
+          acceptance_criteria:
+            - "Tests invalid artifact type returns exit code 3"
+            - "Tests missing file returns exit code 3"
+            - "Tests valid artifact returns exit code 0"
+            - "Tests invalid artifact returns exit code 1"
+            - "Tests --schema flag produces output for each type"
+    - number: 8
+      title: "User Story 5 - Auto-Fix (US-005)"
+      purpose: "Implement --fix flag for automatic issue correction"
+      story_reference: "US-005"
+      independent_test: "Run --fix on artifacts with fixable issues"
+      tasks:
+        - id: "T026"
+          title: "Create auto-fix implementation (internal/validation/autofix.go)"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/validation/autofix.go"
+          dependencies: ["T024"]
+          acceptance_criteria:
+            - "AutoFix struct with Type, Path, Before, After fields"
+            - "FixArtifact(path, artifactType) returns list of fixes and remaining errors"
+            - "Uses yaml.v3 Node manipulation to preserve comments"
+            - "Supports add_optional_field fix type"
+            - "Supports normalize_format fix type"
+        - id: "T027"
+          title: "Implement missing optional field fixer"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/validation/autofix.go"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "Adds missing _meta section with default values"
+            - "Adds missing optional fields with sensible defaults"
+            - "Does not overwrite existing values"
+            - "Preserves file comments and formatting"
+        - id: "T028"
+          title: "Implement formatting normalizer"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/validation/autofix.go"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "Normalizes indentation to 2 spaces"
+            - "Ensures consistent list formatting"
+            - "Does not change semantic content"
+        - id: "T029"
+          title: "Add --fix flag to CLI (internal/cli/artifact.go)"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T027", "T028"]
+          acceptance_criteria:
+            - "Flag triggers auto-fix before validation"
+            - "Shows list of applied fixes"
+            - "Shows remaining unfixable errors"
+            - "Saves fixed file only if changes made"
+            - "Returns exit code 0 if all issues fixed, 1 if unfixable issues remain"
+        - id: "T030"
+          title: "Create auto-fix tests (internal/validation/autofix_test.go)"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/validation/autofix_test.go"
+          dependencies: ["T029"]
+          acceptance_criteria:
+            - "Tests missing _meta section is added"
+            - "Tests formatting is normalized"
+            - "Tests comments are preserved after fix"
+            - "Tests unfixable errors are still reported"
+    - number: 9
+      title: "User Story 6 - Slash Command Integration (US-006)"
+      purpose: "Integrate validation into workflow phase slash commands"
+      story_reference: "US-006"
+      independent_test: "Run each slash command and verify validation is called"
+      tasks:
+        - id: "T031"
+          title: "Update autospec.specify.md to include validation"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-006"
+          file_path: ".claude/commands/autospec.specify.md"
+          dependencies: ["T025"]
+          acceptance_criteria:
+            - "Template calls 'autospec artifact spec SPEC_PATH' at end of phase"
+            - "Validation runs after spec.yaml is written"
+            - "Instructions explain validation step to LLM"
+        - id: "T032"
+          title: "Update autospec.plan.md to include validation"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-006"
+          file_path: ".claude/commands/autospec.plan.md"
+          dependencies: ["T025"]
+          acceptance_criteria:
+            - "Template calls 'autospec artifact plan PLAN_PATH' at end of phase"
+            - "Validation runs after plan.yaml is written"
+            - "Instructions explain validation step to LLM"
+        - id: "T033"
+          title: "Update autospec.tasks.md to include validation"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-006"
+          file_path: ".claude/commands/autospec.tasks.md"
+          dependencies: ["T025"]
+          acceptance_criteria:
+            - "Template calls 'autospec artifact tasks TASKS_PATH' at end of phase"
+            - "Validation runs after tasks.yaml is written"
+            - "Instructions explain validation step to LLM"
+        - id: "T034"
+          title: "Update autospec.implement.md to include validation"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-006"
+          file_path: ".claude/commands/autospec.implement.md"
+          dependencies: ["T025"]
+          acceptance_criteria:
+            - "Template validates tasks.yaml on completion"
+            - "Ensures task status updates are valid"
+    - number: 10
+      title: "Polish & Documentation"
+      purpose: "Final polish, documentation, and performance validation"
+      tasks:
+        - id: "T035"
+          title: "Update CLAUDE.md with artifact command documentation"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "CLAUDE.md"
+          dependencies: ["T030"]
+          acceptance_criteria:
+            - "Documents 'autospec artifact' command usage"
+            - "Shows examples for each artifact type"
+            - "Documents --schema and --fix flags"
+            - "Documents exit codes"
+        - id: "T036"
+          title: "Add benchmark tests for validation performance"
+          status: "Pending"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/artifact_bench_test.go"
+          dependencies: ["T021"]
+          acceptance_criteria:
+            - "Benchmark tests for spec validation"
+            - "Benchmark tests for plan validation"
+            - "Benchmark tests for tasks validation"
+            - "Benchmarks demonstrate <500ms for typical artifacts"
+        - id: "T037"
+          title: "Run go fmt and go vet on all new code"
+          status: "Pending"
+          type: "refactor"
+          parallel: false
+          story_id: null
+          file_path: "internal/validation/"
+          dependencies: ["T030", "T034"]
+          acceptance_criteria:
+            - "make fmt runs without errors"
+            - "make lint runs without errors"
+            - "All new code follows project style"
+        - id: "T038"
+          title: "Run full test suite and verify all tests pass"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "."
+          dependencies: ["T037"]
+          acceptance_criteria:
+            - "make test passes"
+            - "All new tests pass"
+            - "No regressions in existing tests"
+dependencies:
+    user_story_order:
+        - story_id: "US-007"
+          depends_on: []
+          blocks: ["US-001", "US-002", "US-003"]
+        - story_id: "US-001"
+          depends_on: ["US-007"]
+          blocks: ["US-004"]
+        - story_id: "US-002"
+          depends_on: ["US-007"]
+          blocks: ["US-004"]
+        - story_id: "US-003"
+          depends_on: ["US-007"]
+          blocks: ["US-004"]
+        - story_id: "US-004"
+          depends_on: ["US-001", "US-002", "US-003"]
+          blocks: ["US-005", "US-006"]
+        - story_id: "US-005"
+          depends_on: ["US-004"]
+          blocks: []
+        - story_id: "US-006"
+          depends_on: ["US-004"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4, 5, 6]
+        - phase: 4
+          blocks: [7]
+        - phase: 5
+          blocks: [7]
+        - phase: 6
+          blocks: [7]
+        - phase: 7
+          blocks: [8, 9]
+        - phase: 8
+          blocks: [10]
+        - phase: 9
+          blocks: [10]
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T002", "T003", "T004"]
+          rationale: "Different artifact type fixtures, no dependencies"
+        - tasks: ["T005", "T006", "T007"]
+          rationale: "Missing field fixtures for different types"
+        - tasks: ["T008", "T009", "T010", "T011"]
+          rationale: "Different error category fixtures"
+    - phase: 7
+      parallel_groups:
+        - tasks: ["T022", "T023", "T024"]
+          rationale: "Sequential CLI implementation but can overlap design"
+    - phase: 9
+      parallel_groups:
+        - tasks: ["T031", "T032", "T033", "T034"]
+          rationale: "Different slash command files, no dependencies"
+    - phase: 10
+      parallel_groups:
+        - tasks: ["T035", "T036"]
+          rationale: "Documentation and benchmarks are independent"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3, 4, 5, 6, 7]
+        description: "Setup + Test Fixtures + Schema + All Validators + CLI Command"
+        validation: "Run 'autospec artifact TYPE PATH' on test fixtures and real artifacts"
+    incremental_delivery:
+        - milestone: "Test Fixtures Ready"
+          phases: [1, 2]
+          deliverable: "Complete testdata/ with fixtures for all error types"
+        - milestone: "Core Validation Ready"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "All three artifact types can be validated via library calls"
+        - milestone: "MVP Complete"
+          phases: [1, 2, 3, 4, 5, 6, 7]
+          deliverable: "CLI command works for all artifact types with schema display"
+        - milestone: "Full Feature Complete"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          deliverable: "Auto-fix, slash command integration, and documentation complete"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T00:27:43Z"
+    artifact_type: "tasks"

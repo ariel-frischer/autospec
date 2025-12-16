@@ -1,0 +1,421 @@
+plan:
+  branch: "015-artifact-validation"
+  created: "2025-12-16"
+  spec_path: "specs/015-artifact-validation/spec.yaml"
+
+summary: |
+  This plan implements a comprehensive artifact validation command for autospec that validates
+  YAML artifacts (spec, plan, tasks) against their schemas. The implementation builds on the
+  existing validation infrastructure in internal/validation/ and internal/yaml/, adding
+  schema-based validation with structured error reporting, line numbers, and actionable hints.
+
+  Key architectural decisions include: (1) using go-playground/validator for struct validation
+  with custom tag-based rules, (2) leveraging gopkg.in/yaml.v3 Node API for line number tracking,
+  (3) creating a unified ArtifactValidator interface for consistent validation across types,
+  and (4) implementing test fixtures as table-driven testdata files with header comments
+  documenting expected errors. The validation integrates into slash commands for automated
+  quality gates at each workflow phase.
+
+technical_context:
+  language: "Go 1.25.1"
+  framework: "Cobra CLI (v1.10.1)"
+  primary_dependencies:
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing with Node API for line number tracking"
+    - name: "go-playground/validator"
+      version: "v10.28.0"
+      purpose: "Struct validation with custom validation rules"
+    - name: "spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI command framework"
+  storage: "File system (YAML artifacts in specs/*/)"
+  testing:
+    framework: "Go testing with testify assertions"
+    approach: "Table-driven unit tests with testdata fixtures for comprehensive coverage"
+  target_platform: "Linux, macOS (Intel/Apple Silicon), Windows"
+  project_type: "cli"
+  performance_goals: "Validation completes in <500ms for typical artifacts (<1000 lines)"
+  constraints:
+    - "Must follow existing patterns in internal/validation/ and internal/cli/"
+    - "Exit codes must match established conventions (0=success, 1=validation fail, 3=invalid args)"
+    - "Must be idempotent - same input always produces same output"
+    - "No external schema files - schemas embedded in Go code"
+  scale_scope: "Single artifact validation per invocation, typical artifacts <500 lines"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Plan includes test fixtures and unit tests before implementation code"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "PASS"
+      notes: "This feature adds validation at each workflow phase transition"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "Target <500ms validation, <10ms for simple checks per existing contract"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "PASS"
+      notes: "Validation is pure function with no side effects"
+    - name: "Standardized Exit Codes (PRIN-005)"
+      status: "PASS"
+      notes: "Uses established exit codes: 0 success, 1 validation fail, 3 invalid args"
+    - name: "YAML-First Artifacts (PRIN-006)"
+      status: "PASS"
+      notes: "Validates YAML artifacts using standard YAML library"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "Implementation will run go fmt and go vet before completion"
+
+research_findings:
+  decisions:
+    - topic: "Schema validation approach"
+      decision: "Use go-playground/validator struct tags with custom validation functions"
+      rationale: "Already used in codebase, provides declarative validation with custom error messages"
+      alternatives_considered:
+        - "JSON Schema validation (requires external schema files, additional dependency)"
+        - "Hand-written validation functions (more code, less maintainable)"
+        - "gojsonschema library (JSON-focused, awkward for YAML)"
+
+    - topic: "Line number tracking"
+      decision: "Use yaml.v3 Node API to parse and track source locations"
+      rationale: "Provides exact line/column for each field, already available in codebase"
+      alternatives_considered:
+        - "Re-parsing on error (slower, may miss exact location)"
+        - "Byte offset tracking (harder to convert to line numbers)"
+
+    - topic: "Error message format"
+      decision: "Structured errors with path, line, expected/actual, and hint fields"
+      rationale: "Matches existing ValidationError in internal/yaml/validator.go"
+      alternatives_considered:
+        - "Plain string errors (less actionable)"
+        - "JSON error output (harder to read in terminal)"
+
+    - topic: "Test fixture organization"
+      decision: "testdata/{spec,plan,tasks,common}/*.yaml with header comments"
+      rationale: "Go convention for test fixtures, self-documenting with expected error metadata"
+      alternatives_considered:
+        - "Embedded test strings in *_test.go (harder to maintain, less readable)"
+        - "External test specification file (adds complexity)"
+
+    - topic: "Auto-fix implementation"
+      decision: "YAML Node manipulation for non-destructive updates"
+      rationale: "Preserves comments and formatting, only adds/modifies specific nodes"
+      alternatives_considered:
+        - "Full re-serialization (loses comments and custom formatting)"
+        - "Text-based regex replacement (fragile, error-prone)"
+
+data_model:
+  entities:
+    - name: "ArtifactType"
+      description: "Enum of supported artifact types for validation"
+      fields:
+        - name: "value"
+          type: "string"
+          description: "Type identifier"
+          constraints: "One of: spec, plan, tasks"
+      relationships: []
+
+    - name: "ValidationError"
+      description: "A single validation error with location and context"
+      fields:
+        - name: "Path"
+          type: "string"
+          description: "JSON-path style field location (e.g., 'user_stories[0].id')"
+          constraints: "Non-empty"
+        - name: "Line"
+          type: "int"
+          description: "1-based line number in source file"
+          constraints: "Positive integer or 0 if unknown"
+        - name: "Column"
+          type: "int"
+          description: "1-based column number in source file"
+          constraints: "Positive integer or 0 if unknown"
+        - name: "Message"
+          type: "string"
+          description: "Human-readable error description"
+          constraints: "Non-empty"
+        - name: "Expected"
+          type: "string"
+          description: "What was expected (type, value, format)"
+          constraints: "Optional"
+        - name: "Actual"
+          type: "string"
+          description: "What was found"
+          constraints: "Optional"
+        - name: "Hint"
+          type: "string"
+          description: "Suggestion for fixing the error"
+          constraints: "Optional"
+      relationships:
+        - target: "ValidationResult"
+          type: "many-to-one"
+          description: "Multiple errors collected in one result"
+
+    - name: "ValidationResult"
+      description: "Complete validation outcome for an artifact"
+      fields:
+        - name: "Valid"
+          type: "bool"
+          description: "True if artifact passed all validation"
+          constraints: "Required"
+        - name: "Errors"
+          type: "[]ValidationError"
+          description: "List of validation errors found"
+          constraints: "Empty if Valid is true"
+        - name: "Summary"
+          type: "ArtifactSummary"
+          description: "Summary statistics about the artifact"
+          constraints: "Populated on valid artifacts"
+      relationships:
+        - target: "ValidationError"
+          type: "one-to-many"
+          description: "Contains zero or more errors"
+
+    - name: "ArtifactSummary"
+      description: "Summary statistics for a valid artifact"
+      fields:
+        - name: "Type"
+          type: "ArtifactType"
+          description: "Type of artifact validated"
+          constraints: "Required"
+        - name: "Counts"
+          type: "map[string]int"
+          description: "Key counts (stories, tasks, phases, etc.)"
+          constraints: "Type-specific keys"
+      relationships: []
+
+    - name: "SchemaField"
+      description: "Definition of a field in an artifact schema"
+      fields:
+        - name: "Name"
+          type: "string"
+          description: "Field name in YAML"
+          constraints: "Non-empty"
+        - name: "Type"
+          type: "string"
+          description: "Expected Go type"
+          constraints: "One of: string, int, bool, []string, object, array"
+        - name: "Required"
+          type: "bool"
+          description: "Whether field must be present"
+          constraints: "Boolean"
+        - name: "Pattern"
+          type: "string"
+          description: "Regex pattern for string validation"
+          constraints: "Optional, valid regex"
+        - name: "Enum"
+          type: "[]string"
+          description: "Valid values for enum fields"
+          constraints: "Optional, non-empty if present"
+      relationships:
+        - target: "Schema"
+          type: "many-to-one"
+          description: "Fields belong to a schema"
+
+    - name: "AutoFix"
+      description: "A fix that can be automatically applied"
+      fields:
+        - name: "Type"
+          type: "string"
+          description: "Category of fix"
+          constraints: "One of: add_optional_field, normalize_format"
+        - name: "Path"
+          type: "string"
+          description: "Field path being fixed"
+          constraints: "Non-empty"
+        - name: "Before"
+          type: "string"
+          description: "Original value (or empty if adding)"
+          constraints: "Optional"
+        - name: "After"
+          type: "string"
+          description: "New value after fix"
+          constraints: "Non-empty"
+      relationships: []
+
+    - name: "TestFixture"
+      description: "A test fixture file with metadata"
+      fields:
+        - name: "Path"
+          type: "string"
+          description: "Relative path in testdata/"
+          constraints: "Non-empty"
+        - name: "ExpectedErrorType"
+          type: "string"
+          description: "Type of error expected"
+          constraints: "One of: missing_field, wrong_type, invalid_enum, invalid_ref, malformed"
+        - name: "ExpectedMessage"
+          type: "string"
+          description: "Pattern to match in error message"
+          constraints: "Regex pattern"
+        - name: "ExpectedLine"
+          type: "int"
+          description: "Expected line number of error"
+          constraints: "Positive integer"
+      relationships: []
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Update with artifact command documentation and usage examples"
+  source_code:
+    - path: "internal/cli/artifact.go"
+      description: "Main artifact command with subcommands (spec, plan, tasks)"
+    - path: "internal/cli/artifact_test.go"
+      description: "Unit tests for artifact CLI command"
+    - path: "internal/validation/artifact.go"
+      description: "ArtifactValidator interface and factory function"
+    - path: "internal/validation/artifact_spec.go"
+      description: "Spec artifact schema validation implementation"
+    - path: "internal/validation/artifact_plan.go"
+      description: "Plan artifact schema validation implementation"
+    - path: "internal/validation/artifact_tasks.go"
+      description: "Tasks artifact schema validation with cross-reference checking"
+    - path: "internal/validation/artifact_test.go"
+      description: "Shared test utilities for artifact validation"
+    - path: "internal/validation/artifact_spec_test.go"
+      description: "Spec validation tests using testdata fixtures"
+    - path: "internal/validation/artifact_plan_test.go"
+      description: "Plan validation tests using testdata fixtures"
+    - path: "internal/validation/artifact_tasks_test.go"
+      description: "Tasks validation tests using testdata fixtures"
+    - path: "internal/validation/schema.go"
+      description: "Schema definitions for all artifact types"
+    - path: "internal/validation/autofix.go"
+      description: "Auto-fix functionality for common issues"
+    - path: "internal/validation/autofix_test.go"
+      description: "Auto-fix tests"
+  tests:
+    - path: "internal/validation/testdata/spec/*.yaml"
+      description: "Spec artifact test fixtures (valid and invalid cases)"
+    - path: "internal/validation/testdata/plan/*.yaml"
+      description: "Plan artifact test fixtures"
+    - path: "internal/validation/testdata/tasks/*.yaml"
+      description: "Tasks artifact test fixtures including dependency validation"
+    - path: "internal/validation/testdata/common/*.yaml"
+      description: "Common test fixtures (malformed YAML, empty files)"
+
+implementation_phases:
+  - phase: 1
+    name: "Foundation - Test Fixtures and Schema Definitions"
+    goal: "Create comprehensive test fixtures and define artifact schemas before implementation"
+    deliverables:
+      - "Create testdata directory structure with organized subdirectories"
+      - "Create valid golden file fixtures for spec, plan, and tasks"
+      - "Create fixtures for missing required fields (each artifact type)"
+      - "Create fixtures for type mismatches (string vs list, etc.)"
+      - "Create fixtures for invalid enum values"
+      - "Create fixtures for malformed YAML syntax"
+      - "Create tasks-specific fixtures for invalid dependency references"
+      - "Define SchemaField structures for all artifact types"
+      - "Create schema.go with embedded schema definitions"
+
+  - phase: 2
+    name: "Core Validation - ArtifactValidator Interface and Implementations"
+    goal: "Implement validation logic for all artifact types with line number tracking"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Create ArtifactValidator interface in artifact.go"
+      - "Implement ValidationError struct with line/column tracking"
+      - "Implement ValidationResult struct with summary statistics"
+      - "Create spec validator with required field and type checking"
+      - "Create plan validator with required field and type checking"
+      - "Create tasks validator with dependency cross-reference checking"
+      - "Implement circular dependency detection for tasks"
+      - "Add unit tests for all validators using testdata fixtures"
+
+  - phase: 3
+    name: "CLI Integration - Artifact Command"
+    goal: "Create CLI command that exposes validation functionality"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Create artifact.go CLI command with type argument (spec, plan, tasks)"
+      - "Add path argument for file to validate"
+      - "Implement success output with artifact summary"
+      - "Implement error output with line numbers and hints"
+      - "Add --schema flag to print expected schema"
+      - "Add exit code handling per established conventions"
+      - "Add CLI tests for argument parsing and output formatting"
+
+  - phase: 4
+    name: "Auto-Fix Feature"
+    goal: "Implement optional auto-fix for common issues"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Create autofix.go with fix types (add_optional_field, normalize_format)"
+      - "Implement YAML Node manipulation for non-destructive updates"
+      - "Add --fix flag to artifact command"
+      - "Implement fix for missing optional _meta fields"
+      - "Implement fix for inconsistent YAML formatting"
+      - "Add tests for auto-fix functionality"
+      - "Document fixable vs unfixable error categories"
+
+  - phase: 5
+    name: "Slash Command Integration"
+    goal: "Integrate validation into workflow phase slash commands"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Update .claude/commands/autospec.specify.md to call artifact validation"
+      - "Update .claude/commands/autospec.plan.md to call artifact validation"
+      - "Update .claude/commands/autospec.tasks.md to call artifact validation"
+      - "Update .claude/commands/autospec.implement.md to validate on completion"
+      - "Add documentation for validation integration"
+
+  - phase: 6
+    name: "Documentation and Polish"
+    goal: "Complete documentation and ensure code quality"
+    dependencies:
+      - "Phase 4"
+      - "Phase 5"
+    deliverables:
+      - "Update CLAUDE.md with artifact command documentation"
+      - "Add usage examples in command help text"
+      - "Run go fmt and go vet on all new code"
+      - "Verify all tests pass with make test"
+      - "Add benchmark tests for validation performance"
+
+risks:
+  - risk: "YAML line number tracking may not be precise for all error types"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Use yaml.v3 Node API which provides Line/Column for each node; fall back to approximate location when exact position unavailable"
+
+  - risk: "Auto-fix may introduce unintended changes to user formatting"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Use Node-level manipulation to preserve comments and whitespace; always show diff before applying; require --yes flag for non-interactive use"
+
+  - risk: "Performance may degrade for very large artifacts"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Target artifacts are typically <500 lines; add streaming validation if needed; benchmark tests will catch regressions"
+
+  - risk: "Schema definitions may diverge from actual artifact structure over time"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Generate schemas from existing types in internal/yaml/types.go; add CI check to validate schemas match type definitions"
+
+open_questions:
+  - question: "Should --schema output be human-readable or machine-readable (JSON)?"
+    context: "Developers may want to generate documentation or tooling from schema"
+    proposed_resolution: "Default to human-readable table format; add --json flag for machine-readable output"
+
+  - question: "Should validation be strict or lenient for extra fields not in schema?"
+    context: "Users may add custom fields to artifacts for their own purposes"
+    proposed_resolution: "Default to lenient (ignore extra fields); add --strict flag for CI environments that want to catch typos"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T00:25:35Z"
+  artifact_type: "plan"

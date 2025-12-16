@@ -1,0 +1,44 @@
+# Invalid dependency reference fixture: task depends on non-existent T999
+# Expected error type: invalid_reference
+# Expected error message: "invalid dependency reference: task 'T002' depends on 'T999' which does not exist"
+# Expected error line: 32
+
+tasks:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  spec_path: "specs/001-example-feature/spec.yaml"
+  plan_path: "specs/001-example-feature/plan.yaml"
+
+summary:
+  total_tasks: 2
+  total_phases: 1
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Initialize project"
+    tasks:
+      - id: "T001"
+        title: "Create user model"
+        status: "Pending"
+        type: "setup"
+        parallel: false
+        dependencies: []
+        acceptance_criteria:
+          - "Model created"
+
+      - id: "T002"
+        title: "Implement password hashing"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        dependencies: ["T999"]
+        acceptance_criteria:
+          - "Password hashing works"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "tasks"

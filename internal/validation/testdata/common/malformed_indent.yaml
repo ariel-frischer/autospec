@@ -1,0 +1,9 @@
+# Malformed YAML fixture: invalid indentation
+# Expected error type: yaml_parse_error
+# Expected error message: "yaml: line 6: mapping values are not allowed in this context"
+# Expected error line: 6
+
+feature:
+  branch: "001-example-feature"
+created: "2025-01-15"
+  status: "Draft"

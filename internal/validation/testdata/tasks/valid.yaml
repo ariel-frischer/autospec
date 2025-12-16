@@ -1,0 +1,156 @@
+# Valid golden tasks.yaml fixture
+# This file contains all required and common optional fields
+# Expected: validation passes with no errors
+# Summary: 6 tasks across 3 phases, all dependencies valid
+
+tasks:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  spec_path: "specs/001-example-feature/spec.yaml"
+  plan_path: "specs/001-example-feature/plan.yaml"
+
+summary:
+  total_tasks: 6
+  total_phases: 3
+  parallel_opportunities: 2
+  estimated_complexity: "medium"
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Initialize authentication infrastructure"
+    tasks:
+      - id: "T001"
+        title: "Create user model and database migration"
+        status: "Pending"
+        type: "setup"
+        parallel: false
+        story_id: null
+        file_path: "internal/models/user.go"
+        dependencies: []
+        acceptance_criteria:
+          - "User struct with ID, Email, PasswordHash fields"
+          - "Migration creates users table with constraints"
+
+      - id: "T002"
+        title: "Implement password hashing utilities"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: null
+        file_path: "internal/auth/password.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "HashPassword function uses bcrypt with cost 12"
+          - "ComparePassword function validates hash"
+
+  - number: 2
+    title: "Core Authentication (US-001)"
+    purpose: "Implement login functionality"
+    story_reference: "US-001"
+    independent_test: "Login with valid credentials returns JWT token"
+    tasks:
+      - id: "T003"
+        title: "Create authentication service"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/auth/service.go"
+        dependencies: ["T002"]
+        acceptance_criteria:
+          - "Login method validates credentials"
+          - "Returns JWT token on success"
+          - "Returns error on invalid credentials"
+
+      - id: "T004"
+        title: "Create login endpoint handler"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/auth/handler.go"
+        dependencies: ["T003"]
+        acceptance_criteria:
+          - "POST /api/v1/auth/login endpoint"
+          - "Returns 200 with token on success"
+          - "Returns 401 on invalid credentials"
+
+  - number: 3
+    title: "Password Reset (US-002)"
+    purpose: "Implement password reset flow"
+    story_reference: "US-002"
+    independent_test: "Password reset email is sent for valid email"
+    tasks:
+      - id: "T005"
+        title: "Create password reset service"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-002"
+        file_path: "internal/auth/reset.go"
+        dependencies: ["T003"]
+        acceptance_criteria:
+          - "GenerateResetToken creates unique token"
+          - "ResetPassword validates token and updates password"
+
+      - id: "T006"
+        title: "Create password reset endpoint"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/auth/handler.go"
+        dependencies: ["T005"]
+        acceptance_criteria:
+          - "POST /api/v1/auth/reset-password endpoint"
+          - "Sends email with reset link"
+          - "PUT /api/v1/auth/reset-password validates token"
+
+dependencies:
+  user_story_order:
+    - story_id: "US-001"
+      depends_on: []
+      blocks: ["US-002"]
+    - story_id: "US-002"
+      depends_on: ["US-001"]
+      blocks: []
+
+  phase_order:
+    - phase: 1
+      blocks: [2]
+    - phase: 2
+      blocks: [3]
+
+parallel_execution:
+  - phase: 1
+    parallel_groups:
+      - tasks: ["T002"]
+        rationale: "Can run after T001 completes"
+  - phase: 3
+    parallel_groups:
+      - tasks: ["T005"]
+        rationale: "Can run in parallel with phase 2 completion"
+
+implementation_strategy:
+  mvp_scope:
+    phases: [1, 2]
+    description: "Basic login functionality"
+    validation: "User can log in and receive token"
+  incremental_delivery:
+    - milestone: "Infrastructure Ready"
+      phases: [1]
+      deliverable: "User model and password hashing"
+    - milestone: "Login Working"
+      phases: [1, 2]
+      deliverable: "Full login flow with JWT"
+    - milestone: "Complete Feature"
+      phases: [1, 2, 3]
+      deliverable: "Login and password reset"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T12:00:00Z"
+  artifact_type: "tasks"

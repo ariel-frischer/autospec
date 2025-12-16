@@ -1,0 +1,33 @@
+# Invalid enum fixture: priority with invalid value
+# Expected error type: invalid_enum
+# Expected error message: "invalid value for field 'user_stories[0].priority': 'CRITICAL', expected one of: P0, P1, P2, P3"
+# Expected error line: 13
+
+feature:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  status: "Draft"
+
+user_stories:
+  - id: "US-001"
+    title: "User can log in"
+    priority: "CRITICAL"
+    as_a: "user"
+    i_want: "to log in"
+    so_that: "I can access my account"
+    acceptance_scenarios:
+      - given: "I have an account"
+        when: "I enter credentials"
+        then: "I am logged in"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST support login"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "spec"

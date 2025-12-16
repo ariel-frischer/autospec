@@ -1,0 +1,29 @@
+# Missing required field fixture: tasks section
+# Expected error type: missing_field
+# Expected error message: "missing required field: tasks"
+# Expected error line: 1 (document root)
+
+summary:
+  total_tasks: 2
+  total_phases: 1
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Initialize project"
+    tasks:
+      - id: "T001"
+        title: "Create user model"
+        status: "Pending"
+        type: "setup"
+        parallel: false
+        dependencies: []
+        acceptance_criteria:
+          - "Model created"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T10:00:00Z"
+  artifact_type: "tasks"
