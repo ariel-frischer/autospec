@@ -18,6 +18,37 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Task-Specific Execution
+
+**If `--task TXXX` is specified in the arguments**, execute ONLY that specific task:
+
+1. Parse the `--task TXXX` argument to extract the task ID (e.g., T001, T002)
+2. Read tasks.yaml and locate the task with that ID
+3. Execute ONLY that specific task (skip all other tasks)
+4. When starting the task, display: `[Task] TXXX - Task Title`
+5. Implement the task following its acceptance criteria
+6. **CRITICAL**: Update the task status when done:
+   ```bash
+   autospec update-task TXXX Completed
+   ```
+7. When the task is complete (status updated to Completed), output:
+   ```
+   ✓ Task TXXX complete
+   ```
+8. **Do not proceed to other tasks** - exit after completing this task
+9. Report task-specific summary
+
+**Example task-specific execution**:
+```
+[Task] T007 - Add GetTaskByID function
+Implementing task T007...
+✓ Task T007 complete
+```
+
+**If `--task` is NOT specified**, check for `--phase` argument next.
+
+---
+
 ## Phase-Specific Execution
 
 **If `--phase N` is specified in the arguments**, execute ONLY that specific phase:

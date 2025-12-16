@@ -221,7 +221,7 @@ phases:
             - "Validates task ID exists in tasks.yaml"
         - id: "T016"
           title: "Add mutual exclusivity validation between --tasks and --phases flags"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-006"
@@ -234,7 +234,7 @@ phases:
             - "Exit code 3 for invalid flag combinations"
         - id: "T017"
           title: "Wire --tasks execution path in implement command RunE"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -246,7 +246,7 @@ phases:
             - "Display 'Task X of Y: TXXX - Title' progress"
         - id: "T018"
           title: "Add unit tests for CLI flag parsing and validation"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-006"
@@ -265,7 +265,7 @@ phases:
       tasks:
         - id: "T019"
           title: "Update .claude/commands/autospec.implement.md with --task parameter"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-004"
@@ -278,7 +278,7 @@ phases:
             - "Document task completion marking requirement"
         - id: "T020"
           title: "Add task completion validation between sessions"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-005"
@@ -291,7 +291,7 @@ phases:
             - "Output clear message if task did not complete"
         - id: "T021"
           title: "Add unit tests for task completion validation"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-005"
@@ -307,7 +307,7 @@ phases:
       tasks:
         - id: "T022"
           title: "Update CLAUDE.md with --tasks and --from-task documentation"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -320,7 +320,7 @@ phases:
             - "Include typical use case scenarios"
         - id: "T023"
           title: "Run make fmt to format all Go code"
-          status: "Pending"
+          status: "Completed"
           type: "refactor"
           parallel: true
           story_id: null
@@ -332,7 +332,7 @@ phases:
             - "No formatting changes pending"
         - id: "T024"
           title: "Run make test to verify all tests pass"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null

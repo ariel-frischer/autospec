@@ -84,6 +84,9 @@ autospec implement 003-my-feature "Complete tests"         # Spec + prompt
 autospec implement --phases                                # Run each phase in separate Claude session
 autospec implement --phase 3                               # Run only phase 3
 autospec implement --from-phase 3                          # Run phases 3 onwards
+autospec implement --tasks                                 # Run each task in a separate Claude session
+autospec implement --tasks --from-task T005                # Start from task T005
+autospec implement --task T003                             # Execute only task T003
 
 # Run individual optional phases
 autospec constitution                                      # Create/update project constitution
@@ -232,6 +235,13 @@ Cobra-based command structure providing user-facing commands:
 - `--spec`: Specify which spec to work with (overrides branch detection)
 - `--max-retries`: Override max retry attempts (long-only, no short flag)
 
+**Implement Command Task-Level Flags:**
+- `--tasks`: Run each task in a separate Claude session (isolated context per task)
+- `--from-task TXXX`: Start execution from specified task ID (e.g., T003)
+- `--task TXXX`: Execute only the specified task
+
+**Note:** `--tasks`/`--from-task`/`--task` are mutually exclusive with `--phases`/`--phase`/`--from-phase`. Use task-level OR phase-level execution, not both.
+
 **Canonical Phase Order:**
 Phases always execute in this order, regardless of flag order:
 `constitution → specify → clarify → plan → tasks → checklist → analyze → implement`
@@ -243,13 +253,15 @@ Manages the complete SpecKit workflow lifecycle:
   - `RunFullWorkflow()`: Complete workflow including implementation (specify → plan → tasks → implement)
   - `RunCompleteWorkflow()`: Planning workflow only (specify → plan → tasks)
   - `ExecuteImplement()`: Implementation phase only
+  - `ExecuteImplementWithTasks()`: Task-level implementation with isolated Claude sessions per task
 - **executor.go**: `Executor` handles phase execution with retry logic
 - **claude.go**: `ClaudeExecutor` interfaces with Claude CLI or API
 - **preflight.go**: Pre-flight checks for dependencies (claude CLI, git)
   - `CheckArtifactDependencies()`: Validates required artifacts exist before phase execution
   - `GeneratePrerequisiteWarning()`: Generates human-readable warnings for missing prerequisites
-- **phase_config.go**: Phase configuration and dependency management (NEW!)
+- **phase_config.go**: Phase configuration and dependency management
   - `PhaseConfig`: Represents selected phases for execution
+  - `PhaseExecutionOptions`: Execution options including TaskMode, FromTask, SingleTask
   - `ArtifactDependency`: Maps phases to required/produced artifacts
   - `GetCanonicalOrder()`: Returns phases in execution order (specify → plan → tasks → implement)
   - `GetAllRequiredArtifacts()`: Returns external dependencies for selected phases
@@ -422,6 +434,41 @@ ExecutePhase(specName, phase, command, validationFunc):
   6. If validation succeeds:
      - Reset retry count
      - Return success
+```
+
+### Task-Level Execution
+
+When using `--tasks` flag, implementation runs each task in an isolated Claude session:
+
+```
+ExecuteImplementWithTasks(specName, opts):
+  1. Load tasks from tasks.yaml in dependency order
+  2. If FromTask specified, skip tasks until reaching that task ID
+  3. For each task:
+     a. Validate dependencies met (all deps have status: Completed)
+     b. Execute task in isolated Claude session via /autospec.implement --task TXXX
+     c. Verify task marked Completed in tasks.yaml after session ends
+     d. Track progress in TaskExecutionState (persisted to ~/.autospec/state/)
+     e. Retry on failure using standard retry logic
+  4. Report summary of completed tasks
+```
+
+**Key benefits:**
+- **Context isolation**: Each task starts with fresh Claude context, preventing confusion from accumulated state
+- **Resumable**: Use `--from-task T005` to resume from a specific task after interruption
+- **Single task execution**: Use `--task T003` to execute only one specific task
+- **Dependency validation**: Tasks only execute when all dependencies are Completed
+
+**Typical use cases:**
+```bash
+# Full task-level implementation (isolated sessions)
+autospec implement --tasks
+
+# Resume after task T004 failed or was interrupted
+autospec implement --tasks --from-task T005
+
+# Execute only one specific task
+autospec implement --task T003
 ```
 
 ### Prompt Injection and Command Display
@@ -703,4 +750,4 @@ Shell scripts have been fully migrated to Go commands. The following Go commands
 
 The slash commands in `.claude/commands/` now call these Go commands directly instead of shell scripts.
 
-**Last updated**: 2025-12-15
+**Last updated**: 2025-12-16

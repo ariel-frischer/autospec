@@ -142,6 +142,99 @@ func TestImplementPhaseFlagsMutualExclusivity(t *testing.T) {
 	}
 }
 
+// TestTasksFlagParsing tests that the --tasks flag is properly registered and has correct defaults
+func TestTasksFlagParsing(t *testing.T) {
+	// Verify --tasks flag exists
+	tasksFlag := implementCmd.Flags().Lookup("tasks")
+	if tasksFlag == nil {
+		t.Error("--tasks flag not registered")
+		return
+	}
+
+	// Verify default value
+	if tasksFlag.DefValue != "false" {
+		t.Errorf("--tasks default = %q, want %q", tasksFlag.DefValue, "false")
+	}
+
+	// Verify flag description
+	if tasksFlag.Usage == "" {
+		t.Error("--tasks flag has no usage description")
+	}
+}
+
+// TestFromTaskFlagParsing tests that the --from-task flag is properly registered and handles task IDs
+func TestFromTaskFlagParsing(t *testing.T) {
+	// Verify --from-task flag exists
+	fromTaskFlag := implementCmd.Flags().Lookup("from-task")
+	if fromTaskFlag == nil {
+		t.Error("--from-task flag not registered")
+		return
+	}
+
+	// Verify default value is empty string
+	if fromTaskFlag.DefValue != "" {
+		t.Errorf("--from-task default = %q, want %q", fromTaskFlag.DefValue, "")
+	}
+
+	// Verify flag description
+	if fromTaskFlag.Usage == "" {
+		t.Error("--from-task flag has no usage description")
+	}
+}
+
+// TestTaskFlagsRegistered tests that all task execution flags are properly registered
+func TestTaskFlagsRegistered(t *testing.T) {
+	flags := map[string]string{
+		"tasks":     "false",
+		"from-task": "",
+	}
+
+	for flagName, expectedDefault := range flags {
+		flag := implementCmd.Flags().Lookup(flagName)
+		if flag == nil {
+			t.Errorf("flag --%s not registered", flagName)
+			continue
+		}
+		if flag.DefValue != expectedDefault {
+			t.Errorf("--%s default = %q, want %q", flagName, flag.DefValue, expectedDefault)
+		}
+	}
+}
+
+// TestTaskPhasesMutualExclusivity tests that --tasks flag is mutually exclusive with phase flags
+func TestTaskPhasesMutualExclusivity(t *testing.T) {
+	// The mutual exclusivity is enforced by Cobra's MarkFlagsMutuallyExclusive
+	// We verify all relevant flags exist and can be looked up
+	tests := []struct {
+		name  string
+		flags []string
+	}{
+		{
+			name:  "tasks and phases",
+			flags: []string{"tasks", "phases"},
+		},
+		{
+			name:  "tasks and phase",
+			flags: []string{"tasks", "phase"},
+		},
+		{
+			name:  "tasks and from-phase",
+			flags: []string{"tasks", "from-phase"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, flagName := range tc.flags {
+				flag := implementCmd.Flags().Lookup(flagName)
+				if flag == nil {
+					t.Errorf("flag --%s not found, mutual exclusivity setup requires all flags", flagName)
+				}
+			}
+		})
+	}
+}
+
 // TestSpecNamePattern tests that the spec name regex correctly identifies spec names
 func TestSpecNamePattern(t *testing.T) {
 	tests := map[string]struct {

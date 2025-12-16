@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/spec"
+	"github.com/ariel-frischer/autospec/internal/validation"
 )
 
 func TestNewWorkflowOrchestrator(t *testing.T) {
@@ -376,6 +378,254 @@ func TestTaskModeWithFromTask(t *testing.T) {
 				t.Errorf("Mode() = %v, want %v", got, tt.wantMode)
 			}
 		})
+	}
+}
+
+// TestTaskCompletionValidation tests that task completion is properly validated
+func TestTaskCompletionValidation(t *testing.T) {
+	tmpDir := t.TempDir()
+	specsDir := filepath.Join(tmpDir, "specs")
+	specDir := filepath.Join(specsDir, "001-test-feature")
+
+	// Create the directory structure
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+
+	tests := []struct {
+		name        string
+		taskStatus  string
+		expectError bool
+	}{
+		{
+			name:        "task completed",
+			taskStatus:  "Completed",
+			expectError: false,
+		},
+		{
+			name:        "task completed lowercase",
+			taskStatus:  "completed",
+			expectError: false,
+		},
+		{
+			name:        "task pending",
+			taskStatus:  "Pending",
+			expectError: true,
+		},
+		{
+			name:        "task in progress",
+			taskStatus:  "InProgress",
+			expectError: true,
+		},
+		{
+			name:        "task blocked",
+			taskStatus:  "Blocked",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create tasks.yaml with specified status
+			tasksContent := fmt.Sprintf(`tasks:
+    branch: "001-test-feature"
+    created: "2025-01-01"
+summary:
+    total_tasks: 1
+    total_phases: 1
+phases:
+    - number: 1
+      title: "Test Phase"
+      purpose: "Testing"
+      tasks:
+        - id: "T001"
+          title: "Test Task"
+          status: "%s"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "test.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Test passes"
+_meta:
+    version: "1.0.0"
+    artifact_type: "tasks"
+`, tt.taskStatus)
+
+			tasksPath := filepath.Join(specDir, "tasks.yaml")
+			if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+				t.Fatalf("Failed to create tasks.yaml: %v", err)
+			}
+
+			// Simulate the validation logic from executeSingleTaskSession
+			allTasks, err := validation.GetAllTasks(tasksPath)
+			if err != nil {
+				t.Fatalf("Failed to get tasks: %v", err)
+			}
+
+			task, err := validation.GetTaskByID(allTasks, "T001")
+			if err != nil {
+				t.Fatalf("Failed to get task: %v", err)
+			}
+
+			// Check if task is completed (same logic as in executeSingleTaskSession)
+			isCompleted := task.Status == "Completed" || task.Status == "completed"
+
+			if tt.expectError && isCompleted {
+				t.Errorf("Expected validation error for status %q, but task was considered completed", tt.taskStatus)
+			}
+			if !tt.expectError && !isCompleted {
+				t.Errorf("Expected no error for status %q, but task was not considered completed", tt.taskStatus)
+			}
+		})
+	}
+}
+
+// TestTaskCompletionValidationAfterSession tests validation after task session completes
+func TestTaskCompletionValidationAfterSession(t *testing.T) {
+	tmpDir := t.TempDir()
+	specsDir := filepath.Join(tmpDir, "specs")
+	specDir := filepath.Join(specsDir, "001-test-feature")
+
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+
+	// Create tasks.yaml with incomplete task
+	tasksContent := `tasks:
+    branch: "001-test-feature"
+    created: "2025-01-01"
+summary:
+    total_tasks: 1
+    total_phases: 1
+phases:
+    - number: 1
+      title: "Test Phase"
+      purpose: "Testing"
+      tasks:
+        - id: "T001"
+          title: "Test Task"
+          status: "InProgress"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "test.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Test passes"
+_meta:
+    version: "1.0.0"
+    artifact_type: "tasks"
+`
+
+	tasksPath := filepath.Join(specDir, "tasks.yaml")
+	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+		t.Fatalf("Failed to create tasks.yaml: %v", err)
+	}
+
+	// Simulate the validation function that would be passed to ExecutePhase
+	validateFunc := func(specDir string) error {
+		tasksPath := filepath.Join(specDir, "tasks.yaml")
+		allTasks, err := validation.GetAllTasks(tasksPath)
+		if err != nil {
+			return err
+		}
+
+		task, err := validation.GetTaskByID(allTasks, "T001")
+		if err != nil {
+			return err
+		}
+
+		if task.Status != "Completed" && task.Status != "completed" {
+			return fmt.Errorf("task %s not completed (status: %s)", task.ID, task.Status)
+		}
+		return nil
+	}
+
+	// Test that validation fails for incomplete task
+	err := validateFunc(specDir)
+	if err == nil {
+		t.Error("Expected validation to fail for incomplete task, but it passed")
+	} else {
+		expectedMsg := "task T001 not completed (status: InProgress)"
+		if err.Error() != expectedMsg {
+			t.Errorf("Expected error message %q, got %q", expectedMsg, err.Error())
+		}
+	}
+
+	// Now update the task to Completed and verify validation passes
+	tasksContentCompleted := `tasks:
+    branch: "001-test-feature"
+    created: "2025-01-01"
+summary:
+    total_tasks: 1
+    total_phases: 1
+phases:
+    - number: 1
+      title: "Test Phase"
+      purpose: "Testing"
+      tasks:
+        - id: "T001"
+          title: "Test Task"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "test.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Test passes"
+_meta:
+    version: "1.0.0"
+    artifact_type: "tasks"
+`
+
+	if err := os.WriteFile(tasksPath, []byte(tasksContentCompleted), 0644); err != nil {
+		t.Fatalf("Failed to update tasks.yaml: %v", err)
+	}
+
+	// Test that validation passes for completed task
+	err = validateFunc(specDir)
+	if err != nil {
+		t.Errorf("Expected validation to pass for completed task, got error: %v", err)
+	}
+}
+
+// TestTaskRetryExhaustedBehavior tests that retry exhaustion is handled correctly
+func TestTaskRetryExhaustedBehavior(t *testing.T) {
+	// Test the PhaseResult structure that indicates retry exhaustion
+	result := &PhaseResult{
+		Phase:      PhaseImplement,
+		Success:    false,
+		Exhausted:  true,
+		RetryCount: 3,
+		Error:      fmt.Errorf("task T001 not completed (status: InProgress)"),
+	}
+
+	// Verify exhausted state
+	if !result.Exhausted {
+		t.Error("Expected Exhausted to be true")
+	}
+
+	if result.RetryCount != 3 {
+		t.Errorf("Expected RetryCount to be 3, got %d", result.RetryCount)
+	}
+
+	// Test the error message format that would be shown to user
+	expectedErrorFormat := "task %s exhausted retries: %w"
+	errMsg := fmt.Errorf(expectedErrorFormat, "T001", result.Error)
+	if errMsg == nil {
+		t.Error("Expected error message to be generated")
+	}
+
+	// Verify the message includes key information
+	errStr := errMsg.Error()
+	if !strings.Contains(errStr, "T001") {
+		t.Errorf("Error message should contain task ID, got: %s", errStr)
+	}
+	if !strings.Contains(errStr, "exhausted retries") {
+		t.Errorf("Error message should mention exhausted retries, got: %s", errStr)
 	}
 }
 

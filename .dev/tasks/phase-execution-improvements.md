@@ -136,54 +136,6 @@ command := fmt.Sprintf("/autospec.implement --phase %d --context-file %s", phase
 **Pros**: Minimal context per session, faster startup, less token usage
 **Cons**: Requires modifying slash command to accept context file, more Go code
 
-#### Option B: Modify Slash Command to Filter Early
-
-Update `.claude/commands/autospec.implement.md` to:
-1. First extract phase number from arguments
-2. Only read the specific phase section from tasks.yaml
-3. Skip reading spec.yaml/plan.yaml for later phases (optional)
-
-**Pros**: Simple change to instructions
-**Cons**: Claude still reads full file, just ignores parts; spec/plan still read every time
-
-#### Option C: Pass Context via Stdin/Heredoc
-
-Build a pre-filtered context document and pass it to Claude:
-
-```go
-// Generate filtered context
-context := fmt.Sprintf(`
-## Phase %d: %s
-### Tasks for this phase:
-%s
-
-### Relevant spec context:
-%s
-`, phaseNumber, phaseTitle, phaseTasks, relevantSpecSections)
-
-// Pass to Claude via stdin or --prompt
-command := fmt.Sprintf("echo '%s' | claude -p '/autospec.implement --phase %d'", context, phaseNumber)
-```
-
-**Pros**: Complete control over context
-**Cons**: Requires significant changes to execution model
-
-#### Option D: Cached Context Approach
-
-First session reads and caches spec/plan, subsequent sessions skip:
-
-```go
-// Check if context cached
-if contextCached(specName) {
-    command = fmt.Sprintf("/autospec.implement --phase %d --skip-context-read", phaseNumber)
-} else {
-    command = fmt.Sprintf("/autospec.implement --phase %d", phaseNumber)
-}
-```
-
-**Pros**: Preserves current architecture
-**Cons**: Cache invalidation complexity, still reads tasks.yaml
-
 ---
 
 ## Recommended Implementation Order
