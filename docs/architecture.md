@@ -136,87 +136,27 @@ flowchart TB
 
 ## Package Structure
 
-Detailed breakdown of internal package organization:
+Internal package organization:
 
 ```
 internal/
-├── cli/                    # Cobra-based CLI commands
-│   ├── root.go            # Root command + global flags
-│   ├── run.go             # autospec run command (flexible phase selection)
-│   ├── all.go             # autospec all command
-│   ├── prep.go            # autospec prep command
-│   ├── specify.go         # autospec specify command
-│   ├── plan.go            # autospec plan command
-│   ├── tasks.go           # autospec tasks command
-│   ├── implement.go       # autospec implement command
-│   ├── constitution.go    # autospec constitution command
-│   ├── clarify.go         # autospec clarify command
-│   ├── checklist.go       # autospec checklist command
-│   ├── analyze.go         # autospec analyze command
-│   ├── update_task.go     # autospec update-task command
-│   ├── clean.go           # autospec clean command
-│   ├── uninstall.go       # autospec uninstall command
-│   ├── doctor.go          # autospec doctor command
-│   ├── status.go          # autospec status command
-│   ├── config.go          # autospec config command
-│   ├── init.go            # autospec init command
-│   └── version.go         # autospec version command
-│
-├── workflow/              # Workflow orchestration
-│   ├── workflow.go        # WorkflowOrchestrator
-│   ├── executor.go        # Executor (phase execution)
-│   ├── claude.go          # ClaudeExecutor (API/CLI)
-│   ├── preflight.go       # PreflightChecks
-│   └── phase_config.go    # Phase configuration and dependencies
-│
-├── config/                # Configuration management
-│   ├── config.go          # Load config (koanf)
-│   ├── defaults.go        # Default values
-│   ├── paths.go           # XDG-compliant path resolution
-│   ├── validate.go        # YAML validation
-│   └── migrate.go         # JSON to YAML migration
-│
-├── commands/              # Embedded command templates
-│   ├── embed.go           # Go embed directive for .md files
-│   ├── templates.go       # Template installation logic
-│   └── autospec.*.md      # Slash command templates
-│
-├── scripts/               # Embedded shell scripts
-│   ├── embed.go           # Go embed directive for .sh files
-│   └── *.sh               # Helper scripts (check-prerequisites, etc.)
-│
-├── validation/            # Validation functions
-│   ├── validation.go      # File validation
-│   ├── tasks.go           # Task parsing
-│   ├── prompt.go          # Prompt generation
-│   └── docs_test.go       # Documentation tests
-│
-├── retry/                 # Retry state management
-│   └── retry.go           # RetryState (persistent)
-│
-├── spec/                  # Spec detection
-│   └── spec.go            # DetectCurrentSpec()
-│
-├── git/                   # Git integration
-│   └── git.go             # Git helpers
-│
-├── health/                # Health checks
-│   └── health.go          # Dependency verification
-│
-├── progress/              # Progress indicators
-│   └── progress.go        # Spinner display
-│
-├── yaml/                  # YAML parsing utilities
-│   └── yaml.go            # YAML helpers
-│
-├── clean/                 # Clean command logic
-│   └── clean.go           # Project cleanup functions
-│
-├── uninstall/             # Uninstall command logic
-│   └── uninstall.go       # System uninstall functions
-│
-└── errors/                # Error handling
-    └── errors.go          # Custom error types
+├── cli/          # Cobra CLI commands (root, run, all, prep, specify, plan, tasks,
+│                 # implement, constitution, clarify, checklist, analyze, update_task,
+│                 # clean, uninstall, doctor, status, config, init, version)
+├── workflow/     # WorkflowOrchestrator, Executor, ClaudeExecutor, PreflightChecks
+├── config/       # Config loading (koanf), defaults, XDG paths, YAML validation
+├── commands/     # Embedded slash command templates (.md files)
+├── scripts/      # Embedded helper scripts (.sh files)
+├── validation/   # File validation, task parsing, prompt generation
+├── retry/        # Persistent retry state management
+├── spec/         # Spec detection (git branch, directory scan)
+├── git/          # Git helpers (branch name, repo status)
+├── health/       # Dependency verification
+├── progress/     # Spinner display for operations
+├── yaml/         # YAML parsing utilities
+├── clean/        # Project cleanup functions
+├── uninstall/    # System uninstall functions
+└── errors/       # Custom error types
 ```
 
 ## Execution Flow
