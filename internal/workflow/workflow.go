@@ -217,6 +217,9 @@ func (w *WorkflowOrchestrator) printFullWorkflowSummary(specName string) {
 		fmt.Println()
 	}
 
+	// Mark spec as completed
+	markSpecCompletedAndPrint(specDir)
+
 	fmt.Println("Completed 4 workflow stage(s): specify → plan → tasks → implement")
 	fmt.Printf("Spec: specs/%s/\n", specName)
 	w.debugLog("RunFullWorkflow exiting normally")
@@ -566,6 +569,8 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithPhases(specName string, metad
 
 // executePhaseLoop executes phases from startPhase to end
 func (w *WorkflowOrchestrator) executePhaseLoop(specName, tasksPath string, phases []validation.PhaseInfo, startPhase, totalPhases int, prompt string) error {
+	specDir := filepath.Join(w.SpecsDir, specName)
+
 	for _, phase := range phases {
 		if phase.Number < startPhase {
 			continue
@@ -576,7 +581,7 @@ func (w *WorkflowOrchestrator) executePhaseLoop(specName, tasksPath string, phas
 		}
 	}
 
-	printPhasesSummary(tasksPath)
+	printPhasesSummary(tasksPath, specDir)
 	return nil
 }
 
@@ -641,8 +646,8 @@ func printPhaseCompletion(phaseNumber int, updatedPhase *validation.PhaseInfo) {
 	}
 }
 
-// printPhasesSummary prints the final phase execution summary
-func printPhasesSummary(tasksPath string) {
+// printPhasesSummary prints the final phase execution summary and marks spec as completed
+func printPhasesSummary(tasksPath, specDir string) {
 	fmt.Println("✓ All phases completed!")
 	fmt.Println()
 	stats, statsErr := validation.GetTaskStats(tasksPath)
@@ -650,6 +655,9 @@ func printPhasesSummary(tasksPath string) {
 		fmt.Println("Task Summary:")
 		fmt.Print(validation.FormatTaskSummary(stats))
 	}
+
+	// Mark spec as completed
+	markSpecCompletedAndPrint(specDir)
 }
 
 // ExecuteImplementSinglePhase runs only a specific phase
@@ -769,7 +777,7 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithTasks(specName string, metada
 	}
 
 	// Show final summary
-	printTasksSummary(tasksPath)
+	printTasksSummary(tasksPath, specDir)
 	return nil
 }
 
@@ -903,14 +911,30 @@ func (w *WorkflowOrchestrator) verifyTaskCompletion(tasksPath, taskID string) er
 	return nil
 }
 
-// printTasksSummary prints the final task execution summary
-func printTasksSummary(tasksPath string) {
+// printTasksSummary prints the final task execution summary and marks spec as completed
+func printTasksSummary(tasksPath, specDir string) {
 	fmt.Println("✓ All tasks processed!")
 	fmt.Println()
 	stats, statsErr := validation.GetTaskStats(tasksPath)
 	if statsErr == nil && stats.TotalTasks > 0 {
 		fmt.Println("Task Summary:")
 		fmt.Print(validation.FormatTaskSummary(stats))
+	}
+
+	// Mark spec as completed
+	markSpecCompletedAndPrint(specDir)
+}
+
+// markSpecCompletedAndPrint marks the spec as completed and prints the result
+func markSpecCompletedAndPrint(specDir string) {
+	result, err := spec.MarkSpecCompleted(specDir)
+	if err != nil {
+		fmt.Printf("Warning: could not update spec.yaml status: %v\n", err)
+		return
+	}
+
+	if result.Updated {
+		fmt.Printf("Updated spec.yaml: %s → %s\n", result.PreviousStatus, result.NewStatus)
 	}
 }
 

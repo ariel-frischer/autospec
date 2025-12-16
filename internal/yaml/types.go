@@ -12,10 +12,11 @@ type Meta struct {
 
 // Feature represents the feature metadata in a spec artifact.
 type Feature struct {
-	Branch  string `yaml:"branch"`
-	Created string `yaml:"created"`
-	Status  string `yaml:"status"`
-	Input   string `yaml:"input,omitempty"`
+	Branch      string `yaml:"branch"`
+	Created     string `yaml:"created"`
+	Status      string `yaml:"status"`
+	CompletedAt string `yaml:"completed_at,omitempty"`
+	Input       string `yaml:"input,omitempty"`
 }
 
 // UserStory represents a user story in a spec artifact.

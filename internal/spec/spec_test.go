@@ -3,6 +3,7 @@ package spec
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -140,4 +141,197 @@ func TestGetSpecDirectory_MultipleMatches(t *testing.T) {
 	_, err := GetSpecDirectory(specsDir, "test-feature")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "multiple specs found")
+}
+
+func TestUpdateSpecStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		initialYAML   string
+		newStatus     string
+		withTimestamp bool
+		wantUpdated   bool
+		wantStatus    string
+		wantHasTime   bool
+	}{
+		"update Draft to Completed": {
+			initialYAML: `feature:
+  branch: "001-test"
+  created: "2025-01-01"
+  status: "Draft"
+`,
+			newStatus:     "Completed",
+			withTimestamp: true,
+			wantUpdated:   true,
+			wantStatus:    "Completed",
+			wantHasTime:   true,
+		},
+		"update InProgress to Completed": {
+			initialYAML: `feature:
+  branch: "001-test"
+  created: "2025-01-01"
+  status: "InProgress"
+`,
+			newStatus:     "Completed",
+			withTimestamp: true,
+			wantUpdated:   true,
+			wantStatus:    "Completed",
+			wantHasTime:   true,
+		},
+		"already Completed is idempotent": {
+			initialYAML: `feature:
+  branch: "001-test"
+  created: "2025-01-01"
+  status: "Completed"
+  completed_at: "2025-01-01T00:00:00Z"
+`,
+			newStatus:     "Completed",
+			withTimestamp: true,
+			wantUpdated:   false,
+			wantStatus:    "Completed",
+			wantHasTime:   false,
+		},
+		"update without timestamp": {
+			initialYAML: `feature:
+  branch: "001-test"
+  created: "2025-01-01"
+  status: "Draft"
+`,
+			newStatus:     "InProgress",
+			withTimestamp: false,
+			wantUpdated:   true,
+			wantStatus:    "InProgress",
+			wantHasTime:   false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			specDir := filepath.Join(tmpDir, "001-test-feature")
+			require.NoError(t, os.MkdirAll(specDir, 0755))
+
+			specPath := filepath.Join(specDir, "spec.yaml")
+			require.NoError(t, os.WriteFile(specPath, []byte(tt.initialYAML), 0644))
+
+			var completedAt time.Time
+			if tt.withTimestamp {
+				completedAt = time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC)
+			}
+
+			result, err := UpdateSpecStatus(specDir, tt.newStatus, completedAt)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantUpdated, result.Updated)
+			assert.Equal(t, tt.wantStatus, result.NewStatus)
+
+			if tt.wantHasTime {
+				assert.NotEmpty(t, result.CompletedAt)
+			}
+
+			// Read back and verify
+			data, err := os.ReadFile(specPath)
+			require.NoError(t, err)
+			content := string(data)
+			// Status may be quoted or unquoted depending on YAML serialization
+			assert.True(t, containsStatus(content, tt.wantStatus),
+				"expected status %s in content:\n%s", tt.wantStatus, content)
+		})
+	}
+}
+
+// containsStatus checks if the YAML content contains the expected status value
+func containsStatus(content, status string) bool {
+	// Check both quoted and unquoted forms
+	return strings.Contains(content, "status: "+status) ||
+		strings.Contains(content, "status: \""+status+"\"")
+}
+
+func TestMarkSpecCompleted(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, "001-test-feature")
+	require.NoError(t, os.MkdirAll(specDir, 0755))
+
+	specYAML := `feature:
+  branch: "001-test"
+  created: "2025-01-01"
+  status: "Draft"
+  input: "test input"
+`
+	specPath := filepath.Join(specDir, "spec.yaml")
+	require.NoError(t, os.WriteFile(specPath, []byte(specYAML), 0644))
+
+	result, err := MarkSpecCompleted(specDir)
+	require.NoError(t, err)
+
+	assert.True(t, result.Updated)
+	assert.Equal(t, "Draft", result.PreviousStatus)
+	assert.Equal(t, "Completed", result.NewStatus)
+	assert.NotEmpty(t, result.CompletedAt)
+
+	// Read back and verify
+	data, err := os.ReadFile(specPath)
+	require.NoError(t, err)
+	content := string(data)
+	assert.True(t, containsStatus(content, "Completed"),
+		"expected status Completed in content:\n%s", content)
+	assert.Contains(t, content, "completed_at:")
+	// Verify input field preserved (may be quoted)
+	assert.True(t, strings.Contains(content, "input: test input") ||
+		strings.Contains(content, "input: \"test input\""),
+		"expected input field preserved in content:\n%s", content)
+}
+
+func TestUpdateSpecStatus_FileNotFound(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, "nonexistent")
+
+	_, err := UpdateSpecStatus(specDir, "Completed", time.Now())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read spec.yaml")
+}
+
+func TestUpdateSpecStatus_MissingFeatureSection(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, "001-test-feature")
+	require.NoError(t, os.MkdirAll(specDir, 0755))
+
+	// YAML without feature section
+	specYAML := `metadata:
+  version: "1.0"
+`
+	specPath := filepath.Join(specDir, "spec.yaml")
+	require.NoError(t, os.WriteFile(specPath, []byte(specYAML), 0644))
+
+	_, err := UpdateSpecStatus(specDir, "Completed", time.Now())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "feature section not found")
+}
+
+func TestUpdateSpecStatus_MissingStatusField(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, "001-test-feature")
+	require.NoError(t, os.MkdirAll(specDir, 0755))
+
+	// YAML with feature section but no status field
+	specYAML := `feature:
+  branch: "001-test"
+  created: "2025-01-01"
+`
+	specPath := filepath.Join(specDir, "spec.yaml")
+	require.NoError(t, os.WriteFile(specPath, []byte(specYAML), 0644))
+
+	_, err := UpdateSpecStatus(specDir, "Completed", time.Now())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "status field not found")
 }

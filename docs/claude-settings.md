@@ -4,6 +4,8 @@
 
 Configuration guide for Claude Code settings relevant to autospec workflows.
 
+> **Quick Start**: Run `autospec init` to automatically configure Claude Code permissions.
+
 ## Sandboxing Overview
 
 Claude Code uses OS-level sandboxing to isolate bash commands:
