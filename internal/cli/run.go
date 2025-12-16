@@ -162,25 +162,13 @@ Stages are always executed in canonical order:
 			}
 		}
 
-		// Check artifact dependencies before execution
+		// Check artifact dependencies before execution - hard fail if missing
+		// These are artifacts that no earlier selected stage will produce
 		if !stageConfig.Specify {
 			preflightResult := workflow.CheckArtifactDependencies(stageConfig, specMetadata.Directory)
-			if preflightResult.RequiresConfirmation {
+			if len(preflightResult.MissingArtifacts) > 0 {
 				fmt.Fprint(os.Stderr, preflightResult.WarningMessage)
-
-				if !cfg.SkipConfirmations {
-					// Prompt for confirmation
-					fmt.Fprint(os.Stderr, "\nDo you want to continue anyway? [y/N]: ")
-					shouldContinue, promptErr := workflow.PromptUserToContinue("")
-					if promptErr != nil {
-						return promptErr
-					}
-					if !shouldContinue {
-						return fmt.Errorf("operation cancelled by user")
-					}
-				} else {
-					fmt.Fprintln(os.Stderr, "\nProceeding (skip_confirmations enabled)...")
-				}
+				return NewExitError(ExitInvalidArguments)
 			}
 		}
 

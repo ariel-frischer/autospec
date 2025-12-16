@@ -238,12 +238,15 @@ func TestRunCommandPrerequisiteErrorMessages(t *testing.T) {
 
 			result := workflow.CheckArtifactDependencies(tc.stageConfig, specDir)
 
-			// Only check warning message if there are missing artifacts
+			// Only check error message if there are missing artifacts
 			if len(result.MissingArtifacts) > 0 {
-				assert.NotEmpty(t, result.WarningMessage, "WarningMessage should not be empty")
+				assert.NotEmpty(t, result.WarningMessage, "Error message should not be empty")
+				// Verify it's an error message, not a warning
+				assert.Contains(t, result.WarningMessage, "Error:",
+					"Message should be an error, not a warning")
 				for _, want := range tc.wantContains {
 					assert.Contains(t, result.WarningMessage, want,
-						"Warning message should contain: %s", want)
+						"Error message should contain: %s", want)
 				}
 			}
 		})

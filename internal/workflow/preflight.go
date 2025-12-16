@@ -242,22 +242,23 @@ func CheckArtifactDependencies(stageConfig *StageConfig, specDir string) *Prefli
 		}
 	}
 
-	// If any artifacts are missing, set RequiresConfirmation
+	// If any artifacts are missing, this is a hard error (no earlier stage produces them)
 	if len(result.MissingArtifacts) > 0 {
-		result.RequiresConfirmation = true
+		result.RequiresConfirmation = true // Keep for backward compat in tests
 		result.Passed = false
-		result.WarningMessage = GeneratePrerequisiteWarning(stageConfig, result.MissingArtifacts)
+		result.WarningMessage = GeneratePrerequisiteError(stageConfig, result.MissingArtifacts)
 	}
 
 	return result
 }
 
-// GeneratePrerequisiteWarning generates a human-readable warning message
-// for missing prerequisites.
-func GeneratePrerequisiteWarning(stageConfig *StageConfig, missingArtifacts []string) string {
+// GeneratePrerequisiteError generates a human-readable error message
+// for missing prerequisites. This is a hard error because no earlier
+// selected stage will produce these artifacts.
+func GeneratePrerequisiteError(stageConfig *StageConfig, missingArtifacts []string) string {
 	var sb strings.Builder
 
-	sb.WriteString("\nWARNING: Missing prerequisite artifacts:\n")
+	sb.WriteString("\nError: Missing required prerequisite artifacts:\n")
 	for _, artifact := range missingArtifacts {
 		sb.WriteString(fmt.Sprintf("  - %s\n", artifact))
 	}
@@ -274,8 +275,7 @@ func GeneratePrerequisiteWarning(stageConfig *StageConfig, missingArtifacts []st
 		}
 	}
 
-	sb.WriteString("\nSuggested action: Run earlier stages first to generate the required artifacts.\n")
-	sb.WriteString("For example:\n")
+	sb.WriteString("\nRun earlier stages first to generate the required artifacts:\n")
 
 	// Suggest which stages to run based on what's missing
 	if containsArtifact(missingArtifacts, "spec.yaml") {
@@ -289,6 +289,12 @@ func GeneratePrerequisiteWarning(stageConfig *StageConfig, missingArtifacts []st
 	}
 
 	return sb.String()
+}
+
+// GeneratePrerequisiteWarning is an alias for GeneratePrerequisiteError for backward compatibility.
+// Deprecated: Use GeneratePrerequisiteError instead.
+func GeneratePrerequisiteWarning(stageConfig *StageConfig, missingArtifacts []string) string {
+	return GeneratePrerequisiteError(stageConfig, missingArtifacts)
 }
 
 // containsArtifact checks if an artifact is in the list
