@@ -218,7 +218,7 @@ summary:
 _meta:
   version: "1.0.0"
   generator: "autospec"
-  generator_version: "<run autospec version to get this>"
+  generator_version: "<run autospec version --plain to get this>"
   created: "<ISO 8601 timestamp>"
   artifact_type: "analysis"
 ```

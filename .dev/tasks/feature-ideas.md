@@ -11,7 +11,7 @@ Copy-paste any of these to start specifying a feature:
 ### High Priority
 
 ```bash
-# 0. Enhance Status Command (HIGH PRIORITY)
+# 0. Enhance Status Command (HIGH PRIORITY) - DONE!
 autospec specify "Fix and enhance 'autospec status' command. BUGS to fix: (1) Line 55 hardcodes 'Status: In Progress' - never checks actual completion, (2) Line 58 looks for tasks.md but should be tasks.yaml, (3) Errors and exits if tasks.yaml missing instead of showing partial status. NEW BEHAVIOR: Show artifact table (spec.yaml, plan.yaml, tasks.yaml) with EXISTS (✓/✗) and LAST_MODIFIED columns. If tasks.yaml exists: show concise task stats like 'Tasks: 12 total | 8 completed | 3 in-progress | 1 pending' and calculate overall status (Pending/In Progress/Complete) from task counts. If tasks.yaml missing: show 'Recommendations:' section with specific autospec commands like 'Run: autospec tasks' or 'Run: autospec run -pti' based on which artifacts exist. Add --json flag for scripting. Add 'st' alias."
 
 # 1. Self-Update Command
@@ -31,55 +31,58 @@ autospec specify "Add 'autospec history' command that logs all command execution
 
 # 6. Diff/Preview Mode
 autospec specify "Add --diff flag to plan/tasks commands showing changes from previous version. Add --preview flag to implement for dry-run showing expected changes. Store artifact snapshots before/after in .autospec/snapshots/. Use go-diff library for color-coded output."
+
+# 7. Artifact Validation Command (HIGH PRIORITY)
+autospec specify "Add 'autospec artifact [type] [path]' command that validates YAML artifacts against their schemas. Types: spec, plan, tasks. Validates: (1) valid YAML syntax, (2) required fields present for artifact type, (3) field types correct (strings, lists, enums), (4) cross-references valid (e.g. task dependencies exist). Output: success message with artifact summary OR detailed error with line numbers and hints. Add --schema flag to print expected schema for artifact type. Add --fix flag to auto-fix common issues (missing optional fields, formatting). Then update all .autospec/commands/autospec*.md slash command templates to call 'autospec artifact TYPE PATH' at the end of each phase to validate output before completing."
 ```
 
 ### Medium Priority
 
 ```bash
-# 7. Config Profiles
+# 8. Config Profiles
 autospec specify "Add config profile system: 'autospec config profiles' (list), 'autospec config use NAME' (switch), 'autospec config create NAME' (create from current). Store in ~/.config/autospec/profiles/. Add global --profile flag to use specific profile for single command."
 
-# 8. Spec Templates
+# 9. Spec Templates
 autospec specify "Add template system: 'autospec template list', 'autospec template use NAME', 'autospec template save NAME' (save current spec as template), 'autospec template import FILE'. Store in ~/.config/autospec/templates/. Include default templates for api-endpoint, bug-fix, refactor."
 
-# 9. Man Page Generation
+# 10. Man Page Generation
 autospec specify "Add 'autospec docs man' command using Cobra's built-in doc.GenManTree() to generate man pages to ./man/ directory. Add 'autospec docs install' to copy to system man path. Add 'make docs' target to Makefile."
 
-# 10. Watch Mode
+# 11. Watch Mode
 autospec specify "Add 'autospec watch PHASE' command that monitors relevant files and re-runs phase on changes. Use fsnotify library. watch plan monitors spec.yaml, watch tasks monitors plan.yaml, watch implement monitors tasks.yaml. Include debounce for rapid changes and --interval flag."
 
-# 11. Spec List Command
+# 12. Spec List Command
 autospec specify "Add 'autospec list' command showing all specs in table format with columns: NUM, NAME, STATUS (planned/in-progress/complete), TASKS (done/total), LAST_MODIFIED. Support flags: --status (include status), --sort=date|name|status, --filter=PATTERN, --json."
 
-# 12. Enhanced Progress Bars
+# 13. Enhanced Progress Bars
 autospec specify "Enhance progress display during implement phase using progressbar library. Show percentage, current task ID and description, elapsed time. Parse tasks.yaml completion status for real progress. Fall back to spinner when task count unknown."
 
-# 13. Interactive Mode
+# 14. Interactive Mode
 autospec specify "Add 'autospec interactive' or 'autospec -i' for guided wizard mode using charmbracelet/huh library. Prompt for: action (specify/plan/tasks/implement), feature description, optional phases (clarify/checklist/analyze), confirmation before execution."
 ```
 
 ### Lower Priority
 
 ```bash
-# 14. Plugin System
+# 15. Plugin System
 autospec specify "Add plugin system: 'autospec plugin install NAME', 'autospec plugin list', 'autospec plugin remove NAME'. Plugins are Go binaries in ~/.config/autospec/plugins/ following naming convention autospec-PLUGINNAME. Auto-discover and register as subcommands."
 
-# 15. Context/Workspace Switching
+# 16. Context/Workspace Switching
 autospec specify "Add workspace context: 'autospec context set NAME PATH', 'autospec context use NAME', 'autospec context list', 'autospec context current'. Store in ~/.config/autospec/contexts.yaml. Context switches working directory and loads project config."
 
-# 16. Export/Import Specs
+# 17. Export/Import Specs
 autospec specify "Add 'autospec export SPEC-NAME --output FILE.tar.gz' to bundle spec directory with all artifacts. Add 'autospec import FILE.tar.gz' to extract into specs/. Support --all flag to export all specs. Preserve directory structure and metadata."
 
-# 17. Webhook/Event System
+# 18. Webhook/Event System
 autospec specify "Add hook system: 'autospec hook add EVENT COMMAND', 'autospec hook list', 'autospec hook remove EVENT'. Events: phase-start, phase-complete, workflow-complete, error. Store in config. Execute hooks with environment variables for spec, phase, status."
 
-# 18. Retry Resume Enhancement
+# 19. Retry Resume Enhancement
 autospec specify "Enhance resume functionality: 'autospec resume' continues last failed workflow from exact failure point, 'autospec resume SPEC-NAME' for specific spec. Store workflow state in retry.json including completed phases. Show what will be resumed before executing."
 
-# 19. Timing/Performance Stats
+# 20. Timing/Performance Stats
 autospec specify "Add 'autospec stats' command showing phase execution timing. Track in ~/.autospec/stats.json: phase, spec, duration, timestamp, success/fail. Display table with columns: Phase, Runs, Avg Time, Last Run. Support --spec NAME filter."
 
-# 20. Spec Archive
+# 21. Spec Archive
 autospec specify "Add 'autospec archive SPEC-NAME' to move completed spec to specs/.archive/ preserving structure. Add 'autospec archive --list' to show archived specs. Add 'autospec unarchive SPEC-NAME' to restore. Update list command to exclude archived by default."
 ```
 
@@ -327,9 +330,72 @@ autospec implement --preview      # Dry-run showing expected changes
 
 ---
 
+### 7. Artifact Validation Command (HIGH PRIORITY)
+**Why:** Claude-generated YAML artifacts may have missing fields, invalid syntax, or schema violations. Validating artifacts immediately after generation catches issues early and provides actionable feedback. Integrating validation into slash commands creates a closed-loop quality system.
+
+```bash
+autospec artifact spec specs/003-auth/spec.yaml      # Validate spec artifact
+autospec artifact plan specs/003-auth/plan.yaml      # Validate plan artifact
+autospec artifact tasks specs/003-auth/tasks.yaml    # Validate tasks artifact
+autospec artifact spec --schema                       # Print expected spec schema
+autospec artifact plan --fix specs/003-auth/plan.yaml # Auto-fix common issues
+```
+
+**Output (success):**
+```
+✓ Valid spec.yaml
+  Feature: User Authentication
+  Stories: 5 user stories defined
+  Requirements: 12 requirements across 3 categories
+```
+
+**Output (failure):**
+```
+✗ Invalid spec.yaml (3 errors)
+
+  Line 12: Missing required field 'acceptance_criteria' in story US-001
+  Line 28: Invalid status 'inprogress' - must be one of: Draft, Review, Approved
+  Line 45: Requirement R-003 references non-existent story 'US-999'
+
+Hints:
+  → Add acceptance_criteria list to each user story
+  → Valid status values: Draft, Review, Approved
+  → Run with --fix to auto-correct formatting issues
+```
+
+**Schema definitions (per artifact type):**
+
+| Artifact | Required Fields | Validations |
+|----------|----------------|-------------|
+| spec.yaml | feature, description, user_stories, requirements | Stories have acceptance_criteria, requirements have priority |
+| plan.yaml | overview, phases, components | Phases have deliverables, components reference valid files |
+| tasks.yaml | tasks[] | Each task has id, description, status (enum), dependencies exist |
+
+**Integration with slash commands:**
+Update each `.autospec/commands/autospec*.md` template to include validation:
+```markdown
+<!-- At end of autospec.plan.md -->
+After generating plan.yaml, validate it:
+\`\`\`bash
+autospec artifact plan specs/{{SPEC_NAME}}/plan.yaml
+\`\`\`
+If validation fails, fix the issues before completing.
+```
+
+**Implementation:**
+- Create `internal/artifact/` package with schema definitions
+- Use `gopkg.in/yaml.v3` for parsing with line numbers
+- Validate against JSON Schema or custom Go validators
+- Return structured errors with line numbers and hints
+- Add to existing validation infrastructure in `internal/validation/`
+
+**Effort:** Medium (2-3 days)
+
+---
+
 ## Medium Priority (Good Value, Moderate Effort)
 
-### 7. Config Profiles
+### 8. Config Profiles
 **Why:** Different settings for different contexts (work vs personal, fast vs thorough).
 
 ```bash
@@ -345,7 +411,7 @@ autospec --profile thorough run -a "feature"
 
 ---
 
-### 8. Spec Templates
+### 9. Spec Templates
 **Why:** Reuse common spec patterns.
 
 ```bash
@@ -361,7 +427,7 @@ autospec template import ./template.yaml  # Import from file
 
 ---
 
-### 9. Man Page Generation
+### 10. Man Page Generation
 **Why:** Unix convention for documentation.
 
 ```bash
@@ -377,7 +443,7 @@ autospec docs install       # Install man pages to system
 
 ---
 
-### 10. Watch Mode
+### 11. Watch Mode
 **Why:** Automatically re-run on file changes during development.
 
 ```bash
@@ -394,7 +460,7 @@ autospec watch tasks        # Re-run tasks when plan.yaml changes
 
 ---
 
-### 11. Spec List Command
+### 12. Spec List Command
 **Why:** Quick overview of all specs without leaving terminal.
 
 ```bash
@@ -416,7 +482,7 @@ NUM  NAME                  STATUS      TASKS  LAST MODIFIED
 
 ---
 
-### 12. Progress Bars (Enhanced)
+### 13. Progress Bars (Enhanced)
 **Why:** Better UX for long-running operations.
 
 ```bash
@@ -434,7 +500,7 @@ autospec implement
 
 ---
 
-### 13. Interactive Mode
+### 14. Interactive Mode
 **Why:** Guided workflow for new users.
 
 ```bash
@@ -455,7 +521,7 @@ autospec interactive        # or `autospec -i`
 
 ## Lower Priority (Nice to Have)
 
-### 14. Plugin System
+### 15. Plugin System
 **Why:** Extensibility for custom workflows.
 
 ```bash
@@ -470,7 +536,7 @@ autospec my-custom-command    # From plugin
 
 ---
 
-### 15. Context/Workspace Switching
+### 16. Context/Workspace Switching
 **Why:** Work on multiple projects easily.
 
 ```bash
@@ -483,7 +549,7 @@ autospec context list
 
 ---
 
-### 16. Export/Import Specs
+### 17. Export/Import Specs
 **Why:** Share specs between projects or team members.
 
 ```bash
@@ -496,7 +562,7 @@ autospec export --all --output backup.tar.gz
 
 ---
 
-### 17. Webhook/Event System
+### 18. Webhook/Event System
 **Why:** CI/CD integration and notifications.
 
 ```bash
@@ -511,7 +577,7 @@ autospec hook remove on-complete
 
 ---
 
-### 18. Retry Resume
+### 19. Retry Resume
 **Why:** Continue from exact failure point after fixing issues.
 
 ```bash
@@ -525,7 +591,7 @@ autospec resume 003-auth     # Resume specific spec
 
 ---
 
-### 19. Timing/Performance Stats
+### 20. Timing/Performance Stats
 **Why:** Track how long phases take for optimization.
 
 ```bash
@@ -542,7 +608,7 @@ autospec stats 003-auth            # For specific spec
 
 ---
 
-### 20. Spec Archive/Cleanup
+### 21. Spec Archive/Cleanup
 **Why:** Manage completed specs without deleting them.
 
 ```bash
