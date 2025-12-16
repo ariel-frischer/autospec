@@ -211,6 +211,30 @@ autospec init --force
 
 **Exit Codes**: 0 (success)
 
+### autospec update-agent-context
+
+Update AI agent context files with technology information from plan.yaml
+
+**Syntax**: `autospec update-agent-context [flags]`
+
+**Description**: Updates AI agent context files (CLAUDE.md, GEMINI.md, etc.) with technology information extracted from the current feature's plan.yaml file. Updates the Active Technologies and Recent Changes sections.
+
+**Flags**:
+- `--agent <name>`: Update only the specified agent's context file (e.g., claude, gemini, copilot, cursor)
+- `--json`: Output results as JSON for programmatic consumption
+
+**Supported Agents**: claude, gemini, copilot, cursor, qwen, opencode, codex, windsurf, kilocode, auggie, roo, codebuddy, qoder, amp, shai, q, bob
+
+**Examples**:
+```bash
+autospec update-agent-context                    # Update all existing agent files
+autospec update-agent-context --agent claude     # Update only CLAUDE.md
+autospec update-agent-context --agent cursor     # Create/update Cursor context file
+autospec update-agent-context --json             # JSON output for integration
+```
+
+**Exit Codes**: 0 (success), 1 (validation failed), 3 (invalid args)
+
 ### autospec version
 
 Display version information

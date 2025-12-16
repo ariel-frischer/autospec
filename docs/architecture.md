@@ -142,7 +142,7 @@ Internal package organization:
 internal/
 ├── cli/          # Cobra CLI commands (root, run, all, prep, specify, plan, tasks,
 │                 # implement, constitution, clarify, checklist, analyze, update_task,
-│                 # clean, uninstall, doctor, status, config, init, version)
+│                 # update_agent_context, clean, uninstall, doctor, status, config, init, version)
 ├── workflow/     # WorkflowOrchestrator, Executor, ClaudeExecutor, PreflightChecks
 ├── config/       # Config loading (koanf), defaults, XDG paths, YAML validation
 ├── commands/     # Embedded slash command templates (.md files)
@@ -151,6 +151,7 @@ internal/
 ├── retry/        # Persistent retry state management
 ├── spec/         # Spec detection (git branch, directory scan)
 ├── git/          # Git helpers (branch name, repo status)
+├── agent/        # Agent context file management (update CLAUDE.md, etc.)
 ├── health/       # Dependency verification
 ├── progress/     # Spinner display for operations
 ├── yaml/         # YAML parsing utilities
