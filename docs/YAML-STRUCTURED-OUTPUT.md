@@ -140,6 +140,14 @@ requirements:
       description: "Login response time MUST be under 500ms"
 ```
 
+**Status field values:**
+- `Draft` - Initial state when spec is created
+- `Completed` - Automatically set when all implementation tasks finish
+
+**Automatic completion:** When implementation completes (all tasks done), autospec automatically updates the spec.yaml:
+- Sets `status` to `Completed`
+- Adds `completed_at` with ISO 8601 timestamp (e.g., `2025-12-16T14:30:00Z`)
+
 ### plan.yaml
 
 Implementation plan with technical context:
