@@ -23,6 +23,20 @@ autospec st                              # Show status and task progress
 autospec doctor                          # Check dependencies
 ```
 
+## Documentation
+
+**Review relevant docs before implementation:**
+
+| File | Purpose |
+|------|---------|
+| `docs/architecture.md` | System design, component diagrams, execution flows |
+| `docs/go-best-practices.md` | Go conventions, naming, error handling patterns |
+| `docs/reference.md` | Complete CLI command reference with all flags |
+| `docs/TIMEOUT.md` | Timeout configuration and behavior |
+| `docs/YAML-STRUCTURED-OUTPUT.md` | YAML artifact schemas and slash commands |
+| `docs/SHELL-COMPLETION.md` | Shell completion implementation |
+| `docs/troubleshooting.md` | Common issues and solutions |
+
 ## Architecture Overview
 
 autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
