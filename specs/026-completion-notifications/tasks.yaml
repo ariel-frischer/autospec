@@ -300,7 +300,7 @@ phases:
       tasks:
         - id: "T020"
           title: "Add notification config examples to docs/reference.md"
-          status: "InProgress"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -313,7 +313,7 @@ phases:
             - "Document hook behavior and combinations"
         - id: "T021"
           title: "Add notification troubleshooting section to docs/troubleshooting.md"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -326,7 +326,7 @@ phases:
             - "Document CI/headless environment behavior"
         - id: "T022"
           title: "Add unit tests for notification types and config in internal/notify/notify_test.go"
-          status: "Pending"
+          status: "InProgress"
           type: "test"
           parallel: true
           story_id: null
@@ -339,7 +339,7 @@ phases:
             - "Map-based table tests per Go best practices"
         - id: "T023"
           title: "Add unit tests for platform detection and sender in internal/notify/sender_test.go"
-          status: "Pending"
+          status: "InProgress"
           type: "test"
           parallel: true
           story_id: null
@@ -352,7 +352,7 @@ phases:
             - "Test graceful degradation when tools unavailable"
         - id: "T024"
           title: "Add integration tests for notification handler in internal/notify/handler_test.go"
-          status: "Pending"
+          status: "InProgress"
           type: "test"
           parallel: true
           story_id: null

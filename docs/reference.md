@@ -355,6 +355,176 @@ custom_claude_cmd: "claude -p {{PROMPT}} | process-output"
 
 **Environment**: `AUTOSPEC_CUSTOM_CLAUDE_CMD`
 
+### notifications
+
+**Type**: object
+**Default**: `{ enabled: false, type: "both", ... }`
+**Description**: Configuration for desktop notifications when commands complete
+
+#### notifications.enabled
+
+**Type**: boolean
+**Default**: `false`
+**Description**: Master switch for all notifications (opt-in)
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_ENABLED`
+
+#### notifications.type
+
+**Type**: string (enum)
+**Default**: `"both"`
+**Values**: `"sound"` | `"visual"` | `"both"`
+**Description**: Type of notification to send
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+  type: visual  # Only show desktop notification, no sound
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_TYPE`
+
+#### notifications.sound_file
+
+**Type**: string
+**Default**: `""` (uses system default)
+**Description**: Custom sound file path for audio notifications
+
+**Supported formats**: `.wav`, `.mp3`, `.aiff`, `.aif`, `.ogg`, `.flac`, `.m4a`
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+  type: sound
+  sound_file: /path/to/custom/notification.wav
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_SOUND_FILE`
+
+**Notes**:
+- If the file doesn't exist, falls back to system default sound
+- macOS default: `/System/Library/Sounds/Glass.aiff`
+- Linux: No default sound (requires custom file)
+- Windows: System beep when no custom file
+
+#### notifications.on_command_complete
+
+**Type**: boolean
+**Default**: `true` (when notifications enabled)
+**Description**: Notify when any autospec command finishes
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+  on_command_complete: true
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_ON_COMMAND_COMPLETE`
+
+#### notifications.on_stage_complete
+
+**Type**: boolean
+**Default**: `false`
+**Description**: Notify after each workflow stage (specify, plan, tasks, implement)
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+  on_stage_complete: true  # Get notified after each stage
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_ON_STAGE_COMPLETE`
+
+#### notifications.on_error
+
+**Type**: boolean
+**Default**: `true` (when notifications enabled)
+**Description**: Notify when a command or stage fails
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+  on_error: true
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_ON_ERROR`
+
+#### notifications.on_long_running
+
+**Type**: boolean
+**Default**: `false`
+**Description**: Only notify if command duration exceeds threshold
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+  on_long_running: true
+  long_running_threshold: 60s  # Only notify if command takes > 60 seconds
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_ON_LONG_RUNNING`
+
+#### notifications.long_running_threshold
+
+**Type**: duration
+**Default**: `30s`
+**Description**: Threshold for `on_long_running` hook. Set to 0 for "always notify".
+
+**Example**:
+```yaml
+notifications:
+  enabled: true
+  on_long_running: true
+  long_running_threshold: 5m  # 5 minutes
+```
+
+**Environment**: `AUTOSPEC_NOTIFICATIONS_LONG_RUNNING_THRESHOLD`
+
+### Full Notification Configuration Example
+
+```yaml
+# Project config: .autospec/config.yml
+notifications:
+  enabled: true              # Master switch - must be true
+  type: both                 # "sound", "visual", or "both"
+  sound_file: ""             # Optional custom sound file path
+  on_command_complete: true  # Notify when command finishes
+  on_stage_complete: false   # Notify after each stage
+  on_error: true             # Notify on failures
+  on_long_running: false     # Only notify for long commands
+  long_running_threshold: 30s # Threshold for on_long_running
+```
+
+### Hook Combinations
+
+Hooks are composable - enable multiple to customize notification behavior:
+
+| Use Case | Configuration |
+|----------|---------------|
+| Notify on completion only | `on_command_complete: true`, others: false |
+| Notify on errors only | `on_error: true`, `on_command_complete: false` |
+| Notify per stage | `on_stage_complete: true` |
+| Notify for long tasks | `on_long_running: true`, `long_running_threshold: 60s` |
+| Full notifications | All hooks enabled |
+
+**Notes**:
+- Multiple hooks can fire for the same event (e.g., command completes with error after long time)
+- Each enabled hook fires independently
+- Notifications are disabled automatically in CI environments
+- Notifications are skipped in non-interactive sessions (no TTY)
+
 ## Exit Codes
 
 Standardized exit codes for programmatic composition and CI/CD integration:

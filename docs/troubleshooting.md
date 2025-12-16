@@ -452,6 +452,208 @@ autospec prep "feature" 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee output.log
 - **Issues**: Report bugs at repository issues page
 - **Logs**: Check `~/.autospec/state/` for state files
 
+## Notification Issues
+
+### Notifications not appearing
+
+**Problem**: Notifications are enabled but don't appear.
+
+**Diagnostics**:
+```bash
+# 1. Check if notifications are enabled in config
+autospec config show | grep -A10 notifications
+
+# 2. Verify you're in an interactive session
+tty && echo "Interactive" || echo "Non-interactive"
+
+# 3. Check for CI environment variables
+env | grep -E "^(CI|GITHUB_ACTIONS|GITLAB_CI|JENKINS)="
+```
+
+**Solutions**:
+
+1. **Ensure notifications are enabled**:
+   ```yaml
+   # .autospec/config.yml
+   notifications:
+     enabled: true
+   ```
+
+2. **Check platform-specific tools**:
+   - **macOS**: `osascript` and `afplay` (standard on all versions)
+   - **Linux**: Install `notify-send` (`sudo apt install libnotify-bin` or equivalent)
+   - **Windows**: PowerShell (standard on all versions)
+
+3. **Verify display environment (Linux)**:
+   ```bash
+   echo $DISPLAY    # X11
+   echo $WAYLAND_DISPLAY  # Wayland
+   ```
+   At least one must be set for notifications to work.
+
+### No sound notifications
+
+**Problem**: Visual notifications work but no sound plays.
+
+**Platform-specific solutions**:
+
+#### macOS
+```bash
+# Check if afplay is available
+which afplay
+
+# Test default sound
+afplay /System/Library/Sounds/Glass.aiff
+```
+
+#### Linux
+```bash
+# Check if paplay is available (PulseAudio/PipeWire)
+which paplay
+
+# Test a sound file (must provide custom file)
+paplay /path/to/your/sound.wav
+```
+
+**Note**: Linux has no default notification sound. You must configure `sound_file` for audio notifications.
+
+#### Windows
+```powershell
+# Test system beep
+[Console]::Beep(800, 200)
+```
+
+### Custom sound file not playing
+
+**Problem**: Configured custom sound file doesn't play.
+
+**Diagnostics**:
+```bash
+# Check if file exists
+ls -la /path/to/your/sound.wav
+
+# Check file extension is supported
+# Supported: .wav, .mp3, .aiff, .aif, .ogg, .flac, .m4a
+```
+
+**Solutions**:
+1. Verify the file path is absolute
+2. Ensure file format is supported
+3. Check file permissions (must be readable)
+4. If file is invalid, autospec falls back to system default (or no sound on Linux)
+
+### Notifications in CI/CD pipelines
+
+**Problem**: Notifications trigger unexpectedly in CI environment.
+
+**Behavior**: autospec automatically detects CI environments and disables notifications. The following environment variables are checked:
+- `CI`
+- `GITHUB_ACTIONS`
+- `GITLAB_CI`
+- `CIRCLECI`
+- `TRAVIS`
+- `JENKINS_URL`
+- `BUILDKITE`
+- `DRONE`
+- `TEAMCITY_VERSION`
+- `TF_BUILD` (Azure DevOps)
+- `BITBUCKET_PIPELINES`
+- `CODEBUILD_BUILD_ID` (AWS CodeBuild)
+- And others
+
+**Solution**: If you need to force enable notifications in CI (not recommended):
+```bash
+# Temporarily unset CI variable
+unset CI
+autospec full "feature"
+```
+
+### Notifications in headless/SSH sessions
+
+**Problem**: No notifications when running over SSH or in headless mode.
+
+**Behavior**: autospec checks for TTY availability. Non-interactive sessions skip notifications to avoid errors.
+
+**Diagnostics**:
+```bash
+# Check if session is interactive
+if [ -t 0 ]; then echo "Interactive"; else echo "Non-interactive"; fi
+```
+
+**Solutions**:
+1. For SSH sessions that need notifications, use `ssh -t` for pseudo-terminal allocation
+2. On headless servers, notifications are intentionally skipped (no display to show them)
+
+### Windows PowerShell execution policy
+
+**Problem**: Toast notifications fail on Windows.
+
+**Error**: `Running scripts is disabled on this system`
+
+**Solutions**:
+```powershell
+# Option 1: Run as administrator and enable scripts
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Option 2: autospec uses -ExecutionPolicy Bypass, which should work
+# If still failing, check for group policy restrictions
+Get-ExecutionPolicy -List
+```
+
+### Notifications not appearing on Linux
+
+**Problem**: Linux desktop doesn't show notifications.
+
+**Solutions**:
+
+1. **Install notify-send**:
+   ```bash
+   # Debian/Ubuntu
+   sudo apt install libnotify-bin
+
+   # Fedora
+   sudo dnf install libnotify
+
+   # Arch
+   sudo pacman -S libnotify
+   ```
+
+2. **Verify notification daemon is running**:
+   ```bash
+   # Check for notification daemon
+   pgrep -l notification
+   # or
+   pgrep -l dunst  # if using dunst
+   ```
+
+3. **Check display environment**:
+   ```bash
+   # For X11
+   export DISPLAY=:0
+
+   # For Wayland
+   # Ensure WAYLAND_DISPLAY is set by your compositor
+   ```
+
+### Notification timeout/latency
+
+**Problem**: Command execution seems slow due to notifications.
+
+**Behavior**: Notifications dispatch asynchronously with a 100ms timeout. They should not block command execution.
+
+**Diagnostics**:
+```bash
+# Run with debug to see notification timing
+autospec --debug full "test"
+```
+
+**Solutions**:
+- If notifications are causing delays, switch to `type: visual` (sound playback can take longer)
+- Disable notifications for time-critical operations:
+  ```bash
+  AUTOSPEC_NOTIFICATIONS_ENABLED=false autospec full "feature"
+  ```
+
 ## Quick Reference
 
 ### Exit Codes
