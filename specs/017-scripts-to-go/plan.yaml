@@ -1,0 +1,338 @@
+plan:
+  branch: "017-scripts-to-go"
+  created: "2025-12-16"
+  spec_path: "specs/017-scripts-to-go/spec.yaml"
+
+summary: |
+  Migrate three shell scripts (create-new-feature.sh, check-prerequisites.sh, setup-plan.sh)
+  to native Go CLI commands within the existing autospec binary. This eliminates shell script
+  dependencies for core workflow operations, enabling true cross-platform execution (Windows,
+  macOS, Linux) with identical behavior. The implementation leverages existing Go packages
+  (internal/git, internal/spec) to avoid code duplication and maintains backward-compatible
+  JSON output formats for seamless integration with Claude slash commands.
+
+technical_context:
+  language: "Go 1.25.1"
+  framework: "Cobra CLI (v1.10.1)"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI framework - already in use for all existing commands"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing - already in use for artifact handling"
+  storage: "File system (specs/ directory structure)"
+  testing:
+    framework: "Go standard library testing package"
+    approach: "Table-driven unit tests for all new functions; integration tests for CLI commands"
+  target_platform: "Windows, macOS (Intel/ARM), Linux (amd64/arm64)"
+  project_type: "cli"
+  performance_goals: "p95 < 2s for all commands (NFR-001); CLI startup < 50ms (PRIN-003)"
+  constraints:
+    - "Go standard library only for new functionality - no external dependencies"
+    - "Must maintain backward-compatible JSON output format"
+    - "Cannot break existing Claude slash commands during migration"
+    - "Must work without git (for --no-git initialized projects)"
+    - "Branch names must respect GitHub's 244-byte limit"
+  scale_scope: "Single-developer to small-team projects with < 100 specs"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Tests will be written before implementation for all new commands"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "PASS"
+      notes: "prereqs command validates artifact existence before phase execution"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "All commands target p95 < 2s; no network operations in new commands"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "PASS"
+      notes: "new-feature creates directories idempotently; prereqs is read-only"
+    - name: "Standardized Exit Codes (PRIN-005)"
+      status: "PASS"
+      notes: "Exit codes 0/1/3 used consistently with existing commands"
+    - name: "YAML-First Artifacts (PRIN-006)"
+      status: "PASS"
+      notes: "Commands work with YAML artifacts only (spec.yaml, plan.yaml, tasks.yaml)"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "All code must pass go fmt and go vet before merge"
+    - name: "Cross-Platform Compatibility (PRIN-008)"
+      status: "PASS"
+      notes: "Primary goal of migration - eliminate shell script dependencies"
+    - name: "Explicit Dependencies (PRIN-009)"
+      status: "PASS"
+      notes: "No new dependencies required; uses existing Go packages"
+    - name: "Documentation Standards (PRIN-010)"
+      status: "PASS"
+      notes: "CLAUDE.md will be updated with new command documentation"
+
+research_findings:
+  decisions:
+    - topic: "Command naming convention"
+      decision: "Use new-feature, prereqs, setup-plan subcommands"
+      rationale: "Matches existing command naming (specify, plan, tasks) and provides clear purpose"
+      alternatives_considered:
+        - "init-feature (conflicts with existing init command)"
+        - "create-spec (too specific, script does more than create spec)"
+        - "check (too generic)"
+    - topic: "JSON output format"
+      decision: "Maintain exact JSON key names from shell scripts for backward compatibility"
+      rationale: "Claude slash commands parse these keys; changing them would break existing workflows"
+      alternatives_considered:
+        - "Use snake_case consistently (would break existing slash commands)"
+        - "Introduce a version field to support both formats (unnecessary complexity)"
+    - topic: "Branch number detection strategy"
+      decision: "Reuse existing internal/spec.DetectCurrentSpec pattern; add git fetch for remote branch discovery"
+      rationale: "Existing code already handles spec directory scanning; only need to add branch enumeration"
+      alternatives_considered:
+        - "Shell out to git branch -a (less portable, existing pattern preferred)"
+        - "Use go-git library (adds dependency, existing exec.Command pattern works)"
+    - topic: "Stop word filtering implementation"
+      decision: "Port shell script's stop word list to Go function with configurable list"
+      rationale: "Ensures consistent branch name generation across platforms"
+      alternatives_considered:
+        - "Use external NLP library (overkill for simple filtering)"
+        - "Hardcode without configurability (less maintainable)"
+    - topic: "Deprecation warning implementation"
+      decision: "Add deprecation warnings to existing shell scripts that emit to stderr"
+      rationale: "Non-breaking change that guides users to new commands"
+      alternatives_considered:
+        - "Remove scripts immediately (breaks existing workflows)"
+        - "Keep scripts indefinitely (no migration pressure)"
+
+data_model:
+  entities:
+    - name: "NewFeatureOutput"
+      description: "JSON structure returned by autospec new-feature command"
+      fields:
+        - name: "BRANCH_NAME"
+          type: "string"
+          description: "Full branch name with number prefix (e.g., '017-scripts-to-go')"
+          constraints: "Must match pattern NNN-[a-z0-9-]+"
+        - name: "SPEC_FILE"
+          type: "string"
+          description: "Absolute path to spec.yaml file"
+          constraints: "Must be valid file path"
+        - name: "FEATURE_NUM"
+          type: "string"
+          description: "Zero-padded three-digit number (e.g., '017')"
+          constraints: "Must be 3 digits, zero-padded"
+        - name: "AUTOSPEC_VERSION"
+          type: "string"
+          description: "Version string for _meta section"
+          constraints: "Non-empty string"
+        - name: "CREATED_DATE"
+          type: "string"
+          description: "ISO 8601 timestamp"
+          constraints: "Must be valid ISO 8601 format"
+      relationships: []
+    - name: "PrereqsOutput"
+      description: "JSON structure returned by autospec prereqs command"
+      fields:
+        - name: "FEATURE_DIR"
+          type: "string"
+          description: "Absolute path to feature directory"
+          constraints: "Must be valid directory path"
+        - name: "FEATURE_SPEC"
+          type: "string"
+          description: "Absolute path to spec.yaml"
+          constraints: "Must be valid file path"
+        - name: "IMPL_PLAN"
+          type: "string"
+          description: "Absolute path to plan.yaml"
+          constraints: "Must be valid file path"
+        - name: "TASKS"
+          type: "string"
+          description: "Absolute path to tasks.yaml"
+          constraints: "Must be valid file path"
+        - name: "AVAILABLE_DOCS"
+          type: "[]string"
+          description: "List of existing artifact filenames"
+          constraints: "Valid YAML artifact names"
+        - name: "AUTOSPEC_VERSION"
+          type: "string"
+          description: "Version string for _meta section"
+          constraints: "Non-empty string"
+        - name: "CREATED_DATE"
+          type: "string"
+          description: "ISO 8601 timestamp"
+          constraints: "Must be valid ISO 8601 format"
+      relationships: []
+    - name: "SetupPlanOutput"
+      description: "JSON structure returned by autospec setup-plan command"
+      fields:
+        - name: "FEATURE_SPEC"
+          type: "string"
+          description: "Absolute path to spec.yaml"
+          constraints: "Must be valid file path"
+        - name: "IMPL_PLAN"
+          type: "string"
+          description: "Absolute path to plan.yaml (newly created)"
+          constraints: "Must be valid file path"
+        - name: "SPECS_DIR"
+          type: "string"
+          description: "Absolute path to feature directory"
+          constraints: "Must be valid directory path"
+        - name: "BRANCH"
+          type: "string"
+          description: "Current branch name"
+          constraints: "Non-empty string"
+        - name: "HAS_GIT"
+          type: "string"
+          description: "String 'true' or 'false'"
+          constraints: "Must be 'true' or 'false'"
+      relationships: []
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Update CLI section with new-feature, prereqs, setup-plan commands"
+  source_code:
+    - path: "internal/cli/new_feature.go"
+      description: "Cobra command for creating new feature branches and directories"
+    - path: "internal/cli/prereqs.go"
+      description: "Cobra command for checking workflow prerequisites"
+    - path: "internal/cli/setup_plan.go"
+      description: "Cobra command for initializing plan files"
+    - path: "internal/git/git.go"
+      description: "Add functions for branch enumeration and creation (extend existing)"
+    - path: "internal/spec/branch.go"
+      description: "Branch name generation logic with stop word filtering"
+  tests:
+    - path: "internal/cli/new_feature_test.go"
+      description: "Unit and integration tests for new-feature command"
+    - path: "internal/cli/prereqs_test.go"
+      description: "Unit and integration tests for prereqs command"
+    - path: "internal/cli/setup_plan_test.go"
+      description: "Unit and integration tests for setup-plan command"
+    - path: "internal/git/git_test.go"
+      description: "Tests for new git functions (extend existing)"
+    - path: "internal/spec/branch_test.go"
+      description: "Tests for branch name generation"
+
+implementation_phases:
+  - phase: 1
+    name: "Git Package Extensions"
+    goal: "Extend internal/git package with branch enumeration and creation functions"
+    deliverables:
+      - "GetAllBranches() function that lists local and remote branches"
+      - "CreateBranch() function that creates and checks out a new branch"
+      - "FetchAllRemotes() function with error handling for network failures"
+      - "Unit tests for all new functions"
+  - phase: 2
+    name: "Branch Name Generation"
+    goal: "Create internal/spec/branch.go with stop word filtering and name generation"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "GenerateBranchName() function with stop word filtering"
+      - "CleanBranchName() function for sanitizing user input"
+      - "GetNextBranchNumber() function using git and spec directory scanning"
+      - "TruncateBranchName() function for GitHub 244-byte limit"
+      - "Comprehensive unit tests with edge cases"
+  - phase: 3
+    name: "new-feature Command"
+    goal: "Implement autospec new-feature CLI command"
+    dependencies:
+      - "Phase 1"
+      - "Phase 2"
+    deliverables:
+      - "Cobra command with --json, --short-name, --number flags"
+      - "JSON and text output modes matching shell script format"
+      - "Graceful handling of non-git repositories"
+      - "Unit tests and integration tests"
+  - phase: 4
+    name: "prereqs Command"
+    goal: "Implement autospec prereqs CLI command"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Cobra command with --json, --require-spec, --require-plan, --require-tasks, --include-tasks, --paths-only flags"
+      - "JSON and text output modes matching shell script format"
+      - "Validation logic for required artifacts"
+      - "Unit tests and integration tests"
+  - phase: 5
+    name: "setup-plan Command"
+    goal: "Implement autospec setup-plan CLI command"
+    dependencies:
+      - "Phase 4"
+    deliverables:
+      - "Cobra command with --json flag"
+      - "Template copying logic with fallback to empty file"
+      - "Feature directory creation if missing"
+      - "Unit tests and integration tests"
+  - phase: 6
+    name: "Shell Script Deprecation"
+    goal: "Add deprecation warnings to existing shell scripts"
+    dependencies:
+      - "Phase 3"
+      - "Phase 4"
+      - "Phase 5"
+    deliverables:
+      - "Deprecation warning in create-new-feature.sh pointing to autospec new-feature"
+      - "Deprecation warning in check-prerequisites.sh pointing to autospec prereqs"
+      - "Deprecation warning in setup-plan.sh pointing to autospec setup-plan"
+  - phase: 7
+    name: "Slash Command Updates"
+    goal: "Update Claude slash commands to use Go commands"
+    dependencies:
+      - "Phase 3"
+      - "Phase 4"
+      - "Phase 5"
+    deliverables:
+      - "Update autospec.specify.md to use autospec new-feature --json"
+      - "Update autospec.plan.md to use autospec prereqs --json --require-spec"
+      - "Update other slash commands as needed"
+  - phase: 8
+    name: "Documentation and Final Testing"
+    goal: "Update documentation and perform end-to-end testing"
+    dependencies:
+      - "Phase 6"
+      - "Phase 7"
+    deliverables:
+      - "Update CLAUDE.md with new command documentation"
+      - "Cross-platform testing (Linux, macOS, Windows)"
+      - "Run make test and make lint to verify all tests pass"
+
+risks:
+  - risk: "Git operations may behave differently across platforms"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Use Go exec.Command with explicit git paths; test on all platforms in CI"
+  - risk: "Branch name generation may differ from shell script in edge cases"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Port exact stop word list; add comprehensive test cases from real usage"
+  - risk: "Breaking existing Claude slash commands during transition"
+    likelihood: "medium"
+    impact: "high"
+    mitigation: "Phase 6 keeps old scripts working with warnings; gradual rollout in Phase 7"
+  - risk: "Non-git repository edge cases not fully tested"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Add explicit test cases for --no-git scenarios; document limitations"
+
+open_questions:
+  - question: "Should SPECIFY_FEATURE environment variable support be preserved?"
+    context: "Shell scripts check this env var as override for current feature detection"
+    proposed_resolution: "Yes, preserve for backward compatibility - implement in spec.DetectCurrentSpec"
+  - question: "How to handle git fetch failures gracefully?"
+    context: "Network issues could cause git fetch --all to fail"
+    proposed_resolution: "Continue with local branches only; emit warning to stderr"
+  - question: "Should setup-plan support YAML templates in addition to Markdown?"
+    context: "Current template is plan-template.md but workflow uses plan.yaml"
+    proposed_resolution: "Check for plan-template.yaml first, fall back to .md, then empty .yaml"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T03:38:07Z"
+  artifact_type: "plan"
