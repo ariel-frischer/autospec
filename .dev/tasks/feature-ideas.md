@@ -34,6 +34,9 @@ autospec specify "Add --diff flag to plan/tasks commands showing changes from pr
 
 # 7. Artifact Validation Command (HIGH PRIORITY)
 autospec specify "Add 'autospec artifact [type] [path]' command that validates YAML artifacts against their schemas. Types: spec, plan, tasks. Validates: (1) valid YAML syntax, (2) required fields present for artifact type, (3) field types correct (strings, lists, enums), (4) cross-references valid (e.g. task dependencies exist). Output: success message with artifact summary OR detailed error with line numbers and hints. Add --schema flag to print expected schema for artifact type. Add --fix flag to auto-fix common issues (missing optional fields, formatting). Then update all .autospec/commands/autospec*.md slash command templates to call 'autospec artifact TYPE PATH' at the end of each phase to validate output before completing."
+
+# 27. Phase-Based Task Execution (HIGH PRIORITY)
+autospec specify "Change implement phase to run each task phase in a separate Claude session instead of all tasks in one session. PROBLEM: 28 tasks across 8 phases in single session causes context pollution, attention degradation, high token usage, no recovery points. KEY INSIGHT: tasks.yaml already has phases array with task groupings - just need orchestration change, no schema work. CURRENT: single Claude session executes all tasks, context grows continuously. PROPOSED: for each phase in tasks.yaml, start fresh Claude session, run /autospec.implement with phase number filter, validate all phase tasks completed, end session (context cleared), repeat for next phase. CLI FLAGS: --phase 2 (run only phase 2), --from-phase 3 (resume from phase 3 onward), --single-session (legacy all-in-one behavior). IMPLEMENTATION: modify /autospec.implement slash command to accept phase number, update ExecuteImplement() to loop through phases with fresh Claude sessions, track phase completion in retry state, add phase-level validation between transitions, parse existing phases array from tasks.yaml. BENEFITS: fresh context per phase, better accuracy on smaller batches, lower token usage, natural recovery points, clearer progress display (Phase 2/8: Git Extensions)."
 ```
 
 ### Medium Priority
@@ -809,6 +812,72 @@ func GenerateContinuationPrompt(stats *TaskStats) string {
 - Suggest breaking into smaller batches
 
 **Effort:** Medium (2 days)
+
+---
+
+### 27. Phase-Based Task Execution (HIGH PRIORITY)
+
+**Why:** Currently Claude executes all tasks in tasks.yaml in a single long conversation. This causes:
+- Context pollution from earlier task work affecting later tasks
+- Reduced accuracy as conversation grows (attention degradation)
+- Higher token usage from maintaining large conversation history
+- No natural breakpoints for recovery if something fails mid-implementation
+
+**Problem:** A tasks.yaml with 28 tasks across 8 phases forces Claude into one massive session where early context (file reads, decisions, errors) pollutes the working memory for later unrelated tasks.
+
+**Key insight:** tasks.yaml already has phases defined - we just need to change the orchestration to run each phase in a separate Claude session.
+
+**Current behavior:**
+```
+autospec implement
+  → Single Claude session
+  → Execute all 28 tasks
+  → Context grows continuously
+  → Early work pollutes later task context
+```
+
+**Proposed behavior:**
+```
+autospec implement
+  ↓
+  Phase 1: Setup (3 tasks)
+    → New Claude session
+    → Execute T001, T002, T003
+    → Validate phase completion
+    → Session ends (context cleared)
+  ↓
+  Phase 2: Git Package Extensions (4 tasks)
+    → New Claude session (fresh context!)
+    → Execute T004, T005, T006, T007
+    → Validate phase completion
+    → Session ends
+  ↓
+  ... continues for each phase
+```
+
+**Benefits:**
+1. **Fresh context per phase** - No pollution from unrelated earlier work
+2. **Better accuracy** - Claude focuses on smaller task batches
+3. **Lower token usage** - Shorter conversations = fewer tokens
+4. **Natural recovery points** - If phase fails, retry just that phase
+5. **Clearer progress** - Can show "Phase 2/8: Git Package Extensions"
+
+**CLI flags:**
+```bash
+autospec implement                    # Execute all phases sequentially (new default)
+autospec implement --phase 2          # Execute only phase 2
+autospec implement --from-phase 3     # Resume from phase 3
+autospec implement --single-session   # Legacy: all in one session
+```
+
+**Implementation:**
+- Modify `/autospec.implement` slash command to accept phase number filter
+- Update `ExecuteImplement()` to loop through phases with fresh Claude sessions
+- Track phase completion in retry state (not just task completion)
+- Add phase-level validation between phase transitions
+- Parse existing `phases` array from tasks.yaml to get phase boundaries
+
+**Effort:** Medium (2-3 days)
 
 ---
 
