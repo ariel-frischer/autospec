@@ -1,458 +1,428 @@
 tasks:
-  branch: "021-task-level-execution"
-  created: "2025-12-16"
-  spec_path: "specs/021-task-level-execution/spec.yaml"
-  plan_path: "specs/021-task-level-execution/plan.yaml"
-
+    branch: "021-task-level-execution"
+    created: "2025-12-16"
+    spec_path: "specs/021-task-level-execution/spec.yaml"
+    plan_path: "specs/021-task-level-execution/plan.yaml"
 summary:
-  total_tasks: 24
-  total_phases: 7
-  parallel_opportunities: 8
-  estimated_complexity: "medium"
-
+    total_tasks: 24
+    total_phases: 7
+    parallel_opportunities: 8
+    estimated_complexity: "medium"
 phases:
-  - number: 1
-    title: "Setup"
-    purpose: "Project initialization and verify existing infrastructure"
-    tasks:
-      - id: "T001"
-        title: "Verify existing task parsing infrastructure in internal/validation/tasks_yaml.go"
-        status: "Pending"
-        type: "setup"
-        parallel: false
-        story_id: null
-        file_path: "internal/validation/tasks_yaml.go"
-        dependencies: []
-        acceptance_criteria:
-          - "ParseTasksYAML function exists and returns TaskItem slice"
-          - "TaskItem struct includes ID, Status, Dependencies fields"
-          - "Existing tests pass: go test -v -run Task ./internal/validation/"
-
-  - number: 2
-    title: "Foundational - Task Validation Infrastructure"
-    purpose: "Add helper functions for task lookup and dependency validation (must complete before user stories)"
-    tasks:
-      - id: "T002"
-        title: "Add GetTaskByID function to internal/validation/tasks_yaml.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: null
-        file_path: "internal/validation/tasks_yaml.go"
-        dependencies: ["T001"]
-        acceptance_criteria:
-          - "GetTaskByID(tasks []TaskItem, id string) (*TaskItem, error)"
-          - "Returns task pointer if found, error if not found"
-          - "Case-sensitive task ID matching"
-
-      - id: "T003"
-        title: "Add GetTasksInDependencyOrder function to internal/validation/tasks_yaml.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: null
-        file_path: "internal/validation/tasks_yaml.go"
-        dependencies: ["T001"]
-        acceptance_criteria:
-          - "GetTasksInDependencyOrder(tasks []TaskItem) ([]TaskItem, error)"
-          - "Returns tasks sorted by dependency order (topological sort)"
-          - "Returns error if circular dependency detected"
-          - "Tasks with no dependencies come first"
-
-      - id: "T004"
-        title: "Add ValidateTaskDependenciesMet function to internal/validation/tasks_yaml.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: null
-        file_path: "internal/validation/tasks_yaml.go"
-        dependencies: ["T001"]
-        acceptance_criteria:
-          - "ValidateTaskDependenciesMet(task TaskItem, tasks []TaskItem) (bool, []string)"
-          - "Returns true if all dependencies are Completed status"
-          - "Returns false and list of unmet dependency IDs otherwise"
-
-      - id: "T005"
-        title: "Add unit tests for task validation helper functions"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: null
-        file_path: "internal/validation/tasks_yaml_test.go"
-        dependencies: ["T002", "T003", "T004"]
-        acceptance_criteria:
-          - "TestGetTaskByID with found and not-found cases"
-          - "TestGetTasksInDependencyOrder with valid order and circular dependency"
-          - "TestValidateTaskDependenciesMet with met and unmet cases"
-          - "All tests pass: go test -v ./internal/validation/"
-
-  - number: 3
-    title: "Foundational - Retry State Extension"
-    purpose: "Extend retry infrastructure for task-level tracking"
-    tasks:
-      - id: "T006"
-        title: "Add TaskExecutionState struct to internal/retry/retry.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: null
-        file_path: "internal/retry/retry.go"
-        dependencies: ["T005"]
-        acceptance_criteria:
-          - "TaskExecutionState struct with SpecName, CurrentTaskID, CompletedTaskIDs, TotalTasks, LastTaskAttempt fields"
-          - "TaskStates map[string]TaskExecutionState added to RetryStore or separate tracking"
-
-      - id: "T007"
-        title: "Add task state persistence functions to internal/retry/retry.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: null
-        file_path: "internal/retry/retry.go"
-        dependencies: ["T006"]
-        acceptance_criteria:
-          - "LoadTaskState(specName string) (TaskExecutionState, error)"
-          - "SaveTaskState(state TaskExecutionState) error"
-          - "MarkTaskComplete(specName, taskID string) error"
-          - "Atomic file writes for concurrency safety"
-
-      - id: "T008"
-        title: "Add unit tests for task state persistence"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: null
-        file_path: "internal/retry/retry_test.go"
-        dependencies: ["T007"]
-        acceptance_criteria:
-          - "TestLoadTaskState with existing and new state"
-          - "TestSaveTaskState round-trip persistence"
-          - "TestMarkTaskComplete updates correct entry"
-          - "All tests pass: go test -v ./internal/retry/"
-
-  - number: 4
-    title: "User Story 1 - Execute tasks in isolated sessions (US-001) + Dependencies (US-002)"
-    purpose: "Core feature: each task runs in a separate Claude session"
-    story_reference: "US-001, US-002"
-    independent_test: "Run autospec implement --tasks on a spec with multiple tasks and verify each task starts with fresh context"
-    tasks:
-      - id: "T009"
-        title: "Extend PhaseExecutionOptions with TaskMode and FromTask in internal/workflow/phase_config.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/workflow/phase_config.go"
-        dependencies: ["T008"]
-        acceptance_criteria:
-          - "TaskMode bool field added to PhaseExecutionOptions"
-          - "FromTask string field added to PhaseExecutionOptions"
-          - "Existing phase-related fields unchanged"
-
-      - id: "T010"
-        title: "Add ExecuteImplementWithTasks method to internal/workflow/workflow.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/workflow/workflow.go"
-        dependencies: ["T009"]
-        acceptance_criteria:
-          - "ExecuteImplementWithTasks(specName string, opts PhaseExecutionOptions) error"
-          - "Iterates through tasks in dependency order"
-          - "Executes each task via separate ClaudeExecutor.Execute() call"
-          - "Respects FromTask to skip already-completed tasks"
-
-      - id: "T011"
-        title: "Add executeSingleTaskSession helper to internal/workflow/workflow.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/workflow/workflow.go"
-        dependencies: ["T010"]
-        acceptance_criteria:
-          - "executeSingleTaskSession(specName, taskID string) error"
-          - "Builds Claude command with --task TXXX parameter"
-          - "Validates task completion after session ends"
-          - "Updates retry state on success/failure"
-
-      - id: "T012"
-        title: "Add dependency validation in task execution loop"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-002"
-        file_path: "internal/workflow/workflow.go"
-        dependencies: ["T011"]
-        acceptance_criteria:
-          - "Before executing task, call ValidateTaskDependenciesMet"
-          - "Skip task with warning if dependencies not Completed"
-          - "Log which dependencies are blocking execution"
-
-      - id: "T013"
-        title: "Add unit tests for task-level workflow orchestration"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/workflow/workflow_test.go"
-        dependencies: ["T012"]
-        acceptance_criteria:
-          - "TestExecuteImplementWithTasks with mock executor"
-          - "TestExecuteSingleTaskSession validates command construction"
-          - "TestTaskDependencyValidation with blocked and unblocked tasks"
-          - "All tests pass: go test -v ./internal/workflow/"
-
-  - number: 5
-    title: "User Story 2 - CLI Flags and Resume (US-003, US-004, US-006)"
-    purpose: "Add --tasks and --from-task flags with backward compatibility"
-    story_reference: "US-003, US-004, US-006"
-    independent_test: "Run autospec implement --help and verify new flags appear"
-    tasks:
-      - id: "T014"
-        title: "Add --tasks boolean flag to internal/cli/implement.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: "US-006"
-        file_path: "internal/cli/implement.go"
-        dependencies: ["T013"]
-        acceptance_criteria:
-          - "--tasks flag added to implement command"
-          - "Flag description: 'Run each task in a separate Claude session'"
-          - "Default value: false (backward compatible)"
-
-      - id: "T015"
-        title: "Add --from-task string flag to internal/cli/implement.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: "US-003"
-        file_path: "internal/cli/implement.go"
-        dependencies: ["T013"]
-        acceptance_criteria:
-          - "--from-task flag accepting task ID string"
-          - "Flag description: 'Start execution from specified task ID (e.g., T003)'"
-          - "Validates task ID exists in tasks.yaml"
-
-      - id: "T016"
-        title: "Add mutual exclusivity validation between --tasks and --phases flags"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-006"
-        file_path: "internal/cli/implement.go"
-        dependencies: ["T014", "T015"]
-        acceptance_criteria:
-          - "Error if --tasks used with --phases"
-          - "Error if --tasks used with --phase N"
-          - "Error if --tasks used with --from-phase"
-          - "Exit code 3 for invalid flag combinations"
-
-      - id: "T017"
-        title: "Wire --tasks execution path in implement command RunE"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/cli/implement.go"
-        dependencies: ["T016"]
-        acceptance_criteria:
-          - "If --tasks set, call ExecuteImplementWithTasks"
-          - "Pass FromTask option to workflow"
-          - "Display 'Task X of Y: TXXX - Title' progress"
-
-      - id: "T018"
-        title: "Add unit tests for CLI flag parsing and validation"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: "US-006"
-        file_path: "internal/cli/implement_test.go"
-        dependencies: ["T017"]
-        acceptance_criteria:
-          - "TestTasksFlagParsing verifies flag recognition"
-          - "TestFromTaskFlagParsing verifies task ID handling"
-          - "TestMutualExclusivity verifies --tasks vs --phases error"
-          - "All tests pass: go test -v ./internal/cli/"
-
-  - number: 6
-    title: "User Story 3 - Slash Command and Validation (US-004, US-005)"
-    purpose: "Modify /autospec.implement to accept task ID filter and validate completion"
-    story_reference: "US-004, US-005"
-    independent_test: "Run /autospec.implement with --task T001 and verify only T001 is worked on"
-    tasks:
-      - id: "T019"
-        title: "Update .claude/commands/autospec.implement.md with --task parameter"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: "US-004"
-        file_path: ".claude/commands/autospec.implement.md"
-        dependencies: ["T018"]
-        acceptance_criteria:
-          - "Add 'Task-Specific Execution' section to slash command"
-          - "Document --task TXXX parameter format"
-          - "Include instructions to focus only on specified task"
-          - "Document task completion marking requirement"
-
-      - id: "T020"
-        title: "Add task completion validation between sessions"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: "US-005"
-        file_path: "internal/workflow/workflow.go"
-        dependencies: ["T018"]
-        acceptance_criteria:
-          - "After task session ends, re-read tasks.yaml"
-          - "Verify executed task is marked Completed"
-          - "If not Completed, apply retry logic"
-          - "Output clear message if task did not complete"
-
-      - id: "T021"
-        title: "Add unit tests for task completion validation"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: "US-005"
-        file_path: "internal/workflow/workflow_test.go"
-        dependencies: ["T020"]
-        acceptance_criteria:
-          - "TestTaskCompletionValidation with completed task"
-          - "TestTaskCompletionValidation with incomplete task triggers retry"
-          - "TestTaskRetryExhausted exits with code 2"
-
-  - number: 7
-    title: "Polish and Documentation"
-    purpose: "Update documentation and ensure code quality"
-    tasks:
-      - id: "T022"
-        title: "Update CLAUDE.md with --tasks and --from-task documentation"
-        status: "Pending"
-        type: "documentation"
-        parallel: true
-        story_id: null
-        file_path: "CLAUDE.md"
-        dependencies: ["T019", "T020", "T021"]
-        acceptance_criteria:
-          - "Add --tasks flag to implement command examples"
-          - "Add --from-task flag usage examples"
-          - "Document mutual exclusivity with --phases flags"
-          - "Include typical use case scenarios"
-
-      - id: "T023"
-        title: "Run make fmt to format all Go code"
-        status: "Pending"
-        type: "refactor"
-        parallel: true
-        story_id: null
-        file_path: "Makefile"
-        dependencies: ["T019", "T020", "T021"]
-        acceptance_criteria:
-          - "make fmt completes without errors"
-          - "go vet ./... passes"
-          - "No formatting changes pending"
-
-      - id: "T024"
-        title: "Run make test to verify all tests pass"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: null
-        file_path: "Makefile"
-        dependencies: ["T022", "T023"]
-        acceptance_criteria:
-          - "make test completes successfully"
-          - "All unit tests pass"
-          - "No test regressions"
-
+    - number: 1
+      title: "Setup"
+      purpose: "Project initialization and verify existing infrastructure"
+      tasks:
+        - id: "T001"
+          title: "Verify existing task parsing infrastructure in internal/validation/tasks_yaml.go"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/validation/tasks_yaml.go"
+          dependencies: []
+          acceptance_criteria:
+            - "ParseTasksYAML function exists and returns TaskItem slice"
+            - "TaskItem struct includes ID, Status, Dependencies fields"
+            - "Existing tests pass: go test -v -run Task ./internal/validation/"
+    - number: 2
+      title: "Foundational - Task Validation Infrastructure"
+      purpose: "Add helper functions for task lookup and dependency validation (must complete before user stories)"
+      tasks:
+        - id: "T002"
+          title: "Add GetTaskByID function to internal/validation/tasks_yaml.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/tasks_yaml.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "GetTaskByID(tasks []TaskItem, id string) (*TaskItem, error)"
+            - "Returns task pointer if found, error if not found"
+            - "Case-sensitive task ID matching"
+        - id: "T003"
+          title: "Add GetTasksInDependencyOrder function to internal/validation/tasks_yaml.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/tasks_yaml.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "GetTasksInDependencyOrder(tasks []TaskItem) ([]TaskItem, error)"
+            - "Returns tasks sorted by dependency order (topological sort)"
+            - "Returns error if circular dependency detected"
+            - "Tasks with no dependencies come first"
+        - id: "T004"
+          title: "Add ValidateTaskDependenciesMet function to internal/validation/tasks_yaml.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/tasks_yaml.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "ValidateTaskDependenciesMet(task TaskItem, tasks []TaskItem) (bool, []string)"
+            - "Returns true if all dependencies are Completed status"
+            - "Returns false and list of unmet dependency IDs otherwise"
+        - id: "T005"
+          title: "Add unit tests for task validation helper functions"
+          status: "InProgress"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/validation/tasks_yaml_test.go"
+          dependencies: ["T002", "T003", "T004"]
+          acceptance_criteria:
+            - "TestGetTaskByID with found and not-found cases"
+            - "TestGetTasksInDependencyOrder with valid order and circular dependency"
+            - "TestValidateTaskDependenciesMet with met and unmet cases"
+            - "All tests pass: go test -v ./internal/validation/"
+    - number: 3
+      title: "Foundational - Retry State Extension"
+      purpose: "Extend retry infrastructure for task-level tracking"
+      tasks:
+        - id: "T006"
+          title: "Add TaskExecutionState struct to internal/retry/retry.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/retry/retry.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "TaskExecutionState struct with SpecName, CurrentTaskID, CompletedTaskIDs, TotalTasks, LastTaskAttempt fields"
+            - "TaskStates map[string]TaskExecutionState added to RetryStore or separate tracking"
+        - id: "T007"
+          title: "Add task state persistence functions to internal/retry/retry.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/retry/retry.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "LoadTaskState(specName string) (TaskExecutionState, error)"
+            - "SaveTaskState(state TaskExecutionState) error"
+            - "MarkTaskComplete(specName, taskID string) error"
+            - "Atomic file writes for concurrency safety"
+        - id: "T008"
+          title: "Add unit tests for task state persistence"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/retry/retry_test.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "TestLoadTaskState with existing and new state"
+            - "TestSaveTaskState round-trip persistence"
+            - "TestMarkTaskComplete updates correct entry"
+            - "All tests pass: go test -v ./internal/retry/"
+    - number: 4
+      title: "User Story 1 - Execute tasks in isolated sessions (US-001) + Dependencies (US-002)"
+      purpose: "Core feature: each task runs in a separate Claude session"
+      story_reference: "US-001, US-002"
+      independent_test: "Run autospec implement --tasks on a spec with multiple tasks and verify each task starts with fresh context"
+      tasks:
+        - id: "T009"
+          title: "Extend PhaseExecutionOptions with TaskMode and FromTask in internal/workflow/phase_config.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/phase_config.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "TaskMode bool field added to PhaseExecutionOptions"
+            - "FromTask string field added to PhaseExecutionOptions"
+            - "Existing phase-related fields unchanged"
+        - id: "T010"
+          title: "Add ExecuteImplementWithTasks method to internal/workflow/workflow.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "ExecuteImplementWithTasks(specName string, opts PhaseExecutionOptions) error"
+            - "Iterates through tasks in dependency order"
+            - "Executes each task via separate ClaudeExecutor.Execute() call"
+            - "Respects FromTask to skip already-completed tasks"
+        - id: "T011"
+          title: "Add executeSingleTaskSession helper to internal/workflow/workflow.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "executeSingleTaskSession(specName, taskID string) error"
+            - "Builds Claude command with --task TXXX parameter"
+            - "Validates task completion after session ends"
+            - "Updates retry state on success/failure"
+        - id: "T012"
+          title: "Add dependency validation in task execution loop"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "Before executing task, call ValidateTaskDependenciesMet"
+            - "Skip task with warning if dependencies not Completed"
+            - "Log which dependencies are blocking execution"
+        - id: "T013"
+          title: "Add unit tests for task-level workflow orchestration"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/workflow_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "TestExecuteImplementWithTasks with mock executor"
+            - "TestExecuteSingleTaskSession validates command construction"
+            - "TestTaskDependencyValidation with blocked and unblocked tasks"
+            - "All tests pass: go test -v ./internal/workflow/"
+    - number: 5
+      title: "User Story 2 - CLI Flags and Resume (US-003, US-004, US-006)"
+      purpose: "Add --tasks and --from-task flags with backward compatibility"
+      story_reference: "US-003, US-004, US-006"
+      independent_test: "Run autospec implement --help and verify new flags appear"
+      tasks:
+        - id: "T014"
+          title: "Add --tasks boolean flag to internal/cli/implement.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-006"
+          file_path: "internal/cli/implement.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "--tasks flag added to implement command"
+            - "Flag description: 'Run each task in a separate Claude session'"
+            - "Default value: false (backward compatible)"
+        - id: "T015"
+          title: "Add --from-task string flag to internal/cli/implement.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/cli/implement.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "--from-task flag accepting task ID string"
+            - "Flag description: 'Start execution from specified task ID (e.g., T003)'"
+            - "Validates task ID exists in tasks.yaml"
+        - id: "T016"
+          title: "Add mutual exclusivity validation between --tasks and --phases flags"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-006"
+          file_path: "internal/cli/implement.go"
+          dependencies: ["T014", "T015"]
+          acceptance_criteria:
+            - "Error if --tasks used with --phases"
+            - "Error if --tasks used with --phase N"
+            - "Error if --tasks used with --from-phase"
+            - "Exit code 3 for invalid flag combinations"
+        - id: "T017"
+          title: "Wire --tasks execution path in implement command RunE"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/implement.go"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "If --tasks set, call ExecuteImplementWithTasks"
+            - "Pass FromTask option to workflow"
+            - "Display 'Task X of Y: TXXX - Title' progress"
+        - id: "T018"
+          title: "Add unit tests for CLI flag parsing and validation"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-006"
+          file_path: "internal/cli/implement_test.go"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "TestTasksFlagParsing verifies flag recognition"
+            - "TestFromTaskFlagParsing verifies task ID handling"
+            - "TestMutualExclusivity verifies --tasks vs --phases error"
+            - "All tests pass: go test -v ./internal/cli/"
+    - number: 6
+      title: "User Story 3 - Slash Command and Validation (US-004, US-005)"
+      purpose: "Modify /autospec.implement to accept task ID filter and validate completion"
+      story_reference: "US-004, US-005"
+      independent_test: "Run /autospec.implement with --task T001 and verify only T001 is worked on"
+      tasks:
+        - id: "T019"
+          title: "Update .claude/commands/autospec.implement.md with --task parameter"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-004"
+          file_path: ".claude/commands/autospec.implement.md"
+          dependencies: ["T018"]
+          acceptance_criteria:
+            - "Add 'Task-Specific Execution' section to slash command"
+            - "Document --task TXXX parameter format"
+            - "Include instructions to focus only on specified task"
+            - "Document task completion marking requirement"
+        - id: "T020"
+          title: "Add task completion validation between sessions"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T018"]
+          acceptance_criteria:
+            - "After task session ends, re-read tasks.yaml"
+            - "Verify executed task is marked Completed"
+            - "If not Completed, apply retry logic"
+            - "Output clear message if task did not complete"
+        - id: "T021"
+          title: "Add unit tests for task completion validation"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/workflow/workflow_test.go"
+          dependencies: ["T020"]
+          acceptance_criteria:
+            - "TestTaskCompletionValidation with completed task"
+            - "TestTaskCompletionValidation with incomplete task triggers retry"
+            - "TestTaskRetryExhausted exits with code 2"
+    - number: 7
+      title: "Polish and Documentation"
+      purpose: "Update documentation and ensure code quality"
+      tasks:
+        - id: "T022"
+          title: "Update CLAUDE.md with --tasks and --from-task documentation"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "CLAUDE.md"
+          dependencies: ["T019", "T020", "T021"]
+          acceptance_criteria:
+            - "Add --tasks flag to implement command examples"
+            - "Add --from-task flag usage examples"
+            - "Document mutual exclusivity with --phases flags"
+            - "Include typical use case scenarios"
+        - id: "T023"
+          title: "Run make fmt to format all Go code"
+          status: "Pending"
+          type: "refactor"
+          parallel: true
+          story_id: null
+          file_path: "Makefile"
+          dependencies: ["T019", "T020", "T021"]
+          acceptance_criteria:
+            - "make fmt completes without errors"
+            - "go vet ./... passes"
+            - "No formatting changes pending"
+        - id: "T024"
+          title: "Run make test to verify all tests pass"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "Makefile"
+          dependencies: ["T022", "T023"]
+          acceptance_criteria:
+            - "make test completes successfully"
+            - "All unit tests pass"
+            - "No test regressions"
 dependencies:
-  user_story_order:
-    - story_id: "US-001"
-      title: "Execute tasks in isolated sessions"
-      depends_on: []
-      blocks: ["US-003", "US-005"]
-    - story_id: "US-002"
-      title: "Respect task dependencies"
-      depends_on: []
-      blocks: []
-    - story_id: "US-003"
-      title: "Resume from specific task"
-      depends_on: ["US-001"]
-      blocks: []
-    - story_id: "US-004"
-      title: "Single task filter"
-      depends_on: []
-      blocks: []
-    - story_id: "US-005"
-      title: "Task completion validation"
-      depends_on: ["US-001"]
-      blocks: []
-    - story_id: "US-006"
-      title: "Backward compatible default"
-      depends_on: []
-      blocks: []
-    - story_id: "US-007"
-      title: "Task-level retry tracking"
-      depends_on: []
-      blocks: []
-
-  phase_order:
-    - phase: 1
-      blocks: [2]
-    - phase: 2
-      blocks: [3]
-    - phase: 3
-      blocks: [4]
-    - phase: 4
-      blocks: [5]
-    - phase: 5
-      blocks: [6]
-    - phase: 6
-      blocks: [7]
-
+    user_story_order:
+        - story_id: "US-001"
+          title: "Execute tasks in isolated sessions"
+          depends_on: []
+          blocks: ["US-003", "US-005"]
+        - story_id: "US-002"
+          title: "Respect task dependencies"
+          depends_on: []
+          blocks: []
+        - story_id: "US-003"
+          title: "Resume from specific task"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-004"
+          title: "Single task filter"
+          depends_on: []
+          blocks: []
+        - story_id: "US-005"
+          title: "Task completion validation"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-006"
+          title: "Backward compatible default"
+          depends_on: []
+          blocks: []
+        - story_id: "US-007"
+          title: "Task-level retry tracking"
+          depends_on: []
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+        - phase: 6
+          blocks: [7]
 parallel_execution:
-  - phase: 2
-    parallel_groups:
-      - tasks: ["T002", "T003", "T004"]
-        rationale: "Independent helper functions in same file, no dependencies on each other"
-  - phase: 5
-    parallel_groups:
-      - tasks: ["T014", "T015"]
-        rationale: "Independent flag additions to same command"
-  - phase: 6
-    parallel_groups:
-      - tasks: ["T019", "T020"]
-        rationale: "Slash command update and validation logic are independent"
-  - phase: 7
-    parallel_groups:
-      - tasks: ["T022", "T023"]
-        rationale: "Documentation and formatting can be done in parallel"
-
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T002", "T003", "T004"]
+          rationale: "Independent helper functions in same file, no dependencies on each other"
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T014", "T015"]
+          rationale: "Independent flag additions to same command"
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T019", "T020"]
+          rationale: "Slash command update and validation logic are independent"
+    - phase: 7
+      parallel_groups:
+        - tasks: ["T022", "T023"]
+          rationale: "Documentation and formatting can be done in parallel"
 implementation_strategy:
-  mvp_scope:
-    phases: [1, 2, 3, 4]
-    description: "Setup + Foundational + Core task execution with dependency validation"
-    validation: "Run autospec implement --tasks on test spec and verify isolated sessions"
-  incremental_delivery:
-    - milestone: "Task Infrastructure Ready"
-      phases: [1, 2, 3]
-      deliverable: "Task lookup, dependency ordering, and retry state tracking functions"
-    - milestone: "Core Feature Complete"
-      phases: [1, 2, 3, 4]
-      deliverable: "Working --tasks execution mode with isolated sessions"
-    - milestone: "CLI Integration Complete"
-      phases: [1, 2, 3, 4, 5]
-      deliverable: "Full CLI with --tasks and --from-task flags"
-    - milestone: "Production Ready"
-      phases: [1, 2, 3, 4, 5, 6, 7]
-      deliverable: "Complete feature with documentation and tests"
-
+    mvp_scope:
+        phases: [1, 2, 3, 4]
+        description: "Setup + Foundational + Core task execution with dependency validation"
+        validation: "Run autospec implement --tasks on test spec and verify isolated sessions"
+    incremental_delivery:
+        - milestone: "Task Infrastructure Ready"
+          phases: [1, 2, 3]
+          deliverable: "Task lookup, dependency ordering, and retry state tracking functions"
+        - milestone: "Core Feature Complete"
+          phases: [1, 2, 3, 4]
+          deliverable: "Working --tasks execution mode with isolated sessions"
+        - milestone: "CLI Integration Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Full CLI with --tasks and --from-task flags"
+        - milestone: "Production Ready"
+          phases: [1, 2, 3, 4, 5, 6, 7]
+          deliverable: "Complete feature with documentation and tests"
 _meta:
-  version: "1.0.0"
-  generator: "autospec"
-  generator_version: "autospec dev"
-  created: "2025-12-16T07:50:01Z"
-  artifact_type: "tasks"
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T07:50:01Z"
+    artifact_type: "tasks"

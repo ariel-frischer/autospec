@@ -316,6 +316,122 @@ func GetTotalPhases(tasksPath string) (int, error) {
 	return len(tasks.Phases), nil
 }
 
+// GetAllTasks returns a flat list of all tasks from all phases
+func GetAllTasks(tasksPath string) ([]TaskItem, error) {
+	tasks, err := ParseTasksYAML(tasksPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var allTasks []TaskItem
+	for _, phase := range tasks.Phases {
+		allTasks = append(allTasks, phase.Tasks...)
+	}
+	return allTasks, nil
+}
+
+// GetTaskByID finds a task by its ID from a list of tasks
+// Returns a pointer to the task if found, or an error if not found
+// Task ID matching is case-sensitive
+func GetTaskByID(tasks []TaskItem, id string) (*TaskItem, error) {
+	for i := range tasks {
+		if tasks[i].ID == id {
+			return &tasks[i], nil
+		}
+	}
+	return nil, fmt.Errorf("task %s not found", id)
+}
+
+// GetTasksInDependencyOrder returns tasks sorted by dependency order (topological sort)
+// Tasks with no dependencies come first, followed by tasks whose dependencies are satisfied
+// Returns an error if a circular dependency is detected
+func GetTasksInDependencyOrder(tasks []TaskItem) ([]TaskItem, error) {
+	// Build a map of task ID to task for quick lookup
+	taskMap := make(map[string]*TaskItem)
+	for i := range tasks {
+		taskMap[tasks[i].ID] = &tasks[i]
+	}
+
+	// Track visited and currently-in-stack states for cycle detection
+	visited := make(map[string]bool)
+	inStack := make(map[string]bool)
+	var result []TaskItem
+
+	// DFS function for topological sort with cycle detection
+	var visit func(id string) error
+	visit = func(id string) error {
+		if inStack[id] {
+			return fmt.Errorf("circular dependency detected involving task %s", id)
+		}
+		if visited[id] {
+			return nil
+		}
+
+		task := taskMap[id]
+		if task == nil {
+			// Referenced task doesn't exist - skip silently
+			// (validation should have caught this earlier)
+			return nil
+		}
+
+		inStack[id] = true
+
+		// Visit all dependencies first
+		for _, depID := range task.Dependencies {
+			if err := visit(depID); err != nil {
+				return err
+			}
+		}
+
+		inStack[id] = false
+		visited[id] = true
+		result = append(result, *task)
+		return nil
+	}
+
+	// Visit all tasks
+	for _, task := range tasks {
+		if err := visit(task.ID); err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
+}
+
+// ValidateTaskDependenciesMet checks if all dependencies of a task are completed
+// Returns true if all dependencies have Completed status, false otherwise
+// Also returns a list of unmet dependency IDs for logging/error messages
+func ValidateTaskDependenciesMet(task TaskItem, tasks []TaskItem) (bool, []string) {
+	if len(task.Dependencies) == 0 {
+		return true, nil
+	}
+
+	// Build a map of task ID to status for quick lookup
+	statusMap := make(map[string]string)
+	for _, t := range tasks {
+		statusMap[t.ID] = t.Status
+	}
+
+	var unmetDeps []string
+	for _, depID := range task.Dependencies {
+		status, exists := statusMap[depID]
+		if !exists {
+			// Dependency task doesn't exist - consider it unmet
+			unmetDeps = append(unmetDeps, depID+" (not found)")
+			continue
+		}
+
+		// Check if dependency is completed (case-insensitive)
+		statusLower := strings.ToLower(status)
+		if statusLower != "completed" && statusLower != "done" && statusLower != "complete" {
+			unmetDeps = append(unmetDeps, depID)
+		}
+	}
+
+	return len(unmetDeps) == 0, unmetDeps
+}
+
 // FormatTaskSummary formats the task stats as a human-readable summary
 func FormatTaskSummary(stats *TaskStats) string {
 	var sb strings.Builder
