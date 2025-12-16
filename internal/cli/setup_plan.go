@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/ariel-frischer/autospec/internal/git"
-	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/spf13/cobra"
 )
 

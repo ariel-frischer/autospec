@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# DEPRECATION WARNING: This script is deprecated and will be removed in a future version.
+# Please use the Go command instead: autospec prereqs
+#
+# Example:
+#   autospec prereqs --json --require-spec
+#   autospec prereqs --json --require-tasks --include-tasks
+#   autospec prereqs --paths-only
+#
+>&2 echo "[DEPRECATED] check-prerequisites.sh is deprecated. Use 'autospec prereqs' instead."
+
 # Consolidated prerequisite checking script
 #
 # This script provides unified prerequisite checking for Spec-Driven Development workflow.

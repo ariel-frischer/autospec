@@ -262,7 +262,7 @@ phases:
       tasks:
         - id: "T019"
           title: "Create internal/cli/setup_plan.go with Cobra command"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -274,7 +274,7 @@ phases:
             - "Creates feature directory if it does not exist"
         - id: "T020"
           title: "Implement template copying logic in setup-plan command"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -286,7 +286,7 @@ phases:
             - "Handles missing feature directory by creating it"
         - id: "T021"
           title: "Implement JSON output for setup-plan command"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -298,7 +298,7 @@ phases:
             - "JSON format matches shell script output"
         - id: "T022"
           title: "Add tests for setup-plan command in internal/cli/setup_plan_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-004"
@@ -317,7 +317,7 @@ phases:
       tasks:
         - id: "T023"
           title: "Add deprecation warning to create-new-feature.sh"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-003"
@@ -329,7 +329,7 @@ phases:
             - "Script continues to function normally"
         - id: "T024"
           title: "Add deprecation warning to check-prerequisites.sh"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-003"
@@ -341,7 +341,7 @@ phases:
             - "Script continues to function normally"
         - id: "T025"
           title: "Add deprecation warning to setup-plan.sh"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-003"
@@ -359,7 +359,7 @@ phases:
       tasks:
         - id: "T026"
           title: "Update autospec.specify.md to use autospec new-feature"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-006"
@@ -371,7 +371,7 @@ phases:
             - "Slash command functions identically to before"
         - id: "T027"
           title: "Update autospec.plan.md to use autospec prereqs"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-006"
@@ -387,7 +387,7 @@ phases:
       tasks:
         - id: "T028"
           title: "Update CLAUDE.md with new command documentation"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: false
           story_id: null

@@ -33,10 +33,10 @@ Given that feature description, do this:
      - "Create a dashboard for analytics" → "analytics-dashboard"
      - "Fix payment processing timeout bug" → "fix-payment-timeout"
 
-2. **Create feature branch and directory**: Run the script with your generated short-name:
+2. **Create feature branch and directory**: Run the Go command with your generated short-name:
 
    ```bash
-   .autospec/scripts/create-new-feature.sh --json --short-name "<short-name>" "$ARGUMENTS"
+   autospec new-feature --json --short-name "<short-name>" "$ARGUMENTS"
    ```
 
    Parse the JSON output for:

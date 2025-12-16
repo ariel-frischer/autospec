@@ -20,10 +20,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-1. **Setup**: Run the prerequisites script to get feature paths:
+1. **Setup**: Run the prerequisites command to get feature paths:
 
    ```bash
-   .autospec/scripts/check-prerequisites.sh --json --require-plan
+   autospec prereqs --json --require-plan
    ```
 
    Parse the JSON output for:

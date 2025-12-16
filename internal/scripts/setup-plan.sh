@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+# DEPRECATION WARNING: This script is deprecated and will be removed in a future version.
+# Please use the Go command instead: autospec setup-plan
+#
+# Example:
+#   autospec setup-plan --json
+#   autospec setup-plan
+#
+>&2 echo "[DEPRECATED] setup-plan.sh is deprecated. Use 'autospec setup-plan' instead."
+
 set -e
 
 # Parse command line arguments
