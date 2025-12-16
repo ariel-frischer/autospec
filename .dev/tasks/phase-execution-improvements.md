@@ -1,5 +1,7 @@
 # Phase Execution Improvements Analysis
 
+> **Status Update (2025-12-16)**: Task-level execution (`--tasks` flag) has been implemented in spec 021-task-level-execution. The context injection optimization (Option A) described below remains a future enhancement.
+
 ## Current Architecture Summary
 
 ### How Phase Isolation Works

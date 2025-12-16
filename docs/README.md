@@ -59,6 +59,12 @@ autospec plan
 autospec tasks
 autospec implement
 
+# Implementation execution modes
+autospec implement --phases              # Phase-level isolation
+autospec implement --tasks               # Task-level isolation (maximum)
+autospec implement --tasks --from-task T005  # Resume from task T005
+autospec implement --task T003           # Execute single task only
+
 # Check status
 autospec status
 autospec config show
