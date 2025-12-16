@@ -20,10 +20,10 @@ autospec specify "Add 'autospec update' command that checks GitHub releases for 
 # 2. Output Format Flag
 autospec specify "Add global --output/-o flag supporting json, yaml, table, plain formats. Create shared output formatter in internal/output/. Retrofit status, doctor, config show, and list commands to use formatter. Default to table for interactive, json when piped."
 
-# 3. Command Aliases
+# 3. Command Aliases - DONE!
 autospec specify "Add short aliases to all major commands: specify→spec/s, plan→p, tasks→t, implement→impl/i, status→st, doctor→doc, constitution→const, clarify→cl, checklist→chk, analyze→az. Use Cobra's Aliases field. Update help text to show aliases."
 
-# 4. Shell Completion Installer
+# 4. Shell Completion Installer - DONE!
 autospec specify "Add 'autospec completion install [bash|zsh|fish|powershell]' subcommand that auto-detects shell from \$SHELL, writes completion script to appropriate location (~/.bashrc, ~/.zshrc, fish config), creates backup before modifying rc files, and provides manual instructions as fallback."
 
 # 5. History/Audit Log
