@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	claudepkg "github.com/ariel-frischer/autospec/internal/claude"
 	"github.com/ariel-frischer/autospec/internal/commands"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -391,4 +392,136 @@ func TestCheckGitignore(t *testing.T) {
 		// Should not print anything - subdirectory pattern counts
 		assert.Empty(t, buf.String())
 	})
+}
+
+func TestConfigureClaudeSettings(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		setup             func(t *testing.T, dir string)
+		wantMsgContains   []string
+		wantMsgNotContain []string
+		wantFileExists    bool
+		wantInAllowList   bool
+	}{
+		"creates settings when missing": {
+			setup: func(t *testing.T, dir string) {
+				// No setup - no .claude directory
+			},
+			wantMsgContains: []string{"Claude settings:", "created", "permissions"},
+			wantFileExists:  true,
+			wantInAllowList: true,
+		},
+		"adds permission to existing settings": {
+			setup: func(t *testing.T, dir string) {
+				createClaudeSettingsFile(t, dir, `{"permissions": {"allow": ["Bash(other:*)"]}}`)
+			},
+			wantMsgContains: []string{"Claude settings:", "added", "Bash(autospec:*)"},
+			wantFileExists:  true,
+			wantInAllowList: true,
+		},
+		"skips when permission already present": {
+			setup: func(t *testing.T, dir string) {
+				createClaudeSettingsFile(t, dir, `{"permissions": {"allow": ["Bash(autospec:*)"]}}`)
+			},
+			wantMsgContains: []string{"Claude settings:", "already configured"},
+			wantFileExists:  true,
+			wantInAllowList: true,
+		},
+		"warns when permission is denied": {
+			setup: func(t *testing.T, dir string) {
+				createClaudeSettingsFile(t, dir, `{"permissions": {"deny": ["Bash(autospec:*)"]}}`)
+			},
+			wantMsgContains:   []string{"Warning", "Bash(autospec:*)", "deny list"},
+			wantMsgNotContain: []string{"created", "added"},
+			wantFileExists:    true,
+			wantInAllowList:   false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			if tt.setup != nil {
+				tt.setup(t, dir)
+			}
+
+			var buf bytes.Buffer
+			configureClaudeSettings(&buf, dir)
+
+			output := buf.String()
+			for _, want := range tt.wantMsgContains {
+				assert.Contains(t, output, want, "output should contain %q", want)
+			}
+			for _, notWant := range tt.wantMsgNotContain {
+				assert.NotContains(t, output, notWant, "output should not contain %q", notWant)
+			}
+
+			settingsPath := filepath.Join(dir, ".claude", "settings.local.json")
+			if tt.wantFileExists {
+				assert.FileExists(t, settingsPath)
+
+				// Check if permission is in the allow list (use claude package)
+				settings, err := claudepkg.Load(dir)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantInAllowList, settings.HasPermission(claudepkg.RequiredPermission))
+			}
+		})
+	}
+}
+
+func TestConfigureClaudeSettings_PreservesExistingFields(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	createClaudeSettingsFile(t, dir, `{
+		"permissions": {
+			"allow": ["Bash(existing:*)"],
+			"ask": ["Write(*)"],
+			"deny": ["Bash(rm:*)"]
+		},
+		"sandbox": {"enabled": true}
+	}`)
+
+	var buf bytes.Buffer
+	configureClaudeSettings(&buf, dir)
+
+	// Verify all existing fields are preserved
+	settingsPath := filepath.Join(dir, ".claude", "settings.local.json")
+	data, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+
+	content := string(data)
+	assert.Contains(t, content, "Bash(existing:*)")
+	assert.Contains(t, content, "Bash(autospec:*)")
+	assert.Contains(t, content, "Write(*)")
+	assert.Contains(t, content, "Bash(rm:*)")
+	assert.Contains(t, content, "sandbox")
+}
+
+func TestConfigureClaudeSettings_MalformedJSON(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	createClaudeSettingsFile(t, dir, `{invalid json}`)
+
+	var buf bytes.Buffer
+	configureClaudeSettings(&buf, dir)
+
+	output := buf.String()
+	assert.Contains(t, output, "Claude settings:")
+	assert.Contains(t, output, "parsing")
+}
+
+// createClaudeSettingsFile is a helper to create a .claude/settings.local.json file
+func createClaudeSettingsFile(t *testing.T, dir, content string) {
+	t.Helper()
+	claudeDir := filepath.Join(dir, ".claude")
+	err := os.MkdirAll(claudeDir, 0755)
+	require.NoError(t, err)
+
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	err = os.WriteFile(settingsPath, []byte(content), 0644)
+	require.NoError(t, err)
 }

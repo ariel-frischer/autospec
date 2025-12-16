@@ -17,6 +17,7 @@ var doctorCmd = &cobra.Command{
 This command checks for:
   - Claude CLI
   - Git
+  - Claude settings (Bash(autospec:*) permission in .claude/settings.local.json)
 
 Each check will display a checkmark if passed or an X with an error message if failed.`,
 	Example: `  # Check all dependencies

@@ -225,3 +225,77 @@ func CheckInDir(projectDir string) (SettingsCheckResult, error) {
 	}
 	return settings.Check(), nil
 }
+
+// AddPermission adds a permission to the allow list if not already present.
+// Does not check the deny list - caller should check that first.
+func (s *Settings) AddPermission(perm string) {
+	if s.HasPermission(perm) {
+		return
+	}
+
+	perms := s.getPermissions()
+	allowList := s.getAllowList()
+
+	// Convert to []interface{} for JSON compatibility
+	newAllow := make([]interface{}, len(allowList)+1)
+	for i, p := range allowList {
+		newAllow[i] = p
+	}
+	newAllow[len(allowList)] = perm
+
+	perms["allow"] = newAllow
+}
+
+// Save writes the settings to disk using atomic write (temp file + rename).
+// Creates the .claude directory if it doesn't exist.
+// Written JSON is pretty-printed with indentation for human readability.
+func (s *Settings) Save() error {
+	dir := filepath.Dir(s.filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("creating directory %s: %w", dir, err)
+	}
+
+	data, err := json.MarshalIndent(s.data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("serializing settings: %w", err)
+	}
+
+	// Add trailing newline for POSIX compliance
+	data = append(data, '\n')
+
+	return atomicWrite(s.filePath, data)
+}
+
+// atomicWrite writes data to a file atomically using temp file + rename.
+func atomicWrite(filePath string, data []byte) error {
+	dir := filepath.Dir(filePath)
+	tmpFile, err := os.CreateTemp(dir, ".settings-*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+
+	// Clean up temp file on any error
+	defer func() {
+		if tmpPath != "" {
+			os.Remove(tmpPath)
+		}
+	}()
+
+	if _, err := tmpFile.Write(data); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("writing temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("closing temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, filePath); err != nil {
+		return fmt.Errorf("renaming temp file to %s: %w", filePath, err)
+	}
+
+	// Clear tmpPath so defer doesn't try to remove the final file
+	tmpPath = ""
+	return nil
+}

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ariel-frischer/autospec/internal/claude"
 	"github.com/ariel-frischer/autospec/internal/commands"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/spf13/cobra"
@@ -66,6 +67,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err := initializeConfig(out, project, force); err != nil {
 		return fmt.Errorf("initializing config: %w", err)
 	}
+
+	// Configure Claude Code permissions (errors are warnings, don't block init)
+	configureClaudeSettings(out, ".")
 
 	constitutionExists := handleConstitution(out)
 	checkGitignore(out)
@@ -145,6 +149,56 @@ func writeDefaultConfig(configPath string) error {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 	return nil
+}
+
+// configureClaudeSettings configures Claude Code permissions for autospec.
+// It loads existing settings, checks for deny list conflicts, and adds the
+// required permission if not already present. Outputs status messages for
+// all scenarios: created, added, already configured, or deny conflict warning.
+func configureClaudeSettings(out io.Writer, projectDir string) {
+	settings, err := claude.Load(projectDir)
+	if err != nil {
+		fmt.Fprintf(out, "⚠ Claude settings: %v\n", err)
+		return
+	}
+
+	if settings.CheckDenyList(claude.RequiredPermission) {
+		printDenyWarning(out, settings.FilePath())
+		return
+	}
+
+	if settings.HasPermission(claude.RequiredPermission) {
+		fmt.Fprintf(out, "✓ Claude settings: permissions already configured\n")
+		return
+	}
+
+	saveClaudeSettings(out, settings)
+}
+
+// printDenyWarning outputs a warning when the required permission is in the deny list.
+func printDenyWarning(out io.Writer, filePath string) {
+	fmt.Fprintf(out, "⚠ Warning: %s is in your deny list in %s. "+
+		"Remove it from permissions.deny to allow autospec commands.\n",
+		claude.RequiredPermission, filePath)
+}
+
+// saveClaudeSettings adds the required permission and saves the settings file.
+func saveClaudeSettings(out io.Writer, settings *claude.Settings) {
+	existed := settings.Exists()
+	settings.AddPermission(claude.RequiredPermission)
+
+	if err := settings.Save(); err != nil {
+		fmt.Fprintf(out, "⚠ Claude settings: failed to save: %v\n", err)
+		return
+	}
+
+	if existed {
+		fmt.Fprintf(out, "✓ Claude settings: added %s permission to %s\n",
+			claude.RequiredPermission, settings.FilePath())
+	} else {
+		fmt.Fprintf(out, "✓ Claude settings: created %s with permissions for autospec\n",
+			settings.FilePath())
+	}
 }
 
 func countResults(results []commands.InstallResult) (installed, updated int) {

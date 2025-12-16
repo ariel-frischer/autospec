@@ -45,7 +45,7 @@ phases:
             - "Error messages include file path context"
         - id: "T003"
           title: "Implement HasPermission, CheckDenyList, and Check functions"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -58,7 +58,7 @@ phases:
             - "All functions <40 lines per PRIN-011"
         - id: "T004"
           title: "Implement AddPermission and Save functions with atomic writes"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -72,7 +72,7 @@ phases:
             - "Handles missing .claude/ directory by creating it"
         - id: "T005"
           title: "Implement settings_test.go unit tests"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null
@@ -93,7 +93,7 @@ phases:
       tasks:
         - id: "T006"
           title: "Implement configureClaudeSettings helper in init.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -108,7 +108,7 @@ phases:
             - "Function <40 lines, extracts helpers as needed"
         - id: "T007"
           title: "Integrate configureClaudeSettings into init command flow"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -121,7 +121,7 @@ phases:
             - "Status line follows existing init output format"
         - id: "T008"
           title: "Add init command tests for Claude settings integration"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-001"
@@ -141,7 +141,7 @@ phases:
       tasks:
         - id: "T009"
           title: "Implement CheckClaudeSettings in health.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-002"
@@ -155,7 +155,7 @@ phases:
             - "Messages match spec format with checkmarks/x marks"
         - id: "T010"
           title: "Integrate CheckClaudeSettings into RunHealthChecks"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -167,7 +167,7 @@ phases:
             - "Failed Claude check contributes to overall doctor exit code"
         - id: "T011"
           title: "Add health check tests for Claude settings"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -186,7 +186,7 @@ phases:
       tasks:
         - id: "T012"
           title: "Implement deny list conflict detection in settings.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-003"
@@ -198,7 +198,7 @@ phases:
             - "Message includes specific file path and permission name"
         - id: "T013"
           title: "Add deny list handling to init and doctor commands"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-003"
@@ -210,7 +210,7 @@ phases:
             - "Warning messages match spec format"
         - id: "T014"
           title: "Add tests for deny list scenarios"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-003"
@@ -227,7 +227,7 @@ phases:
       tasks:
         - id: "T015"
           title: "Final validation and lint pass"
-          status: "Pending"
+          status: "InProgress"
           type: "refactor"
           parallel: false
           story_id: null
