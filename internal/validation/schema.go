@@ -1,6 +1,9 @@
 package validation
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 // ArtifactType represents the type of artifact to validate.
 type ArtifactType string
@@ -369,4 +372,32 @@ func ParseArtifactType(s string) (ArtifactType, error) {
 // ValidArtifactTypes returns a list of valid artifact type strings.
 func ValidArtifactTypes() []string {
 	return []string{"spec", "plan", "tasks"}
+}
+
+// artifactFilenames maps canonical filenames to artifact types.
+var artifactFilenames = map[string]ArtifactType{
+	"spec.yaml":  ArtifactTypeSpec,
+	"spec.yml":   ArtifactTypeSpec,
+	"plan.yaml":  ArtifactTypePlan,
+	"plan.yml":   ArtifactTypePlan,
+	"tasks.yaml": ArtifactTypeTasks,
+	"tasks.yml":  ArtifactTypeTasks,
+}
+
+// InferArtifactTypeFromFilename infers the artifact type from a filename.
+// It accepts both .yaml and .yml extensions.
+// Returns the artifact type if recognized, or an error for unrecognized filenames.
+func InferArtifactTypeFromFilename(filename string) (ArtifactType, error) {
+	baseName := filepath.Base(filename)
+
+	if artType, ok := artifactFilenames[baseName]; ok {
+		return artType, nil
+	}
+
+	return "", fmt.Errorf("unrecognized artifact filename: %s", baseName)
+}
+
+// ValidArtifactFilenames returns a list of recognized artifact filenames.
+func ValidArtifactFilenames() []string {
+	return []string{"spec.yaml", "plan.yaml", "tasks.yaml"}
 }

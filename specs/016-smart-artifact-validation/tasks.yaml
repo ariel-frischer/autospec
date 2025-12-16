@@ -1,301 +1,281 @@
 tasks:
-  branch: "016-smart-artifact-validation"
-  created: "2025-12-16"
-  spec_path: "specs/016-smart-artifact-validation/spec.yaml"
-  plan_path: "specs/016-smart-artifact-validation/plan.yaml"
-
+    branch: "016-smart-artifact-validation"
+    created: "2025-12-16"
+    spec_path: "specs/016-smart-artifact-validation/spec.yaml"
+    plan_path: "specs/016-smart-artifact-validation/plan.yaml"
 summary:
-  total_tasks: 14
-  total_phases: 6
-  parallel_opportunities: 4
-  estimated_complexity: "medium"
-
+    total_tasks: 14
+    total_phases: 6
+    parallel_opportunities: 4
+    estimated_complexity: "medium"
 phases:
-  - number: 1
-    title: "Setup"
-    purpose: "Verify existing infrastructure and understand current implementation"
-    tasks:
-      - id: "T001"
-        title: "Review existing artifact.go and spec detection code"
-        status: "Pending"
-        type: "setup"
-        parallel: false
-        story_id: null
-        file_path: "internal/cli/artifact.go"
-        dependencies: []
-        acceptance_criteria:
-          - "Understand current argument parsing in artifact command"
-          - "Identify where spec detection (DetectCurrentSpec) is used"
-          - "Document integration points for new functionality"
-
-  - number: 2
-    title: "Foundational"
-    purpose: "Add filename-to-type inference capability that all user stories depend on"
-    tasks:
-      - id: "T002"
-        title: "Add InferArtifactTypeFromFilename function in internal/validation/schema.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: null
-        file_path: "internal/validation/schema.go"
-        dependencies: ["T001"]
-        acceptance_criteria:
-          - "Function accepts filename string and returns artifact type string"
-          - "Maps spec.yaml -> spec, plan.yaml -> plan, tasks.yaml -> tasks"
-          - "Returns empty string and error for unrecognized filenames"
-          - "Supports both .yaml and .yml extensions"
-
-      - id: "T003"
-        title: "Add ValidArtifactFilenames function in internal/validation/schema.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: null
-        file_path: "internal/validation/schema.go"
-        dependencies: ["T001"]
-        acceptance_criteria:
-          - "Returns slice of recognized filenames: spec.yaml, plan.yaml, tasks.yaml"
-          - "Used for error messages listing valid options"
-
-      - id: "T004"
-        title: "Add unit tests for filename-to-type inference in internal/validation/schema_test.go"
-        status: "Pending"
-        type: "test"
-        parallel: true
-        story_id: null
-        file_path: "internal/validation/schema_test.go"
-        dependencies: ["T001"]
-        acceptance_criteria:
-          - "Table-driven tests for InferArtifactTypeFromFilename"
-          - "Tests for valid filenames (spec.yaml, plan.yaml, tasks.yaml)"
-          - "Tests for .yml variant support"
-          - "Tests for unrecognized filenames returning error"
-          - "Tests for ValidArtifactFilenames function"
-
-  - number: 3
-    title: "User Story 1 - Validate artifact with minimal typing"
-    purpose: "Enable 'autospec artifact plan' to auto-detect spec directory from branch"
-    story_reference: "US-001"
-    independent_test: "Run 'autospec artifact plan' on branch 016-smart-artifact-validation and verify it validates specs/016-smart-artifact-validation/plan.yaml"
-    tasks:
-      - id: "T005"
-        title: "Add resolveArtifactPath helper function in internal/cli/artifact.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/cli/artifact.go"
-        dependencies: ["T002", "T003", "T004"]
-        acceptance_criteria:
-          - "Function uses DetectCurrentSpec() from internal/spec package"
-          - "Given artifact type, constructs path to artifact in detected spec directory"
-          - "Returns resolved path and spec metadata (name, whether fallback was used)"
-          - "Handles case where no spec is detected with clear error"
-
-      - id: "T006"
-        title: "Modify runArtifactCommand to support type-only invocation in internal/cli/artifact.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/cli/artifact.go"
-        dependencies: ["T005"]
-        acceptance_criteria:
-          - "When given single arg matching artifact type (spec/plan/tasks), uses resolveArtifactPath"
-          - "Calls DetectCurrentSpec to find current spec directory"
-          - "Falls back to most recently modified spec when branch doesn't match"
-          - "Maintains backward compatibility with existing type+path syntax"
-
-      - id: "T007"
-        title: "Add unit tests for type-only invocation in internal/cli/artifact_test.go"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/cli/artifact_test.go"
-        dependencies: ["T006"]
-        acceptance_criteria:
-          - "Test resolveArtifactPath with mock spec detection"
-          - "Test type-only argument parsing (spec, plan, tasks)"
-          - "Test fallback behavior when branch doesn't match spec"
-          - "Test error handling when no spec directory exists"
-
-  - number: 4
-    title: "User Story 2 - Validate artifact by path with auto-detected type"
-    purpose: "Enable 'autospec artifact path/to/plan.yaml' to infer type from filename"
-    story_reference: "US-002"
-    independent_test: "Run 'autospec artifact specs/016-smart-artifact-validation/plan.yaml' and verify plan schema validation"
-    tasks:
-      - id: "T008"
-        title: "Add parseArtifactArgs function in internal/cli/artifact.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-002"
-        file_path: "internal/cli/artifact.go"
-        dependencies: ["T007"]
-        acceptance_criteria:
-          - "Distinguishes between type argument and path argument"
-          - "Path arguments contain .yaml or .yml extension"
-          - "Type arguments are single words: spec, plan, tasks"
-          - "Returns parsed struct with artifact type and optional path"
-
-      - id: "T009"
-        title: "Modify artifact command to support path-only invocation in internal/cli/artifact.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-002"
-        file_path: "internal/cli/artifact.go"
-        dependencies: ["T008"]
-        acceptance_criteria:
-          - "When given path with .yaml/.yml extension, infers type from filename"
-          - "Uses InferArtifactTypeFromFilename from validation package"
-          - "Validates against appropriate schema based on inferred type"
-          - "Update Cobra command Args validator to accept 1-2 arguments"
-
-      - id: "T010"
-        title: "Add unit tests for path-only invocation in internal/cli/artifact_test.go"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: "US-002"
-        file_path: "internal/cli/artifact_test.go"
-        dependencies: ["T009"]
-        acceptance_criteria:
-          - "Test parseArtifactArgs distinguishes type vs path"
-          - "Test type inference from spec.yaml, plan.yaml, tasks.yaml paths"
-          - "Test .yml extension support"
-          - "Test integration with validation pipeline"
-
-  - number: 5
-    title: "User Story 3 & 4 - Error handling and output display"
-    purpose: "Provide clear errors for unknown files and display detected spec in output"
-    story_reference: "US-003, US-004"
-    independent_test: "Run 'autospec artifact config.yaml' and verify helpful error; Run 'autospec artifact plan' and verify spec is shown in output"
-    tasks:
-      - id: "T011"
-        title: "Implement error handling for unrecognized filenames in internal/cli/artifact.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-003"
-        file_path: "internal/cli/artifact.go"
-        dependencies: ["T010"]
-        acceptance_criteria:
-          - "Clear error message when filename not recognized"
-          - "Error lists valid filenames: spec.yaml, plan.yaml, tasks.yaml"
-          - "Uses ValidArtifactFilenames for dynamic error message"
-          - "Returns exit code 3 for invalid arguments"
-
-      - id: "T012"
-        title: "Add spec identification output in internal/cli/artifact.go"
-        status: "Pending"
-        type: "implementation"
-        parallel: true
-        story_id: "US-004"
-        file_path: "internal/cli/artifact.go"
-        dependencies: ["T010"]
-        acceptance_criteria:
-          - "Output includes 'Using spec: <name>' before validation results"
-          - "When fallback is used, shows '(fallback)' suffix"
-          - "Uses color output for visibility (green for exact match, yellow for fallback)"
-          - "Shows full path to artifact being validated"
-
-      - id: "T013"
-        title: "Add tests for error handling and output display in internal/cli/artifact_test.go"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: "US-003"
-        file_path: "internal/cli/artifact_test.go"
-        dependencies: ["T011", "T012"]
-        acceptance_criteria:
-          - "Test error message for unrecognized filenames"
-          - "Test error lists valid filenames"
-          - "Test output shows spec identification"
-          - "Test fallback indicator appears when appropriate"
-
-  - number: 6
-    title: "Polish & Documentation"
-    purpose: "Update documentation, run formatters, and ensure quality"
-    tasks:
-      - id: "T014"
-        title: "Update CLAUDE.md with new artifact command syntax"
-        status: "Pending"
-        type: "documentation"
-        parallel: false
-        story_id: null
-        file_path: "CLAUDE.md"
-        dependencies: ["T013"]
-        acceptance_criteria:
-          - "Document type-only invocation pattern"
-          - "Document path-only invocation pattern"
-          - "Document auto-detection behavior and fallback"
-          - "Update examples in CLI usage section"
-          - "Run make fmt and make lint"
-          - "Verify all tests pass with go test ./..."
-
+    - number: 1
+      title: "Setup"
+      purpose: "Verify existing infrastructure and understand current implementation"
+      tasks:
+        - id: "T001"
+          title: "Review existing artifact.go and spec detection code"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/artifact.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Understand current argument parsing in artifact command"
+            - "Identify where spec detection (DetectCurrentSpec) is used"
+            - "Document integration points for new functionality"
+    - number: 2
+      title: "Foundational"
+      purpose: "Add filename-to-type inference capability that all user stories depend on"
+      tasks:
+        - id: "T002"
+          title: "Add InferArtifactTypeFromFilename function in internal/validation/schema.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/validation/schema.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Function accepts filename string and returns artifact type string"
+            - "Maps spec.yaml -> spec, plan.yaml -> plan, tasks.yaml -> tasks"
+            - "Returns empty string and error for unrecognized filenames"
+            - "Supports both .yaml and .yml extensions"
+        - id: "T003"
+          title: "Add ValidArtifactFilenames function in internal/validation/schema.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/schema.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Returns slice of recognized filenames: spec.yaml, plan.yaml, tasks.yaml"
+            - "Used for error messages listing valid options"
+        - id: "T004"
+          title: "Add unit tests for filename-to-type inference in internal/validation/schema_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/schema_test.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Table-driven tests for InferArtifactTypeFromFilename"
+            - "Tests for valid filenames (spec.yaml, plan.yaml, tasks.yaml)"
+            - "Tests for .yml variant support"
+            - "Tests for unrecognized filenames returning error"
+            - "Tests for ValidArtifactFilenames function"
+    - number: 3
+      title: "User Story 1 - Validate artifact with minimal typing"
+      purpose: "Enable 'autospec artifact plan' to auto-detect spec directory from branch"
+      story_reference: "US-001"
+      independent_test: "Run 'autospec artifact plan' on branch 016-smart-artifact-validation and verify it validates specs/016-smart-artifact-validation/plan.yaml"
+      tasks:
+        - id: "T005"
+          title: "Add resolveArtifactPath helper function in internal/cli/artifact.go"
+          status: "InProgress"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T002", "T003", "T004"]
+          acceptance_criteria:
+            - "Function uses DetectCurrentSpec() from internal/spec package"
+            - "Given artifact type, constructs path to artifact in detected spec directory"
+            - "Returns resolved path and spec metadata (name, whether fallback was used)"
+            - "Handles case where no spec is detected with clear error"
+        - id: "T006"
+          title: "Modify runArtifactCommand to support type-only invocation in internal/cli/artifact.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "When given single arg matching artifact type (spec/plan/tasks), uses resolveArtifactPath"
+            - "Calls DetectCurrentSpec to find current spec directory"
+            - "Falls back to most recently modified spec when branch doesn't match"
+            - "Maintains backward compatibility with existing type+path syntax"
+        - id: "T007"
+          title: "Add unit tests for type-only invocation in internal/cli/artifact_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/artifact_test.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Test resolveArtifactPath with mock spec detection"
+            - "Test type-only argument parsing (spec, plan, tasks)"
+            - "Test fallback behavior when branch doesn't match spec"
+            - "Test error handling when no spec directory exists"
+    - number: 4
+      title: "User Story 2 - Validate artifact by path with auto-detected type"
+      purpose: "Enable 'autospec artifact path/to/plan.yaml' to infer type from filename"
+      story_reference: "US-002"
+      independent_test: "Run 'autospec artifact specs/016-smart-artifact-validation/plan.yaml' and verify plan schema validation"
+      tasks:
+        - id: "T008"
+          title: "Add parseArtifactArgs function in internal/cli/artifact.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "Distinguishes between type argument and path argument"
+            - "Path arguments contain .yaml or .yml extension"
+            - "Type arguments are single words: spec, plan, tasks"
+            - "Returns parsed struct with artifact type and optional path"
+        - id: "T009"
+          title: "Modify artifact command to support path-only invocation in internal/cli/artifact.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "When given path with .yaml/.yml extension, infers type from filename"
+            - "Uses InferArtifactTypeFromFilename from validation package"
+            - "Validates against appropriate schema based on inferred type"
+            - "Update Cobra command Args validator to accept 1-2 arguments"
+        - id: "T010"
+          title: "Add unit tests for path-only invocation in internal/cli/artifact_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/artifact_test.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "Test parseArtifactArgs distinguishes type vs path"
+            - "Test type inference from spec.yaml, plan.yaml, tasks.yaml paths"
+            - "Test .yml extension support"
+            - "Test integration with validation pipeline"
+    - number: 5
+      title: "User Story 3 & 4 - Error handling and output display"
+      purpose: "Provide clear errors for unknown files and display detected spec in output"
+      story_reference: "US-003, US-004"
+      independent_test: "Run 'autospec artifact config.yaml' and verify helpful error; Run 'autospec artifact plan' and verify spec is shown in output"
+      tasks:
+        - id: "T011"
+          title: "Implement error handling for unrecognized filenames in internal/cli/artifact.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "Clear error message when filename not recognized"
+            - "Error lists valid filenames: spec.yaml, plan.yaml, tasks.yaml"
+            - "Uses ValidArtifactFilenames for dynamic error message"
+            - "Returns exit code 3 for invalid arguments"
+        - id: "T012"
+          title: "Add spec identification output in internal/cli/artifact.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-004"
+          file_path: "internal/cli/artifact.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "Output includes 'Using spec: <name>' before validation results"
+            - "When fallback is used, shows '(fallback)' suffix"
+            - "Uses color output for visibility (green for exact match, yellow for fallback)"
+            - "Shows full path to artifact being validated"
+        - id: "T013"
+          title: "Add tests for error handling and output display in internal/cli/artifact_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/artifact_test.go"
+          dependencies: ["T011", "T012"]
+          acceptance_criteria:
+            - "Test error message for unrecognized filenames"
+            - "Test error lists valid filenames"
+            - "Test output shows spec identification"
+            - "Test fallback indicator appears when appropriate"
+    - number: 6
+      title: "Polish & Documentation"
+      purpose: "Update documentation, run formatters, and ensure quality"
+      tasks:
+        - id: "T014"
+          title: "Update CLAUDE.md with new artifact command syntax"
+          status: "Pending"
+          type: "documentation"
+          parallel: false
+          story_id: null
+          file_path: "CLAUDE.md"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "Document type-only invocation pattern"
+            - "Document path-only invocation pattern"
+            - "Document auto-detection behavior and fallback"
+            - "Update examples in CLI usage section"
+            - "Run make fmt and make lint"
+            - "Verify all tests pass with go test ./..."
 dependencies:
-  user_story_order:
-    - story_id: "US-001"
-      depends_on: []
-      blocks: ["US-002"]
-    - story_id: "US-002"
-      depends_on: ["US-001"]
-      blocks: ["US-003", "US-004"]
-    - story_id: "US-003"
-      depends_on: ["US-002"]
-      blocks: []
-    - story_id: "US-004"
-      depends_on: ["US-002"]
-      blocks: []
-
-  phase_order:
-    - phase: 1
-      blocks: [2]
-    - phase: 2
-      blocks: [3]
-    - phase: 3
-      blocks: [4]
-    - phase: 4
-      blocks: [5]
-    - phase: 5
-      blocks: [6]
-
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: ["US-003", "US-004"]
+        - story_id: "US-003"
+          depends_on: ["US-002"]
+          blocks: []
+        - story_id: "US-004"
+          depends_on: ["US-002"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
 parallel_execution:
-  - phase: 2
-    parallel_groups:
-      - tasks: ["T003", "T004"]
-        rationale: "ValidArtifactFilenames function and tests can be developed in parallel"
-  - phase: 5
-    parallel_groups:
-      - tasks: ["T011", "T012"]
-        rationale: "Error handling and output display are independent features"
-
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T003", "T004"]
+          rationale: "ValidArtifactFilenames function and tests can be developed in parallel"
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T011", "T012"]
+          rationale: "Error handling and output display are independent features"
 implementation_strategy:
-  mvp_scope:
-    phases: [1, 2, 3]
-    description: "Setup + Foundational + US-001 (type-only invocation with auto-detection)"
-    validation: "Run 'autospec artifact plan' on a spec branch and verify validation works"
-  incremental_delivery:
-    - milestone: "Foundation Ready"
-      phases: [1, 2]
-      deliverable: "Filename-to-type inference functions available for use"
-    - milestone: "Type-Only Validation"
-      phases: [1, 2, 3]
-      deliverable: "'autospec artifact plan' works with auto-detection"
-    - milestone: "Path-Only Validation"
-      phases: [1, 2, 3, 4]
-      deliverable: "'autospec artifact specs/016/plan.yaml' infers type"
-    - milestone: "Complete Feature"
-      phases: [1, 2, 3, 4, 5, 6]
-      deliverable: "Full smart artifact validation with error handling and documentation"
-
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + US-001 (type-only invocation with auto-detection)"
+        validation: "Run 'autospec artifact plan' on a spec branch and verify validation works"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "Filename-to-type inference functions available for use"
+        - milestone: "Type-Only Validation"
+          phases: [1, 2, 3]
+          deliverable: "'autospec artifact plan' works with auto-detection"
+        - milestone: "Path-Only Validation"
+          phases: [1, 2, 3, 4]
+          deliverable: "'autospec artifact specs/016/plan.yaml' infers type"
+        - milestone: "Complete Feature"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "Full smart artifact validation with error handling and documentation"
 _meta:
-  version: "1.0.0"
-  generator: "autospec"
-  generator_version: "autospec dev"
-  created: "2025-12-16T03:27:18Z"
-  artifact_type: "tasks"
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T03:27:18Z"
+    artifact_type: "tasks"
