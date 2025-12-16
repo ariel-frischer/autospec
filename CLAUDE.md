@@ -98,11 +98,11 @@ autospec update-task T001 Completed                        # Mark task as comple
 autospec update-task T001 Blocked                          # Mark task as blocked
 
 # Validate YAML artifacts against schemas
-autospec artifact spec specs/001-feature/spec.yaml        # Validate spec artifact
-autospec artifact plan specs/001-feature/plan.yaml        # Validate plan artifact
-autospec artifact tasks specs/001-feature/tasks.yaml      # Validate tasks artifact
-autospec artifact spec --schema                            # Show spec schema
-autospec artifact spec specs/001-feature/spec.yaml --fix  # Auto-fix common issues
+autospec artifact plan                                     # Type only: auto-detect spec from branch
+autospec artifact specs/001-feature/plan.yaml             # Path only: infer type from filename
+autospec artifact plan specs/001-feature/plan.yaml        # Explicit type + path (backward compatible)
+autospec artifact plan --schema                            # Show plan schema
+autospec artifact plan --fix                               # Auto-fix current spec's plan.yaml
 
 # Check dependencies
 autospec doctor
@@ -269,10 +269,16 @@ Validates artifacts exist and meet completeness criteria.
 
 **Artifact Validation CLI** (`autospec artifact`):
 ```bash
-# Validate artifacts against their schemas
-autospec artifact spec specs/001-feature/spec.yaml
+# Smart detection: type only (auto-detects spec from git branch)
+autospec artifact plan                      # Validates specs/NNN-name/plan.yaml
+autospec artifact spec                      # Validates specs/NNN-name/spec.yaml
+autospec artifact tasks                     # Validates specs/NNN-name/tasks.yaml
+
+# Smart detection: path only (infers type from filename)
+autospec artifact specs/001-feature/plan.yaml    # Infers "plan" type from filename
+
+# Explicit type + path (backward compatible)
 autospec artifact plan specs/001-feature/plan.yaml
-autospec artifact tasks specs/001-feature/tasks.yaml
 
 # View schema for an artifact type
 autospec artifact spec --schema
@@ -280,8 +286,14 @@ autospec artifact plan --schema
 autospec artifact tasks --schema
 
 # Auto-fix common issues (missing _meta section, formatting)
-autospec artifact spec specs/001-feature/spec.yaml --fix
+autospec artifact plan --fix                # Fixes current spec's plan.yaml
+autospec artifact plan specs/001/plan.yaml --fix  # Fixes specific file
 ```
+
+**Auto-detection behavior:**
+- Type-only: Uses `DetectCurrentSpec()` to find spec directory from git branch (e.g., `016-smart-artifact-validation` → `specs/016-smart-artifact-validation/`)
+- Falls back to most recently modified spec directory when branch doesn't match
+- Output shows "Using spec: <name>" (green) or "Using spec: <name> (fallback)" (yellow)
 
 Exit codes: 0 (valid), 1 (validation failed), 3 (invalid arguments)
 

@@ -75,7 +75,7 @@ phases:
       tasks:
         - id: "T005"
           title: "Add resolveArtifactPath helper function in internal/cli/artifact.go"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -88,7 +88,7 @@ phases:
             - "Handles case where no spec is detected with clear error"
         - id: "T006"
           title: "Modify runArtifactCommand to support type-only invocation in internal/cli/artifact.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -101,7 +101,7 @@ phases:
             - "Maintains backward compatibility with existing type+path syntax"
         - id: "T007"
           title: "Add unit tests for type-only invocation in internal/cli/artifact_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-001"
@@ -120,7 +120,7 @@ phases:
       tasks:
         - id: "T008"
           title: "Add parseArtifactArgs function in internal/cli/artifact.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -133,7 +133,7 @@ phases:
             - "Returns parsed struct with artifact type and optional path"
         - id: "T009"
           title: "Modify artifact command to support path-only invocation in internal/cli/artifact.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -146,7 +146,7 @@ phases:
             - "Update Cobra command Args validator to accept 1-2 arguments"
         - id: "T010"
           title: "Add unit tests for path-only invocation in internal/cli/artifact_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -165,7 +165,7 @@ phases:
       tasks:
         - id: "T011"
           title: "Implement error handling for unrecognized filenames in internal/cli/artifact.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-003"
@@ -178,7 +178,7 @@ phases:
             - "Returns exit code 3 for invalid arguments"
         - id: "T012"
           title: "Add spec identification output in internal/cli/artifact.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-004"
@@ -191,7 +191,7 @@ phases:
             - "Shows full path to artifact being validated"
         - id: "T013"
           title: "Add tests for error handling and output display in internal/cli/artifact_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-003"
@@ -208,7 +208,7 @@ phases:
       tasks:
         - id: "T014"
           title: "Update CLAUDE.md with new artifact command syntax"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: false
           story_id: null

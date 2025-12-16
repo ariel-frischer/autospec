@@ -20,9 +20,14 @@ var (
 )
 
 var artifactCmd = &cobra.Command{
-	Use:   "artifact <type> [path]",
+	Use:   "artifact <type|path> [path]",
 	Short: "Validate YAML artifacts against their schemas",
 	Long: `Validate YAML artifacts (spec, plan, tasks) against their schemas.
+
+Smart Detection:
+  - Type only: autospec artifact plan → auto-detects spec from git branch
+  - Path only: autospec artifact specs/001/plan.yaml → infers type from filename
+  - Explicit: autospec artifact plan specs/001/plan.yaml → backward compatible
 
 Types:
   spec   - Feature specification (spec.yaml)
@@ -36,6 +41,7 @@ Validates:
   - Cross-references valid (e.g. task dependencies exist)
 
 Output:
+  - Shows which spec is being used (with fallback indicator if applicable)
   - Success message with artifact summary on valid artifacts
   - Detailed errors with line numbers and hints on invalid artifacts
 
@@ -43,27 +49,29 @@ Exit Codes:
   0 - Success (artifact is valid)
   1 - Validation failed (artifact has errors)
   3 - Invalid arguments (unknown type or missing file)`,
-	Example: `  # Validate a spec artifact
-  autospec artifact spec specs/001-feature/spec.yaml
+	Example: `  # Type only (auto-detects spec from branch)
+  autospec artifact plan
+  autospec artifact spec
+  autospec artifact tasks
 
-  # Validate a plan artifact
+  # Path only (infers type from filename)
+  autospec artifact specs/001-feature/plan.yaml
+
+  # Explicit type and path (backward compatible)
   autospec artifact plan specs/001-feature/plan.yaml
-
-  # Validate tasks with dependency checking
-  autospec artifact tasks specs/001-feature/tasks.yaml
 
   # Show schema for an artifact type
   autospec artifact spec --schema
   autospec artifact plan --schema
-  autospec artifact tasks --schema
 
   # Auto-fix common issues
-  autospec artifact spec specs/001-feature/spec.yaml --fix`,
+  autospec artifact plan --fix`,
 	Args:          cobra.RangeArgs(1, 2),
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runArtifactCommand(args, cmd.OutOrStdout(), cmd.ErrOrStderr())
+		configPath, _ := cmd.Flags().GetString("config")
+		return runArtifactCommand(args, configPath, cmd.OutOrStdout(), cmd.ErrOrStderr())
 	},
 }
 
@@ -73,63 +81,169 @@ func init() {
 	artifactCmd.Flags().BoolVar(&artifactFixFlag, "fix", false, "Auto-fix common issues (missing optional fields, formatting)")
 }
 
-// runArtifactCommand executes the artifact validation command.
-func runArtifactCommand(args []string, out, errOut io.Writer) error {
-	artifactType := args[0]
+// artifactArgs represents parsed artifact command arguments.
+type artifactArgs struct {
+	artType    validation.ArtifactType
+	filePath   string
+	specName   string // Detected spec name (for display)
+	isFallback bool   // Whether fallback detection was used
+	isPathArg  bool   // Whether first arg was a path (type inferred)
+	isTypeOnly bool   // Whether only type was provided (path auto-detected)
+}
 
-	// Parse artifact type
-	artType, err := validation.ParseArtifactType(artifactType)
+// parseArtifactArgs parses the command arguments and determines the artifact type and path.
+// It supports three invocation patterns:
+//   - Type only: autospec artifact plan → auto-detects path from spec directory
+//   - Path only: autospec artifact specs/001/plan.yaml → infers type from filename
+//   - Explicit: autospec artifact plan specs/001/plan.yaml → backward compatible
+func parseArtifactArgs(args []string, specsDir string) (*artifactArgs, error) {
+	result := &artifactArgs{}
+
+	if len(args) == 0 {
+		return nil, fmt.Errorf("no arguments provided")
+	}
+
+	firstArg := args[0]
+
+	// Check if first arg is a path (contains .yaml or .yml extension)
+	isPath := strings.HasSuffix(firstArg, ".yaml") || strings.HasSuffix(firstArg, ".yml")
+
+	if isPath {
+		// Path-only invocation: infer type from filename
+		artType, err := validation.InferArtifactTypeFromFilename(firstArg)
+		if err != nil {
+			return nil, fmt.Errorf("%w\nValid artifact filenames: %s",
+				err, strings.Join(validation.ValidArtifactFilenames(), ", "))
+		}
+		result.artType = artType
+		result.filePath = firstArg
+		result.isPathArg = true
+		return result, nil
+	}
+
+	// First arg is a type
+	artType, err := validation.ParseArtifactType(firstArg)
+	if err != nil {
+		return nil, err
+	}
+	result.artType = artType
+
+	if len(args) == 2 {
+		// Explicit type + path: backward compatible
+		result.filePath = args[1]
+		return result, nil
+	}
+
+	// Type-only invocation: auto-detect path from spec directory
+	result.isTypeOnly = true
+
+	resolvedPath, specMeta, isFallback, err := resolveArtifactPath(artType, specsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	result.filePath = resolvedPath
+	result.specName = fmt.Sprintf("%s-%s", specMeta.Number, specMeta.Name)
+	result.isFallback = isFallback
+
+	return result, nil
+}
+
+// resolveArtifactPath resolves the artifact path from the current spec directory.
+// It uses DetectCurrentSpec to find the spec directory and constructs the artifact path.
+// Returns the path, spec metadata, whether fallback was used, and any error.
+func resolveArtifactPath(artType validation.ArtifactType, specsDir string) (string, *spec.Metadata, bool, error) {
+	metadata, err := spec.DetectCurrentSpec(specsDir)
+	if err != nil {
+		return "", nil, false, fmt.Errorf("failed to detect spec: %w\nHint: Run from a spec branch or specify the path explicitly", err)
+	}
+
+	// Determine if this is a fallback (no branch match)
+	isFallback := metadata.Branch == ""
+
+	// Construct path to artifact
+	artifactFilename := string(artType) + ".yaml"
+	artifactPath := filepath.Join(metadata.Directory, artifactFilename)
+
+	return artifactPath, metadata, isFallback, nil
+}
+
+// runArtifactCommand executes the artifact validation command.
+func runArtifactCommand(args []string, configPath string, out, errOut io.Writer) error {
+	// Load configuration
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		fmt.Fprintf(errOut, "Error loading config: %v\n", err)
+		return &exitError{code: ExitInvalidArguments}
+	}
+
+	// Parse arguments
+	parsed, err := parseArtifactArgs(args, cfg.SpecsDir)
 	if err != nil {
 		fmt.Fprintf(errOut, "Error: %v\n", err)
-		fmt.Fprintf(errOut, "Valid types: %s\n", strings.Join(validation.ValidArtifactTypes(), ", "))
+		if strings.Contains(err.Error(), "invalid artifact type") {
+			fmt.Fprintf(errOut, "Valid types: %s\n", strings.Join(validation.ValidArtifactTypes(), ", "))
+		}
 		return &exitError{code: ExitInvalidArguments}
 	}
 
 	// Handle --schema flag
 	if artifactSchemaFlag {
-		return printSchema(artType, out)
+		return printSchema(parsed.artType, out)
 	}
-
-	// Require file path for validation
-	if len(args) < 2 {
-		fmt.Fprintf(errOut, "Error: file path required for validation\n")
-		fmt.Fprintf(errOut, "Usage: autospec artifact %s <path>\n", artifactType)
-		fmt.Fprintf(errOut, "       autospec artifact %s --schema  (to view schema)\n", artifactType)
-		return &exitError{code: ExitInvalidArguments}
-	}
-
-	filePath := args[1]
 
 	// Check if file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		fmt.Fprintf(errOut, "Error: file not found: %s\n", filePath)
+	if _, err := os.Stat(parsed.filePath); os.IsNotExist(err) {
+		fmt.Fprintf(errOut, "Error: file not found: %s\n", parsed.filePath)
+		if parsed.isTypeOnly {
+			fmt.Fprintf(errOut, "Hint: The %s.yaml file does not exist in the detected spec directory\n", parsed.artType)
+		}
 		return &exitError{code: ExitInvalidArguments}
 	}
 
 	// Check if path is a directory
-	if info, _ := os.Stat(filePath); info != nil && info.IsDir() {
-		fmt.Fprintf(errOut, "Error: path is a directory, not a file: %s\n", filePath)
-		fmt.Fprintf(errOut, "Hint: Specify the full path to the %s.yaml file\n", artifactType)
+	if info, _ := os.Stat(parsed.filePath); info != nil && info.IsDir() {
+		fmt.Fprintf(errOut, "Error: path is a directory, not a file: %s\n", parsed.filePath)
+		fmt.Fprintf(errOut, "Hint: Specify the full path to the %s.yaml file\n", parsed.artType)
 		return &exitError{code: ExitInvalidArguments}
 	}
 
+	// Print spec identification for auto-detected paths
+	printSpecIdentification(parsed, out)
+
 	// Handle --fix flag
 	if artifactFixFlag {
-		return runAutoFix(filePath, artType, out, errOut)
+		return runAutoFix(parsed.filePath, parsed.artType, out, errOut)
 	}
 
 	// Create validator
-	validator, err := validation.NewArtifactValidator(artType)
+	validator, err := validation.NewArtifactValidator(parsed.artType)
 	if err != nil {
 		fmt.Fprintf(errOut, "Error: %v\n", err)
 		return &exitError{code: ExitInvalidArguments}
 	}
 
 	// Run validation
-	result := validator.Validate(filePath)
+	result := validator.Validate(parsed.filePath)
 
 	// Format and display results
-	return formatValidationResult(result, filePath, artType, out, errOut)
+	return formatValidationResult(result, parsed.filePath, parsed.artType, out, errOut)
+}
+
+// printSpecIdentification prints the spec identification message when using auto-detection.
+func printSpecIdentification(parsed *artifactArgs, out io.Writer) {
+	if parsed.specName == "" {
+		return
+	}
+
+	green := color.New(color.FgGreen).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	if parsed.isFallback {
+		fmt.Fprintf(out, "Using spec: %s %s\n", yellow(parsed.specName), yellow("(fallback)"))
+	} else {
+		fmt.Fprintf(out, "Using spec: %s\n", green(parsed.specName))
+	}
 }
 
 // printSchema prints the schema for an artifact type.
