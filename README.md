@@ -100,6 +100,8 @@ autospec run -s "Add user authentication with OAuth"
 autospec run -pti
 ```
 
+> ⚠️ **Note:** New specs automatically create and checkout a feature branch (e.g., `spec/001-user-auth`).
+
 This iterative approach lets you review and refine the spec before committing to implementation.
 
 ### Flexible Stage Selection with `run`
@@ -162,25 +164,23 @@ autospec st -v            # Verbose: show phase details
 Control how implementation runs with different levels of context isolation:
 
 ```bash
-# 🔹 Default: Single session (all tasks in one Claude session)
+# 🔸 Default: Phase-level (each phase in separate session)
 autospec implement
-
-# 🔸 Phase-level: Each phase in separate session
-autospec implement --phases
 autospec implement --from-phase 3        # Resume from phase 3
 autospec implement --phase 3             # Run only phase 3
 
 # 🔹 Task-level: Each task in separate session (maximum isolation)
 autospec implement --tasks
-autospec implement --tasks --from-task T005   # Resume from task T005
-autospec implement --task T003                # Run only task T003
+autospec implement --from-task T005      # Resume from task T005
+autospec implement --task T003           # Run only task T003
 ```
 
 | Mode | Flag | Isolation | Use Case |
 |------|------|-----------|----------|
-| Default | (none) | All tasks in 1 session | Small specs, quick iterations |
-| Phase | `--phases` | 1 session per phase | Medium specs, logical batching |
-| Task | `--tasks` | 1 session per task | Complex tasks, maximum isolation |
+| Phase | (default) | 1 session per phase | Balanced cost/context |
+| Task | `--tasks` | 1 session per task | Complex tasks, max isolation |
+
+> 💡 Legacy single-session mode available via config: `implement_method: single-session`
 
 > 📌 `--tasks` and `--phases` are mutually exclusive. Task-level execution respects dependency order and validates each task completes before proceeding.
 

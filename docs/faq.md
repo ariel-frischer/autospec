@@ -32,7 +32,7 @@ This is intentional behavior, not an error.
 
 **The Problem with Single-Session Execution:**
 
-When running all tasks in one Claude session (the default, similar to GitHub SpecKit's approach), Claude:
+When running all tasks in one Claude session (GitHub SpecKit's approach), Claude:
 
 1. Reads the full `tasks.yaml`, `plan.yaml`, and `spec.yaml` on startup
 2. Accumulates conversation context as it works through tasks
@@ -68,9 +68,9 @@ autospec implement --tasks
 
 | Mode | Best For |
 |------|----------|
-| Default (single session) | Small specs (<5 tasks), quick iterations |
-| `--phases` | Medium specs, logical task groupings, balanced isolation |
+| Default (phases) | Balanced cost/context, natural recovery points |
 | `--tasks` | Complex tasks, maximum accuracy, long-running implementations |
+| Single-session (config) | Small specs (<5 tasks), quick iterations |
 
 **Performance & Cost Analysis:**
 

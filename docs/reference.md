@@ -129,18 +129,15 @@ Execute implementation phase using tasks breakdown
 
 | Mode | Flag | Sessions | Use Case |
 |------|------|----------|----------|
-| Default | (none) | 1 | Small specs, quick iterations |
-| Phase-level | `--phases` | 1 per phase | Medium specs, natural recovery points |
+| Phase-level | (default) | 1 per phase | Balanced cost/context |
 | Task-level | `--tasks` | 1 per task | Large specs, maximum isolation |
+| Single-session | config only | 1 | Small specs, quick iterations |
 
 **Examples**:
 ```bash
-# Default: all tasks in single session
+# Default: phase-level isolation (1 session per phase)
 autospec implement
 autospec implement 001-dark-mode
-
-# Phase-level isolation
-autospec implement --phases              # All phases, fresh context each
 autospec implement --phase 2             # Run only phase 2
 autospec implement --from-phase 3        # Run phases 3+ sequentially
 
@@ -382,21 +379,21 @@ skip_preflight: true
 ### implement_method
 
 **Type**: string (enum)
-**Default**: `"default"`
-**Values**: `"default"` | `"phases"` | `"tasks"`
+**Default**: `"phases"`
+**Values**: `"phases"` | `"tasks"` | `"single-session"`
 **Description**: Default execution method for the implement command
 
 **Example**:
 ```yaml
-implement_method: phases  # Each phase in separate Claude session
+implement_method: tasks  # Each task in separate Claude session
 ```
 
 **Environment**: `AUTOSPEC_IMPLEMENT_METHOD`
 
 **Behavior**:
-- `default`: All tasks in single Claude session (backward compatible)
-- `phases`: Each phase runs in separate session (fresh context per phase)
+- `phases`: Each phase runs in separate session (fresh context per phase) — **default**
 - `tasks`: Each task runs in separate session (maximum context isolation)
+- `single-session`: All tasks in single Claude session (legacy)
 
 **Note**: CLI flags (`--phases`, `--tasks`) override this config setting.
 
