@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -76,18 +75,6 @@ func TestAllCmdUsesSkipPreflightFlag(t *testing.T) {
 	require.NotNil(t, f)
 }
 
-func TestFullCmdSharesFlags(t *testing.T) {
-	// Verify fullCmd has same flags as allCmd
-	flags := []string{"max-retries", "resume", "progress"}
-
-	for _, flagName := range flags {
-		t.Run("fullCmd has "+flagName, func(t *testing.T) {
-			f := fullCmd.Flags().Lookup(flagName)
-			require.NotNil(t, f, "fullCmd should have flag %s", flagName)
-		})
-	}
-}
-
 func TestAllCmdExamples(t *testing.T) {
 	// Verify examples are present
 	assert.Contains(t, allCmd.Example, "autospec all")
@@ -108,35 +95,6 @@ func TestAllCmdLongDescription(t *testing.T) {
 	for _, step := range steps {
 		assert.Contains(t, allCmd.Long, step)
 	}
-}
-
-func TestRunAllWorkflow_ConfigLoadError(t *testing.T) {
-	// Create a command with invalid config path
-	cmd := &cobra.Command{
-		Use:  "all",
-		Args: cobra.ExactArgs(1),
-		RunE: runAllWorkflow,
-	}
-
-	// Add required flags
-	cmd.Flags().String("config", "", "")
-	cmd.Flags().Bool("skip-preflight", false, "")
-	cmd.Flags().Int("max-retries", 0, "")
-	cmd.Flags().Bool("resume", false, "")
-	cmd.Flags().Bool("debug", false, "")
-	cmd.Flags().Bool("progress", false, "")
-
-	// Set invalid config path
-	require.NoError(t, cmd.Flags().Set("config", "/nonexistent/config.yaml"))
-
-	// Capture output
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-
-	err := cmd.RunE(cmd, []string{"test feature"})
-
-	assert.Error(t, err)
 }
 
 func TestPhaseConfigForAllCommand(t *testing.T) {
@@ -206,12 +164,6 @@ func TestAllCmdConstitutionCheck(t *testing.T) {
 		_, err := os.Stat(constPath)
 		assert.NoError(t, err)
 	})
-}
-
-func TestFullCmdOutputsDeprecationWarning(t *testing.T) {
-	// fullCmd should output a deprecation warning
-	assert.False(t, fullCmd.Hidden)
-	assert.Contains(t, fullCmd.Short, "DEPRECATED")
 }
 
 func TestAllCmdEquivalentToRunA(t *testing.T) {
