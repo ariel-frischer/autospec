@@ -1,8 +1,26 @@
 feature:
   branch: "027-claude-settings-validation"
   created: "2025-12-16"
-  status: "Draft"
+  status: "Completed"
   input: "make a spec for .dev/tasks/claude-settings-validation.md"
+
+implementation_summary:
+  completed: "2025-12-16"
+  files_created:
+    - "internal/claude/doc.go"
+    - "internal/claude/settings.go"
+    - "internal/claude/settings_test.go"
+  files_modified:
+    - "internal/cli/init.go"
+    - "internal/cli/init_test.go"
+    - "internal/health/health.go"
+    - "internal/health/health_test.go"
+  features:
+    - "autospec init auto-creates .claude/settings.local.json with Bash(autospec:*) permission"
+    - "autospec doctor validates Claude settings configuration"
+    - "Warns on deny list conflicts without overriding user security decisions"
+    - "Preserves existing settings when adding permissions"
+    - "Atomic writes prevent file corruption"
 
 user_stories:
   - id: "US-001"
