@@ -205,26 +205,22 @@ func TestTaskFlagsRegistered(t *testing.T) {
 func TestTaskPhasesMutualExclusivity(t *testing.T) {
 	// The mutual exclusivity is enforced by Cobra's MarkFlagsMutuallyExclusive
 	// We verify all relevant flags exist and can be looked up
-	tests := []struct {
-		name  string
+	tests := map[string]struct {
 		flags []string
 	}{
-		{
-			name:  "tasks and phases",
+		"tasks and phases": {
 			flags: []string{"tasks", "phases"},
 		},
-		{
-			name:  "tasks and phase",
+		"tasks and phase": {
 			flags: []string{"tasks", "phase"},
 		},
-		{
-			name:  "tasks and from-phase",
+		"tasks and from-phase": {
 			flags: []string{"tasks", "from-phase"},
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
 			for _, flagName := range tc.flags {
 				flag := implementCmd.Flags().Lookup(flagName)
 				if flag == nil {
@@ -299,8 +295,7 @@ func TestSpecNamePattern(t *testing.T) {
 // This validates the logic in implement.go that determines execution mode based on
 // the combination of config settings and CLI flags.
 func TestImplementMethodConfigPrecedence(t *testing.T) {
-	tests := []struct {
-		name              string
+	tests := map[string]struct {
 		configMethod      string // implement_method value from config
 		phasesFlag        bool   // --phases flag
 		tasksFlag         bool   // --tasks flag
@@ -312,30 +307,26 @@ func TestImplementMethodConfigPrecedence(t *testing.T) {
 		wantSingleSession bool   // expected single-session behavior (no phase/task mode)
 	}{
 		// T007: Test config phases + no flags = phases mode
-		{
-			name:             "config phases + no flags = phases mode",
+		"config phases + no flags = phases mode": {
 			configMethod:     "phases",
 			wantRunAllPhases: true,
 			wantTaskMode:     false,
 		},
 		// T007: Test config tasks + no flags = tasks mode
-		{
-			name:             "config tasks + no flags = tasks mode",
+		"config tasks + no flags = tasks mode": {
 			configMethod:     "tasks",
 			wantRunAllPhases: false,
 			wantTaskMode:     true,
 		},
 		// T007: Test config single-session + no flags = single-session mode
-		{
-			name:              "config single-session + no flags = single-session mode",
+		"config single-session + no flags = single-session mode": {
 			configMethod:      "single-session",
 			wantRunAllPhases:  false,
 			wantTaskMode:      false,
 			wantSingleSession: true,
 		},
 		// T007: Test no config (default) + no flags = phases mode (new default)
-		{
-			name:             "empty config (default) + no flags = phases mode",
+		"empty config (default) + no flags = phases mode": {
 			configMethod:     "", // empty uses default from GetDefaults()
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
@@ -343,56 +334,49 @@ func TestImplementMethodConfigPrecedence(t *testing.T) {
 			// The actual default behavior comes from defaults.go where ImplementMethod: "phases"
 		},
 		// T007: Test config phases + --tasks = tasks mode (CLI overrides config)
-		{
-			name:             "config phases + --tasks flag = tasks mode (CLI override)",
+		"config phases + --tasks flag = tasks mode (CLI override)": {
 			configMethod:     "phases",
 			tasksFlag:        true,
 			wantRunAllPhases: false,
 			wantTaskMode:     true,
 		},
 		// T007: Test config tasks + --phases = phases mode (CLI overrides config)
-		{
-			name:             "config tasks + --phases flag = phases mode (CLI override)",
+		"config tasks + --phases flag = phases mode (CLI override)": {
 			configMethod:     "tasks",
 			phasesFlag:       true,
 			wantRunAllPhases: true,
 			wantTaskMode:     false,
 		},
 		// T007: Test config single-session + --phases = phases mode (CLI overrides config)
-		{
-			name:             "config single-session + --phases flag = phases mode (CLI override)",
+		"config single-session + --phases flag = phases mode (CLI override)": {
 			configMethod:     "single-session",
 			phasesFlag:       true,
 			wantRunAllPhases: true,
 			wantTaskMode:     false,
 		},
 		// T007: Test config single-session + --tasks = tasks mode (CLI overrides config)
-		{
-			name:             "config single-session + --tasks flag = tasks mode (CLI override)",
+		"config single-session + --tasks flag = tasks mode (CLI override)": {
 			configMethod:     "single-session",
 			tasksFlag:        true,
 			wantRunAllPhases: false,
 			wantTaskMode:     true,
 		},
 		// Additional: Test --phase N overrides config
-		{
-			name:             "config phases + --phase 3 = single phase mode (CLI override)",
+		"config phases + --phase 3 = single phase mode (CLI override)": {
 			configMethod:     "phases",
 			phaseFlag:        3,
 			wantRunAllPhases: false, // --phase N doesn't set runAllPhases
 			wantTaskMode:     false,
 		},
 		// Additional: Test --from-phase N overrides config
-		{
-			name:             "config tasks + --from-phase 2 = from-phase mode (CLI override)",
+		"config tasks + --from-phase 2 = from-phase mode (CLI override)": {
 			configMethod:     "tasks",
 			fromPhaseFlag:    2,
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
 		},
 		// Additional: Test --from-task overrides config
-		{
-			name:             "config phases + --from-task T003 = task mode (CLI override)",
+		"config phases + --from-task T003 = task mode (CLI override)": {
 			configMethod:     "phases",
 			fromTaskFlag:     "T003",
 			wantRunAllPhases: false,
@@ -400,8 +384,8 @@ func TestImplementMethodConfigPrecedence(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Simulate the logic from implement.go RunE function
 			runAllPhases := tt.phasesFlag
 			taskMode := tt.tasksFlag
@@ -473,20 +457,18 @@ func TestImplementMethodWithDefaultConfig(t *testing.T) {
 	// This test verifies the behavior when config.ImplementMethod comes from defaults.go
 	// The default value is "phases" per internal/config/defaults.go
 
-	tests := []struct {
-		name         string
+	tests := map[string]struct {
 		configMethod string // What LoadDefaults() would set
 		wantMode     string
 	}{
-		{
-			name:         "default config (phases) produces phases mode",
+		"default config (phases) produces phases mode": {
 			configMethod: "phases", // This is what defaults.go sets
 			wantMode:     "phases",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Simulate no flags being set
 			runAllPhases := false
 			taskMode := false

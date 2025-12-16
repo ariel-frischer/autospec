@@ -604,6 +604,41 @@ Development follows `.autospec/memory/constitution.yaml`:
 3. **Performance Standards**: Sub-second validation (<1s); validation functions <10ms
 4. **Idempotency & Retry Logic**: All operations idempotent; configurable retry limits
 
+## Coding Standards
+
+### Error Handling (CRITICAL)
+
+**Always wrap errors with context** - never use bare `return err`. This provides stack traces and debugging context.
+
+```go
+// BAD - loses context about where error occurred
+if err != nil {
+    return err
+}
+
+// GOOD - wraps error with context
+if err != nil {
+    return fmt.Errorf("loading config file: %w", err)
+}
+
+// GOOD - with more specific context
+if err != nil {
+    return fmt.Errorf("parsing plan.yaml at %s: %w", path, err)
+}
+```
+
+**Exceptions** (rare, must be intentional):
+- Helper functions explicitly designed to return the original error unchanged (e.g., `outputError` that formats but doesn't modify)
+- Test code where simpler error handling is acceptable
+
+### Function Length
+
+Keep functions under 40 lines. Extract helper functions for:
+- Pre-validation logic
+- Core operation
+- Post-processing/cleanup
+- Output formatting
+
 ## Testing Architecture
 
 ### Go Tests (`*_test.go`)
