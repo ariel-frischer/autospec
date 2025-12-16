@@ -1,0 +1,225 @@
+feature:
+  branch: "020-implement-phases-flag"
+  created: "2025-12-16"
+  status: "Draft"
+  input: "Add --phases flag to implement command that runs each task phase in a separate Claude session. PROBLEM: 28 tasks across 8 phases in single session causes context pollution, attention degradation, high token usage, no recovery points. KEY INSIGHT: tasks.yaml already has phases array - just need orchestration change, no schema work. DEFAULT BEHAVIOR: 'autospec implement' (no flags) = single session, backward compatible. NEW FLAGS: --phases (run all phases sequentially, each in fresh Claude session), --phase 2 (run only phase 2), --from-phase 3 (run phases 3+ sequentially, each in fresh session). EXECUTION WITH --phases: for each phase in tasks.yaml, start fresh Claude session, run /autospec.implement with phase number filter, validate all phase tasks completed, end session (context cleared), repeat for next phase. IMPLEMENTATION: modify /autospec.implement slash command to accept phase number, update ExecuteImplement() to loop through phases with fresh Claude sessions when --phases set, track phase completion in retry state, add phase-level validation between transitions, parse existing phases array from tasks.yaml. BENEFITS: fresh context per phase, better accuracy on smaller batches, lower token usage, natural recovery points, clearer progress display (Phase 2/8: Git Extensions)."
+
+user_stories:
+  - id: "US-001"
+    title: "Run implementation in phase-isolated sessions"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "to run implementation with each phase in a separate Claude session"
+    so_that: "context pollution is avoided, token usage is reduced, and I have natural recovery points if execution fails"
+    why_this_priority: "Core feature that addresses the main problems of context pollution and attention degradation in long sessions"
+    independent_test: "Run autospec implement --phases and verify each phase executes in a fresh session with cleared context"
+    acceptance_scenarios:
+      - given: "a tasks.yaml file with 8 phases containing 28 tasks"
+        when: "I run 'autospec implement --phases'"
+        then: "8 separate Claude sessions execute, one per phase, with fresh context each time"
+      - given: "a tasks.yaml file with multiple phases"
+        when: "I run 'autospec implement --phases' and phase 3 fails"
+        then: "phases 1 and 2 remain completed, and I can resume from phase 3"
+
+  - id: "US-002"
+    title: "Run a single specific phase"
+    priority: "P1"
+    as_a: "developer debugging or resuming work"
+    i_want: "to run only a specific phase of implementation"
+    so_that: "I can resume from a failed phase or re-run a problematic phase without re-executing earlier phases"
+    why_this_priority: "Essential for recovery scenarios and targeted debugging"
+    independent_test: "Run autospec implement --phase 2 and verify only phase 2 tasks are executed"
+    acceptance_scenarios:
+      - given: "phases 1-3 are already completed"
+        when: "I run 'autospec implement --phase 4'"
+        then: "only phase 4 executes in a fresh Claude session"
+      - given: "a tasks.yaml with 5 phases"
+        when: "I run 'autospec implement --phase 3'"
+        then: "only phase 3 tasks are attempted, phases 1-2 and 4-5 are not executed"
+
+  - id: "US-003"
+    title: "Run phases from a starting point"
+    priority: "P2"
+    as_a: "developer resuming after a failure"
+    i_want: "to run all phases starting from a specific phase number"
+    so_that: "I can resume a partially completed implementation without re-running successful phases"
+    why_this_priority: "Improves recovery workflow but single-phase flag can achieve similar results"
+    independent_test: "Run autospec implement --from-phase 3 with phases 1-2 completed and verify phases 3+ execute sequentially"
+    acceptance_scenarios:
+      - given: "phases 1-2 completed successfully"
+        when: "I run 'autospec implement --from-phase 3'"
+        then: "phases 3 through N execute sequentially, each in a fresh Claude session"
+
+  - id: "US-004"
+    title: "Backward compatible default behavior"
+    priority: "P1"
+    as_a: "existing autospec user"
+    i_want: "the default 'autospec implement' command to work exactly as before"
+    so_that: "my existing workflows and scripts are not broken"
+    why_this_priority: "Non-breaking changes are essential for user trust and adoption"
+    independent_test: "Run autospec implement without any phase flags and verify single-session execution"
+    acceptance_scenarios:
+      - given: "a tasks.yaml file"
+        when: "I run 'autospec implement' without any phase flags"
+        then: "all tasks execute in a single Claude session, same as current behavior"
+
+  - id: "US-005"
+    title: "Clear progress display during phased execution"
+    priority: "P2"
+    as_a: "developer monitoring implementation"
+    i_want: "to see clear progress indication showing which phase is executing"
+    so_that: "I understand execution status and can estimate completion time"
+    why_this_priority: "User experience improvement but not essential for core functionality"
+    independent_test: "Run with --phases and verify progress shows 'Phase 2/8: Phase Name' format"
+    acceptance_scenarios:
+      - given: "implementation running with --phases flag"
+        when: "phase 2 of 8 is executing"
+        then: "output shows 'Phase 2/8: <Phase Name>' or similar progress indicator"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST add --phases flag to implement command that executes each phase in a separate Claude session"
+      testable: true
+      acceptance_criteria: "Running with --phases creates N separate Claude sessions for N phases"
+    - id: "FR-002"
+      description: "MUST add --phase <number> flag to execute only a specific phase"
+      testable: true
+      acceptance_criteria: "Running with --phase 3 executes only tasks in phase 3"
+    - id: "FR-003"
+      description: "MUST add --from-phase <number> flag to execute phases starting from that number"
+      testable: true
+      acceptance_criteria: "Running with --from-phase 3 executes phases 3, 4, 5... N sequentially"
+    - id: "FR-004"
+      description: "MUST maintain backward compatibility with default single-session execution"
+      testable: true
+      acceptance_criteria: "Running without phase flags executes all tasks in single session"
+    - id: "FR-005"
+      description: "MUST parse phases array from existing tasks.yaml without schema changes"
+      testable: true
+      acceptance_criteria: "Phase information is read from tasks.yaml phases array"
+    - id: "FR-006"
+      description: "MUST validate all phase tasks are completed before transitioning to next phase"
+      testable: true
+      acceptance_criteria: "If any task in phase N is incomplete, phase N+1 does not start"
+    - id: "FR-007"
+      description: "MUST track phase completion in retry state for recovery"
+      testable: true
+      acceptance_criteria: "Retry state includes phase completion status"
+    - id: "FR-008"
+      description: "MUST modify /autospec.implement slash command to accept phase number filter"
+      testable: true
+      acceptance_criteria: "Slash command accepts optional phase parameter to filter tasks"
+    - id: "FR-009"
+      description: "SHOULD display clear progress indicator showing current phase"
+      testable: true
+      acceptance_criteria: "Output shows 'Phase X/Y: Name' format during execution"
+    - id: "FR-010"
+      description: "MUST ensure --phases and --phase flags are mutually exclusive"
+      testable: true
+      acceptance_criteria: "Using both flags together produces a clear error message"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "performance"
+      description: "Phase parsing and validation must complete quickly"
+      measurable_target: "Phase parsing from tasks.yaml completes in under 100ms"
+    - id: "NFR-002"
+      category: "usability"
+      description: "Progress display must be clear and informative"
+      measurable_target: "Phase progress visible within 2 seconds of phase transition"
+    - id: "NFR-003"
+      category: "reliability"
+      description: "Phase state must survive process interruption"
+      measurable_target: "Retry state persisted before each phase execution"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Users can execute implementation with isolated context per phase"
+      metric: "Each phase runs in separate session with fresh context"
+      target: "100% of phases start with clean context when using --phases"
+    - id: "SC-002"
+      description: "Users can resume failed implementations from the failed phase"
+      metric: "Successful recovery using --phase or --from-phase flags"
+      target: "Users can resume from any phase without re-running prior phases"
+    - id: "SC-003"
+      description: "Default behavior remains unchanged for existing users"
+      metric: "Command without phase flags produces identical behavior"
+      target: "Zero breaking changes for existing workflows"
+    - id: "SC-004"
+      description: "Progress visibility during phased execution"
+      metric: "User can identify current phase at any point during execution"
+      target: "Phase progress displayed within 2 seconds of phase start"
+
+key_entities:
+  - name: "Phase"
+    description: "A logical grouping of related tasks in tasks.yaml"
+    attributes:
+      - "phase number (1-based index)"
+      - "phase name/title"
+      - "list of tasks belonging to phase"
+      - "completion status"
+  - name: "PhaseExecutionState"
+    description: "Tracks progress through phased execution"
+    attributes:
+      - "current phase number"
+      - "total phases"
+      - "completed phase numbers"
+      - "phase-level retry counts"
+  - name: "PhaseFlags"
+    description: "CLI flag configuration for phase execution"
+    attributes:
+      - "phases (boolean - run all phases separately)"
+      - "phase (number - run specific phase)"
+      - "from-phase (number - run phases starting from)"
+
+edge_cases:
+  - scenario: "tasks.yaml has only one phase"
+    expected_behavior: "--phases flag executes single phase in single session (functionally equivalent to no flag)"
+  - scenario: "tasks.yaml has no phases array (legacy format)"
+    expected_behavior: "Treat all tasks as single implicit phase"
+  - scenario: "--phase number exceeds total phases"
+    expected_behavior: "Return error with message indicating valid phase range"
+  - scenario: "--from-phase number exceeds total phases"
+    expected_behavior: "Return error with message indicating valid phase range"
+  - scenario: "Phase has no tasks"
+    expected_behavior: "Skip empty phase with informational message, proceed to next phase"
+  - scenario: "Claude session times out during phase execution"
+    expected_behavior: "Mark phase as incomplete in retry state, allow resume with same phase"
+  - scenario: "All tasks in a phase are already completed"
+    expected_behavior: "Skip phase with message 'Phase N already complete', proceed to next"
+  - scenario: "Using --phases and --phase together"
+    expected_behavior: "Return clear error about mutually exclusive flags"
+  - scenario: "Using --from-phase with --phase together"
+    expected_behavior: "Return clear error about mutually exclusive flags"
+
+assumptions:
+  - "tasks.yaml already contains a valid phases array structure that can be parsed"
+  - "Claude sessions are truly independent with no shared context between invocations"
+  - "Phase numbering in tasks.yaml is 1-based and sequential"
+  - "The /autospec.implement slash command can be modified to accept a phase filter parameter"
+  - "Retry state mechanism already supports storing additional metadata (phase information)"
+  - "Users understand that --phases mode is slower due to session overhead but provides benefits"
+
+constraints:
+  - "Cannot modify tasks.yaml schema - must work with existing phase array structure"
+  - "Must maintain backward compatibility with existing implement command usage"
+  - "Phase execution order must match order defined in tasks.yaml"
+  - "Cannot run multiple phases in parallel due to potential task dependencies"
+
+out_of_scope:
+  - "Modifying tasks.yaml schema or phase structure"
+  - "Parallel execution of multiple phases"
+  - "Automatic phase optimization or reordering"
+  - "Cross-phase dependency validation"
+  - "Phase-level retry limits separate from task-level retries"
+  - "GUI or web interface for phase monitoring"
+  - "Custom phase groupings different from tasks.yaml"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T07:16:18Z"
+  artifact_type: "spec"

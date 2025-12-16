@@ -237,6 +237,22 @@ timeout: 600  # seconds (0 = no timeout)
 skip_confirmations: false
 ```
 
+### Readable Streaming Output with claude-clean (Optional)
+
+[claude-clean](https://github.com/ariel-frischer/claude-clean) makes Claude's `stream-json` output readable in real-time:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ariel-frischer/claude-clean/main/install.sh | sh
+```
+
+Then configure a custom command in `~/.config/autospec/config.yml`:
+
+```yaml
+custom_claude_cmd: "ANTHROPIC_API_KEY='' claude -p --verbose --output-format stream-json {{PROMPT}} | cclean"
+```
+
+> ⚠️ **DANGER:** Adding `--dangerously-skip-permissions` bypasses ALL Claude safety checks. Never use with credentials, API keys, or production data. Your system becomes fully exposed to any command Claude generates.
+
 ### Environment Variables
 
 ```bash
