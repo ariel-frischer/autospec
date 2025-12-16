@@ -289,7 +289,7 @@ func executeStages(orchestrator *workflow.WorkflowOrchestrator, stageConfig *wor
 	for i, stage := range stages {
 		fmt.Printf("[Stage %d/%d] %s...\n", i+1, len(stages), stage)
 		if err := ctx.executeStage(stage); err != nil {
-			return err
+			return fmt.Errorf("executing stage %s: %w", stage, err)
 		}
 	}
 

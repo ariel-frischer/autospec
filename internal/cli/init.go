@@ -60,11 +60,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 
 	if err := installCommandTemplates(out); err != nil {
-		return err
+		return fmt.Errorf("installing command templates: %w", err)
 	}
 
 	if err := initializeConfig(out, project, force); err != nil {
-		return err
+		return fmt.Errorf("initializing config: %w", err)
 	}
 
 	constitutionExists := handleConstitution(out)
@@ -94,7 +94,7 @@ func installCommandTemplates(out io.Writer) error {
 func initializeConfig(out io.Writer, project, force bool) error {
 	configPath, err := getConfigPath(project)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting config path: %w", err)
 	}
 
 	configExists := fileExistsCheck(configPath)
@@ -105,7 +105,7 @@ func initializeConfig(out io.Writer, project, force bool) error {
 	}
 
 	if err := writeDefaultConfig(configPath); err != nil {
-		return err
+		return fmt.Errorf("writing default config: %w", err)
 	}
 
 	if configExists {
