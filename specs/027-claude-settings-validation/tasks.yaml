@@ -227,7 +227,7 @@ phases:
       tasks:
         - id: "T015"
           title: "Final validation and lint pass"
-          status: "InProgress"
+          status: "Completed"
           type: "refactor"
           parallel: false
           story_id: null
