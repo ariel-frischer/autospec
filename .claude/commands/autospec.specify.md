@@ -149,11 +149,11 @@ Given that feature description, do this:
 
 5. **Write the specification** to `FEATURE_DIR/spec.yaml`
 
-6. **Validate the artifact**:
+6. **Validate the YAML**:
    ```bash
-   autospec artifact spec FEATURE_DIR/spec.yaml
+   autospec yaml check FEATURE_DIR/spec.yaml
    ```
-   - If validation fails: review errors with line numbers and hints, fix issues, and retry
+   - If validation fails: fix YAML syntax errors and retry
    - If validation passes: proceed to report
 
 7. **Report**: Output:

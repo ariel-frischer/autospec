@@ -1,0 +1,475 @@
+tasks:
+    branch: "017-scripts-to-go"
+    created: "2025-12-16"
+    spec_path: "specs/017-scripts-to-go/spec.yaml"
+    plan_path: "specs/017-scripts-to-go/plan.yaml"
+summary:
+    total_tasks: 28
+    total_phases: 8
+    parallel_opportunities: 12
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Project initialization and understanding existing code structure"
+      tasks:
+        - id: "T001"
+          title: "Review existing internal/git and internal/spec packages"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/git/git.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Document existing git package functions available for reuse"
+            - "Document existing spec package functions available for reuse"
+            - "Identify gaps requiring new functions"
+    - number: 2
+      title: "Foundational - Git Package Extensions"
+      purpose: "Extend internal/git package with branch enumeration and creation functions"
+      tasks:
+        - id: "T002"
+          title: "Add GetAllBranches function to internal/git/git.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/git/git.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "GetAllBranches() returns list of local and remote branches"
+            - "Handles non-git repositories gracefully (returns empty list)"
+            - "Filters out HEAD and duplicate entries"
+        - id: "T003"
+          title: "Add CreateBranch function to internal/git/git.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/git/git.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "CreateBranch() creates and checks out a new branch"
+            - "Returns error if branch already exists"
+            - "Handles non-git repositories with appropriate error"
+        - id: "T004"
+          title: "Add FetchAllRemotes function to internal/git/git.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/git/git.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "FetchAllRemotes() fetches from all configured remotes"
+            - "Handles network failures gracefully (warns but doesn't fail)"
+            - "Returns boolean indicating if fetch succeeded"
+        - id: "T005"
+          title: "Add tests for new git functions in internal/git/git_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/git/git_test.go"
+          dependencies: ["T002", "T003", "T004"]
+          acceptance_criteria:
+            - "Tests for GetAllBranches with local/remote branches"
+            - "Tests for CreateBranch success and failure cases"
+            - "Tests for FetchAllRemotes with and without network"
+    - number: 3
+      title: "Foundational - Branch Name Generation"
+      purpose: "Create branch name generation logic with stop word filtering"
+      tasks:
+        - id: "T006"
+          title: "Create internal/spec/branch.go with branch name generation"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/spec/branch.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "GenerateBranchName() converts feature description to branch name"
+            - "Filters stop words (the, a, to, for, etc.)"
+            - "Converts to lowercase and replaces spaces with hyphens"
+        - id: "T007"
+          title: "Add CleanBranchName function to internal/spec/branch.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/spec/branch.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "CleanBranchName() sanitizes user input for git branch names"
+            - "Removes invalid characters per git branch naming rules"
+            - "Handles edge cases (leading/trailing hyphens, consecutive hyphens)"
+        - id: "T008"
+          title: "Add GetNextBranchNumber function to internal/spec/branch.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/spec/branch.go"
+          dependencies: ["T002", "T006"]
+          acceptance_criteria:
+            - "GetNextBranchNumber() scans git branches and specs directories"
+            - "Returns next available NNN number (zero-padded)"
+            - "Handles gaps in numbering (001, 003 -> returns 004)"
+        - id: "T009"
+          title: "Add TruncateBranchName function to internal/spec/branch.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/spec/branch.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "TruncateBranchName() enforces GitHub 244-byte limit"
+            - "Truncates at word boundary when possible"
+            - "Emits warning to stderr when truncation occurs"
+        - id: "T010"
+          title: "Add tests for branch name generation in internal/spec/branch_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/spec/branch_test.go"
+          dependencies: ["T006", "T007", "T008", "T009"]
+          acceptance_criteria:
+            - "Tests for stop word filtering"
+            - "Tests for branch name sanitization edge cases"
+            - "Tests for number detection with mixed sources"
+            - "Tests for truncation at various lengths"
+    - number: 4
+      title: "User Story 1 - Create new feature with Go command"
+      purpose: "Enable developers to create new feature branches cross-platform"
+      story_reference: "US-001"
+      independent_test: "Run autospec new-feature on Windows, macOS, and Linux; verify identical branch/directory creation"
+      tasks:
+        - id: "T011"
+          title: "Create internal/cli/new_feature.go with Cobra command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/new_feature.go"
+          dependencies: ["T005", "T010"]
+          acceptance_criteria:
+            - "newFeatureCmd Cobra command with --json, --short-name, --number flags"
+            - "Creates feature directory in specs/"
+            - "Creates git branch with appropriate number prefix"
+            - "Creates initial spec.yaml in feature directory"
+        - id: "T012"
+          title: "Implement JSON output for new-feature command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/new_feature.go"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "JSON output includes BRANCH_NAME, SPEC_FILE, FEATURE_NUM"
+            - "JSON output includes AUTOSPEC_VERSION, CREATED_DATE"
+            - "JSON format matches shell script output exactly"
+        - id: "T013"
+          title: "Handle non-git repositories in new-feature command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/new_feature.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Detects non-git repository and skips branch creation"
+            - "Still creates specs directory and spec.yaml"
+            - "Emits warning about git not being available"
+        - id: "T014"
+          title: "Add tests for new-feature command in internal/cli/new_feature_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/new_feature_test.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "Tests for JSON output format"
+            - "Tests for --short-name flag"
+            - "Tests for --number override flag"
+            - "Tests for non-git repository handling"
+    - number: 5
+      title: "User Story 2 - Check prerequisites with Go command"
+      purpose: "Enable validation of required artifacts before workflow phases"
+      story_reference: "US-002"
+      independent_test: "Run autospec prereqs with missing/present artifacts; verify correct JSON output and exit codes"
+      tasks:
+        - id: "T015"
+          title: "Create internal/cli/prereqs.go with Cobra command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/prereqs.go"
+          dependencies: ["T005", "T010"]
+          acceptance_criteria:
+            - "prereqsCmd Cobra command with validation flags"
+            - "Supports --json, --require-spec, --require-plan, --require-tasks flags"
+            - "Supports --include-tasks, --paths-only flags"
+        - id: "T016"
+          title: "Implement artifact validation logic in prereqs command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/prereqs.go"
+          dependencies: ["T015"]
+          acceptance_criteria:
+            - "Validates required artifacts exist when --require-* flags used"
+            - "Returns exit code 1 when required file missing"
+            - "Returns exit code 0 when validation passes"
+        - id: "T017"
+          title: "Implement JSON output for prereqs command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/prereqs.go"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "JSON output includes FEATURE_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS"
+            - "JSON output includes AVAILABLE_DOCS array"
+            - "JSON output includes AUTOSPEC_VERSION, CREATED_DATE"
+            - "JSON format matches shell script output exactly"
+        - id: "T018"
+          title: "Add tests for prereqs command in internal/cli/prereqs_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/prereqs_test.go"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "Tests for JSON output format"
+            - "Tests for each --require-* flag"
+            - "Tests for --paths-only flag"
+            - "Tests for non-feature-branch scenario"
+    - number: 6
+      title: "User Story 4 - Setup plan with Go command"
+      purpose: "Enable plan file initialization cross-platform"
+      story_reference: "US-004"
+      independent_test: "Run autospec setup-plan; verify plan template is copied to feature directory"
+      tasks:
+        - id: "T019"
+          title: "Create internal/cli/setup_plan.go with Cobra command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/setup_plan.go"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "setupPlanCmd Cobra command with --json flag"
+            - "Copies plan template to feature directory"
+            - "Creates feature directory if it does not exist"
+        - id: "T020"
+          title: "Implement template copying logic in setup-plan command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/setup_plan.go"
+          dependencies: ["T019"]
+          acceptance_criteria:
+            - "Checks for plan-template.yaml first, then plan-template.md"
+            - "Creates empty plan.yaml with warning if no template exists"
+            - "Handles missing feature directory by creating it"
+        - id: "T021"
+          title: "Implement JSON output for setup-plan command"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/setup_plan.go"
+          dependencies: ["T020"]
+          acceptance_criteria:
+            - "JSON output includes FEATURE_SPEC, IMPL_PLAN, SPECS_DIR, BRANCH"
+            - "JSON output includes HAS_GIT field"
+            - "JSON format matches shell script output"
+        - id: "T022"
+          title: "Add tests for setup-plan command in internal/cli/setup_plan_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/setup_plan_test.go"
+          dependencies: ["T021"]
+          acceptance_criteria:
+            - "Tests for template copying with various template types"
+            - "Tests for feature directory creation"
+            - "Tests for JSON output format"
+            - "Tests for missing template scenario"
+    - number: 7
+      title: "User Story 3 & 5 - Deprecate shell scripts"
+      purpose: "Enable smooth transition from shell scripts to Go commands"
+      story_reference: "US-003"
+      independent_test: "Run old script; verify deprecation warning appears in stderr"
+      tasks:
+        - id: "T023"
+          title: "Add deprecation warning to create-new-feature.sh"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/scripts/create-new-feature.sh"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Deprecation warning emitted to stderr"
+            - "Warning points to autospec new-feature command"
+            - "Script continues to function normally"
+        - id: "T024"
+          title: "Add deprecation warning to check-prerequisites.sh"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/scripts/check-prerequisites.sh"
+          dependencies: ["T018"]
+          acceptance_criteria:
+            - "Deprecation warning emitted to stderr"
+            - "Warning points to autospec prereqs command"
+            - "Script continues to function normally"
+        - id: "T025"
+          title: "Add deprecation warning to setup-plan.sh"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/scripts/setup-plan.sh"
+          dependencies: ["T022"]
+          acceptance_criteria:
+            - "Deprecation warning emitted to stderr"
+            - "Warning points to autospec setup-plan command"
+            - "Script continues to function normally"
+    - number: 8
+      title: "User Story 6 - Update slash commands"
+      purpose: "Migrate Claude slash commands to use Go commands"
+      story_reference: "US-006"
+      independent_test: "Run /autospec.specify; verify it calls autospec new-feature instead of script"
+      tasks:
+        - id: "T026"
+          title: "Update autospec.specify.md to use autospec new-feature"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-006"
+          file_path: ".autospec/commands/autospec.specify.md"
+          dependencies: ["T023", "T024", "T025"]
+          acceptance_criteria:
+            - "Calls autospec new-feature --json --short-name instead of script"
+            - "Parses JSON output correctly"
+            - "Slash command functions identically to before"
+        - id: "T027"
+          title: "Update autospec.plan.md to use autospec prereqs"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-006"
+          file_path: ".autospec/commands/autospec.plan.md"
+          dependencies: ["T023", "T024", "T025"]
+          acceptance_criteria:
+            - "Calls autospec prereqs --json --require-spec instead of script"
+            - "Parses JSON output correctly"
+            - "Slash command functions identically to before"
+    - number: 9
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Documentation updates and final testing"
+      tasks:
+        - id: "T028"
+          title: "Update CLAUDE.md with new command documentation"
+          status: "Completed"
+          type: "documentation"
+          parallel: false
+          story_id: null
+          file_path: "CLAUDE.md"
+          dependencies: ["T026", "T027"]
+          acceptance_criteria:
+            - "Document autospec new-feature command with all flags"
+            - "Document autospec prereqs command with all flags"
+            - "Document autospec setup-plan command with all flags"
+            - "Run make test and make lint to verify all tests pass"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-003", "US-006"]
+        - story_id: "US-002"
+          depends_on: []
+          blocks: ["US-003", "US-004", "US-006"]
+        - story_id: "US-003"
+          depends_on: ["US-001", "US-002", "US-004"]
+          blocks: ["US-006"]
+        - story_id: "US-004"
+          depends_on: ["US-002"]
+          blocks: ["US-003", "US-006"]
+        - story_id: "US-006"
+          depends_on: ["US-001", "US-002", "US-003", "US-004"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2, 3]
+        - phase: 2
+          blocks: [4, 5]
+        - phase: 3
+          blocks: [4, 5]
+        - phase: 4
+          blocks: [7]
+        - phase: 5
+          blocks: [6, 7]
+        - phase: 6
+          blocks: [7]
+        - phase: 7
+          blocks: [8]
+        - phase: 8
+          blocks: [9]
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T002", "T003", "T004"]
+          rationale: "Different git functions with no interdependencies"
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T006", "T007", "T009"]
+          rationale: "Independent branch name utility functions"
+    - phase: 7
+      parallel_groups:
+        - tasks: ["T023", "T024", "T025"]
+          rationale: "Different shell scripts, no interdependencies"
+    - phase: 8
+      parallel_groups:
+        - tasks: ["T026", "T027"]
+          rationale: "Different slash command files"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3, 4, 5]
+        description: "Setup + Foundational + new-feature + prereqs commands"
+        validation: "Run autospec new-feature and autospec prereqs; verify JSON output matches shell scripts"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2, 3]
+          deliverable: "Git and branch name generation utilities ready for use"
+        - milestone: "Core Commands Ready"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "new-feature and prereqs commands functional"
+        - milestone: "Full Migration Ready"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8]
+          deliverable: "All commands implemented with deprecation warnings"
+        - milestone: "Complete"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+          deliverable: "Documentation updated, all tests passing"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T03:40:08Z"
+    artifact_type: "tasks"

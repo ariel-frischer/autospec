@@ -97,6 +97,22 @@ autospec update-task T001 InProgress                       # Mark task as in pro
 autospec update-task T001 Completed                        # Mark task as completed
 autospec update-task T001 Blocked                          # Mark task as blocked
 
+# Create new feature branch and directory (replaces create-new-feature.sh)
+autospec new-feature "Add user authentication"             # From description
+autospec new-feature --short-name "user-auth" "Add auth"   # Custom short name
+autospec new-feature --number 5 "OAuth integration"        # Specific number
+autospec new-feature --json "Add feature"                  # JSON output for scripting
+
+# Check prerequisites (replaces check-prerequisites.sh)
+autospec prereqs --json --require-spec                     # Require spec.yaml
+autospec prereqs --json --require-plan                     # Require plan.yaml (default)
+autospec prereqs --json --require-tasks --include-tasks    # For implementation phase
+autospec prereqs --paths-only                              # Output paths only (no validation)
+
+# Setup plan from template (replaces setup-plan.sh)
+autospec setup-plan                                        # Initialize plan.yaml
+autospec setup-plan --json                                 # JSON output for scripting
+
 # Validate YAML artifacts against schemas
 autospec artifact plan                                     # Type only: auto-detect spec from branch
 autospec artifact specs/001-feature/plan.yaml             # Path only: infer type from filename
@@ -168,6 +184,9 @@ Cobra-based command structure providing user-facing commands:
 - **checklist.go**: Generates custom checklist for feature
 - **analyze.go**: Cross-artifact consistency and quality analysis
 - **update_task.go**: Updates individual task status in tasks.yaml during implementation
+- **new_feature.go**: Creates new feature branch and directory (replaces create-new-feature.sh)
+- **prereqs.go**: Checks prerequisites and validates artifacts (replaces check-prerequisites.sh)
+- **setup_plan.go**: Initializes plan file from template (replaces setup-plan.sh)
 - **artifact.go**: Validates YAML artifacts against schemas with --schema and --fix flags
 - **clean.go**: Removes autospec files from a project (.autospec/, .claude/commands/autospec*.md); specs/ preserved by default
 - **uninstall.go**: Completely removes autospec from system (binary, ~/.config/autospec/, ~/.autospec/)

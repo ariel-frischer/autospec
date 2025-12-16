@@ -21,10 +21,10 @@ You are creating or updating the project constitution. This file defines the non
 
 Follow this execution flow:
 
-1. **Get version info**: Source the common script to get autospec version and timestamp:
+1. **Get version info**: Get autospec version and current timestamp:
 
    ```bash
-   source .autospec/scripts/common.sh && echo "AUTOSPEC_VERSION=$(get_autospec_version)" && echo "CREATED_DATE=$(get_iso_timestamp)"
+   echo "AUTOSPEC_VERSION=$(autospec version --plain | head -1)" && echo "CREATED_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
    ```
 
    Parse the output for `AUTOSPEC_VERSION` and `CREATED_DATE` (for _meta section).

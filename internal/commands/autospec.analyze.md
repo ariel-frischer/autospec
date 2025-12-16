@@ -25,10 +25,10 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ### 1. Initialize Analysis Context
 
-Run the prerequisites script to get feature paths:
+Run the prerequisites command to get feature paths:
 
 ```bash
-.autospec/scripts/check-prerequisites.sh --json --require-tasks --include-tasks
+autospec prereqs --json --require-tasks --include-tasks
 ```
 
 Parse the JSON output for:

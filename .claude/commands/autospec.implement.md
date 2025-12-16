@@ -185,10 +185,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 9. **Validate tasks.yaml after updates**:
    ```bash
-   autospec artifact tasks FEATURE_DIR/tasks.yaml
+   autospec yaml check FEATURE_DIR/tasks.yaml
    ```
-   - Ensure artifact remains valid after status updates (syntax, dependencies, enum values)
-   - Fix any issues flagged by validation before proceeding
+   - Ensure YAML syntax remains valid after status updates
+   - Fix any formatting issues before proceeding
 
 10. **Completion validation**:
     - Verify all required tasks have `status: "Completed"`

@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+# DEPRECATION WARNING: This script is deprecated and will be removed in a future version.
+# Please use the Go command instead: autospec new-feature
+#
+# Example:
+#   autospec new-feature --json --short-name 'user-auth' 'Add authentication'
+#   autospec new-feature --number 5 'OAuth2 integration'
+#
+>&2 echo "[DEPRECATED] create-new-feature.sh is deprecated. Use 'autospec new-feature' instead."
+
 set -e
 
 JSON_MODE=false
