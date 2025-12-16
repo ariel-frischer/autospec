@@ -1,0 +1,354 @@
+tasks:
+    branch: "022-phase-context-injection"
+    created: "2025-12-16"
+    spec_path: "specs/022-phase-context-injection/spec.yaml"
+    plan_path: "specs/022-phase-context-injection/plan.yaml"
+summary:
+    total_tasks: 20
+    total_phases: 6
+    parallel_opportunities: 4
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create new source files and establish package structure for phase context functionality"
+      tasks:
+        - id: "T001"
+          title: "Create internal/workflow/phase_context.go with package declaration and imports"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/phase_context.go"
+          dependencies: []
+          acceptance_criteria:
+            - "File exists with correct package workflow declaration"
+            - "Required imports included (os, path/filepath, fmt, gopkg.in/yaml.v3)"
+        - id: "T002"
+          title: "Create internal/validation/phase_display.go with package declaration"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/phase_display.go"
+          dependencies: []
+          acceptance_criteria:
+            - "File exists with correct package validation declaration"
+            - "Required imports included (fmt, strings)"
+    - number: 2
+      title: "US-001 - View phase task statistics before execution"
+      purpose: "Enable users to see task count, IDs, and status breakdown before each phase starts"
+      story_reference: "US-001"
+      independent_test: "Run autospec implement --phases and verify task count and IDs are displayed before each phase starts"
+      tasks:
+        - id: "T003"
+          title: "Add GetTasksForPhase function to internal/validation/tasks_yaml.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/validation/tasks_yaml.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Function signature: GetTasksForPhase(tasksPath string, phaseNumber int) ([]TaskItem, error)"
+            - "Returns only tasks belonging to specified phase number"
+            - "Returns error if phase not found or file parse error"
+            - "Function executes in under 10ms"
+        - id: "T004"
+          title: "Implement FormatPhaseHeader function in internal/validation/phase_display.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/validation/phase_display.go"
+          dependencies: ["T002", "T003"]
+          acceptance_criteria:
+            - "Function signature: FormatPhaseHeader(phase PhaseInfo, totalPhases int, taskIDs []string) string"
+            - "Output format: '[Phase N/M] Title\\n  -> X tasks: T001, T002, ...\\n  -> Status: X completed, Y blocked, Z pending'"
+            - "Handles empty task lists gracefully"
+            - "Function executes in under 10ms"
+        - id: "T005"
+          title: "Add PhaseDisplayInfo struct to internal/validation/phase_display.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/validation/phase_display.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Struct contains: PhaseNumber, TotalPhases, Title, TaskIDs []string, CompletedCount, BlockedCount, PendingCount"
+            - "Provides helper method to get task IDs as comma-separated string"
+        - id: "T006"
+          title: "Integrate FormatPhaseHeader into ExecuteImplementWithPhases in workflow.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T004", "T005"]
+          acceptance_criteria:
+            - "Pre-phase summary displayed before each phase execution"
+            - "Shows task count, task IDs, and status breakdown"
+            - "Format matches FR-001 requirement"
+    - number: 3
+      title: "US-002 - View completion statistics after phase finishes"
+      purpose: "Provide detailed completion statistics when a phase completes"
+      story_reference: "US-002"
+      independent_test: "Complete a phase and verify completion message shows task counts"
+      tasks:
+        - id: "T007"
+          title: "Implement FormatPhaseCompletion function in internal/validation/phase_display.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/validation/phase_display.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Function signature: FormatPhaseCompletion(phaseNumber int, completed int, total int, blocked int) string"
+            - "Output format: 'Phase N complete (X/Y tasks completed, Z blocked)'"
+            - "Omits blocked count if zero"
+            - "Function executes in under 10ms"
+        - id: "T008"
+          title: "Integrate FormatPhaseCompletion into ExecuteImplementWithPhases in workflow.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T006", "T007"]
+          acceptance_criteria:
+            - "Post-phase completion message displayed after each phase"
+            - "Shows completed/total tasks and blocked count"
+            - "Format matches FR-002 requirement"
+    - number: 4
+      title: "US-003 - Faster phase startup with injected context"
+      purpose: "Bundle spec, plan, and phase-specific tasks into single context file for faster Claude startup"
+      story_reference: "US-003"
+      independent_test: "Run phase execution and verify no Read tool calls for spec.yaml/plan.yaml/tasks.yaml appear"
+      tasks:
+        - id: "T009"
+          title: "Define PhaseContext struct in internal/workflow/phase_context.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/workflow/phase_context.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Struct contains: Phase int, TotalPhases int, SpecDir string, Spec map[string]interface{}, Plan map[string]interface{}, Tasks []TaskItem"
+            - "Properly tagged for YAML serialization"
+            - "Includes header comment field for context file"
+        - id: "T010"
+          title: "Implement GetContextFilePath function in internal/workflow/phase_context.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/workflow/phase_context.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "Function returns .autospec/context/phase-{N}.yaml path"
+            - "Creates .autospec/context/ directory if missing"
+            - "Falls back to os.TempDir() if .autospec/ not writable"
+            - "Checks/warns if .autospec/context/ not in .gitignore"
+        - id: "T011"
+          title: "Implement BuildPhaseContext function in internal/workflow/phase_context.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/workflow/phase_context.go"
+          dependencies: ["T009", "T010", "T003"]
+          acceptance_criteria:
+            - "Function signature: BuildPhaseContext(specDir string, phaseNumber int, totalPhases int) (*PhaseContext, error)"
+            - "Reads and parses spec.yaml into Spec map"
+            - "Reads and parses plan.yaml into Plan map"
+            - "Calls GetTasksForPhase to filter tasks"
+            - "Returns clear error for missing files"
+        - id: "T012"
+          title: "Implement WriteContextFile function in internal/workflow/phase_context.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/workflow/phase_context.go"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "Function signature: WriteContextFile(ctx *PhaseContext) (string, error)"
+            - "Serializes PhaseContext to YAML format"
+            - "Includes header comment explaining the file"
+            - "Returns path to created file"
+            - "File is valid YAML"
+        - id: "T013"
+          title: "Implement CleanupContextFile function in internal/workflow/phase_context.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/workflow/phase_context.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Function signature: CleanupContextFile(path string) error"
+            - "Removes context file at specified path"
+            - "Handles file-not-found gracefully (no error)"
+            - "Logs warning on other errors"
+    - number: 5
+      title: "US-004 - Focused task context in phase sessions"
+      purpose: "Pass context file to Claude and update slash command to read bundled context"
+      story_reference: "US-004"
+      independent_test: "During phase 3 execution, verify injected context only contains phase 3 tasks"
+      tasks:
+        - id: "T014"
+          title: "Modify executeSinglePhaseSession to create and pass context file"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T012", "T013"]
+          acceptance_criteria:
+            - "Calls BuildPhaseContext before executing phase"
+            - "Calls WriteContextFile to create context file"
+            - "Adds --context-file argument to slash command"
+            - "Uses defer to cleanup context file after execution"
+            - "Command format: /autospec.implement --phase N --context-file /path/to/context.yaml"
+        - id: "T015"
+          title: "Update autospec.implement.md to handle --context-file argument"
+          status: "Completed"
+          type: "documentation"
+          parallel: false
+          story_id: "US-004"
+          file_path: ".claude/commands/autospec.implement.md"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Documents --context-file argument"
+            - "Instructions to read context file when argument present"
+            - "Instructions specify to NOT read individual spec.yaml/plan.yaml/tasks.yaml when context file provided"
+            - "Context file format documented"
+    - number: 6
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Testing, performance validation, and edge case handling"
+      tasks:
+        - id: "T016"
+          title: "Add unit tests for GetTasksForPhase in tasks_yaml_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/tasks_yaml_test.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "Test returns correct tasks for valid phase"
+            - "Test returns error for invalid phase number"
+            - "Test handles empty phase"
+            - "Performance test validates <10ms execution"
+        - id: "T017"
+          title: "Create phase_display_test.go with tests for format functions"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/phase_display_test.go"
+          dependencies: ["T004", "T007"]
+          acceptance_criteria:
+            - "Test FormatPhaseHeader output format"
+            - "Test FormatPhaseCompletion output format"
+            - "Test edge cases (empty tasks, zero blocked)"
+            - "Performance tests validate <10ms execution"
+        - id: "T018"
+          title: "Create phase_context_test.go with tests for context functions"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/phase_context_test.go"
+          dependencies: ["T012", "T013"]
+          acceptance_criteria:
+            - "Test BuildPhaseContext returns correct structure"
+            - "Test WriteContextFile creates valid YAML"
+            - "Test CleanupContextFile removes file"
+            - "Test error handling for missing files"
+            - "Test GetContextFilePath directory creation and fallback"
+        - id: "T019"
+          title: "Add edge case handling for empty phases and all-completed phases"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T008", "T014"]
+          acceptance_criteria:
+            - "Empty phase: display '0 tasks' and skip execution"
+            - "All completed: display status and skip with message"
+            - "Context file errors: clear message and abort phase"
+        - id: "T020"
+          title: "Run make fmt and make test to validate implementation"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: null
+          dependencies: ["T016", "T017", "T018", "T019"]
+          acceptance_criteria:
+            - "make fmt runs without errors"
+            - "make test passes all tests"
+            - "No linting errors"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-003"
+          depends_on: []
+          blocks: ["US-004"]
+        - story_id: "US-004"
+          depends_on: ["US-003"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2, 4]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: []
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+parallel_execution:
+    - phase: 1
+      parallel_groups:
+        - tasks: ["T001", "T002"]
+          rationale: "Different packages, no dependencies"
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T016", "T017", "T018"]
+          rationale: "Independent test files for different components"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Phase statistics display (pre-phase and post-phase)"
+        validation: "Run autospec implement --phases and verify task summary before/after each phase"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1]
+          deliverable: "New source files created with package structure"
+        - milestone: "Phase Statistics MVP"
+          phases: [1, 2, 3]
+          deliverable: "Users can see task counts before and completion stats after each phase"
+        - milestone: "Context Injection Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Claude receives bundled context file eliminating redundant file reads"
+        - milestone: "Fully Tested"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "All functionality tested with edge cases handled"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T08:31:49Z"
+    artifact_type: "tasks"

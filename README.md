@@ -29,6 +29,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), aut
 | Scripting Support | Basic | **Standardized** exit codes |
 | Phase Orchestration | Manual | **Automated** with dependencies |
 | Progress Tracking | None | **Built-in** status & task updates |
+| Session Isolation | Single session | **Per-phase/task** (80%+ cost savings) |
 | Dependencies | Requires SpecKit CLI | **Self-contained** (only needs Claude CLI) |
 
 ## 🎯 Key Features
@@ -187,6 +188,8 @@ autospec implement --task T003                # Run only task T003
 | Task | `--tasks` | 1 session per task | Complex tasks, maximum isolation |
 
 > 📌 `--tasks` and `--phases` are mutually exclusive. Task-level execution respects dependency order and validates each task completes before proceeding.
+
+> 💡 **Why isolate sessions?** Context accumulation causes LLM performance degradation and higher API costs (each turn bills the entire context). Phase/task isolation can reduce costs by **80%+** on large specs. See [FAQ](docs/faq.md#why-use---phases-or---tasks-instead-of-running-everything-in-one-session) for details.
 
 ### Optional Phase Commands
 

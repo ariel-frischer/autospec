@@ -1,6 +1,6 @@
 ---
 description: Execute the implementation plan by processing tasks defined in tasks.yaml.
-version: "1.1.0"
+version: "1.2.0"
 handoffs:
   - label: Analyze For Consistency
     agent: autospec.analyze
@@ -17,6 +17,51 @@ $ARGUMENTS
 ```
 
 You **MUST** consider the user input before proceeding (if not empty).
+
+## Context File Injection
+
+**If `--context-file /path/to/context.yaml` is specified in the arguments**, use the bundled context file instead of reading individual files:
+
+1. Parse the `--context-file` argument to extract the context file path
+2. **Read the context file** which contains bundled spec, plan, and phase-specific tasks
+3. **DO NOT read** spec.yaml, plan.yaml, or tasks.yaml separately - all needed context is in the context file
+4. Use the context file contents for implementation:
+   - `spec:` section contains full spec.yaml content
+   - `plan:` section contains full plan.yaml content
+   - `tasks:` section contains ONLY tasks for the current phase
+   - `phase:` indicates current phase number
+   - `total_phases:` indicates total number of phases
+   - `spec_dir:` indicates the spec directory path
+
+**Context file format example**:
+```yaml
+# Auto-generated phase context file
+phase: 3
+total_phases: 6
+spec_dir: specs/022-phase-context-injection
+spec:
+  feature:
+    branch: "022-phase-context-injection"
+    # ... rest of spec.yaml content
+plan:
+  summary: |
+    # ... rest of plan.yaml content
+tasks:
+  - id: "T007"
+    title: "Implement FormatPhaseCompletion function"
+    status: "Pending"
+    # ... only tasks for phase 3
+```
+
+**When context file is provided**:
+- Skip steps 1 (prereqs) and 3 (Load and analyze) - context is already bundled
+- Skip step 4 (Project Setup Verification) - not needed for phase-specific execution
+- Proceed directly to implementation using the provided context
+- The `tasks:` section contains ONLY the tasks you need to execute for this phase
+
+**If `--context-file` is NOT specified**, proceed with normal file reading below.
+
+---
 
 ## Task-Specific Execution
 

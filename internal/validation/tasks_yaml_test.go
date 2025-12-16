@@ -1234,6 +1234,218 @@ func TestGetTasksInDependencyOrder(t *testing.T) {
 	}
 }
 
+// Tests for GetTasksForPhase function
+func TestGetTasksForPhase(t *testing.T) {
+	tests := map[string]struct {
+		content     string
+		phaseNumber int
+		wantTaskIDs []string
+		wantErr     bool
+		errContains string
+	}{
+		"valid phase returns correct tasks": {
+			content: `phases:
+  - number: 1
+    title: Setup
+    tasks:
+      - id: T001
+        title: Task 1
+        status: Pending
+      - id: T002
+        title: Task 2
+        status: Completed
+  - number: 2
+    title: Implementation
+    tasks:
+      - id: T003
+        title: Task 3
+        status: Pending
+`,
+			phaseNumber: 1,
+			wantTaskIDs: []string{"T001", "T002"},
+		},
+		"second phase returns only its tasks": {
+			content: `phases:
+  - number: 1
+    title: Setup
+    tasks:
+      - id: T001
+        title: Task 1
+        status: Pending
+  - number: 2
+    title: Implementation
+    tasks:
+      - id: T002
+        title: Task 2
+        status: Pending
+      - id: T003
+        title: Task 3
+        status: InProgress
+      - id: T004
+        title: Task 4
+        status: Completed
+`,
+			phaseNumber: 2,
+			wantTaskIDs: []string{"T002", "T003", "T004"},
+		},
+		"empty phase returns empty slice": {
+			content: `phases:
+  - number: 1
+    title: Empty Phase
+    tasks: []
+  - number: 2
+    title: Non-empty
+    tasks:
+      - id: T001
+        title: Task 1
+        status: Pending
+`,
+			phaseNumber: 1,
+			wantTaskIDs: []string{},
+		},
+		"invalid phase number returns error": {
+			content: `phases:
+  - number: 1
+    title: Phase 1
+    tasks:
+      - id: T001
+        title: Task 1
+        status: Pending
+`,
+			phaseNumber: 99,
+			wantErr:     true,
+			errContains: "phase 99 not found",
+		},
+		"negative phase number returns error": {
+			content: `phases:
+  - number: 1
+    title: Phase 1
+    tasks:
+      - id: T001
+        title: Task 1
+        status: Pending
+`,
+			phaseNumber: -1,
+			wantErr:     true,
+			errContains: "not found",
+		},
+		"preserves task fields": {
+			content: `phases:
+  - number: 1
+    title: Test Phase
+    tasks:
+      - id: T001
+        title: Test Task
+        status: Pending
+        type: implementation
+        parallel: true
+        story_id: US-001
+        file_path: src/main.go
+        dependencies:
+          - T000
+        acceptance_criteria:
+          - Criterion 1
+`,
+			phaseNumber: 1,
+			wantTaskIDs: []string{"T001"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			tasksPath := filepath.Join(dir, "tasks.yaml")
+			require.NoError(t, os.WriteFile(tasksPath, []byte(tc.content), 0644))
+
+			tasks, err := GetTasksForPhase(tasksPath, tc.phaseNumber)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				if tc.errContains != "" {
+					assert.Contains(t, err.Error(), tc.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.Len(t, tasks, len(tc.wantTaskIDs))
+
+			// Verify task IDs match
+			gotIDs := make([]string, len(tasks))
+			for i, task := range tasks {
+				gotIDs[i] = task.ID
+			}
+			assert.Equal(t, tc.wantTaskIDs, gotIDs)
+		})
+	}
+}
+
+func TestGetTasksForPhase_FileErrors(t *testing.T) {
+	t.Run("file not found", func(t *testing.T) {
+		_, err := GetTasksForPhase("/nonexistent/path/tasks.yaml", 1)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read")
+	})
+
+	t.Run("invalid yaml", func(t *testing.T) {
+		dir := t.TempDir()
+		tasksPath := filepath.Join(dir, "tasks.yaml")
+		require.NoError(t, os.WriteFile(tasksPath, []byte("{{invalid yaml"), 0644))
+
+		_, err := GetTasksForPhase(tasksPath, 1)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "parse")
+	})
+}
+
+func BenchmarkGetTasksForPhase(b *testing.B) {
+	// Create a realistic tasks.yaml with multiple phases
+	content := `phases:
+  - number: 1
+    title: Setup
+    tasks:
+      - id: T001
+        title: Task 1
+        status: Completed
+      - id: T002
+        title: Task 2
+        status: Completed
+  - number: 2
+    title: Implementation
+    tasks:
+      - id: T003
+        title: Task 3
+        status: Pending
+      - id: T004
+        title: Task 4
+        status: InProgress
+      - id: T005
+        title: Task 5
+        status: Pending
+  - number: 3
+    title: Testing
+    tasks:
+      - id: T006
+        title: Task 6
+        status: Pending
+      - id: T007
+        title: Task 7
+        status: Pending
+`
+	dir := b.TempDir()
+	tasksPath := filepath.Join(dir, "tasks.yaml")
+	if err := os.WriteFile(tasksPath, []byte(content), 0644); err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = GetTasksForPhase(tasksPath, 2)
+	}
+}
+
 func TestValidateTaskDependenciesMet(t *testing.T) {
 	allTasks := []TaskItem{
 		{ID: "T001", Status: "Completed"},

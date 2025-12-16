@@ -316,6 +316,23 @@ func GetTotalPhases(tasksPath string) (int, error) {
 	return len(tasks.Phases), nil
 }
 
+// GetTasksForPhase returns only tasks belonging to a specific phase number
+// Returns error if phase not found or file parse error
+func GetTasksForPhase(tasksPath string, phaseNumber int) ([]TaskItem, error) {
+	tasks, err := ParseTasksYAML(tasksPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, phase := range tasks.Phases {
+		if phase.Number == phaseNumber {
+			return phase.Tasks, nil
+		}
+	}
+
+	return nil, fmt.Errorf("phase %d not found in tasks.yaml", phaseNumber)
+}
+
 // GetAllTasks returns a flat list of all tasks from all phases
 func GetAllTasks(tasksPath string) ([]TaskItem, error) {
 	tasks, err := ParseTasksYAML(tasksPath)

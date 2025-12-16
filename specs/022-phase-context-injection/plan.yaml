@@ -1,0 +1,298 @@
+plan:
+  branch: "022-phase-context-injection"
+  created: "2025-12-16"
+  spec_path: "specs/022-phase-context-injection/spec.yaml"
+
+summary: |
+  This feature enhances phase-isolated execution (`--phases` mode) with two key improvements:
+
+  1. **Pre-phase and post-phase statistics display**: Before each phase starts, users see task counts,
+     task IDs, and status breakdown. After each phase completes, users see detailed completion stats
+     including completed/blocked counts.
+
+  2. **Context file injection**: Instead of Claude reading spec.yaml, plan.yaml, and tasks.yaml
+     individually at the start of each phase session (wasting 15-30 seconds per phase), we bundle
+     all required context into a single YAML file that's passed to Claude via a new `--context-file`
+     argument. This file contains the full spec and plan plus only the tasks relevant to the
+     current phase, providing focused context and eliminating redundant file reads.
+
+  The implementation leverages existing PhaseInfo struct and GetPhaseInfo() function in
+  internal/validation/tasks_yaml.go, extending the workflow orchestrator to build and inject
+  phase context files.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML serialization for context file"
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI framework"
+    - name: "github.com/briandowns/spinner"
+      version: "v1.23.0"
+      purpose: "Progress display"
+  storage: "File system (.autospec/context/phase-{N}.yaml)"
+  testing:
+    framework: "go test"
+    approach: "Table-driven unit tests for new functions, integration tests for end-to-end phase execution"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Helper functions <10ms, 50-66% reduction in phase startup time (from 20-30s to 5-10s)"
+  constraints:
+    - "Must maintain backward compatibility with existing --phases flag behavior"
+    - "Must work with existing tasks.yaml format"
+    - "Helper functions must meet <10ms performance contract"
+    - "Temporary context files must be cleaned up after use"
+    - "Context files stored in .autospec/context/ must not be committed to git"
+  scale_scope: "Single-user CLI tool, context files typically under 100KB"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Tests will be written before implementation for all new functions (GetTasksForPhase, BuildPhaseContext, WriteContextFile, FormatPhaseHeader, FormatPhaseCompletion)"
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Context file creation validates all required files exist before proceeding; error handling for missing spec/plan/tasks"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Helper functions target <10ms; context file operations are bounded by file I/O, not computation"
+    - name: "Idempotency and Retry Logic"
+      status: "PASS"
+      notes: "Context file creation is idempotent; cleanup happens regardless of success/failure via defer"
+    - name: "Standardized Exit Codes"
+      status: "N/A"
+      notes: "No new exit codes required; uses existing error propagation"
+    - name: "YAML-First Artifacts"
+      status: "PASS"
+      notes: "Context file is YAML format; compatible with existing artifact parsing"
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "make fmt will be run before committing changes"
+
+research_findings:
+  decisions:
+    - topic: "Context file location"
+      decision: "Store in .autospec/context/phase-{N}.yaml with fallback to os.TempDir()"
+      rationale: "Predictable naming aids debugging; project-local keeps context visible; fallback handles permission issues"
+      alternatives_considered:
+        - "Always use os.TempDir() - harder to debug, files scattered"
+        - "Store in specs directory - pollutes feature spec directories"
+        - "In-memory only - no debugging capability"
+    - topic: "Context injection mechanism"
+      decision: "Pass --context-file argument to slash command"
+      rationale: "Clean separation; slash command parses argument and reads bundled file instead of individual files"
+      alternatives_considered:
+        - "Embed context in prompt text - makes prompts unwieldy"
+        - "Environment variable - harder to trace"
+        - "Named pipe - platform compatibility issues"
+    - topic: "Phase statistics display format"
+      decision: "Pre-phase: '[Phase N/M] Title\\n  -> X tasks: T001, T002, ...\\n  -> Status: X completed, Y blocked, Z pending'. Post-phase: 'Phase N complete (X/Y tasks completed, Z blocked)'"
+      rationale: "Matches spec FR-001 and FR-002 format requirements; scannable at a glance per NFR-004"
+      alternatives_considered:
+        - "JSON format - not human-readable"
+        - "Table format - harder to scan quickly"
+        - "Single line - loses detail"
+    - topic: "Context file structure"
+      decision: "YAML with header comment, phase_context root containing phase/total_phases/spec_dir, and embedded spec/plan/tasks sections"
+      rationale: "Self-documenting; reuses existing YAML structures; single file for all context"
+      alternatives_considered:
+        - "Multiple files per phase - defeats consolidation purpose"
+        - "JSON format - less readable, no comments"
+        - "Custom format - unnecessary complexity"
+
+data_model:
+  entities:
+    - name: "PhaseContext"
+      description: "Bundled context for a single phase execution"
+      fields:
+        - name: "Phase"
+          type: "int"
+          description: "Current phase number (1-based)"
+          constraints: "Must be >= 1 and <= TotalPhases"
+        - name: "TotalPhases"
+          type: "int"
+          description: "Total number of phases in tasks.yaml"
+          constraints: "Must be >= 1"
+        - name: "SpecDir"
+          type: "string"
+          description: "Path to the spec directory"
+          constraints: "Must exist"
+        - name: "Spec"
+          type: "map[string]interface{}"
+          description: "Full spec.yaml content"
+          constraints: "Must be valid spec structure"
+        - name: "Plan"
+          type: "map[string]interface{}"
+          description: "Full plan.yaml content"
+          constraints: "Must be valid plan structure"
+        - name: "Tasks"
+          type: "[]TaskItem"
+          description: "Only tasks for this phase"
+          constraints: "Filtered from full tasks.yaml"
+      relationships:
+        - target: "TaskItem"
+          type: "one-to-many"
+          description: "PhaseContext contains filtered TaskItems for current phase"
+
+    - name: "PhaseDisplayInfo"
+      description: "Information formatted for display in pre/post-phase messages"
+      fields:
+        - name: "PhaseNumber"
+          type: "int"
+          description: "Current phase number"
+          constraints: "1-based indexing"
+        - name: "TotalPhases"
+          type: "int"
+          description: "Total phases count"
+          constraints: "Must be >= PhaseNumber"
+        - name: "Title"
+          type: "string"
+          description: "Phase title from tasks.yaml"
+          constraints: "Non-empty"
+        - name: "TaskIDs"
+          type: "[]string"
+          description: "List of task IDs in phase"
+          constraints: "IDs from tasks.yaml"
+        - name: "CompletedCount"
+          type: "int"
+          description: "Tasks with Completed status"
+          constraints: ">=0"
+        - name: "BlockedCount"
+          type: "int"
+          description: "Tasks with Blocked status"
+          constraints: ">=0"
+        - name: "PendingCount"
+          type: "int"
+          description: "Tasks with Pending/InProgress status"
+          constraints: ">=0"
+      relationships:
+        - target: "PhaseInfo"
+          type: "derived-from"
+          description: "PhaseDisplayInfo extends PhaseInfo with task ID list"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: ".claude/commands/autospec.implement.md"
+      description: "Update slash command to handle --context-file argument"
+  source_code:
+    - path: "internal/workflow/phase_context.go"
+      description: "New file: PhaseContext struct, BuildPhaseContext, WriteContextFile, GetContextFilePath functions"
+    - path: "internal/workflow/workflow.go"
+      description: "Modify ExecuteImplementWithPhases and executeSinglePhaseSession to use context injection"
+    - path: "internal/validation/tasks_yaml.go"
+      description: "Add GetTasksForPhase function"
+    - path: "internal/validation/phase_display.go"
+      description: "New file: FormatPhaseHeader, FormatPhaseCompletion functions"
+  tests:
+    - path: "internal/workflow/phase_context_test.go"
+      description: "Tests for PhaseContext, BuildPhaseContext, WriteContextFile"
+    - path: "internal/validation/tasks_yaml_test.go"
+      description: "Add tests for GetTasksForPhase"
+    - path: "internal/validation/phase_display_test.go"
+      description: "Tests for FormatPhaseHeader, FormatPhaseCompletion"
+
+implementation_phases:
+  - phase: 1
+    name: "Task Filtering and Phase Statistics"
+    goal: "Implement helper functions for retrieving phase-specific tasks and formatting display output"
+    deliverables:
+      - "GetTasksForPhase function in validation package"
+      - "FormatPhaseHeader function for pre-phase display"
+      - "FormatPhaseCompletion function for post-phase display"
+      - "Unit tests for all new functions"
+
+  - phase: 2
+    name: "Phase Context Building"
+    goal: "Implement the PhaseContext struct and context building logic"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "PhaseContext struct definition"
+      - "BuildPhaseContext function to bundle spec/plan/tasks"
+      - "GetContextFilePath function for predictable naming"
+      - "Unit tests for context building"
+
+  - phase: 3
+    name: "Context File Writing and Cleanup"
+    goal: "Implement context file I/O with proper cleanup"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "WriteContextFile function with YAML serialization"
+      - "Context file cleanup logic (defer-based)"
+      - "Gitignore handling for .autospec/context/"
+      - "Unit tests for file operations"
+
+  - phase: 4
+    name: "Workflow Integration"
+    goal: "Integrate context injection into phase execution flow"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Modified ExecuteImplementWithPhases with pre/post-phase display"
+      - "Modified executeSinglePhaseSession to create and pass context file"
+      - "Command argument formatting with --context-file"
+      - "Integration tests"
+
+  - phase: 5
+    name: "Slash Command Update"
+    goal: "Update implement slash command to parse and use context file"
+    dependencies:
+      - "Phase 4"
+    deliverables:
+      - "Updated autospec.implement.md with --context-file handling"
+      - "Instructions to read context file instead of individual files when argument present"
+
+  - phase: 6
+    name: "Testing and Polish"
+    goal: "End-to-end testing, edge case handling, and documentation"
+    dependencies:
+      - "Phase 5"
+    deliverables:
+      - "Edge case tests (empty phase, all completed, missing files)"
+      - "Performance validation (<10ms for helpers)"
+      - "Documentation updates"
+
+risks:
+  - risk: "Context file size exceeds reasonable limits for very large specs"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Spec + plan + phase tasks typically under 100KB; monitor file sizes"
+
+  - risk: "Context file creation fails due to disk permissions"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Fallback to os.TempDir() with warning; clear error messages"
+
+  - risk: "Claude ignores context file and reads individual files anyway"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Clear slash command instructions; verify behavior in testing"
+
+  - risk: "Cleanup fails leaving orphaned context files"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "defer-based cleanup; gitignore prevents accidental commits"
+
+open_questions:
+  - question: "Should context file include previous phase completion info?"
+    context: "Could help Claude understand what's already done without reading all task statuses"
+    proposed_resolution: "Start simple with just current phase tasks; add previous phase info if needed based on testing"
+
+  - question: "Should we add a --no-context flag to disable context injection?"
+    context: "Users might want to debug or prefer the old behavior"
+    proposed_resolution: "Not needed for MVP; context injection is an optimization, not a behavior change"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T08:28:57Z"
+  artifact_type: "plan"
