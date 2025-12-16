@@ -1,0 +1,211 @@
+plan:
+  branch: "016-smart-artifact-validation"
+  created: "2025-12-16"
+  spec_path: "specs/016-smart-artifact-validation/spec.yaml"
+
+summary: |
+  This feature enhances the autospec artifact command with smart detection capabilities
+  to reduce user friction. The implementation adds automatic spec detection from git
+  branch names (with fallback to most recently modified spec), automatic artifact type
+  inference from filenames, and clear output showing which spec is being validated.
+
+  The core approach reuses the existing DetectCurrentSpec() function from internal/spec
+  package and adds filename-to-type mapping. The CLI command will be modified to accept
+  either: (1) type only (e.g., "autospec artifact plan"), (2) path only (e.g.,
+  "autospec artifact specs/016/plan.yaml"), or (3) the existing type+path syntax for
+  backward compatibility.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI framework for command structure"
+    - name: "github.com/fatih/color"
+      version: "v1.18.0"
+      purpose: "Colored terminal output"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing and validation"
+  storage: "None"
+  testing:
+    framework: "Go testing package"
+    approach: "Table-driven unit tests for all new functions, integration tests for CLI"
+  target_platform: "Linux, macOS, Windows (cross-platform)"
+  project_type: "cli"
+  performance_goals: "Validation functions <10ms, CLI startup <50ms"
+  constraints:
+    - "Must use existing DetectCurrentSpec() from internal/spec package"
+    - "Must maintain backward compatibility with explicit type+path syntax"
+    - "Must follow standardized exit codes (0, 1, 3)"
+  scale_scope: "Single-user CLI tool, validating individual YAML files"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Tests will be written before implementation for all new functions"
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Feature validates artifacts; aligns with validation-first principle"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "New detection logic will be <10ms; reuses existing fast functions"
+    - name: "Idempotency and Retry Logic"
+      status: "N/A"
+      notes: "Validation is read-only; no state changes to worry about"
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Will use existing exit codes: 0=success, 1=validation failed, 3=invalid args"
+    - name: "YAML-First Artifacts"
+      status: "PASS"
+      notes: "Feature validates YAML artifacts"
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "Will run make fmt before completion"
+    - name: "Cross-Platform Compatibility"
+      status: "PASS"
+      notes: "Uses filepath.Join and platform-agnostic APIs"
+    - name: "Explicit Dependencies"
+      status: "PASS"
+      notes: "No new dependencies required"
+    - name: "Documentation Standards"
+      status: "PASS"
+      notes: "CLAUDE.md will be updated with new command syntax"
+
+research_findings:
+  decisions:
+    - topic: "Argument parsing strategy"
+      decision: "Use filename pattern matching to distinguish path from type"
+      rationale: "Files ending in .yaml/.yml with recognized base names (spec, plan, tasks) are paths; single words matching type names are types"
+      alternatives_considered:
+        - "Require explicit flags like --path or --type"
+        - "Position-based parsing (first arg is always type)"
+    - topic: "Fallback behavior communication"
+      decision: "Add '(fallback)' suffix to spec name in output when not on spec branch"
+      rationale: "Users need to know when auto-detection is using fallback vs exact match"
+      alternatives_considered:
+        - "Warn to stderr separately"
+        - "Use different colors for fallback vs exact match"
+    - topic: "Handling of no-argument case"
+      decision: "Show help message with usage examples"
+      rationale: "Consistent with CLI best practices; user needs to provide at least type or path"
+      alternatives_considered:
+        - "Auto-detect type based on what files exist in spec directory"
+        - "Default to validating spec.yaml"
+
+data_model:
+  entities:
+    - name: "ArtifactType"
+      description: "Enum representing the type of artifact (spec, plan, tasks)"
+      fields:
+        - name: "value"
+          type: "string"
+          description: "The artifact type string"
+          constraints: "One of: spec, plan, tasks"
+      relationships:
+        - target: "ArtifactFilename"
+          type: "one-to-one"
+          description: "Each type maps to a canonical filename"
+    - name: "ArtifactFilename"
+      description: "Mapping from filename to artifact type"
+      fields:
+        - name: "filename"
+          type: "string"
+          description: "Base filename without path"
+          constraints: "One of: spec.yaml, plan.yaml, tasks.yaml"
+        - name: "artifactType"
+          type: "ArtifactType"
+          description: "Corresponding artifact type"
+          constraints: "Derived from filename"
+      relationships:
+        - target: "ArtifactType"
+          type: "one-to-one"
+          description: "Each filename maps to exactly one type"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Update CLI usage section with new artifact command syntax"
+  source_code:
+    - path: "internal/cli/artifact.go"
+      description: "Modify to support smart detection (main changes)"
+    - path: "internal/validation/schema.go"
+      description: "Add InferArtifactTypeFromFilename function"
+  tests:
+    - path: "internal/cli/artifact_test.go"
+      description: "Add tests for new argument parsing logic"
+    - path: "internal/validation/schema_test.go"
+      description: "Add tests for filename-to-type inference"
+
+implementation_phases:
+  - phase: 1
+    name: "Add filename-to-type inference"
+    goal: "Enable inferring artifact type from filename"
+    deliverables:
+      - "InferArtifactTypeFromFilename function in validation/schema.go"
+      - "ValidArtifactFilenames function returning recognized filenames"
+      - "Unit tests with table-driven test cases"
+  - phase: 2
+    name: "Integrate spec detection into CLI"
+    goal: "Enable auto-detection of spec directory in artifact command"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Modify runArtifactCommand to use DetectCurrentSpec"
+      - "Add resolveArtifactPath helper function"
+      - "Add output showing detected spec with fallback indicator"
+      - "Unit tests for new CLI logic"
+  - phase: 3
+    name: "Update argument parsing"
+    goal: "Support all three invocation patterns"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Modify Cobra command Args to accept 0-2 arguments"
+      - "Add parseArtifactArgs function to distinguish type vs path"
+      - "Update help text and examples"
+      - "Integration tests for all invocation patterns"
+  - phase: 4
+    name: "Documentation and polish"
+    goal: "Complete documentation and ensure code quality"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Update CLAUDE.md with new syntax"
+      - "Run make fmt and make lint"
+      - "Verify all tests pass"
+
+risks:
+  - risk: "Ambiguity between path and type argument"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Check for .yaml/.yml extension to distinguish path from type; type names are single lowercase words without extensions"
+  - risk: "Breaking existing scripts that use type+path syntax"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Maintain full backward compatibility; existing syntax continues to work unchanged"
+  - risk: "Confusing fallback behavior"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Clear output showing '(fallback)' when not on spec branch"
+
+open_questions:
+  - question: "Should we support .yml extension in addition to .yaml?"
+    context: "Some users prefer .yml; affects filename matching"
+    proposed_resolution: "Support both extensions in type inference; error message can mention both"
+  - question: "What to do when multiple spec directories exist and fallback is used?"
+    context: "Most recently modified is used but user may want different behavior"
+    proposed_resolution: "Use existing logic (most recently modified); add --spec flag for override if needed"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T03:25:59Z"
+  artifact_type: "plan"

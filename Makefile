@@ -1,4 +1,4 @@
-.PHONY: help build build-all install clean test test-go lint lint-go lint-bash fmt vet run dev dev-setup deps snapshot release patch minor major version h b i c t l f r d s p v
+.PHONY: help build build-all install clean test test-go lint lint-go lint-bash fmt vet run dev dev-setup deps snapshot release patch minor major version worktree worktree-list worktree-remove h w b i c t l f r d s p v
 
 # Variables
 BINARY_NAME=autospec
@@ -196,9 +196,48 @@ major: ## Bump major version (vX.0.0)
 release-build: test lint build-all ## Run tests, linting, and build all platforms (no publish)
 	@echo "Release build complete. Binaries in ${DIST_DIR}/"
 
+##@ Git Worktree
+
+worktree: ## Create a new worktree (make worktree BRANCH=feature-name)
+	@if [ -z "$(BRANCH)" ]; then \
+		echo "Usage: make worktree BRANCH=feature-name"; \
+		echo ""; \
+		echo "This creates a new worktree at ../autospec-<branch>"; \
+		exit 1; \
+	fi
+	@WORKTREE_PATH="../autospec-$(BRANCH)"; \
+	if [ -d "$$WORKTREE_PATH" ]; then \
+		echo "Worktree already exists at $$WORKTREE_PATH"; \
+		echo ""; \
+		echo "To enter it, run:"; \
+		echo "  cd $$WORKTREE_PATH"; \
+	else \
+		echo "Creating worktree for branch '$(BRANCH)' at $$WORKTREE_PATH..."; \
+		git worktree add "$$WORKTREE_PATH" -b "$(BRANCH)" 2>/dev/null || \
+		git worktree add "$$WORKTREE_PATH" "$(BRANCH)"; \
+		echo ""; \
+		echo "✓ Worktree created at $$WORKTREE_PATH"; \
+		echo ""; \
+		echo "To enter it, run:"; \
+		echo "  cd $$WORKTREE_PATH"; \
+	fi
+
+worktree-list: ## List all worktrees
+	@git worktree list
+
+worktree-remove: ## Remove a worktree (make worktree-remove BRANCH=feature-name)
+	@if [ -z "$(BRANCH)" ]; then \
+		echo "Usage: make worktree-remove BRANCH=feature-name"; \
+		exit 1; \
+	fi
+	@WORKTREE_PATH="../autospec-$(BRANCH)"; \
+	git worktree remove "$$WORKTREE_PATH" && \
+	echo "✓ Removed worktree at $$WORKTREE_PATH"
+
 ##@ Abbreviations
 
 h: help     ## help
+w: worktree ## worktree
 b: build    ## build
 i: install  ## install
 c: clean    ## clean
