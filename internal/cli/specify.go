@@ -78,10 +78,24 @@ The feature description should be a clear, concise description of what you want 
 		// Create workflow orchestrator
 		orch := workflow.NewWorkflowOrchestrator(cfg)
 
+		// Create notification handler and attach to executor
+		notifHandler := notify.NewHandler(cfg.Notifications)
+		orch.Executor.NotificationHandler = notifHandler
+
+		// Track command start time
+		startTime := time.Now()
+		notifHandler.SetStartTime(startTime)
+
 		// Execute specify stage
-		specName, err := orch.ExecuteSpecify(featureDescription)
-		if err != nil {
-			return fmt.Errorf("specify stage failed: %w", err)
+		specName, execErr := orch.ExecuteSpecify(featureDescription)
+
+		// Calculate duration and send command completion notification
+		duration := time.Since(startTime)
+		success := execErr == nil
+		notifHandler.OnCommandComplete("specify", success, duration)
+
+		if execErr != nil {
+			return fmt.Errorf("specify stage failed: %w", execErr)
 		}
 
 		fmt.Printf("\nSpec created: %s\n", specName)
