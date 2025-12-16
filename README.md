@@ -373,15 +373,6 @@ custom_claude_cmd: "ANTHROPIC_API_KEY='' claude -p --verbose --output-format str
 >
 > **Recommended:** Enable Claude Code's sandbox first (`/sandbox` command) which uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux or Seatbelt on macOS for OS-level isolation. See [Claude Settings docs](docs/claude-settings.md) for configuration via settings.json.
 
-## 📝 Issue Templates
-
-When creating issues, use our templates:
-
-- **🐛 Bug Report** — For defects with reproduction steps
-- **💡 Feature Request** — For new feature suggestions
-
-Templates auto-apply labels and guide you through providing useful information.
-
 ## 🤝 Contributing
 
 Contributions welcome! See [CONTRIBUTORS.md](CONTRIBUTORS.md) for development guidelines.

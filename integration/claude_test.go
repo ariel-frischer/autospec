@@ -91,7 +91,6 @@ func TestFallbackToSimpleMode(t *testing.T) {
 	executor := &workflow.ClaudeExecutor{
 		ClaudeCmd:       "echo",
 		ClaudeArgs:      []string{"-n"},
-		UseAPIKey:       false,
 		CustomClaudeCmd: "", // Empty means use simple mode
 	}
 
