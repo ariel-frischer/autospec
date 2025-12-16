@@ -16,7 +16,7 @@
 
 </div>
 
-Built for [Claude Code](https://claude.ai/code) and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
+Built for Claude Code and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
 
 ## 📦 Installation
 
