@@ -204,8 +204,9 @@ autospec analyze "Verify API contracts"
 
 ### Task Management
 
+Claude automatically updates task status during implementation. Manual updates are also available:
+
 ```bash
-# Update task status during implementation
 autospec update-task T001 InProgress
 autospec update-task T001 Completed
 autospec update-task T001 Blocked
@@ -251,34 +252,38 @@ tasks:
 
 Priority: Environment vars > Project config > User config > Defaults
 
-### Key Settings
+### All Settings
 
 ```yaml
 # .autospec/config.yml
-claude_cmd: claude
-max_retries: 3
-specs_dir: ./specs
-timeout: 600  # seconds (0 = no timeout)
-skip_confirmations: false
+claude_cmd: claude                    # Claude CLI command
+claude_args:                          # Arguments passed to Claude CLI
+  - -p
+  - --verbose
+  - --output-format
+  - stream-json
+use_api_key: false                    # Use API key instead of Claude CLI
+custom_claude_cmd: ""                 # Custom command (overrides claude_cmd + claude_args)
+max_retries: 3                        # Max retry attempts (1-10)
+specs_dir: ./specs                    # Directory for feature specs
+state_dir: ~/.autospec/state          # Directory for state files
+skip_preflight: false                 # Skip preflight checks
+timeout: 2400                         # Timeout in seconds (40 min default, 0 = no timeout)
+show_progress: false                  # Show progress spinners
+skip_confirmations: false             # Skip confirmation prompts
+implement_method: phases              # Default: phases | tasks | single-session
+
+# Notifications (all platforms)
+notifications:
+  enabled: false                      # Enable notifications (opt-in)
+  type: both                          # sound | visual | both
+  sound_file: ""                      # Custom sound file (empty = system default)
+  on_command_complete: true           # Notify when command finishes
+  on_stage_complete: false            # Notify on each stage
+  on_error: true                      # Notify on failures
+  on_long_running: false              # Notify after threshold
+  long_running_threshold: 30s         # Duration threshold
 ```
-
-### Readable Streaming Output with claude-clean (Optional)
-
-[claude-clean](https://github.com/ariel-frischer/claude-clean) makes Claude's `stream-json` output readable in real-time:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ariel-frischer/claude-clean/main/install.sh | sh
-```
-
-Then configure a custom command in `~/.config/autospec/config.yml`:
-
-```yaml
-custom_claude_cmd: "ANTHROPIC_API_KEY='' claude -p --verbose --output-format stream-json {{PROMPT}} | cclean"
-```
-
-> ⚠️ **DANGER:** Adding `--dangerously-skip-permissions` bypasses ALL Claude safety checks. Never use with credentials, API keys, or production data. Your system becomes fully exposed to any command Claude generates.
->
-> **Recommended:** Enable Claude Code's sandbox first (`/sandbox` command) which uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux or Seatbelt on macOS for OS-level isolation. See [Claude Settings docs](docs/claude-settings.md) for configuration via settings.json.
 
 ### Environment Variables
 
@@ -366,6 +371,26 @@ autospec config show
 | Claude permission denied | Allow commands in `~/.claude/settings.json` (see [troubleshooting](docs/troubleshooting.md#claude-permission-denied--command-blocked)) |
 
 > ⚠️ **Note:** You can add `--dangerously-skip-permissions` to `claude_args` in config. Enable Claude's sandbox first (`/sandbox`)—uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux. Bypasses ALL safety checks—never use with credentials or production data.
+
+## 💡 Pro Tips
+
+### Readable Streaming Output with claude-clean
+
+[claude-clean](https://github.com/ariel-frischer/claude-clean) makes Claude's `stream-json` output readable in real-time:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ariel-frischer/claude-clean/main/install.sh | sh
+```
+
+Then configure a custom command in `~/.config/autospec/config.yml`:
+
+```yaml
+custom_claude_cmd: "ANTHROPIC_API_KEY='' claude -p --verbose --output-format stream-json {{PROMPT}} | cclean"
+```
+
+> ⚠️ **DANGER:** Adding `--dangerously-skip-permissions` bypasses ALL Claude safety checks. Never use with credentials, API keys, or production data. Your system becomes fully exposed to any command Claude generates.
+>
+> **Recommended:** Enable Claude Code's sandbox first (`/sandbox` command) which uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux or Seatbelt on macOS for OS-level isolation. See [Claude Settings docs](docs/claude-settings.md) for configuration via settings.json.
 
 ## 📝 Issue Templates
 

@@ -1,0 +1,329 @@
+tasks:
+    branch: "028-cli-prereq-validation"
+    created: "2025-12-16"
+    spec_path: "specs/028-cli-prereq-validation/spec.yaml"
+    plan_path: "specs/028-cli-prereq-validation/plan.yaml"
+summary:
+    total_tasks: 18
+    total_phases: 5
+    parallel_opportunities: 8
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Project initialization and understanding existing infrastructure"
+      tasks:
+        - id: "T001"
+          title: "Review existing validation infrastructure in internal/workflow/preflight.go"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/preflight.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Understand CheckConstitutionExists function"
+            - "Understand CheckArtifactDependencies function"
+            - "Understand GeneratePrerequisiteWarning function"
+            - "Identify reusable patterns for new validation"
+    - number: 2
+      title: "Foundational"
+      purpose: "Core validation infrastructure that all user stories depend on"
+      tasks:
+        - id: "T002"
+          title: "Add ValidateStagePrerequisites function in internal/workflow/preflight.go"
+          status: "InProgress"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/preflight.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Function takes stage name and spec directory as parameters"
+            - "Returns PrerequisiteValidationResult with Valid, MissingArtifacts, and ErrorMessage"
+            - "Uses existing artifactDependencies map for dependency lookup"
+            - "Function is under 40 lines"
+            - "Errors wrapped with context using fmt.Errorf"
+        - id: "T003"
+          title: "Add GenerateArtifactMissingError helper in internal/workflow/preflight.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/preflight.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Generates user-friendly error message for missing artifacts"
+            - "Includes remediation command suggestion (e.g., 'Run autospec specify first')"
+            - "Handles single and multiple missing artifacts"
+            - "Function is under 40 lines"
+        - id: "T004"
+          title: "Add GetRemediationCommand helper in internal/workflow/preflight.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/preflight.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Maps artifact filenames to the command that creates them"
+            - "constitution.yaml -> 'autospec constitution'"
+            - "spec.yaml -> 'autospec specify'"
+            - "plan.yaml -> 'autospec plan'"
+            - "tasks.yaml -> 'autospec tasks'"
+            - "Function is under 40 lines"
+        - id: "T005"
+          title: "Add unit tests for validation helpers in internal/workflow/preflight_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/preflight_test.go"
+          dependencies: ["T002", "T003", "T004"]
+          acceptance_criteria:
+            - "Tests use map-based table-driven pattern"
+            - "Tests call t.Parallel()"
+            - "Test ValidateStagePrerequisites for all stages"
+            - "Test GenerateArtifactMissingError for single and multiple missing artifacts"
+            - "Test GetRemediationCommand for all artifact types"
+            - "Tests verify <10ms performance for validation"
+    - number: 3
+      title: "User Story 1 - Fail fast on missing constitution"
+      purpose: "Ensure all stage commands check constitution exists first"
+      story_reference: "US-001"
+      independent_test: "Run any stage command without constitution file and verify instant CLI error"
+      tasks:
+        - id: "T006"
+          title: "Update specify.go to use centralized validation in internal/cli/specify.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/specify.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Uses ValidateStagePrerequisites before Claude invocation"
+            - "Exits with code 3 (ExitInvalidArguments) when constitution missing"
+            - "Error message includes 'Run autospec constitution first'"
+        - id: "T007"
+          title: "Verify plan.go checks constitution in internal/cli/plan.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/plan.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Constitution check happens before any other validation"
+            - "Uses centralized validation pattern"
+        - id: "T008"
+          title: "Verify tasks.go checks constitution in internal/cli/tasks.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/tasks.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Constitution check happens before any other validation"
+            - "Uses centralized validation pattern"
+        - id: "T009"
+          title: "Verify implement.go checks constitution in internal/cli/implement.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/implement.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Constitution check happens before any other validation"
+            - "Uses centralized validation pattern"
+    - number: 4
+      title: "User Stories 2-5 - Fail fast on missing artifacts"
+      purpose: "Add artifact-specific prerequisite validation to each stage command"
+      story_reference: "US-002, US-003, US-004, US-005"
+      independent_test: "Run each stage command without its required artifacts and verify instant error with remediation"
+      tasks:
+        - id: "T010"
+          title: "Add spec.yaml validation to plan.go in internal/cli/plan.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/plan.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "Validates spec.yaml exists after constitution check"
+            - "Error message: 'spec.yaml not found' with 'Run autospec specify first'"
+            - "Exits with code 3 when spec.yaml missing"
+        - id: "T011"
+          title: "Add spec.yaml validation to clarify.go in internal/cli/clarify.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/clarify.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Validates constitution and spec.yaml exist"
+            - "Actionable error message with remediation suggestion"
+            - "Exits with code 3 when prerequisites missing"
+        - id: "T012"
+          title: "Add spec.yaml validation to checklist.go in internal/cli/checklist.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/checklist.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Validates constitution and spec.yaml exist"
+            - "Actionable error message with remediation suggestion"
+            - "Exits with code 3 when prerequisites missing"
+        - id: "T013"
+          title: "Add plan.yaml validation to tasks.go in internal/cli/tasks.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/tasks.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "Validates plan.yaml exists after constitution check"
+            - "Error message: 'plan.yaml not found' with 'Run autospec plan first'"
+            - "Exits with code 3 when plan.yaml missing"
+        - id: "T014"
+          title: "Add tasks.yaml validation to implement.go in internal/cli/implement.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/implement.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "Validates tasks.yaml exists after constitution check"
+            - "Error message: 'tasks.yaml not found' with 'Run autospec tasks first'"
+            - "Exits with code 3 when tasks.yaml missing"
+        - id: "T015"
+          title: "Add multi-artifact validation to analyze.go in internal/cli/analyze.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/cli/analyze.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Validates constitution, spec.yaml, plan.yaml, and tasks.yaml exist"
+            - "Error message lists ALL missing artifacts with their remediation commands"
+            - "Exits with code 3 when any prerequisites missing"
+    - number: 5
+      title: "User Story 6 and Quality Gates"
+      purpose: "Smart validation for run command and documentation updates"
+      story_reference: "US-006"
+      independent_test: "Run 'autospec run -spt' with only constitution and verify specify stage starts"
+      tasks:
+        - id: "T016"
+          title: "Add integration tests for run command in internal/cli/prereq_integration_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-006"
+          file_path: "internal/cli/prereq_integration_test.go"
+          dependencies: ["T010", "T013", "T014", "T015"]
+          acceptance_criteria:
+            - "Tests use map-based table-driven pattern with t.Parallel()"
+            - "Test run -spt only checks constitution"
+            - "Test run -pti checks constitution + spec.yaml"
+            - "Test run -ti checks constitution + plan.yaml"
+            - "Test run -a only checks constitution"
+            - "Tests verify error messages include correct remediation"
+        - id: "T017"
+          title: "Update docs/reference.md with prerequisite validation"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/reference.md"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "Document prerequisite validation behavior for each command"
+            - "Document exit code 3 for missing prerequisites"
+            - "Include table showing which artifacts each command requires"
+        - id: "T018"
+          title: "Update docs/troubleshooting.md with error remediation guide"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/troubleshooting.md"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "Add section for prerequisite validation errors"
+            - "Include each possible error message and its solution"
+            - "Provide workflow diagram showing stage dependencies"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002", "US-003", "US-004", "US-005", "US-006"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: ["US-006"]
+        - story_id: "US-003"
+          depends_on: ["US-001"]
+          blocks: ["US-006"]
+        - story_id: "US-004"
+          depends_on: ["US-001"]
+          blocks: ["US-006"]
+        - story_id: "US-005"
+          depends_on: ["US-001"]
+          blocks: ["US-006"]
+        - story_id: "US-006"
+          depends_on: ["US-002", "US-003", "US-004", "US-005"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T003", "T004"]
+          rationale: "Independent helper functions with no shared state"
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T006", "T007", "T008", "T009"]
+          rationale: "Different CLI files, all depend only on T005"
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T010", "T011", "T012"]
+          rationale: "Different CLI files, all adding spec.yaml validation"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + Constitution validation for all commands"
+        validation: "Run any stage command without constitution and verify instant error with remediation"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "ValidateStagePrerequisites function and helpers with tests"
+        - milestone: "Constitution Validation"
+          phases: [1, 2, 3]
+          deliverable: "All commands fail fast when constitution missing"
+        - milestone: "Full Validation"
+          phases: [1, 2, 3, 4]
+          deliverable: "All commands fail fast for all their prerequisites"
+        - milestone: "Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Full feature with documentation and integration tests"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-16T21:16:56Z"
+    artifact_type: "tasks"

@@ -352,3 +352,77 @@ func generateConstitutionMissingError() string {
 
 	return sb.String()
 }
+
+// PrerequisiteValidationResult contains the result of prerequisite validation for a stage.
+type PrerequisiteValidationResult struct {
+	Valid            bool     // Whether all prerequisites are satisfied
+	MissingArtifacts []string // List of missing artifact file names
+	ErrorMessage     string   // User-friendly error with remediation suggestions
+}
+
+// ValidateStagePrerequisites validates that all required artifacts exist for a stage.
+// It checks the artifacts defined in artifactDependencies for the given stage.
+// Returns a PrerequisiteValidationResult indicating if validation passed and any missing files.
+func ValidateStagePrerequisites(stage Stage, specDir string) *PrerequisiteValidationResult {
+	result := &PrerequisiteValidationResult{
+		Valid:            true,
+		MissingArtifacts: make([]string, 0),
+	}
+
+	// Get required artifacts for this specific stage
+	requiredArtifacts := GetRequiredArtifacts(stage)
+
+	// Check each required artifact exists
+	for _, artifact := range requiredArtifacts {
+		artifactPath := filepath.Join(specDir, artifact)
+		if _, err := os.Stat(artifactPath); os.IsNotExist(err) {
+			result.MissingArtifacts = append(result.MissingArtifacts, artifact)
+		}
+	}
+
+	// Generate error message if any artifacts are missing
+	if len(result.MissingArtifacts) > 0 {
+		result.Valid = false
+		result.ErrorMessage = GenerateArtifactMissingError(result.MissingArtifacts)
+	}
+
+	return result
+}
+
+// GenerateArtifactMissingError generates a user-friendly error message for missing artifacts.
+// It includes the missing file names and remediation commands for each.
+func GenerateArtifactMissingError(missingArtifacts []string) string {
+	var sb strings.Builder
+
+	if len(missingArtifacts) == 1 {
+		artifact := missingArtifacts[0]
+		sb.WriteString(fmt.Sprintf("\nError: %s not found.\n\n", artifact))
+		sb.WriteString(fmt.Sprintf("Run '%s' first to create this file.\n", GetRemediationCommand(artifact)))
+	} else {
+		sb.WriteString("\nError: Missing required artifacts:\n")
+		for _, artifact := range missingArtifacts {
+			sb.WriteString(fmt.Sprintf("  - %s\n", artifact))
+		}
+		sb.WriteString("\nRun the following commands to create them:\n")
+		for _, artifact := range missingArtifacts {
+			sb.WriteString(fmt.Sprintf("  %s\n", GetRemediationCommand(artifact)))
+		}
+	}
+
+	return sb.String()
+}
+
+// GetRemediationCommand returns the autospec command that creates the given artifact.
+func GetRemediationCommand(artifact string) string {
+	commands := map[string]string{
+		"constitution.yaml": "autospec constitution",
+		"spec.yaml":         "autospec specify",
+		"plan.yaml":         "autospec plan",
+		"tasks.yaml":        "autospec tasks",
+	}
+
+	if cmd, ok := commands[artifact]; ok {
+		return cmd
+	}
+	return fmt.Sprintf("autospec (unknown artifact: %s)", artifact)
+}

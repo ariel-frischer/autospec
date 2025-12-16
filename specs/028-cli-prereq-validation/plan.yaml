@@ -1,0 +1,228 @@
+plan:
+  branch: "028-cli-prereq-validation"
+  created: "2025-12-16"
+  spec_path: "specs/028-cli-prereq-validation/spec.yaml"
+
+summary: |
+  This feature adds fail-fast prerequisite validation to all CLI commands, ensuring users
+  receive immediate feedback when required artifacts are missing. The implementation extends
+  the existing validation infrastructure (CheckConstitutionExists, CheckArtifactDependencies)
+  to be invoked consistently across all individual stage commands (specify, plan, tasks,
+  implement, clarify, checklist, analyze).
+
+  The key insight is that the `run` command already performs smart validation via
+  CheckArtifactDependencies(), but individual commands only check for constitution existence.
+  This feature closes that gap by adding artifact dependency validation to each command while
+  respecting the existing architecture patterns. The run command's "smart" validation (only
+  checking first stage prerequisites) is preserved for multi-stage chains.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8.1"
+      purpose: "CLI framework for command structure and argument handling"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing for artifact validation"
+  storage: "None (file-based validation only)"
+  testing:
+    framework: "Go testing package"
+    approach: "Map-based table-driven tests with t.Parallel() for each validation scenario"
+  target_platform: "linux/darwin/windows (amd64/arm64)"
+  project_type: "cli"
+  performance_goals: "<10ms for all prerequisite validation combined"
+  constraints:
+    - "Must use existing infrastructure (artifactDependencies map, GetRequiredArtifacts)"
+    - "Must maintain backward compatibility with existing CLI behavior"
+    - "Must not add new command-line flags"
+    - "Exit code 3 (ExitInvalidArguments) for missing prerequisites"
+    - "Functions must be <40 lines"
+    - "Errors must be wrapped with context using fmt.Errorf"
+  scale_scope: "Single-user CLI tool, 7 stage commands to validate"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Plan includes comprehensive test coverage for all validation scenarios using table-driven tests"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "PASS"
+      notes: "This feature directly implements validation-first by adding prerequisite checks before Claude invocation"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "<10ms validation target aligns with constitution's performance requirements"
+    - name: "Standardized Exit Codes (PRIN-005)"
+      status: "PASS"
+      notes: "Uses ExitInvalidArguments (3) for prerequisite failures as per constitution"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Plan enforces <40 line functions, wrapped errors, and table-driven tests"
+
+research_findings:
+  decisions:
+    - topic: "Where to add validation logic"
+      decision: "Add validation at the start of each command's RunE function, after constitution check"
+      rationale: "Consistent pattern with existing constitution check; minimal code changes"
+      alternatives_considered:
+        - "Create middleware/hook system for validation"
+        - "Move all validation to WorkflowOrchestrator"
+    - topic: "How to handle run command vs individual commands"
+      decision: "Individual commands use direct artifact check; run command uses existing smart validation"
+      rationale: "Run command already has correct behavior; individual commands need the artifact check added"
+      alternatives_considered:
+        - "Unify all validation in a single function"
+        - "Add validation to WorkflowOrchestrator.ExecuteWorkflow"
+    - topic: "Error message format"
+      decision: "Use existing GeneratePrerequisiteWarning pattern but make it non-interactive for immediate failure"
+      rationale: "Consistent UX; fail fast without prompts on individual commands"
+      alternatives_considered:
+        - "Create new error message generator"
+        - "Reuse preflight confirmation prompts"
+    - topic: "Centralization approach"
+      decision: "Create ValidatePrerequisites helper function that takes stage and specDir"
+      rationale: "Single point of change; testable; follows DRY principle"
+      alternatives_considered:
+        - "Duplicate validation logic in each command"
+        - "Create validation command type wrapper"
+
+data_model:
+  entities:
+    - name: "PrerequisiteValidationResult"
+      description: "Result of validating prerequisites for a stage"
+      fields:
+        - name: "Valid"
+          type: "bool"
+          description: "Whether all prerequisites are satisfied"
+          constraints: "Required"
+        - name: "MissingArtifacts"
+          type: "[]string"
+          description: "List of missing artifact file names"
+          constraints: "Empty when Valid is true"
+        - name: "ErrorMessage"
+          type: "string"
+          description: "User-friendly error with remediation suggestions"
+          constraints: "Empty when Valid is true"
+    - name: "ArtifactDependency"
+      description: "Existing type defining stage prerequisites (already in codebase)"
+      fields:
+        - name: "Stage"
+          type: "Stage"
+          description: "The stage this dependency is for"
+          constraints: "Valid Stage constant"
+        - name: "Requires"
+          type: "[]string"
+          description: "Artifacts required before execution"
+          constraints: "Empty array for stages with no prerequisites"
+        - name: "Produces"
+          type: "[]string"
+          description: "Artifacts created by this stage"
+          constraints: "Empty array for stages that don't produce files"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/reference.md"
+      description: "Update CLI reference with prerequisite validation behavior"
+    - path: "docs/troubleshooting.md"
+      description: "Add section for prerequisite validation errors and remediation"
+  source_code:
+    - path: "internal/workflow/preflight.go"
+      description: "Add ValidateStagePrerequisites function and related helpers"
+    - path: "internal/cli/specify.go"
+      description: "Add artifact prerequisite validation (constitution only)"
+    - path: "internal/cli/plan.go"
+      description: "Add spec.yaml prerequisite validation"
+    - path: "internal/cli/tasks.go"
+      description: "Add plan.yaml prerequisite validation"
+    - path: "internal/cli/implement.go"
+      description: "Add tasks.yaml prerequisite validation"
+    - path: "internal/cli/clarify.go"
+      description: "Add spec.yaml prerequisite validation"
+    - path: "internal/cli/checklist.go"
+      description: "Add spec.yaml prerequisite validation"
+    - path: "internal/cli/analyze.go"
+      description: "Add multi-artifact prerequisite validation"
+  tests:
+    - path: "internal/workflow/preflight_test.go"
+      description: "Tests for ValidateStagePrerequisites and error message generation"
+    - path: "internal/cli/prereq_integration_test.go"
+      description: "Integration tests for prerequisite validation across all commands"
+
+implementation_phases:
+  - phase: 1
+    name: "Core Validation Infrastructure"
+    goal: "Create centralized validation function with tests"
+    deliverables:
+      - "ValidateStagePrerequisites function in preflight.go"
+      - "GenerateArtifactMissingError helper for actionable messages"
+      - "GetRemediationCommand helper mapping artifacts to creation commands"
+      - "Unit tests for all validation scenarios"
+  - phase: 2
+    name: "Individual Command Integration"
+    goal: "Add prerequisite validation to each stage command"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Update specify.go with constitution-only check (already exists)"
+      - "Update plan.go with spec.yaml validation"
+      - "Update tasks.go with plan.yaml validation"
+      - "Update implement.go with tasks.yaml validation"
+      - "Update clarify.go with spec.yaml validation"
+      - "Update checklist.go with spec.yaml validation"
+      - "Update analyze.go with multi-artifact validation"
+  - phase: 3
+    name: "Run Command Smart Validation"
+    goal: "Ensure run command validates only first stage external prerequisites"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Verify run command behavior for -spt, -pti, -ti, -a flag combinations"
+      - "Add integration tests for run command prerequisite validation"
+      - "Ensure error messages guide to correct remediation for each scenario"
+  - phase: 4
+    name: "Documentation and Quality Gates"
+    goal: "Update docs and ensure all quality gates pass"
+    dependencies:
+      - "Phase 2"
+      - "Phase 3"
+    deliverables:
+      - "Update docs/reference.md with prerequisite validation behavior"
+      - "Update docs/troubleshooting.md with error remediation guide"
+      - "make test passes with all new tests"
+      - "make fmt produces no changes"
+      - "make lint produces no errors"
+      - "make build succeeds"
+
+risks:
+  - risk: "Breaking backward compatibility for scripts relying on current behavior"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Exit code 3 is already documented for invalid arguments; this is consistent"
+  - risk: "Performance regression from additional file system checks"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "File existence checks are <1ms; total validation <10ms is achievable"
+  - risk: "Inconsistent error messages across commands"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Centralized GenerateArtifactMissingError ensures consistent messaging"
+
+open_questions:
+  - question: "Should clarify/checklist commands check for constitution?"
+    context: "These are optional stages that enhance the spec"
+    proposed_resolution: "Yes, all stages except constitution command itself should require constitution"
+  - question: "Should we add --skip-prereqs flag for advanced users?"
+    context: "Spec explicitly states this is out of scope"
+    proposed_resolution: "No, per spec constraints; users can use slash commands directly if needed"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T21:13:59Z"
+  artifact_type: "plan"
