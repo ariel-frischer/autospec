@@ -165,6 +165,10 @@ func TestInitCmdLongDescription(t *testing.T) {
 	}
 }
 
+// TestRunInit_CreateUserConfig tests user config creation.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestRunInit_CreateUserConfig(t *testing.T) {
 	// Setup temp directories
 	tmpDir := t.TempDir()
@@ -200,6 +204,10 @@ func TestRunInit_CreateUserConfig(t *testing.T) {
 	assert.Contains(t, output, "Config:")
 }
 
+// TestRunInit_ProjectConfig tests project config creation.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestRunInit_ProjectConfig(t *testing.T) {
 	// Setup temp directory
 	tmpDir := t.TempDir()
@@ -234,6 +242,10 @@ func TestRunInit_ProjectConfig(t *testing.T) {
 	assert.FileExists(t, projectConfig)
 }
 
+// TestRunInit_ForceOverwrite tests force overwrite behavior.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestRunInit_ForceOverwrite(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -277,6 +289,10 @@ func TestRunInit_ForceOverwrite(t *testing.T) {
 	assert.NotContains(t, string(data), "max_retries: 99") // Should be default now
 }
 
+// TestHandleConstitution tests constitution handling.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestHandleConstitution(t *testing.T) {
 	t.Run("no constitution found", func(t *testing.T) {
 		// Use temp directory with no constitution files
@@ -293,6 +309,10 @@ func TestHandleConstitution(t *testing.T) {
 	})
 }
 
+// TestCheckGitignore tests gitignore checking.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestCheckGitignore(t *testing.T) {
 	t.Run("no gitignore file", func(t *testing.T) {
 		tmpDir := t.TempDir()

@@ -305,6 +305,7 @@ func TestTaskStats_CompletionPercentage(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := tc.stats.CompletionPercentage()
 			assert.InDelta(t, tc.want, got, 0.001)
 		})
@@ -336,6 +337,7 @@ func TestTaskStats_IsComplete(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := tc.stats.IsComplete()
 			assert.Equal(t, tc.want, got)
 		})
@@ -452,6 +454,7 @@ func TestFormatTaskSummary(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			output := FormatTaskSummary(tc.stats)
 
 			for _, want := range tc.wantContains {
@@ -1026,6 +1029,7 @@ func TestPhaseInfo_IsComplete(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := tc.info.IsComplete()
 			assert.Equal(t, tc.want, got)
 		})
@@ -1107,6 +1111,7 @@ func TestGetTaskByID(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			task, err := GetTaskByID(tasks, tc.id)
 
 			if tc.wantErr {
@@ -1210,6 +1215,7 @@ func TestGetTasksInDependencyOrder(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			result, err := GetTasksInDependencyOrder(tc.tasks)
 
 			if tc.wantErr {
@@ -1519,6 +1525,7 @@ func TestValidateTaskDependenciesMet(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			met, unmet := ValidateTaskDependenciesMet(tc.task, allTasks)
 
 			assert.Equal(t, tc.wantMet, met)

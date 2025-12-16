@@ -172,6 +172,7 @@ func TestRetryState_CanRetry(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			state := &RetryState{
 				Count:      tc.count,
 				MaxRetries: tc.maxRetries,
@@ -216,6 +217,7 @@ func TestRetryState_Increment(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			state := &RetryState{
 				SpecName:   "001",
 				Phase:      "specify",
@@ -334,6 +336,7 @@ func TestIncrementRetryCount(t *testing.T) {
 
 func TestResetRetryCount(t *testing.T) {
 	t.Run("reset existing state", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Create initial state
@@ -358,6 +361,7 @@ func TestResetRetryCount(t *testing.T) {
 	})
 
 	t.Run("reset non-existent state", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Reset should not error even if state doesn't exist
@@ -588,6 +592,7 @@ func TestMarkPhaseComplete(t *testing.T) {
 
 func TestResetPhaseState(t *testing.T) {
 	t.Run("reset existing state", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Create initial state
@@ -610,6 +615,7 @@ func TestResetPhaseState(t *testing.T) {
 	})
 
 	t.Run("reset non-existent state", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Reset should not error even if state doesn't exist
@@ -618,6 +624,7 @@ func TestResetPhaseState(t *testing.T) {
 	})
 
 	t.Run("reset preserves other states", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Create two states
@@ -674,6 +681,7 @@ func TestPhaseExecutionState_IsPhaseCompleted(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			state := &PhaseExecutionState{
 				CompletedPhases: tc.completedPhases,
 			}
@@ -878,6 +886,7 @@ func TestMarkTaskComplete(t *testing.T) {
 
 func TestResetTaskState(t *testing.T) {
 	t.Run("reset existing state", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Create initial state
@@ -900,6 +909,7 @@ func TestResetTaskState(t *testing.T) {
 	})
 
 	t.Run("reset non-existent state", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Reset should not error even if state doesn't exist
@@ -908,6 +918,7 @@ func TestResetTaskState(t *testing.T) {
 	})
 
 	t.Run("reset preserves other states", func(t *testing.T) {
+		t.Parallel()
 		stateDir := t.TempDir()
 
 		// Create two states
@@ -964,6 +975,7 @@ func TestTaskExecutionState_IsTaskCompleted(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			state := &TaskExecutionState{
 				CompletedTaskIDs: tc.completedTasks,
 			}

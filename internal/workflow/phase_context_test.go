@@ -12,6 +12,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TestGetContextFilePath tests the context file path creation.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestGetContextFilePath(t *testing.T) {
 	// Save current directory
 	origDir, err := os.Getwd()
@@ -225,6 +229,10 @@ technical_context:
 	})
 }
 
+// TestWriteContextFile tests the context file writing.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestWriteContextFile(t *testing.T) {
 	// Save current directory
 	origDir, err := os.Getwd()
@@ -365,6 +373,7 @@ func TestContainsLine(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := containsLine(tc.content, tc.line)
 			assert.Equal(t, tc.want, got)
 		})
@@ -400,6 +409,7 @@ func TestSplitLines(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := splitLines(tc.content)
 			assert.Equal(t, tc.wantLines, got)
 		})
@@ -479,6 +489,10 @@ func TestExtractTasksForPhase(t *testing.T) {
 	})
 }
 
+// TestEnsureContextDirGitignored tests the gitignore handling for context directory.
+// NOTE: This test cannot use t.Parallel() because it uses os.Chdir() which modifies
+// global state (the current working directory). Parallel subtests would race for
+// the working directory.
 func TestEnsureContextDirGitignored(t *testing.T) {
 	// Save current directory
 	origDir, err := os.Getwd()

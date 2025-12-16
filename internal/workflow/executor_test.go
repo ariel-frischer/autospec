@@ -45,6 +45,7 @@ func TestGetPhaseNumber(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			executor := &Executor{}
 			got := executor.getPhaseNumber(tc.phase)
 			assert.Equal(t, tc.want, got)
@@ -89,6 +90,7 @@ func TestBuildPhaseInfo(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			executor := &Executor{
 				MaxRetries:  tc.maxRetries,
 				TotalPhases: tc.totalPhases,
@@ -320,6 +322,7 @@ func TestResetPhase(t *testing.T) {
 
 func TestValidateSpec(t *testing.T) {
 	t.Run("spec exists", func(t *testing.T) {
+		t.Parallel()
 		specDir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# Spec"), 0644))
 
@@ -329,6 +332,7 @@ func TestValidateSpec(t *testing.T) {
 	})
 
 	t.Run("spec missing", func(t *testing.T) {
+		t.Parallel()
 		specDir := t.TempDir()
 
 		executor := &Executor{}
@@ -339,6 +343,7 @@ func TestValidateSpec(t *testing.T) {
 
 func TestValidatePlan(t *testing.T) {
 	t.Run("plan exists", func(t *testing.T) {
+		t.Parallel()
 		specDir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(specDir, "plan.md"), []byte("# Plan"), 0644))
 
@@ -348,6 +353,7 @@ func TestValidatePlan(t *testing.T) {
 	})
 
 	t.Run("plan missing", func(t *testing.T) {
+		t.Parallel()
 		specDir := t.TempDir()
 
 		executor := &Executor{}
@@ -358,6 +364,7 @@ func TestValidatePlan(t *testing.T) {
 
 func TestValidateTasks(t *testing.T) {
 	t.Run("tasks exists", func(t *testing.T) {
+		t.Parallel()
 		specDir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(specDir, "tasks.md"), []byte("# Tasks"), 0644))
 
@@ -367,6 +374,7 @@ func TestValidateTasks(t *testing.T) {
 	})
 
 	t.Run("tasks missing", func(t *testing.T) {
+		t.Parallel()
 		specDir := t.TempDir()
 
 		executor := &Executor{}
@@ -407,6 +415,7 @@ func TestValidateTasksComplete(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			tasksPath := filepath.Join(dir, "tasks.md")
 			require.NoError(t, os.WriteFile(tasksPath, []byte(tc.content), 0644))
@@ -426,12 +435,14 @@ func TestValidateTasksComplete(t *testing.T) {
 
 func TestDebugLog(t *testing.T) {
 	t.Run("debug disabled does not print", func(t *testing.T) {
+		t.Parallel()
 		executor := &Executor{Debug: false}
 		// Should not panic and should not print
 		executor.debugLog("test message %s", "arg")
 	})
 
 	t.Run("debug enabled prints", func(t *testing.T) {
+		t.Parallel()
 		executor := &Executor{Debug: true}
 		// Should not panic - we can't easily capture stdout in this test
 		// but we verify it doesn't crash

@@ -8,6 +8,7 @@ import (
 
 func TestFormatError(t *testing.T) {
 	t.Run("nil error returns empty string", func(t *testing.T) {
+		t.Parallel()
 		result := FormatError(nil)
 		if result != "" {
 			t.Errorf("Expected empty string, got %q", result)
@@ -15,6 +16,7 @@ func TestFormatError(t *testing.T) {
 	})
 
 	t.Run("basic error formatting", func(t *testing.T) {
+		t.Parallel()
 		err := &CLIError{
 			Category: Argument,
 			Message:  "test message",
@@ -31,6 +33,7 @@ func TestFormatError(t *testing.T) {
 	})
 
 	t.Run("error with usage", func(t *testing.T) {
+		t.Parallel()
 		err := &CLIError{
 			Category: Argument,
 			Message:  "missing arg",
@@ -48,6 +51,7 @@ func TestFormatError(t *testing.T) {
 	})
 
 	t.Run("error with remediation", func(t *testing.T) {
+		t.Parallel()
 		err := &CLIError{
 			Category:    Argument,
 			Message:     "error",
@@ -70,6 +74,7 @@ func TestFormatError(t *testing.T) {
 
 func TestFormatErrorPlain(t *testing.T) {
 	t.Run("nil error returns empty string", func(t *testing.T) {
+		t.Parallel()
 		result := FormatErrorPlain(nil)
 		if result != "" {
 			t.Errorf("Expected empty string, got %q", result)
@@ -77,6 +82,7 @@ func TestFormatErrorPlain(t *testing.T) {
 	})
 
 	t.Run("basic formatting without colors", func(t *testing.T) {
+		t.Parallel()
 		err := &CLIError{
 			Category:    Configuration,
 			Message:     "config error",
@@ -108,6 +114,7 @@ func TestPrintError(t *testing.T) {
 
 func TestFprintError(t *testing.T) {
 	t.Run("nil error does nothing", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		FprintError(&buf, nil)
 
@@ -117,6 +124,7 @@ func TestFprintError(t *testing.T) {
 	})
 
 	t.Run("writes error to buffer", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		err := &CLIError{
 			Category: Prerequisite,
@@ -133,6 +141,7 @@ func TestFprintError(t *testing.T) {
 
 func TestFormatSimpleError(t *testing.T) {
 	t.Run("nil error returns empty string", func(t *testing.T) {
+		t.Parallel()
 		result := FormatSimpleError(nil, Runtime)
 		if result != "" {
 			t.Errorf("Expected empty string, got %q", result)
@@ -140,6 +149,7 @@ func TestFormatSimpleError(t *testing.T) {
 	})
 
 	t.Run("formats regular error", func(t *testing.T) {
+		t.Parallel()
 		err := &testError{}
 		result := FormatSimpleError(err, Runtime)
 

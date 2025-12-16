@@ -88,6 +88,7 @@ func TestExecutePlanWithPrompt(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			// This test verifies the command construction logic
 			command := "/autospec.plan"
 			if tc.prompt != "" {
@@ -131,6 +132,7 @@ func TestExecuteTasksWithPrompt(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			// This test verifies the command construction logic
 			command := "/autospec.tasks"
 			if tc.prompt != "" {
@@ -187,6 +189,7 @@ func TestSpecNameFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Test the format string used in the workflow
 			specName := fmt.Sprintf("%s-%s", tt.metadata.Number, tt.metadata.Name)
 
@@ -229,6 +232,7 @@ func TestSpecDirectoryConstruction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Test directory construction used in executor
 			specDir := filepath.Join(tt.specsDir, tt.specName)
 
@@ -315,6 +319,7 @@ func TestExecuteImplementWithTaskCommand(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			// Build command with task filter (mirrors executeSingleTaskSession logic)
 			command := fmt.Sprintf("/autospec.implement --task %s", tc.taskID)
 			if tc.prompt != "" {
@@ -374,6 +379,7 @@ func TestTaskModeWithFromTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tt.opts.Mode(); got != tt.wantMode {
 				t.Errorf("Mode() = %v, want %v", got, tt.wantMode)
 			}
@@ -383,15 +389,6 @@ func TestTaskModeWithFromTask(t *testing.T) {
 
 // TestTaskCompletionValidation tests that task completion is properly validated
 func TestTaskCompletionValidation(t *testing.T) {
-	tmpDir := t.TempDir()
-	specsDir := filepath.Join(tmpDir, "specs")
-	specDir := filepath.Join(specsDir, "001-test-feature")
-
-	// Create the directory structure
-	if err := os.MkdirAll(specDir, 0755); err != nil {
-		t.Fatalf("Failed to create test directory: %v", err)
-	}
-
 	tests := []struct {
 		name        string
 		taskStatus  string
@@ -426,6 +423,15 @@ func TestTaskCompletionValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// Create isolated directory for this subtest
+			tmpDir := t.TempDir()
+			specsDir := filepath.Join(tmpDir, "specs")
+			specDir := filepath.Join(specsDir, "001-test-feature")
+			if err := os.MkdirAll(specDir, 0755); err != nil {
+				t.Fatalf("Failed to create test directory: %v", err)
+			}
+
 			// Create tasks.yaml with specified status
 			tasksContent := fmt.Sprintf(`tasks:
     branch: "001-test-feature"
@@ -674,6 +680,7 @@ func TestExecuteImplementWithPrompt(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			// This test verifies the command construction logic
 			command := "/autospec.implement"
 			if tc.resume {

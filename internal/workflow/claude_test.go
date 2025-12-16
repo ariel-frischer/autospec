@@ -49,6 +49,7 @@ func TestShellQuote(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			result := shellQuote(tc.input)
 			assert.Equal(t, tc.want, result)
 		})
@@ -91,6 +92,7 @@ func TestExpandTemplate(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			executor := &ClaudeExecutor{
 				CustomClaudeCmd: tc.template,
 			}
@@ -135,6 +137,7 @@ func TestValidateTemplate(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			err := ValidateTemplate(tc.template)
 			if tc.wantErr {
 				assert.Error(t, err)
@@ -174,6 +177,7 @@ func TestClaudeExecutor_StreamCommand(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			var stdout, stderr bytes.Buffer
 
 			err := tc.executor.StreamCommand(tc.prompt, &stdout, &stderr)
@@ -212,6 +216,7 @@ func TestParseCustomCommand(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			cmd := executor.parseCustomCommand(tc.cmdStr)
 
 			// Verify command is set up to run via shell
@@ -239,6 +244,7 @@ func TestClaudeExecutor_EnvironmentSetup(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			executor := &ClaudeExecutor{
 				ClaudeCmd:  "echo",
 				ClaudeArgs: []string{},
@@ -423,6 +429,7 @@ func TestCommandPromptFormats(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			executor := &ClaudeExecutor{
 				CustomClaudeCmd: tc.template,
 			}
@@ -477,6 +484,7 @@ func TestTemplateEdgeCases(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			executor := &ClaudeExecutor{
 				CustomClaudeCmd: tc.template,
 			}
@@ -624,6 +632,7 @@ func TestExecute_TimeoutPropagation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			executor := &ClaudeExecutor{
 				ClaudeCmd:  "sleep",
 				ClaudeArgs: []string{},

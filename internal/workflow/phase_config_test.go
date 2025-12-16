@@ -100,6 +100,7 @@ func TestHasAnyPhase(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tt.config.HasAnyPhase(); got != tt.expected {
 				t.Errorf("HasAnyPhase() = %v, want %v", got, tt.expected)
 			}
@@ -168,6 +169,7 @@ func TestGetSelectedPhases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.config.GetSelectedPhases()
 			if len(got) != len(tt.expected) {
 				t.Errorf("GetSelectedPhases() returned %d phases, want %d", len(got), len(tt.expected))
@@ -237,6 +239,7 @@ func TestGetCanonicalOrder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.config.GetCanonicalOrder()
 			if len(got) != len(tt.expected) {
 				t.Errorf("GetCanonicalOrder() returned %d phases, want %d", len(got), len(tt.expected))
@@ -310,6 +313,7 @@ func TestCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tt.config.Count(); got != tt.expected {
 				t.Errorf("Count() = %v, want %v", got, tt.expected)
 			}
@@ -391,6 +395,7 @@ func TestGetArtifactDependency(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.phase), func(t *testing.T) {
+			t.Parallel()
 			dep := GetArtifactDependency(tt.phase)
 			if dep.Phase != tt.phase {
 				t.Errorf("GetArtifactDependency(%s).Phase = %s, want %s", tt.phase, dep.Phase, tt.phase)
@@ -424,6 +429,7 @@ func TestGetRequiredArtifacts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.phase), func(t *testing.T) {
+			t.Parallel()
 			got := GetRequiredArtifacts(tt.phase)
 			if len(got) != len(tt.expected) {
 				t.Errorf("GetRequiredArtifacts(%s) = %v, want %v", tt.phase, got, tt.expected)
@@ -451,6 +457,7 @@ func TestGetProducedArtifacts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.phase), func(t *testing.T) {
+			t.Parallel()
 			got := GetProducedArtifacts(tt.phase)
 			if len(got) != len(tt.expected) {
 				t.Errorf("GetProducedArtifacts(%s) = %v, want %v", tt.phase, got, tt.expected)
@@ -537,6 +544,7 @@ func TestGetAllRequiredArtifacts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.config.GetAllRequiredArtifacts()
 
 			// Convert to maps for comparison (order doesn't matter)
