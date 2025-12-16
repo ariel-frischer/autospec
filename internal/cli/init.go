@@ -23,6 +23,8 @@ This command:
   1. Installs command templates to .claude/commands/ (automatic)
   2. Creates user-level configuration at ~/.config/autospec/config.yml
 
+If config already exists, it is left unchanged (use --force to overwrite).
+
 By default, creates user-level config which applies to all your projects.
 Use --project to create project-specific config that overrides user settings.
 
@@ -37,7 +39,7 @@ Configuration precedence (highest to lowest):
   # Create project-specific config (overrides user config)
   autospec init --project
 
-  # Overwrite existing config without prompting
+  # Overwrite existing config with defaults
   autospec init --force`,
 	RunE: runInit,
 }

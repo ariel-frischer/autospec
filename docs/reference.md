@@ -199,14 +199,17 @@ Initialize configuration files and directories
 
 **Syntax**: `autospec init [flags]`
 
-**Description**: Create `~/.config/autospec/config.yml` with default settings.
+**Description**: Create `~/.config/autospec/config.yml` with default settings. If config already exists, it is left unchanged (use `--force` to overwrite).
 
-**Flags**: `--force`: Overwrite existing configuration
+**Flags**:
+- `--project, -p`: Create project-level config (`.autospec/config.yml`)
+- `--force, -f`: Overwrite existing configuration with defaults
 
 **Examples**:
 ```bash
-autospec init
-autospec init --force
+autospec init              # Create user config if missing
+autospec init --project    # Create project-level config
+autospec init --force      # Overwrite existing config with defaults
 ```
 
 **Exit Codes**: 0 (success)
