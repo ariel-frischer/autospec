@@ -1,0 +1,154 @@
+feature:
+  branch: "023-implement-method-config"
+  created: "2025-12-16"
+  status: "Draft"
+  input: "Add implement_method config option. See .dev/tasks/022-implement-method-config.md for full details."
+
+user_stories:
+  - id: "US-001"
+    title: "Configure default implementation execution method"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "to configure the default execution method for the implement command"
+    so_that: "I get cost-efficient, context-isolated implementation sessions by default without specifying flags each time"
+    why_this_priority: "Core functionality - changes the default behavior to improve cost efficiency and context isolation"
+    independent_test: "Set implement_method in config, run autospec implement without flags, verify correct execution mode is used"
+    acceptance_scenarios:
+      - given: "config file has implement_method: phases"
+        when: "I run autospec implement without flags"
+        then: "implementation runs with each phase in a separate Claude session"
+      - given: "config file has implement_method: tasks"
+        when: "I run autospec implement without flags"
+        then: "implementation runs with each task in a separate Claude session"
+      - given: "config file has implement_method: single-session"
+        when: "I run autospec implement without flags"
+        then: "implementation runs all tasks in one Claude session (legacy behavior)"
+
+  - id: "US-002"
+    title: "Override config default with CLI flags"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "CLI flags to override the configured default execution method"
+    so_that: "I can choose a different execution method for specific runs without changing my config"
+    why_this_priority: "Essential for flexibility - users need to override defaults for specific situations"
+    independent_test: "Set implement_method: phases in config, run autospec implement --tasks, verify tasks mode is used"
+    acceptance_scenarios:
+      - given: "config file has implement_method: phases"
+        when: "I run autospec implement --tasks"
+        then: "implementation runs in tasks mode (CLI flag overrides config)"
+      - given: "config file has implement_method: tasks"
+        when: "I run autospec implement --phases"
+        then: "implementation runs in phases mode (CLI flag overrides config)"
+      - given: "no implement_method in config (using default)"
+        when: "I run autospec implement --tasks"
+        then: "implementation runs in tasks mode (CLI flag overrides default)"
+
+  - id: "US-003"
+    title: "Backward compatibility with legacy behavior"
+    priority: "P2"
+    as_a: "existing autospec user"
+    i_want: "to restore the original single-session behavior if needed"
+    so_that: "I can maintain my existing workflow if the new default doesn't work for my use case"
+    why_this_priority: "Important for adoption - existing users should not be forced to change workflows"
+    independent_test: "Set implement_method: single-session in config, run autospec implement, verify single-session behavior"
+    acceptance_scenarios:
+      - given: "config file has implement_method: single-session"
+        when: "I run autospec implement without flags"
+        then: "implementation runs all tasks in one session, matching pre-change behavior"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST add implement_method field to Configuration struct in internal/config/config.go"
+      testable: true
+      acceptance_criteria: "Configuration struct contains ImplementMethod string field with mapstructure tag"
+    - id: "FR-002"
+      description: "MUST set default value of implement_method to 'phases' in internal/config/defaults.go"
+      testable: true
+      acceptance_criteria: "DefaultConfig() returns Configuration with ImplementMethod set to 'phases'"
+    - id: "FR-003"
+      description: "MUST validate implement_method accepts only 'single-session', 'phases', or 'tasks' values"
+      testable: true
+      acceptance_criteria: "Invalid values trigger validation error with descriptive message listing valid options"
+    - id: "FR-004"
+      description: "MUST use implement_method from config when no execution mode flags (--phases, --tasks) are provided"
+      testable: true
+      acceptance_criteria: "implement command without flags uses config value to determine execution mode"
+    - id: "FR-005"
+      description: "MUST allow CLI flags --phases and --tasks to override config implement_method"
+      testable: true
+      acceptance_criteria: "CLI flags take precedence over config setting"
+    - id: "FR-006"
+      description: "MUST support environment variable AUTOSPEC_IMPLEMENT_METHOD to override config"
+      testable: true
+      acceptance_criteria: "Environment variable overrides config file but is overridden by CLI flags"
+  non_functional:
+    - id: "NFR-001"
+      category: "usability"
+      description: "Error messages for invalid implement_method values should list all valid options"
+      measurable_target: "Error message contains all three valid values: single-session, phases, tasks"
+    - id: "NFR-002"
+      category: "performance"
+      description: "Config validation should complete quickly"
+      measurable_target: "Validation of implement_method field completes in under 10ms"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Default behavior changes from single-session to phases execution"
+      metric: "Execution mode when running autospec implement with fresh config"
+      target: "phases mode is used (each phase in separate session)"
+    - id: "SC-002"
+      description: "Users can configure their preferred default execution method"
+      metric: "Config option correctly controls default behavior"
+      target: "All three values (single-session, phases, tasks) work as documented"
+    - id: "SC-003"
+      description: "CLI flags override config setting"
+      metric: "Flag vs config precedence"
+      target: "CLI flags always take precedence over config implement_method"
+
+key_entities:
+  - name: "implement_method"
+    description: "Configuration option controlling default execution mode for implement command"
+    attributes:
+      - "Value: string enum (single-session, phases, tasks)"
+      - "Default: phases"
+      - "Source priority: CLI flag > env var > config file > default"
+
+edge_cases:
+  - scenario: "Config file contains invalid implement_method value"
+    expected_behavior: "Config validation fails with error listing valid options"
+  - scenario: "Both --phases and implement_method: tasks in config"
+    expected_behavior: "--phases flag wins, runs in phases mode"
+  - scenario: "Environment variable set to invalid value"
+    expected_behavior: "Validation fails with clear error message"
+  - scenario: "Empty string for implement_method in config"
+    expected_behavior: "Treated as missing, uses default 'phases'"
+  - scenario: "implement_method specified in both project and user config"
+    expected_behavior: "Project config takes precedence per existing config hierarchy"
+
+assumptions:
+  - "Existing --phases and --tasks CLI flags remain unchanged in behavior"
+  - "Config hierarchy (env > project > user > default) applies to implement_method"
+  - "The implement command's existing flag detection logic can be extended"
+  - "koanf configuration library supports string validation via go-playground/validator"
+
+constraints:
+  - "Must maintain backward compatibility - single-session option preserves legacy behavior"
+  - "Must follow existing config patterns (mapstructure tags, koanf loading)"
+  - "Validation must follow existing patterns in internal/config/validate.go"
+  - "Environment variable naming must follow AUTOSPEC_ prefix convention"
+
+out_of_scope:
+  - "Changing behavior of --phases or --tasks flags themselves"
+  - "Adding new execution modes beyond the three specified"
+  - "Modifying the run command's phase handling"
+  - "Performance optimization of the execution modes themselves"
+  - "Documentation updates beyond code comments (handled in separate task)"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-16T08:52:32Z"
+  artifact_type: "spec"
