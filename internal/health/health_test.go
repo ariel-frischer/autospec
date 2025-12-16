@@ -44,13 +44,11 @@ func TestRunHealthChecks(t *testing.T) {
 
 // TestFormatReport tests the report formatting
 func TestFormatReport(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		report   *HealthReport
 		expected []string
 	}{
-		{
-			name: "All checks pass",
+		"All checks pass": {
 			report: &HealthReport{
 				Checks: []CheckResult{
 					{Name: "Claude CLI", Passed: true, Message: "Claude CLI found"},
@@ -63,8 +61,7 @@ func TestFormatReport(t *testing.T) {
 				"✓ Git found",
 			},
 		},
-		{
-			name: "One check fails",
+		"One check fails": {
 			report: &HealthReport{
 				Checks: []CheckResult{
 					{Name: "Claude CLI", Passed: false, Message: "Claude CLI not found in PATH"},
@@ -77,8 +74,7 @@ func TestFormatReport(t *testing.T) {
 				"✓ Git found",
 			},
 		},
-		{
-			name: "All checks fail",
+		"All checks fail": {
 			report: &HealthReport{
 				Checks: []CheckResult{
 					{Name: "Claude CLI", Passed: false, Message: "Claude CLI not found in PATH"},
@@ -93,8 +89,8 @@ func TestFormatReport(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			output := FormatReport(tt.report)
 			for _, expected := range tt.expected {
 				assert.Contains(t, output, expected, "Output should contain: %s", expected)

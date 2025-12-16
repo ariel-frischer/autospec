@@ -12,55 +12,46 @@ import (
 )
 
 func TestGenerateBranchName(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		description string
 		expected    string
 	}{
-		{
-			name:        "simple feature",
+		"simple feature": {
 			description: "Add user authentication",
 			expected:    "user-authentication",
 		},
-		{
-			name:        "filters stop words",
+		"filters stop words": {
 			description: "I want to add a feature for the users",
 			expected:    "feature-users",
 		},
-		{
-			name:        "keeps first 3 words",
+		"keeps first 3 words": {
 			description: "Implement OAuth2 integration for API access",
 			expected:    "implement-oauth2-integration",
 		},
-		{
-			name:        "keeps 4 words when exactly 4",
+		"keeps 4 words when exactly 4": {
 			description: "Implement OAuth2 API access",
 			expected:    "implement-oauth2-api-access",
 		},
-		{
-			name:        "handles uppercase",
+		"handles uppercase": {
 			description: "Add API Support",
 			expected:    "api-support",
 		},
-		{
-			name:        "keeps two-letter words in meaningful context",
+		"keeps two-letter words in meaningful context": {
 			description: "Add CI CD pipeline",
 			expected:    "ci-cd-pipeline",
 		},
-		{
-			name:        "removes special characters",
+		"removes special characters": {
 			description: "Add user-auth feature (v2)",
 			expected:    "user-auth-feature",
 		},
-		{
-			name:        "handles numbers",
+		"handles numbers": {
 			description: "Version 2 upgrade",
 			expected:    "version-upgrade",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := GenerateBranchName(tt.description)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -68,50 +59,42 @@ func TestGenerateBranchName(t *testing.T) {
 }
 
 func TestCleanBranchName(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		input    string
 		expected string
 	}{
-		{
-			name:     "lowercase conversion",
+		"lowercase conversion": {
 			input:    "MyFeature",
 			expected: "myfeature",
 		},
-		{
-			name:     "replaces spaces",
+		"replaces spaces": {
 			input:    "my feature",
 			expected: "my-feature",
 		},
-		{
-			name:     "replaces special chars",
+		"replaces special chars": {
 			input:    "my_feature@v2",
 			expected: "my-feature-v2",
 		},
-		{
-			name:     "removes consecutive hyphens",
+		"removes consecutive hyphens": {
 			input:    "my--feature",
 			expected: "my-feature",
 		},
-		{
-			name:     "removes leading hyphen",
+		"removes leading hyphen": {
 			input:    "-my-feature",
 			expected: "my-feature",
 		},
-		{
-			name:     "removes trailing hyphen",
+		"removes trailing hyphen": {
 			input:    "my-feature-",
 			expected: "my-feature",
 		},
-		{
-			name:     "handles mixed special chars",
+		"handles mixed special chars": {
 			input:    "  My Feature (v2.0)  ",
 			expected: "my-feature-v2-0",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := CleanBranchName(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -119,30 +102,26 @@ func TestCleanBranchName(t *testing.T) {
 }
 
 func TestTruncateBranchName(t *testing.T) {
-	tests := []struct {
-		name             string
+	tests := map[string]struct {
 		branchName       string
 		expectTruncation bool
 	}{
-		{
-			name:             "short branch name unchanged",
+		"short branch name unchanged": {
 			branchName:       "001-my-feature",
 			expectTruncation: false,
 		},
-		{
-			name:             "exactly at limit unchanged",
+		"exactly at limit unchanged": {
 			branchName:       "001-" + strings.Repeat("a", 240),
 			expectTruncation: false,
 		},
-		{
-			name:             "over limit truncated",
+		"over limit truncated": {
 			branchName:       "001-" + strings.Repeat("a", 250),
 			expectTruncation: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := TruncateBranchName(tt.branchName)
 			assert.LessOrEqual(t, len(result), MaxBranchLength)
 
@@ -209,18 +188,18 @@ func TestGetNextBranchNumber(t *testing.T) {
 }
 
 func TestFormatBranchName(t *testing.T) {
-	tests := []struct {
+	tests := map[string]struct {
 		number   string
 		suffix   string
 		expected string
 	}{
-		{"001", "my-feature", "001-my-feature"},
-		{"042", "another-feature", "042-another-feature"},
-		{"123", "test", "123-test"},
+		"001-my-feature":      {number: "001", suffix: "my-feature", expected: "001-my-feature"},
+		"042-another-feature": {number: "042", suffix: "another-feature", expected: "042-another-feature"},
+		"123-test":            {number: "123", suffix: "test", expected: "123-test"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.expected, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := FormatBranchName(tt.number, tt.suffix)
 			assert.Equal(t, tt.expected, result)
 		})

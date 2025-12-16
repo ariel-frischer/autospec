@@ -5,22 +5,24 @@ import (
 )
 
 func TestErrorCategoryString(t *testing.T) {
-	tests := []struct {
+	tests := map[string]struct {
 		category ErrorCategory
 		expected string
 	}{
-		{Argument, "Argument Error"},
-		{Configuration, "Configuration Error"},
-		{Prerequisite, "Prerequisite Error"},
-		{Runtime, "Runtime Error"},
-		{ErrorCategory(99), "Error"}, // Unknown category
+		"Argument":       {category: Argument, expected: "Argument Error"},
+		"Configuration":  {category: Configuration, expected: "Configuration Error"},
+		"Prerequisite":   {category: Prerequisite, expected: "Prerequisite Error"},
+		"Runtime":        {category: Runtime, expected: "Runtime Error"},
+		"Unknown":        {category: ErrorCategory(99), expected: "Error"},
 	}
 
-	for _, test := range tests {
-		result := test.category.String()
-		if result != test.expected {
-			t.Errorf("Expected %q, got %q", test.expected, result)
-		}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := test.category.String()
+			if result != test.expected {
+				t.Errorf("Expected %q, got %q", test.expected, result)
+			}
+		})
 	}
 }
 
