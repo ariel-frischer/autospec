@@ -42,6 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/instal
 - 🧪 **Comprehensive Testing** — Unit tests, benchmarks, and integration tests
 - 🐚 **Shell Completion** — Tab completion for bash, zsh, fish, and PowerShell
 - 🔔 **OS Notifications** — Native desktop notifications with custom sound support
+- 📜 **History Tracking** — View and filter command execution history with status, duration, and exit codes
 
 ## ✨ What Makes Autospec Different?
 
@@ -227,6 +228,16 @@ Claude automatically updates task status during implementation. Manual updates:
 autospec update-task T001 InProgress
 autospec update-task T001 Completed
 autospec update-task T001 Blocked
+```
+
+### History Tracking
+
+View command execution history with filtering and status tracking. See [docs/reference.md](docs/reference.md#autospec-history) for details.
+
+```bash
+autospec history              # View all history
+autospec history -n 10        # Last 10 entries
+autospec history --status failed
 ```
 
 ## 📁 Output Structure
