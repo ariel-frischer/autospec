@@ -53,7 +53,16 @@ detect_os() {
     case "$(uname -s)" in
         Linux*)  echo "Linux" ;;
         Darwin*) echo "Darwin" ;;
-        MINGW*|MSYS*|CYGWIN*) error "Windows is not supported by this installer. Please use install.ps1 or download manually." ;;
+        MINGW*|MSYS*|CYGWIN*)
+            printf '%bWindows Detected%b\n\n' "${YELLOW}" "${NC}" >&2
+            printf 'autospec requires WSL (Windows Subsystem for Linux).\n\n' >&2
+            printf 'Install WSL and try again:\n\n' >&2
+            printf '  1. Open PowerShell as Administrator and run:\n' >&2
+            printf '     %bwsl --install%b\n\n' "${GREEN}" "${NC}" >&2
+            printf '  2. Restart your computer\n\n' >&2
+            printf '  3. Open the WSL terminal and re-run this installer\n\n' >&2
+            exit 1
+            ;;
         *) error "Unsupported operating system: $(uname -s)" ;;
     esac
 }
