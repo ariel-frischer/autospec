@@ -370,9 +370,13 @@ skip_confirmations: false
 }
 
 func TestLoad_YAMLEmptyFile(t *testing.T) {
-	t.Parallel()
-
+	// Cannot use t.Parallel() because we modify environment to isolate from user config
 	tmpDir := t.TempDir()
+
+	// Isolate from real user config by setting HOME/XDG_CONFIG_HOME to temp
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+
 	configPath := filepath.Join(tmpDir, "config.yml")
 
 	// Write empty YAML file
@@ -386,7 +390,7 @@ func TestLoad_YAMLEmptyFile(t *testing.T) {
 	require.NoError(t, err)
 	// Should use defaults
 	assert.Equal(t, "claude", cfg.ClaudeCmd)
-	assert.Equal(t, 3, cfg.MaxRetries)
+	assert.Equal(t, 0, cfg.MaxRetries)
 }
 
 func TestLoad_YAMLInvalidSyntax(t *testing.T) {

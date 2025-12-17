@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,51 +13,29 @@ import (
 // TestRunPreflightChecks tests the pre-flight validation logic
 func TestRunPreflightChecks(t *testing.T) {
 	tests := map[string]struct {
-		setupFunc   func() func()
+		setupDirs   []string // Directories to create in temp dir
 		wantPassed  bool
 		wantMissing int
 		wantFailed  int
 	}{
 		"all checks pass": {
-			setupFunc: func() func() {
-				// Create temporary directories
-				os.MkdirAll(".claude/commands", 0755)
-				os.MkdirAll(".autospec", 0755)
-				return func() {
-					os.RemoveAll(".claude")
-					os.RemoveAll(".autospec")
-				}
-			},
+			setupDirs:   []string{".claude/commands", ".autospec"},
 			wantPassed:  true,
 			wantMissing: 0,
 			wantFailed:  0,
 		},
 		"missing .claude/commands directory": {
-			setupFunc: func() func() {
-				os.MkdirAll(".autospec", 0755)
-				return func() {
-					os.RemoveAll(".autospec")
-				}
-			},
+			setupDirs:   []string{".autospec"},
 			wantPassed:  false,
 			wantMissing: 1,
 		},
 		"missing .autospec directory": {
-			setupFunc: func() func() {
-				os.MkdirAll(".claude/commands", 0755)
-				return func() {
-					os.RemoveAll(".claude")
-				}
-			},
+			setupDirs:   []string{".claude/commands"},
 			wantPassed:  false,
 			wantMissing: 1,
 		},
 		"missing both directories": {
-			setupFunc: func() func() {
-				return func() {
-					// No cleanup needed
-				}
-			},
+			setupDirs:   []string{},
 			wantPassed:  false,
 			wantMissing: 2,
 		},
@@ -64,9 +43,17 @@ func TestRunPreflightChecks(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			// Setup test environment
-			cleanup := tc.setupFunc()
-			defer cleanup()
+			// Use temp directory to avoid modifying actual repo directories
+			tmpDir := t.TempDir()
+			origDir, err := os.Getwd()
+			require.NoError(t, err)
+			require.NoError(t, os.Chdir(tmpDir))
+			defer func() { _ = os.Chdir(origDir) }()
+
+			// Create test directories
+			for _, dir := range tc.setupDirs {
+				require.NoError(t, os.MkdirAll(dir, 0755))
+			}
 
 			// Run pre-flight checks
 			result, err := RunPreflightChecks()
@@ -192,9 +179,17 @@ func TestShouldRunPreflightChecks(t *testing.T) {
 		},
 	}
 
+	// List of CI environment variables that must be cleared for proper testing
+	ciEnvVars := []string{"CI", "CONTINUOUS_INTEGRATION", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI"}
+
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			// Set environment variable if specified
+			// Clear all CI env vars first to ensure clean test environment
+			for _, envVar := range ciEnvVars {
+				t.Setenv(envVar, "")
+			}
+
+			// Set environment variable if specified for this test case
 			if tc.ciEnvVar != "" {
 				t.Setenv(tc.ciEnvVar, tc.ciValue)
 			}
@@ -222,15 +217,18 @@ func TestCheckDependencies(t *testing.T) {
 
 // TestCheckProjectStructure tests project structure validation
 func TestCheckProjectStructure(t *testing.T) {
-	// Create temporary directories
-	os.MkdirAll(".claude/commands", 0755)
-	os.MkdirAll(".autospec", 0755)
-	defer func() {
-		os.RemoveAll(".claude")
-		os.RemoveAll(".autospec")
-	}()
+	// Use temp directory to avoid modifying actual repo directories
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	defer func() { _ = os.Chdir(origDir) }()
 
-	err := CheckProjectStructure()
+	// Create temporary directories
+	require.NoError(t, os.MkdirAll(".claude/commands", 0755))
+	require.NoError(t, os.MkdirAll(".autospec", 0755))
+
+	err = CheckProjectStructure()
 	assert.NoError(t, err, "Should pass with all directories present")
 
 	// Remove one directory and test again
@@ -243,13 +241,17 @@ func TestCheckProjectStructure(t *testing.T) {
 // BenchmarkRunPreflightChecks benchmarks pre-flight checks performance
 // Target: <100ms
 func BenchmarkRunPreflightChecks(b *testing.B) {
+	// Use temp directory to avoid modifying actual repo directories
+	tmpDir := b.TempDir()
+	origDir, _ := os.Getwd()
+	if err := os.Chdir(tmpDir); err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+
 	// Setup test directories
 	os.MkdirAll(".claude/commands", 0755)
 	os.MkdirAll(".autospec", 0755)
-	defer func() {
-		os.RemoveAll(".claude")
-		os.RemoveAll(".autospec")
-	}()
 
 	// Reset timer after setup
 	b.ResetTimer()
@@ -269,107 +271,61 @@ func BenchmarkCheckCommandExists(b *testing.B) {
 // TestCheckConstitutionExists tests the constitution file validation
 func TestCheckConstitutionExists(t *testing.T) {
 	tests := map[string]struct {
-		setupFunc    func() func()
+		setupFiles   map[string]string // path -> content
 		wantExists   bool
 		wantPath     string
 		wantErrEmpty bool
 	}{
 		"autospec constitution exists (.yaml)": {
-			setupFunc: func() func() {
-				os.MkdirAll(".autospec/memory", 0755)
-				os.WriteFile(".autospec/memory/constitution.yaml", []byte("project_name: Test"), 0644)
-				return func() {
-					os.RemoveAll(".autospec")
-				}
-			},
+			setupFiles:   map[string]string{".autospec/memory/constitution.yaml": "project_name: Test"},
 			wantExists:   true,
 			wantPath:     ".autospec/memory/constitution.yaml",
 			wantErrEmpty: true,
 		},
 		"autospec constitution exists (.yml)": {
-			setupFunc: func() func() {
-				os.MkdirAll(".autospec/memory", 0755)
-				os.WriteFile(".autospec/memory/constitution.yml", []byte("project_name: Test"), 0644)
-				return func() {
-					os.RemoveAll(".autospec")
-				}
-			},
+			setupFiles:   map[string]string{".autospec/memory/constitution.yml": "project_name: Test"},
 			wantExists:   true,
 			wantPath:     ".autospec/memory/constitution.yml",
 			wantErrEmpty: true,
 		},
 		"legacy specify constitution exists (.yaml)": {
-			setupFunc: func() func() {
-				os.MkdirAll(".specify/memory", 0755)
-				os.WriteFile(".specify/memory/constitution.yaml", []byte("project_name: Test"), 0644)
-				return func() {
-					os.RemoveAll(".specify")
-				}
-			},
+			setupFiles:   map[string]string{".specify/memory/constitution.yaml": "project_name: Test"},
 			wantExists:   true,
 			wantPath:     ".specify/memory/constitution.yaml",
 			wantErrEmpty: true,
 		},
 		"legacy specify constitution exists (.yml)": {
-			setupFunc: func() func() {
-				os.MkdirAll(".specify/memory", 0755)
-				os.WriteFile(".specify/memory/constitution.yml", []byte("project_name: Test"), 0644)
-				return func() {
-					os.RemoveAll(".specify")
-				}
-			},
+			setupFiles:   map[string]string{".specify/memory/constitution.yml": "project_name: Test"},
 			wantExists:   true,
 			wantPath:     ".specify/memory/constitution.yml",
 			wantErrEmpty: true,
 		},
 		"yaml takes precedence over yml": {
-			setupFunc: func() func() {
-				os.MkdirAll(".autospec/memory", 0755)
-				os.WriteFile(".autospec/memory/constitution.yaml", []byte("project_name: YAML"), 0644)
-				os.WriteFile(".autospec/memory/constitution.yml", []byte("project_name: YML"), 0644)
-				return func() {
-					os.RemoveAll(".autospec")
-				}
+			setupFiles: map[string]string{
+				".autospec/memory/constitution.yaml": "project_name: YAML",
+				".autospec/memory/constitution.yml":  "project_name: YML",
 			},
 			wantExists:   true,
 			wantPath:     ".autospec/memory/constitution.yaml",
 			wantErrEmpty: true,
 		},
 		"autospec takes precedence over specify": {
-			setupFunc: func() func() {
-				os.MkdirAll(".autospec/memory", 0755)
-				os.WriteFile(".autospec/memory/constitution.yaml", []byte("project_name: Autospec"), 0644)
-				os.MkdirAll(".specify/memory", 0755)
-				os.WriteFile(".specify/memory/constitution.yaml", []byte("project_name: Specify"), 0644)
-				return func() {
-					os.RemoveAll(".autospec")
-					os.RemoveAll(".specify")
-				}
+			setupFiles: map[string]string{
+				".autospec/memory/constitution.yaml": "project_name: Autospec",
+				".specify/memory/constitution.yaml":  "project_name: Specify",
 			},
 			wantExists:   true,
 			wantPath:     ".autospec/memory/constitution.yaml",
 			wantErrEmpty: true,
 		},
 		"no constitution exists": {
-			setupFunc: func() func() {
-				// Ensure neither directory exists
-				os.RemoveAll(".autospec")
-				os.RemoveAll(".specify")
-				return func() {}
-			},
+			setupFiles:   map[string]string{},
 			wantExists:   false,
 			wantPath:     "",
 			wantErrEmpty: false,
 		},
 		"directories exist but no constitution file": {
-			setupFunc: func() func() {
-				os.MkdirAll(".autospec/memory", 0755)
-				os.MkdirAll(".specify/memory", 0755)
-				return func() {
-					os.RemoveAll(".autospec")
-					os.RemoveAll(".specify")
-				}
-			},
+			setupFiles:   map[string]string{".autospec/memory/.keep": "", ".specify/memory/.keep": ""},
 			wantExists:   false,
 			wantPath:     "",
 			wantErrEmpty: false,
@@ -378,8 +334,19 @@ func TestCheckConstitutionExists(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			cleanup := tc.setupFunc()
-			defer cleanup()
+			// Use temp directory to avoid modifying actual repo directories
+			tmpDir := t.TempDir()
+			origDir, err := os.Getwd()
+			require.NoError(t, err)
+			require.NoError(t, os.Chdir(tmpDir))
+			defer func() { _ = os.Chdir(origDir) }()
+
+			// Create test files
+			for path, content := range tc.setupFiles {
+				dir := filepath.Dir(path)
+				require.NoError(t, os.MkdirAll(dir, 0755))
+				require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+			}
 
 			result := CheckConstitutionExists()
 
@@ -414,10 +381,17 @@ func TestGenerateConstitutionMissingError(t *testing.T) {
 // BenchmarkCheckConstitutionExists benchmarks constitution check performance
 // Target: <10ms
 func BenchmarkCheckConstitutionExists(b *testing.B) {
+	// Use temp directory to avoid modifying actual repo directories
+	tmpDir := b.TempDir()
+	origDir, _ := os.Getwd()
+	if err := os.Chdir(tmpDir); err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+
 	// Setup with constitution file
 	os.MkdirAll(".autospec/memory", 0755)
 	os.WriteFile(".autospec/memory/constitution.yaml", []byte("project_name: Test"), 0644)
-	defer os.RemoveAll(".autospec")
 
 	b.ResetTimer()
 
