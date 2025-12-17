@@ -138,14 +138,8 @@ func writeDefaultConfig(configPath string) error {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	defaults := config.GetDefaults()
-	data, err := yaml.Marshal(defaults)
-	if err != nil {
-		return fmt.Errorf("failed to serialize config: %w", err)
-	}
-
-	header := "# Autospec Configuration\n# See 'autospec config show' for all available options\n\n"
-	if err := os.WriteFile(configPath, []byte(header+string(data)), 0644); err != nil {
+	template := config.GetDefaultConfigTemplate()
+	if err := os.WriteFile(configPath, []byte(template), 0644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 	return nil

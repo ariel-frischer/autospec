@@ -2,6 +2,46 @@ package config
 
 import "time"
 
+// GetDefaultConfigTemplate returns a fully commented config template
+// that helps users understand all available options
+func GetDefaultConfigTemplate() string {
+	return `# Autospec Configuration
+# See 'autospec --help' for command reference
+
+# Claude CLI settings
+claude_cmd: claude                    # Claude CLI command
+claude_args:                          # Arguments passed to Claude CLI
+  - -p
+  - --verbose
+  - --output-format
+  - stream-json
+custom_claude_cmd: ""                 # Custom command (overrides claude_cmd + claude_args)
+
+# Workflow settings
+max_retries: 0                        # Max retry attempts per stage (0-10)
+specs_dir: ./specs                    # Directory for feature specs
+state_dir: ~/.autospec/state          # Directory for state files
+skip_preflight: false                 # Skip preflight checks
+timeout: 2400                         # Timeout in seconds (40 min default, 0 = no timeout)
+skip_confirmations: false             # Skip confirmation prompts
+implement_method: phases              # Default: phases | tasks | single-session
+
+# History settings
+max_history_entries: 500              # Max command history entries to retain
+
+# Notifications (all platforms)
+notifications:
+  enabled: false                      # Enable notifications (opt-in)
+  type: both                          # sound | visual | both
+  sound_file: ""                      # Custom sound file path (empty = system default)
+  on_command_complete: true           # Notify when command finishes
+  on_stage_complete: false            # Notify on each stage completion
+  on_error: true                      # Notify on failures
+  on_long_running: false              # Enable duration-based notifications
+  long_running_threshold: 30s         # Threshold for long-running notification
+`
+}
+
 // GetDefaults returns the default configuration values
 func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
