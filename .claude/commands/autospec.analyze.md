@@ -227,12 +227,12 @@ _meta:
 
 ### 7. Write the analysis to `FEATURE_DIR/analysis.yaml`
 
-### 8. Validate the YAML
+### 8. Validate the artifact
 
 ```bash
-autospec yaml check FEATURE_DIR/analysis.yaml
+autospec artifact FEATURE_DIR/analysis.yaml
 ```
-- If validation fails: fix YAML syntax errors and retry
+- If validation fails: fix schema errors (missing required fields, invalid types/enums) and retry
 - If validation passes: proceed to report
 
 ### 9. Report Next Actions

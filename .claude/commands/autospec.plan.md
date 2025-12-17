@@ -195,11 +195,11 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 5. **Write the plan** to `FEATURE_DIR/plan.yaml`
 
-6. **Validate the YAML**:
+6. **Validate the artifact**:
    ```bash
-   autospec yaml check FEATURE_DIR/plan.yaml
+   autospec artifact FEATURE_DIR/plan.yaml
    ```
-   - If validation fails: fix YAML syntax errors and retry
+   - If validation fails: fix schema errors (missing required fields, invalid types) and retry
    - If validation passes: proceed to report
 
 7. **Report**: Output:
@@ -212,7 +212,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Key Rules
 
-- Output MUST be valid YAML (use `autospec yaml check` to verify)
+- Output MUST be valid YAML (use `autospec artifact FEATURE_DIR/plan.yaml` to verify schema compliance)
 - Technical context should reflect actual project setup (detect from existing code)
 - Constitution gates are mandatory if constitution exists
 - Research findings should document all significant technical decisions

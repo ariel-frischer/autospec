@@ -173,11 +173,11 @@ Follow this execution flow:
 5. **Write the constitution** to `.autospec/memory/constitution.yaml`
    - Create `.autospec/memory/` directory if it doesn't exist
 
-6. **Validate the YAML**:
+6. **Validate the artifact**:
    ```bash
-   autospec yaml check .autospec/memory/constitution.yaml
+   autospec artifact .autospec/memory/constitution.yaml
    ```
-   - If validation fails: fix YAML syntax errors and retry
+   - If validation fails: fix schema errors (missing required fields, invalid types/enums) and retry
    - If validation passes: proceed to report
 
 7. **Report**: Output:

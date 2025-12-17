@@ -1,0 +1,337 @@
+plan:
+  branch: "030-worktree-management"
+  created: "2025-12-16"
+  spec_path: "specs/030-worktree-management/spec.yaml"
+
+summary: |
+  This plan implements git worktree management for autospec, enabling developers to work
+  on multiple features in parallel without branch conflicts. The core challenge is global
+  spec numbering across worktrees - solved by a file-locked counter in the main worktree
+  at .autospec/state/spec-counter.lock. The implementation adds a new internal/worktree
+  package with git worktree operations and a new CLI command group (autospec worktree)
+  with subcommands: new, list, remove, and init.
+
+  Key technical decisions include using flock-style file locking for cross-process
+  synchronization (with portability via Go's syscall package), storing the global spec
+  counter in the main worktree only, and supporting a .autospec/worktree-include file
+  for specifying gitignored paths to copy to new worktrees.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8.0"
+      purpose: "CLI framework for command structure"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing for worktree-include files"
+    - name: "golang.org/x/sys"
+      version: "latest"
+      purpose: "Cross-platform file locking syscalls"
+  storage: "File-based state in .autospec/state/"
+  testing:
+    framework: "Go testing package"
+    approach: "Unit tests with map-based table-driven pattern, integration tests for git worktree operations"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Worktree creation under 30 seconds excluding file copy; spec number allocation under 100ms"
+  constraints:
+    - "Must work with standard git worktree semantics"
+    - "Spec counter must be atomic and survive process crashes"
+    - "Cannot require network access for spec number allocation"
+    - "Must work on Linux, macOS, and Windows"
+    - "Lock file mechanism must handle stale locks (process died holding lock)"
+    - "Git version 2.5+ required for worktree support"
+  scale_scope: "Single developer with multiple active worktrees (typically 2-10)"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Plan includes test files for all new packages; tasks will require tests before implementation"
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Worktree operations validate prerequisites (git version, main worktree access) before proceeding"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Spec number allocation designed for <100ms; validation functions will meet <10ms contract"
+    - name: "Idempotency and Retry Logic"
+      status: "PASS"
+      notes: "Worktree creation is idempotent (checks for existing worktree); lock file uses atomic operations"
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Will use existing exit code constants from internal/errors package"
+    - name: "YAML-First Artifacts"
+      status: "PASS"
+      notes: "worktree-include config uses YAML format for consistency"
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "All code will pass go fmt, go vet, and shellcheck for generated scripts"
+    - name: "Go Coding Standards"
+      status: "PASS"
+      notes: "Functions <40 lines, wrapped errors, map-based table tests, interface-in concrete-out pattern"
+    - name: "Cross-Platform Compatibility"
+      status: "PASS"
+      notes: "File locking uses Go's os package with platform-specific fallbacks; paths use filepath package"
+    - name: "Explicit Dependencies"
+      status: "PASS"
+      notes: "golang.org/x/sys already in go.mod; no new external dependencies required"
+    - name: "Documentation Standards"
+      status: "PASS"
+      notes: "Public APIs will have godoc comments; CLI help text follows existing patterns"
+
+research_findings:
+  decisions:
+    - topic: "Global spec number synchronization"
+      decision: "File-based lock in main worktree at .autospec/state/spec-counter.lock"
+      rationale: "Simple, no external dependencies, survives process crashes, works cross-platform"
+      alternatives_considered:
+        - "Distributed lock service (Redis) - over-engineered for local use"
+        - "Git notes for spec counter - complex and git-specific"
+        - "Advisory locks on specs directory - doesn't prevent concurrent reads"
+    - topic: "Locating main worktree from any worktree"
+      decision: "Use 'git worktree list' to find main worktree path"
+      rationale: "Git tracks this natively; main worktree is the one without a .git file (has .git directory)"
+      alternatives_considered:
+        - "Store main path in each worktree - stale if main moves"
+        - "Environment variable - requires user setup"
+    - topic: "File locking implementation"
+      decision: "Use os.OpenFile with O_CREATE|O_EXCL for lock acquisition, with timeout and stale lock detection"
+      rationale: "Portable across platforms, Go standard library, simple implementation"
+      alternatives_considered:
+        - "syscall.Flock - not available on Windows"
+        - "External lockfile library - unnecessary dependency"
+        - "PID-based lock files - more complex stale detection"
+    - topic: "Copying gitignored files to new worktrees"
+      decision: "Use .autospec/worktree-include YAML file listing paths to copy"
+      rationale: "Explicit opt-in, user-controlled, YAML consistent with other autospec configs"
+      alternatives_considered:
+        - "Auto-detect common patterns (node_modules, venv) - too implicit"
+        - "Shell script per project - not portable"
+    - topic: "Warning on specify in active spec branch"
+      decision: "Check branch pattern in specify command prerun, offer worktree creation"
+      rationale: "Non-blocking UX improvement; user can override"
+      alternatives_considered:
+        - "Block specify entirely - too restrictive"
+        - "Auto-create worktree - unexpected behavior"
+
+data_model:
+  entities:
+    - name: "Worktree"
+      description: "Represents a git worktree instance with autospec metadata"
+      fields:
+        - name: "Path"
+          type: "string"
+          description: "Absolute filesystem path to worktree directory"
+          constraints: "Must be valid directory path"
+        - name: "Branch"
+          type: "string"
+          description: "Git branch checked out in this worktree"
+          constraints: "Valid git branch name"
+        - name: "IsMain"
+          type: "bool"
+          description: "Whether this is the main worktree (has .git directory, not file)"
+          constraints: "Exactly one worktree per repo is main"
+        - name: "SpecNumber"
+          type: "string"
+          description: "Reserved spec number for this worktree (if any)"
+          constraints: "3-digit zero-padded string or empty"
+        - name: "ActiveSpec"
+          type: "string"
+          description: "Current spec directory name if spec workflow active"
+          constraints: "Matches pattern NNN-feature-name or empty"
+      relationships:
+        - target: "SpecCounter"
+          type: "many-to-one"
+          description: "All worktrees share one spec counter in main worktree"
+
+    - name: "SpecCounter"
+      description: "Global counter for spec numbers, shared across all worktrees"
+      fields:
+        - name: "Value"
+          type: "int"
+          description: "Current highest allocated spec number"
+          constraints: "Non-negative integer"
+        - name: "LockPath"
+          type: "string"
+          description: "Path to lock file in main worktree"
+          constraints: ".autospec/state/spec-counter.lock"
+        - name: "LastUpdated"
+          type: "time.Time"
+          description: "Timestamp of last allocation"
+          constraints: "UTC timestamp"
+        - name: "LastAllocator"
+          type: "string"
+          description: "Worktree path that last allocated a number"
+          constraints: "For debugging stale lock detection"
+      relationships:
+        - target: "Worktree"
+          type: "one-to-many"
+          description: "Counter serves all worktrees in the repository"
+
+    - name: "WorktreeConfig"
+      description: "Configuration for worktree creation behavior"
+      fields:
+        - name: "IncludePaths"
+          type: "[]string"
+          description: "List of gitignored paths to copy to new worktrees"
+          constraints: "Relative paths from repo root"
+        - name: "SetupScript"
+          type: "string"
+          description: "Path to post-creation script"
+          constraints: ".autospec/scripts/worktree-setup.sh or empty"
+        - name: "DefaultBranch"
+          type: "string"
+          description: "Base branch for new worktrees"
+          constraints: "main or master typically"
+      relationships:
+        - target: "Worktree"
+          type: "one-to-many"
+          description: "Config applies to all worktree creation in this repo"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/worktree.md"
+      description: "User documentation for worktree management commands"
+  source_code:
+    - path: "internal/worktree/worktree.go"
+      description: "Core worktree operations: list, create, remove, find main"
+    - path: "internal/worktree/counter.go"
+      description: "Global spec counter with file locking"
+    - path: "internal/worktree/config.go"
+      description: "WorktreeConfig loading from .autospec/worktree-include"
+    - path: "internal/worktree/copy.go"
+      description: "File copying logic for gitignored paths"
+    - path: "internal/cli/worktree.go"
+      description: "Cobra command group for worktree subcommands"
+    - path: "internal/cli/worktree_new.go"
+      description: "Implementation of 'autospec worktree new' command"
+    - path: "internal/cli/worktree_list.go"
+      description: "Implementation of 'autospec worktree list' command"
+    - path: "internal/cli/worktree_remove.go"
+      description: "Implementation of 'autospec worktree remove' command"
+    - path: "internal/cli/worktree_init.go"
+      description: "Implementation of 'autospec worktree init' command"
+  tests:
+    - path: "internal/worktree/worktree_test.go"
+      description: "Unit tests for worktree operations"
+    - path: "internal/worktree/counter_test.go"
+      description: "Unit tests for spec counter including concurrent access"
+    - path: "internal/worktree/config_test.go"
+      description: "Unit tests for worktree config parsing"
+    - path: "internal/worktree/copy_test.go"
+      description: "Unit tests for file copy operations"
+    - path: "internal/cli/worktree_test.go"
+      description: "Integration tests for worktree CLI commands"
+
+implementation_phases:
+  - phase: 1
+    name: "Core Worktree Package"
+    goal: "Implement internal/worktree package with git worktree operations and spec counter"
+    deliverables:
+      - "internal/worktree/worktree.go with List(), FindMain(), IsMain() functions"
+      - "internal/worktree/counter.go with GetNext(), Reserve(), Release() using file locking"
+      - "internal/worktree/worktree_test.go and counter_test.go with full test coverage"
+      - "Integration with existing internal/git package"
+
+  - phase: 2
+    name: "Worktree Configuration"
+    goal: "Implement worktree configuration and file copy functionality"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "internal/worktree/config.go with LoadConfig(), SaveConfig()"
+      - "internal/worktree/copy.go with CopyIncludedPaths()"
+      - "Support for .autospec/worktree-include YAML file"
+      - "internal/worktree/config_test.go and copy_test.go"
+
+  - phase: 3
+    name: "CLI Commands - New and List"
+    goal: "Implement primary worktree CLI commands for creating and listing worktrees"
+    dependencies:
+      - "Phase 1"
+      - "Phase 2"
+    deliverables:
+      - "internal/cli/worktree.go command group registration"
+      - "internal/cli/worktree_new.go with full workflow"
+      - "internal/cli/worktree_list.go with status display"
+      - "internal/cli/worktree_test.go integration tests"
+
+  - phase: 4
+    name: "CLI Commands - Remove and Init"
+    goal: "Implement worktree removal and initialization commands"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "internal/cli/worktree_remove.go with safety checks"
+      - "internal/cli/worktree_init.go for project setup"
+      - "Generated .autospec/scripts/worktree-setup.sh template"
+      - "Extended integration tests"
+
+  - phase: 5
+    name: "Specify Warning Integration"
+    goal: "Add worktree suggestion warning to specify command"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Modification to internal/cli/specify.go prerun hook"
+      - "Branch pattern detection for existing spec branches"
+      - "User prompt with worktree creation suggestion"
+      - "Bypass flag for intentional same-branch specify"
+
+  - phase: 6
+    name: "Documentation and Polish"
+    goal: "Complete documentation and final quality assurance"
+    dependencies:
+      - "Phase 4"
+      - "Phase 5"
+    deliverables:
+      - "docs/worktree.md user documentation"
+      - "Updated CLAUDE.md with worktree commands"
+      - "Shell completion for worktree subcommands"
+      - "Final make test, make fmt, make lint, make build verification"
+
+risks:
+  - risk: "File locking behavior differs across filesystems (NFS, network drives)"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Document supported filesystems; use conservative locking with retries"
+  - risk: "Stale lock detection may incorrectly identify valid locks as stale"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Use PID + timestamp in lock file; 5-minute stale threshold"
+  - risk: "Git worktree command unavailable on older git versions"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Check git version at runtime; fail fast with clear error message"
+  - risk: "Large gitignored directories slow down worktree creation"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Show progress during copy; document that large dirs increase creation time"
+  - risk: "Windows file locking semantics differ from Unix"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Use Go's os package abstractions; test on Windows CI"
+
+open_questions:
+  - question: "Should spec numbers be reserved at worktree creation or at specify time?"
+    context: "Reserving at creation ensures uniqueness but may waste numbers if worktree is abandoned"
+    proposed_resolution: "Reserve at specify time, not worktree creation - matches current behavior and avoids waste"
+  - question: "How to handle worktree creation when main worktree is on a remote filesystem?"
+    context: "File locking may not work reliably on NFS or CIFS"
+    proposed_resolution: "Detect remote filesystem and warn user; suggest local main worktree for multi-worktree workflows"
+  - question: "Should setup script execution be optional or always attempted?"
+    context: "Some users may want worktrees without running setup"
+    proposed_resolution: "Add --no-setup flag to skip script execution; default to running if script exists"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-17T01:15:35Z"
+  artifact_type: "plan"

@@ -153,11 +153,11 @@ Note: This clarification workflow should run BEFORE `/autospec.plan`. If the use
    - Preserve YAML formatting: do not reorder unrelated sections; keep structure intact
    - Keep each inserted clarification minimal and testable
 
-6. **Validate the YAML** after each write:
+6. **Validate the artifact** after each write:
    ```bash
-   autospec yaml check FEATURE_SPEC
+   autospec artifact FEATURE_SPEC
    ```
-   - If validation fails: fix YAML syntax errors and retry
+   - If validation fails: fix schema errors (missing required fields, invalid types) and retry
    - If validation passes: proceed
 
 7. **Report completion** (after questioning loop ends):
@@ -174,7 +174,7 @@ Note: This clarification workflow should run BEFORE `/autospec.plan`. If the use
 
 ## Key Rules
 
-- Output MUST be valid YAML (use `autospec yaml check` to verify)
+- Output MUST be valid YAML (use `autospec artifact FEATURE_SPEC` to verify schema compliance)
 - If no meaningful ambiguities found, respond: "No critical ambiguities detected worth formal clarification." and suggest proceeding
 - If spec file missing, instruct user to run `/autospec.specify` first
 - Never exceed 5 total asked questions (clarification retries for a single question do not count as new questions)

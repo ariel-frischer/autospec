@@ -179,11 +179,11 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Create `FEATURE_DIR/checklists/` directory if it doesn't exist
    - Use domain-based filename: `ux.yaml`, `api.yaml`, `security.yaml`, etc.
 
-7. **Validate the YAML**:
+7. **Validate the artifact**:
    ```bash
-   autospec yaml check FEATURE_DIR/checklists/<domain>.yaml
+   autospec artifact checklist FEATURE_DIR/checklists/<domain>.yaml
    ```
-   - If validation fails: fix YAML syntax errors and retry
+   - If validation fails: fix schema errors (missing required fields, invalid types/enums) and retry
    - If validation passes: proceed to report
 
 8. **Report**: Output:
