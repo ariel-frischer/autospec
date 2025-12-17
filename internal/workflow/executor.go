@@ -3,6 +3,7 @@ package workflow
 import (
 	"fmt"
 
+	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/progress"
 	"github.com/ariel-frischer/autospec/internal/retry"
@@ -92,7 +93,8 @@ type StageResult struct {
 	Exhausted  bool
 }
 
-// ExecuteStage executes a workflow stage with validation and retry logic
+// ExecuteStage executes a workflow stage with validation and retry logic.
+// It uses lifecycle.RunStage to wrap the execution and handle stage notifications.
 func (e *Executor) ExecuteStage(specName string, stage Stage, command string, validateFunc func(string) error) (*StageResult, error) {
 	e.debugLog("ExecuteStage called - spec: %s, stage: %s, command: %s", specName, stage, command)
 	result := &StageResult{
@@ -110,23 +112,35 @@ func (e *Executor) ExecuteStage(specName string, stage Stage, command string, va
 	stageInfo := e.buildStageInfo(stage, retryState.Count)
 	e.startProgressDisplay(stageInfo)
 
-	// Display and execute command
-	e.displayCommandExecution(command)
-	if err := e.Claude.Execute(command); err != nil {
-		return e.handleExecutionError(result, retryState, stageInfo, err)
-	}
-	e.debugLog("Claude.Execute() completed successfully")
+	// Use lifecycle.RunStage to wrap execution and handle stage notification
+	var stageErr error
+	execErr := lifecycle.RunStage(e.NotificationHandler, string(stage), func() error {
+		// Display and execute command
+		e.displayCommandExecution(command)
+		if err := e.Claude.Execute(command); err != nil {
+			stageErr = e.handleExecutionFailure(result, retryState, stageInfo, err)
+			return stageErr
+		}
+		e.debugLog("Claude.Execute() completed successfully")
 
-	// Validate output
-	specDir := fmt.Sprintf("%s/%s", e.SpecsDir, specName)
-	if err := validateFunc(specDir); err != nil {
-		return e.handleValidationError(result, retryState, stageInfo, err)
-	}
-	e.debugLog("Validation passed!")
+		// Validate output
+		specDir := fmt.Sprintf("%s/%s", e.SpecsDir, specName)
+		if err := validateFunc(specDir); err != nil {
+			stageErr = e.handleValidationFailure(result, retryState, stageInfo, err)
+			return stageErr
+		}
+		e.debugLog("Validation passed!")
 
-	// Handle success
-	e.completeStageSuccess(result, stageInfo, specName, stage)
-	return result, nil
+		// Handle success
+		e.completeStageSuccessNoNotify(result, stageInfo, specName, stage)
+		return nil
+	})
+
+	// If stageErr was set by the inner function, return it
+	if stageErr != nil {
+		return result, stageErr
+	}
+	return result, execErr
 }
 
 // loadStageRetryState loads retry state for a stage
@@ -158,8 +172,9 @@ func (e *Executor) displayCommandExecution(command string) {
 	e.debugLog("About to call Claude.Execute()")
 }
 
-// handleExecutionError handles command execution failure
-func (e *Executor) handleExecutionError(result *StageResult, retryState *retry.RetryState, stageInfo progress.StageInfo, err error) (*StageResult, error) {
+// handleExecutionFailure handles command execution failure without sending stage notification.
+// Stage notification is handled by lifecycle.RunStage wrapper.
+func (e *Executor) handleExecutionFailure(result *StageResult, retryState *retry.RetryState, stageInfo progress.StageInfo, err error) error {
 	e.debugLog("Claude.Execute() returned error: %v", err)
 	result.Error = fmt.Errorf("command execution failed: %w", err)
 
@@ -167,18 +182,19 @@ func (e *Executor) handleExecutionError(result *StageResult, retryState *retry.R
 		e.ProgressDisplay.FailStage(stageInfo, result.Error)
 	}
 
-	// Send error notification (non-blocking)
+	// Send error notification (non-blocking) - separate from stage completion
 	if e.NotificationHandler != nil {
 		e.debugLog("Sending error notification for stage %s", stageInfo.Name)
 		e.NotificationHandler.OnError(stageInfo.Name, result.Error)
-		e.NotificationHandler.OnStageComplete(stageInfo.Name, false)
 	}
 
-	return e.handleRetryIncrement(result, retryState, err, "retry limit exhausted")
+	_, retryErr := e.handleRetryIncrement(result, retryState, err, "retry limit exhausted")
+	return retryErr
 }
 
-// handleValidationError handles validation failure
-func (e *Executor) handleValidationError(result *StageResult, retryState *retry.RetryState, stageInfo progress.StageInfo, err error) (*StageResult, error) {
+// handleValidationFailure handles validation failure without sending stage notification.
+// Stage notification is handled by lifecycle.RunStage wrapper.
+func (e *Executor) handleValidationFailure(result *StageResult, retryState *retry.RetryState, stageInfo progress.StageInfo, err error) error {
 	e.debugLog("Validation failed: %v", err)
 	result.Error = fmt.Errorf("validation failed: %w", err)
 
@@ -186,14 +202,14 @@ func (e *Executor) handleValidationError(result *StageResult, retryState *retry.
 		e.ProgressDisplay.FailStage(stageInfo, result.Error)
 	}
 
-	// Send error notification (non-blocking)
+	// Send error notification (non-blocking) - separate from stage completion
 	if e.NotificationHandler != nil {
 		e.debugLog("Sending error notification for stage %s validation failure", stageInfo.Name)
 		e.NotificationHandler.OnError(stageInfo.Name, result.Error)
-		e.NotificationHandler.OnStageComplete(stageInfo.Name, false)
 	}
 
-	return e.handleRetryIncrement(result, retryState, err, "validation failed and retry exhausted")
+	_, retryErr := e.handleRetryIncrement(result, retryState, err, "validation failed and retry exhausted")
+	return retryErr
 }
 
 // handleRetryIncrement increments retry count and handles exhaustion
@@ -216,8 +232,9 @@ func (e *Executor) handleRetryIncrement(result *StageResult, retryState *retry.R
 	return result, result.Error
 }
 
-// completeStageSuccess handles successful stage completion
-func (e *Executor) completeStageSuccess(result *StageResult, stageInfo progress.StageInfo, specName string, stage Stage) {
+// completeStageSuccessNoNotify handles successful stage completion without sending stage notification.
+// Stage notification is handled by lifecycle.RunStage wrapper.
+func (e *Executor) completeStageSuccessNoNotify(result *StageResult, stageInfo progress.StageInfo, specName string, stage Stage) {
 	if e.ProgressDisplay != nil {
 		e.debugLog("Showing completion in progress display")
 		stageInfo.Status = progress.StageCompleted
@@ -229,12 +246,6 @@ func (e *Executor) completeStageSuccess(result *StageResult, stageInfo progress.
 	e.debugLog("Resetting retry count")
 	if err := retry.ResetRetryCount(e.StateDir, specName, string(stage)); err != nil {
 		fmt.Printf("Warning: failed to reset retry count: %v\n", err)
-	}
-
-	// Send stage completion notification (non-blocking)
-	if e.NotificationHandler != nil {
-		e.debugLog("Sending stage completion notification for %s", stage)
-		e.NotificationHandler.OnStageComplete(string(stage), true)
 	}
 
 	result.Success = true
