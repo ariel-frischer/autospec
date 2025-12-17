@@ -377,7 +377,7 @@ Built with:
 - **Go 1.21+** - Cross-platform binary
 - **Cobra** - CLI framework
 - **Koanf** - Configuration library
-- **Claude Code** - Hook system integration
+- **Claude Code** - Command integration
 
 ## Resources
 
