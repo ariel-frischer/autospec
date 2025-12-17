@@ -26,7 +26,7 @@ autospec specify "Add short aliases to all major commands: specify→spec/s, pla
 # 4. Shell Completion Installer - DONE!
 autospec specify "Add 'autospec completion install [bash|zsh|fish|powershell]' subcommand that auto-detects shell from \$SHELL, writes completion script to appropriate location (~/.bashrc, ~/.zshrc, fish config), creates backup before modifying rc files, and provides manual instructions as fallback."
 
-# 5. History/Audit Log
+# 5. History/Audit Log - DONE
 autospec specify "Add 'autospec history' command that logs all command executions to ~/.autospec/history.yaml with timestamp, command, spec, exit code, duration. Support flags: --spec NAME (filter), --clear (clear history), --limit N (show last N). Limit storage to configurable max entries."
 
 # 6. Diff/Preview Mode
