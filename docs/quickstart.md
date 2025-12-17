@@ -44,11 +44,14 @@ Visit the [releases page](https://github.com/ariel-frischer/autospec/releases) a
 - **macOS**: `autospec-darwin-amd64`
 - **Windows**: Use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) and download the Linux binary
 
-Make the binary executable:
+Make the binary executable and install:
 ```bash
 chmod +x autospec-*
-sudo mv autospec-* /usr/local/bin/autospec
+mkdir -p ~/.local/bin
+mv autospec-* ~/.local/bin/autospec
 ```
+
+> **Note**: Ensure `~/.local/bin` is in your PATH. Add `export PATH="$HOME/.local/bin:$PATH"` to your shell config if needed.
 
 Verify installation:
 ```bash

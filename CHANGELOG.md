@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2025-12-17
+
+### Added
+- `sauce` command to display the project source URL
+
+### Changed
+- Installer shows download progress bar for better visibility
+- Default installation directory changed to `~/.local/bin`
+- Installer now backs up existing binary before upgrading
+
+### Fixed
+- Improved installer reliability with better error handling and temp file cleanup
+- Fixed POSIX compatibility issues in installer color output
+
 ## [0.3.1] - 2025-12-16
 
 ### Added
@@ -110,7 +124,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/ariel-frischer/autospec/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/ariel-frischer/autospec/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ariel-frischer/autospec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ariel-frischer/autospec/compare/v0.1.0...v0.2.0

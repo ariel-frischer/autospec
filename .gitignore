@@ -50,3 +50,4 @@ cover.out
 # Go build cache
 .cache/
 
+install-dev.sh

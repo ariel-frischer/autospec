@@ -72,7 +72,22 @@ func printPlainVersion() {
 	fmt.Printf("built: %s\n", BuildDate)
 	fmt.Printf("go: %s\n", runtime.Version())
 	fmt.Printf("platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	fmt.Printf("source: https://github.com/ariel-frischer/autospec\n")
+}
+
+// SourceURL is the project source URL
+const SourceURL = "https://github.com/ariel-frischer/autospec"
+
+var sauceCmd = &cobra.Command{
+	Use:   "sauce",
+	Short: "Display the source URL",
+	Long:  "Display the source URL for the autospec project",
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Println(SourceURL)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(sauceCmd)
 }
 
 // getTerminalWidth returns the terminal width, defaulting to 80 if unavailable
@@ -126,7 +141,6 @@ func printPrettyVersion() {
 		{"Built", BuildDate},
 		{"Go", runtime.Version()},
 		{"Platform", fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)},
-		{"Source", "github.com/ariel-frischer/autospec"},
 	}
 
 	// Calculate box width (minimum 40, max 60)

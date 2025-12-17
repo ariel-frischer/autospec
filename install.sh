@@ -4,23 +4,24 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/install.sh | sh
 #
 # Environment variables:
-#   AUTOSPEC_INSTALL_DIR - Installation directory (default: /usr/local/bin)
+#   AUTOSPEC_INSTALL_DIR - Installation directory (default: ~/.local/bin)
 #   AUTOSPEC_VERSION     - Specific version to install (default: latest)
 
-set -e
+set -eu
 
 # Configuration
 GITHUB_REPO="ariel-frischer/autospec"
 BINARY_NAME="autospec"
-DEFAULT_INSTALL_DIR="/usr/local/bin"
+DEFAULT_INSTALL_DIR="$HOME/.local/bin"
 
 # Colors (disabled if not a terminal)
+# Use \e escapes with printf %b for portable POSIX color support
 if [ -t 1 ]; then
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[0;33m'
-    BLUE='\033[0;34m'
-    NC='\033[0m' # No Color
+    RED='\e[0;31m'
+    GREEN='\e[0;32m'
+    YELLOW='\e[0;33m'
+    BLUE='\e[0;34m'
+    NC='\e[0m'
 else
     RED=''
     GREEN=''
@@ -29,21 +30,21 @@ else
     NC=''
 fi
 
-# Logging functions
+# Logging functions (use %b to interpret color escapes, output to stderr)
 info() {
-    printf "${BLUE}==>${NC} %s\n" "$1"
+    printf '%b==>%b %s\n' "${BLUE}" "${NC}" "$1" >&2
 }
 
 success() {
-    printf "${GREEN}==>${NC} %s\n" "$1"
+    printf '%b==>%b %s\n' "${GREEN}" "${NC}" "$1" >&2
 }
 
 warn() {
-    printf "${YELLOW}Warning:${NC} %s\n" "$1"
+    printf '%bWarning:%b %s\n' "${YELLOW}" "${NC}" "$1" >&2
 }
 
 error() {
-    printf "${RED}Error:${NC} %s\n" "$1" >&2
+    printf '%bError:%b %s\n' "${RED}" "${NC}" "$1" >&2
     exit 1
 }
 
@@ -103,7 +104,13 @@ download_and_verify() {
 
     info "Downloading ${archive_name}..."
 
-    if ! curl -fsSL -o "${tmp_dir}/${archive_name}" "$download_url"; then
+    # Use progress bar (-#) if terminal, silent (-s) otherwise
+    local curl_opts="-fSL"
+    if [ -t 2 ]; then
+        curl_opts="-f#L"
+    fi
+
+    if ! curl $curl_opts -o "${tmp_dir}/${archive_name}" "$download_url"; then
         error "Failed to download ${archive_name}. Check if version ${version} exists."
     fi
 
@@ -180,6 +187,52 @@ install_binary() {
     fi
 }
 
+# Get version from installed binary
+get_installed_version() {
+    local binary_path="$1"
+    if [ -x "$binary_path" ]; then
+        "$binary_path" version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo ""
+    else
+        echo ""
+    fi
+}
+
+# Compare versions (returns 0 if v1 >= v2)
+version_gte() {
+    local v1="$1"
+    local v2="$2"
+    # Strip 'v' prefix for comparison
+    v1="${v1#v}"
+    v2="${v2#v}"
+    # Use sort -V if available, otherwise simple string comparison
+    if printf '%s\n%s' "$v2" "$v1" | sort -V -C 2>/dev/null; then
+        return 0
+    fi
+    # Fallback: simple string comparison (works for same-length versions)
+    [ "$v1" = "$v2" ] || [ "$(printf '%s\n%s' "$v1" "$v2" | sort -V | tail -1)" = "$v1" ]
+}
+
+# Clean up old backups, keeping the most recent ones
+cleanup_old_backups() {
+    local install_dir="$1"
+    local keep_count="${2:-3}"
+    local backup_pattern="${install_dir}/${BINARY_NAME}.backup.*"
+
+    # Count existing backups
+    # shellcheck disable=SC2086
+    local backup_count
+    backup_count=$(ls -1 $backup_pattern 2>/dev/null | wc -l)
+
+    if [ "$backup_count" -gt "$keep_count" ]; then
+        # Remove oldest backups, keep most recent $keep_count
+        # shellcheck disable=SC2086
+        ls -1t $backup_pattern 2>/dev/null | tail -n +"$((keep_count + 1))" | while read -r old_backup; do
+            rm -f "$old_backup"
+            info "Removed old backup: $(basename "$old_backup")"
+        done
+    fi
+}
+
 # Check if binary is in PATH
 check_path() {
     local install_dir="$1"
@@ -193,10 +246,8 @@ check_path() {
 # Main installation function
 main() {
     echo ""
-    printf '%s\n' "${GREEN}"
-    echo '▄▀█ █ █ ▀█▀ █▀█ █▀ █▀█ █▀▀ █▀▀'
-    echo '█▀█ █▄█  █  █▄█ ▄█ █▀▀ ██▄ █▄▄'
-    printf '%s\n' "${NC}"
+    printf '%b%s\n' "${GREEN}" '▄▀█ █ █ ▀█▀ █▀█ █▀ █▀█ █▀▀ █▀▀'
+    printf '%s%b\n' '█▀█ █▄█  █  █▄█ ▄█ █▀▀ ██▄ █▄▄' "${NC}"
     echo "         Installer"
     echo ""
 
@@ -222,10 +273,51 @@ main() {
     local install_dir="${AUTOSPEC_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
     info "Install directory: ${install_dir}"
 
-    # Create temporary directory
+    # Check for existing installation
+    local target_binary="${install_dir}/${BINARY_NAME}"
+    local existing_version=""
+    local backup_path=""
+
+    if [ -f "$target_binary" ]; then
+        existing_version=$(get_installed_version "$target_binary")
+        if [ -n "$existing_version" ]; then
+            info "Found existing installation: ${existing_version}"
+
+            # Check if already up-to-date or newer
+            if version_gte "$existing_version" "$version"; then
+                success "Already up-to-date (installed: ${existing_version}, requested: ${version})"
+                echo ""
+                echo "To force reinstall, remove the existing binary first:"
+                echo "    rm ${target_binary}"
+                echo ""
+                exit 0
+            fi
+
+            info "Upgrading from ${existing_version} to ${version}"
+        else
+            info "Found existing installation (unknown version)"
+        fi
+
+        # Create timestamped backup
+        backup_path="${target_binary}.backup.$(date +%Y%m%d_%H%M%S)"
+        info "Creating backup at ${backup_path}..."
+        if [ -w "$install_dir" ]; then
+            cp "$target_binary" "$backup_path"
+        else
+            sudo cp "$target_binary" "$backup_path"
+        fi
+        success "Backup created"
+
+        # Clean up old backups (keep last 3)
+        cleanup_old_backups "$install_dir" 3
+    fi
+
+    # Create temporary directory with cleanup on exit or interrupt
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    trap 'rm -rf "$tmp_dir"' EXIT
+    cleanup() { rm -rf "$tmp_dir"; }
+    trap cleanup EXIT
+    trap 'warn "Interrupted, cleaning up..."; cleanup; exit 1' INT TERM
 
     # Download and verify
     local archive_path
@@ -239,8 +331,29 @@ main() {
     info "Installing to ${install_dir}..."
     install_binary "$binary_path" "$install_dir"
 
+    # Verify installation works
+    info "Verifying installation..."
+    if ! "${target_binary}" version >/dev/null 2>&1; then
+        warn "Installed binary failed verification!"
+        if [ -n "$backup_path" ] && [ -f "$backup_path" ]; then
+            warn "Restoring from backup..."
+            if [ -w "$install_dir" ]; then
+                mv "$backup_path" "$target_binary"
+            else
+                sudo mv "$backup_path" "$target_binary"
+            fi
+            error "Installation failed. Previous version restored from backup."
+        else
+            error "Installation failed. No backup available to restore."
+        fi
+    fi
+    success "Verification passed"
+
     echo ""
     success "Successfully installed ${BINARY_NAME} ${version} to ${install_dir}/${BINARY_NAME}"
+    if [ -n "$existing_version" ]; then
+        success "Upgraded from ${existing_version} to ${version}"
+    fi
     echo ""
 
     # Check PATH
@@ -285,6 +398,10 @@ main() {
     echo ""
     echo "Documentation: https://github.com/${GITHUB_REPO}"
     echo ""
+
+    # Clean up temp dir and clear trap (tmp_dir is local, would be unbound after function exits)
+    rm -rf "$tmp_dir"
+    trap - EXIT INT TERM
 }
 
 # Run main
