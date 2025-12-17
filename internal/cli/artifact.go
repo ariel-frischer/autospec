@@ -22,7 +22,7 @@ var (
 var artifactCmd = &cobra.Command{
 	Use:   "artifact <type|path> [path]",
 	Short: "Validate YAML artifacts against their schemas",
-	Long: `Validate YAML artifacts (spec, plan, tasks) against their schemas.
+	Long: `Validate YAML artifacts against their schemas.
 
 Smart Detection:
   - Type only: autospec artifact plan → auto-detects spec from git branch
@@ -30,9 +30,12 @@ Smart Detection:
   - Explicit: autospec artifact plan specs/001/plan.yaml → backward compatible
 
 Types:
-  spec   - Feature specification (spec.yaml)
-  plan   - Implementation plan (plan.yaml)
-  tasks  - Task breakdown (tasks.yaml)
+  spec         - Feature specification (spec.yaml)
+  plan         - Implementation plan (plan.yaml)
+  tasks        - Task breakdown (tasks.yaml)
+  analysis     - Cross-artifact analysis (analysis.yaml)
+  checklist    - Feature quality checklist (checklists/*.yaml)
+  constitution - Project constitution (.autospec/memory/constitution.yaml)
 
 Validates:
   - Valid YAML syntax
@@ -60,9 +63,15 @@ Exit Codes:
   # Explicit type and path (backward compatible)
   autospec artifact plan specs/001-feature/plan.yaml
 
+  # Validate new artifact types
+  autospec artifact analysis specs/001/analysis.yaml
+  autospec artifact checklist specs/001/checklists/ux.yaml
+  autospec artifact constitution .autospec/memory/constitution.yaml
+
   # Show schema for an artifact type
   autospec artifact spec --schema
   autospec artifact plan --schema
+  autospec artifact constitution --schema
 
   # Auto-fix common issues
   autospec artifact plan --fix`,

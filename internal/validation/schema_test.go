@@ -125,11 +125,18 @@ func TestParseArtifactType(t *testing.T) {
 
 func TestValidArtifactTypes(t *testing.T) {
 	types := ValidArtifactTypes()
-	if len(types) != 3 {
-		t.Errorf("ValidArtifactTypes() returned %d types, want 3", len(types))
+	if len(types) != 6 {
+		t.Errorf("ValidArtifactTypes() returned %d types, want 6", len(types))
 	}
 
-	expected := map[string]bool{"spec": true, "plan": true, "tasks": true}
+	expected := map[string]bool{
+		"spec":         true,
+		"plan":         true,
+		"tasks":        true,
+		"analysis":     true,
+		"checklist":    true,
+		"constitution": true,
+	}
 	for _, typ := range types {
 		if !expected[typ] {
 			t.Errorf("unexpected artifact type: %s", typ)
@@ -318,11 +325,17 @@ func TestInferArtifactTypeFromFilename(t *testing.T) {
 
 func TestValidArtifactFilenames(t *testing.T) {
 	filenames := ValidArtifactFilenames()
-	if len(filenames) != 3 {
-		t.Errorf("ValidArtifactFilenames() returned %d filenames, want 3", len(filenames))
+	if len(filenames) != 5 {
+		t.Errorf("ValidArtifactFilenames() returned %d filenames, want 5", len(filenames))
 	}
 
-	expected := map[string]bool{"spec.yaml": true, "plan.yaml": true, "tasks.yaml": true}
+	expected := map[string]bool{
+		"spec.yaml":         true,
+		"plan.yaml":         true,
+		"tasks.yaml":        true,
+		"analysis.yaml":     true,
+		"constitution.yaml": true,
+	}
 	for _, filename := range filenames {
 		if !expected[filename] {
 			t.Errorf("unexpected artifact filename: %s", filename)
