@@ -76,6 +76,39 @@ Instructions for updating CHANGELOG.md before releases.
 - **Minor** (0.X.0): New features, backward compatible
 - **Major** (X.0.0): Breaking changes
 
+## Release Workflow
+
+**Branch strategy:** Development happens on `dev`, releases from `main`.
+
+```bash
+# 1. Update CHANGELOG.md on dev
+#    - Rename [Unreleased] → [X.Y.Z] - YYYY-MM-DD
+#    - Add fresh [Unreleased] section above
+#    - Update version links at bottom
+
+# 2. Commit changelog on dev
+git add CHANGELOG.md
+git commit -m "chore: release vX.Y.Z"
+
+# 3. Merge to main
+git checkout main
+git merge dev
+
+# 4. Tag on main (not dev!)
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+
+# 5. Push main + tag
+git push origin main --tags
+```
+
+**Important:** Always tag on `main` after merging. Tags point to commits, not branches—tagging on `dev` before merge means the release builds from a commit not on `main`.
+
+**Local testing (no publish):**
+```bash
+goreleaser release --snapshot --clean    # Test build
+.release/extract-changelog.sh X.Y.Z      # Test changelog extraction
+```
+
 ## Pre-Release Checklist
 
 1. [ ] All commits reviewed and grouped
@@ -83,3 +116,5 @@ Instructions for updating CHANGELOG.md before releases.
 3. [ ] Date is correct (YYYY-MM-DD)
 4. [ ] Version links updated at bottom of CHANGELOG.md
 5. [ ] `[Unreleased]` section ready for next cycle
+6. [ ] Merged to `main` before tagging
+7. [ ] Tag created on `main`, not `dev`
