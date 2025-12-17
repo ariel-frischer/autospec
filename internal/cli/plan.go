@@ -55,45 +55,47 @@ You can optionally provide a prompt to guide the planning process.`,
 			return cliErr
 		}
 
-		// Create notification handler
+		// Override skip-preflight from flag if set
+		if cmd.Flags().Changed("skip-preflight") {
+			cfg.SkipPreflight = skipPreflight
+		}
+
+		// Override max-retries from flag if set
+		if cmd.Flags().Changed("max-retries") {
+			cfg.MaxRetries = maxRetries
+		}
+
+		// Check if constitution exists (required for plan)
+		constitutionCheck := workflow.CheckConstitutionExists()
+		if !constitutionCheck.Exists {
+			fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
+			cmd.SilenceUsage = true
+			return NewExitError(ExitInvalidArguments)
+		}
+
+		// Auto-detect spec directory for prerequisite validation
+		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+		if err != nil {
+			cmd.SilenceUsage = true
+			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
+		}
+		PrintSpecInfo(metadata)
+
+		// Validate spec.yaml exists (required for plan stage)
+		prereqResult := workflow.ValidateStagePrerequisites(workflow.StagePlan, metadata.Directory)
+		if !prereqResult.Valid {
+			fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
+			cmd.SilenceUsage = true
+			return NewExitError(ExitInvalidArguments)
+		}
+
+		// Create notification handler and history logger
 		notifHandler := notify.NewHandler(cfg.Notifications)
+		historyLogger := history.NewWriter(cfg.StateDir, cfg.MaxHistoryEntries)
+		specName := fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)
 
-		// Wrap command execution with lifecycle for timing and notification
-		return lifecycle.Run(notifHandler, "plan", func() error {
-			// Override skip-preflight from flag if set
-			if cmd.Flags().Changed("skip-preflight") {
-				cfg.SkipPreflight = skipPreflight
-			}
-
-			// Override max-retries from flag if set
-			if cmd.Flags().Changed("max-retries") {
-				cfg.MaxRetries = maxRetries
-			}
-
-			// Check if constitution exists (required for plan)
-			constitutionCheck := workflow.CheckConstitutionExists()
-			if !constitutionCheck.Exists {
-				fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
-				cmd.SilenceUsage = true
-				return NewExitError(ExitInvalidArguments)
-			}
-
-			// Auto-detect spec directory for prerequisite validation
-			metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
-			if err != nil {
-				cmd.SilenceUsage = true
-				return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
-			}
-			PrintSpecInfo(metadata)
-
-			// Validate spec.yaml exists (required for plan stage)
-			prereqResult := workflow.ValidateStagePrerequisites(workflow.StagePlan, metadata.Directory)
-			if !prereqResult.Valid {
-				fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
-				cmd.SilenceUsage = true
-				return NewExitError(ExitInvalidArguments)
-			}
-
+		// Wrap command execution with lifecycle for timing, notification, and history
+		return lifecycle.RunWithHistory(notifHandler, historyLogger, "plan", specName, func() error {
 			// Create workflow orchestrator
 			orch := workflow.NewWorkflowOrchestrator(cfg)
 			orch.Executor.NotificationHandler = notifHandler

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
+	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/spec"
@@ -189,8 +190,11 @@ Stages are always executed in canonical order:
 			return printDryRunPreview(stageConfig, featureDescription, specMetadata)
 		}
 
+		// Create history logger
+		historyLogger := history.NewWriter(cfg.StateDir, cfg.MaxHistoryEntries)
+
 		// Execute stages in canonical order with context for cancellation support
-		return executeStages(cmd.Context(), orchestrator, stageConfig, featureDescription, specMetadata, resume, debug, cfg.ImplementMethod)
+		return executeStages(cmd.Context(), orchestrator, stageConfig, featureDescription, specMetadata, resume, debug, cfg.ImplementMethod, historyLogger)
 	},
 }
 
@@ -258,7 +262,7 @@ type stageExecutionContext struct {
 }
 
 // executeStages executes the selected stages in order
-func executeStages(cmdCtx context.Context, orchestrator *workflow.WorkflowOrchestrator, stageConfig *workflow.StageConfig, featureDescription string, specMetadata *spec.Metadata, resume, debug bool, implementMethod string) error {
+func executeStages(cmdCtx context.Context, orchestrator *workflow.WorkflowOrchestrator, stageConfig *workflow.StageConfig, featureDescription string, specMetadata *spec.Metadata, resume, debug bool, implementMethod string, historyLogger *history.Writer) error {
 	stages := stageConfig.GetCanonicalOrder()
 	orchestrator.Executor.TotalStages = len(stages)
 
@@ -279,9 +283,10 @@ func executeStages(cmdCtx context.Context, orchestrator *workflow.WorkflowOrches
 		ctx.specDir = specMetadata.Directory
 	}
 
-	// Wrap stage execution with lifecycle for timing and notification
-	// Use RunWithContext to support context cancellation (e.g., Ctrl+C)
-	return lifecycle.RunWithContext(cmdCtx, notifHandler, "run", func(_ context.Context) error {
+	// Wrap stage execution with lifecycle for timing, notification, and history
+	// Use RunWithHistoryContext to support context cancellation (e.g., Ctrl+C)
+	// Note: spec name may be empty if starting with specify stage
+	return lifecycle.RunWithHistoryContext(cmdCtx, notifHandler, historyLogger, "run", ctx.specName, func(_ context.Context) error {
 		for i, stage := range stages {
 			fmt.Printf("[Stage %d/%d] %s...\n", i+1, len(stages), stage)
 			if err := ctx.executeStage(stage); err != nil {

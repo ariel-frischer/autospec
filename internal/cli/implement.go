@@ -9,6 +9,7 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
+	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/spec"
@@ -144,71 +145,73 @@ The --tasks mode provides maximum context isolation:
 			return cliErr
 		}
 
-		// Create notification handler
+		// Override skip-preflight from flag if set
+		if cmd.Flags().Changed("skip-preflight") {
+			cfg.SkipPreflight = skipPreflight
+		}
+
+		// Override max-retries from flag if set
+		if cmd.Flags().Changed("max-retries") {
+			cfg.MaxRetries = maxRetries
+		}
+
+		// Apply config default execution mode when no execution mode flags are provided
+		// CLI flags take precedence over config, so only apply config if no flags are set
+		noExecutionModeFlags := !cmd.Flags().Changed("phases") &&
+			!cmd.Flags().Changed("tasks") &&
+			!cmd.Flags().Changed("phase") &&
+			!cmd.Flags().Changed("from-phase") &&
+			!cmd.Flags().Changed("from-task") &&
+			!cmd.Flags().Changed("single-session")
+
+		// If --single-session flag is explicitly set, ensure phase/task modes are disabled
+		if singleSession {
+			runAllPhases = false
+			taskMode = false
+		}
+
+		if noExecutionModeFlags && cfg.ImplementMethod != "" {
+			switch cfg.ImplementMethod {
+			case "phases":
+				runAllPhases = true
+			case "tasks":
+				taskMode = true
+			case "single-session":
+				// Legacy behavior: no phase/task mode (default state)
+				// runAllPhases and taskMode are already false
+			}
+			// Empty string uses the default from config (phases), which is already handled above
+		}
+
+		// Check if constitution exists (required for implement)
+		constitutionCheck := workflow.CheckConstitutionExists()
+		if !constitutionCheck.Exists {
+			fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
+			return NewExitError(ExitInvalidArguments)
+		}
+
+		// Auto-detect spec directory for prerequisite validation
+		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+		if err != nil {
+			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
+		}
+		PrintSpecInfo(metadata)
+
+		// Validate tasks.yaml exists (required for implement stage)
+		prereqResult := workflow.ValidateStagePrerequisites(workflow.StageImplement, metadata.Directory)
+		if !prereqResult.Valid {
+			fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
+			return NewExitError(ExitInvalidArguments)
+		}
+
+		// Create notification handler and history logger
 		notifHandler := notify.NewHandler(cfg.Notifications)
+		historyLogger := history.NewWriter(cfg.StateDir, cfg.MaxHistoryEntries)
+		historySpecName := fmt.Sprintf("%s-%s", metadata.Number, metadata.Name)
 
-		// Wrap command execution with lifecycle for timing and notification
-		// Use RunWithContext to support context cancellation (e.g., Ctrl+C)
-		return lifecycle.RunWithContext(cmd.Context(), notifHandler, "implement", func(_ context.Context) error {
-			// Override skip-preflight from flag if set
-			if cmd.Flags().Changed("skip-preflight") {
-				cfg.SkipPreflight = skipPreflight
-			}
-
-			// Override max-retries from flag if set
-			if cmd.Flags().Changed("max-retries") {
-				cfg.MaxRetries = maxRetries
-			}
-
-			// Apply config default execution mode when no execution mode flags are provided
-			// CLI flags take precedence over config, so only apply config if no flags are set
-			noExecutionModeFlags := !cmd.Flags().Changed("phases") &&
-				!cmd.Flags().Changed("tasks") &&
-				!cmd.Flags().Changed("phase") &&
-				!cmd.Flags().Changed("from-phase") &&
-				!cmd.Flags().Changed("from-task") &&
-				!cmd.Flags().Changed("single-session")
-
-			// If --single-session flag is explicitly set, ensure phase/task modes are disabled
-			if singleSession {
-				runAllPhases = false
-				taskMode = false
-			}
-
-			if noExecutionModeFlags && cfg.ImplementMethod != "" {
-				switch cfg.ImplementMethod {
-				case "phases":
-					runAllPhases = true
-				case "tasks":
-					taskMode = true
-				case "single-session":
-					// Legacy behavior: no phase/task mode (default state)
-					// runAllPhases and taskMode are already false
-				}
-				// Empty string uses the default from config (phases), which is already handled above
-			}
-
-			// Check if constitution exists (required for implement)
-			constitutionCheck := workflow.CheckConstitutionExists()
-			if !constitutionCheck.Exists {
-				fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
-				return NewExitError(ExitInvalidArguments)
-			}
-
-			// Auto-detect spec directory for prerequisite validation
-			metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
-			if err != nil {
-				return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
-			}
-			PrintSpecInfo(metadata)
-
-			// Validate tasks.yaml exists (required for implement stage)
-			prereqResult := workflow.ValidateStagePrerequisites(workflow.StageImplement, metadata.Directory)
-			if !prereqResult.Valid {
-				fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
-				return NewExitError(ExitInvalidArguments)
-			}
-
+		// Wrap command execution with lifecycle for timing, notification, and history
+		// Use RunWithHistoryContext to support context cancellation (e.g., Ctrl+C)
+		return lifecycle.RunWithHistoryContext(cmd.Context(), notifHandler, historyLogger, "implement", historySpecName, func(_ context.Context) error {
 			// Create workflow orchestrator
 			orch := workflow.NewWorkflowOrchestrator(cfg)
 			orch.Executor.NotificationHandler = notifHandler
