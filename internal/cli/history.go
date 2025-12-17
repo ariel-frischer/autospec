@@ -27,6 +27,7 @@ func init() {
 	historyCmd.Flags().StringP("spec", "s", "", "Filter by spec name")
 	historyCmd.Flags().IntP("limit", "n", 0, "Limit to last N entries (most recent)")
 	historyCmd.Flags().Bool("clear", false, "Clear all history")
+	historyCmd.Flags().String("status", "", "Filter by status (running, completed, failed, cancelled)")
 }
 
 // getDefaultStateDir returns the default state directory path.
@@ -42,6 +43,7 @@ func getDefaultStateDir() string {
 func runHistoryWithStateDir(cmd *cobra.Command, stateDir string) error {
 	clearFlag, _ := cmd.Flags().GetBool("clear")
 	specFilter, _ := cmd.Flags().GetString("spec")
+	statusFilter, _ := cmd.Flags().GetString("status")
 	limit, _ := cmd.Flags().GetInt("limit")
 
 	// Validate limit
@@ -65,15 +67,12 @@ func runHistoryWithStateDir(cmd *cobra.Command, stateDir string) error {
 	}
 
 	// Get filtered entries
-	entries := filterEntries(histFile.Entries, specFilter, limit)
+	entries := filterEntries(histFile.Entries, specFilter, statusFilter, limit)
 
 	// Handle empty result
 	if len(entries) == 0 {
-		if specFilter != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "No matching entries for spec '%s'.\n", specFilter)
-		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), "No history available.")
-		}
+		msg := buildEmptyMessage(specFilter, statusFilter)
+		fmt.Fprintln(cmd.OutOrStdout(), msg)
 		return nil
 	}
 
@@ -82,15 +81,30 @@ func runHistoryWithStateDir(cmd *cobra.Command, stateDir string) error {
 	return nil
 }
 
+// buildEmptyMessage creates an appropriate message when no entries match filters.
+func buildEmptyMessage(specFilter, statusFilter string) string {
+	if specFilter != "" && statusFilter != "" {
+		return fmt.Sprintf("No matching entries for spec '%s' and status '%s'.", specFilter, statusFilter)
+	}
+	if specFilter != "" {
+		return fmt.Sprintf("No matching entries for spec '%s'.", specFilter)
+	}
+	if statusFilter != "" {
+		return fmt.Sprintf("No matching entries for status '%s'.", statusFilter)
+	}
+	return "No history available."
+}
+
 // filterEntries filters and limits history entries.
-func filterEntries(entries []history.HistoryEntry, specFilter string, limit int) []history.HistoryEntry {
+func filterEntries(entries []history.HistoryEntry, specFilter, statusFilter string, limit int) []history.HistoryEntry {
 	var result []history.HistoryEntry
 
-	// Apply spec filter
+	// Apply spec and status filters
 	for _, entry := range entries {
-		if specFilter == "" || entry.Spec == specFilter {
-			result = append(result, entry)
+		if !matchesFilters(entry, specFilter, statusFilter) {
+			continue
 		}
+		result = append(result, entry)
 	}
 
 	// Apply limit (most recent entries)
@@ -99,6 +113,17 @@ func filterEntries(entries []history.HistoryEntry, specFilter string, limit int)
 	}
 
 	return result
+}
+
+// matchesFilters checks if an entry matches the given spec and status filters.
+func matchesFilters(entry history.HistoryEntry, specFilter, statusFilter string) bool {
+	if specFilter != "" && entry.Spec != specFilter {
+		return false
+	}
+	if statusFilter != "" && entry.Status != statusFilter {
+		return false
+	}
+	return true
 }
 
 // displayEntries formats and displays history entries.

@@ -381,6 +381,7 @@ func createTestHistoryCmd(stateDir string) *cobra.Command {
 	cmd.Flags().StringP("spec", "s", "", "Filter by spec name")
 	cmd.Flags().IntP("limit", "n", 0, "Limit to last N entries")
 	cmd.Flags().Bool("clear", false, "Clear all history")
+	cmd.Flags().String("status", "", "Filter by status (running, completed, failed, cancelled)")
 	return cmd
 }
 
