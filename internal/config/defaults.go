@@ -35,5 +35,8 @@ func GetDefaults() map[string]interface{} {
 			"on_long_running":        false,                       // Don't use duration threshold by default
 			"long_running_threshold": (30 * time.Second).String(), // 30 seconds threshold
 		},
+		// max_history_entries: Maximum number of command history entries to retain.
+		// Oldest entries are pruned when this limit is exceeded.
+		"max_history_entries": 500,
 	}
 }

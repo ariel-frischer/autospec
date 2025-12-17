@@ -65,7 +65,7 @@ phases:
             - "time.Time for Timestamp, string for Duration"
         - id: "T005"
           title: "Implement HistoryFile struct and LoadHistory function"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -79,7 +79,7 @@ phases:
             - "All errors wrapped with context"
         - id: "T006"
           title: "Implement SaveHistory function with atomic writes"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -92,7 +92,7 @@ phases:
             - "Function under 40 lines"
         - id: "T007"
           title: "Implement unit tests for LoadHistory and SaveHistory"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null
@@ -106,7 +106,7 @@ phases:
             - "Uses t.TempDir() for isolation"
         - id: "T008"
           title: "Add MaxHistoryEntries to config in internal/config/config.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: null
@@ -117,7 +117,7 @@ phases:
             - "Proper koanf binding for max_history_entries"
         - id: "T009"
           title: "Add max_history_entries default value in internal/config/defaults.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: null
@@ -133,7 +133,7 @@ phases:
       tasks:
         - id: "T010"
           title: "Create internal/cli/history_test.go with display tests"
-          status: "Pending"
+          status: "InProgress"
           type: "test"
           parallel: false
           story_id: "US-001"

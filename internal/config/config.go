@@ -53,6 +53,11 @@ type Configuration struct {
 	// Supports sound, visual, or both notification types across macOS, Linux, and Windows.
 	// Environment variable support via AUTOSPEC_NOTIFICATIONS_* prefix.
 	Notifications notify.NotificationConfig `koanf:"notifications"`
+
+	// MaxHistoryEntries sets the maximum number of command history entries to retain.
+	// Oldest entries are pruned when this limit is exceeded.
+	// Default: 500. Can be set via AUTOSPEC_MAX_HISTORY_ENTRIES env var.
+	MaxHistoryEntries int `koanf:"max_history_entries"`
 }
 
 // LoadOptions configures how configuration is loaded
