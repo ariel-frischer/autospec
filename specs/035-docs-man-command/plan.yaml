@@ -1,0 +1,199 @@
+plan:
+  branch: "035-docs-man-command"
+  created: "2025-12-16"
+  spec_path: "specs/035-docs-man-command/spec.yaml"
+
+summary: |
+  Implement a 'docs' command group with two subcommands: 'man' to generate man pages
+  and 'install' to copy them to the system man path. This leverages Cobra's built-in
+  doc.GenManTree() function for man page generation, following the same pattern as
+  the existing 'completion' command group.
+
+  The implementation is straightforward: create a docs.go file with parent command
+  and two subcommands, add error handling for permissions/directory creation, and
+  add a 'docs' target to the Makefile. This follows existing codebase conventions
+  and keeps complexity minimal as requested.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8.1"
+      purpose: "CLI framework and command structure"
+    - name: "github.com/spf13/cobra/doc"
+      version: "v1.8.1"
+      purpose: "Man page generation via GenManTree()"
+  storage: "None"
+  testing:
+    framework: "testing"
+    approach: "Map-based table-driven unit tests with t.Parallel() for command behavior validation"
+  target_platform: "Linux, macOS (Unix systems with man support)"
+  project_type: "cli"
+  performance_goals: "Man page generation should complete in under 1 second for all commands"
+  constraints:
+    - "Must use Cobra's built-in doc.GenManTree() function"
+    - "Must keep implementation simple"
+    - "Must follow existing autospec code conventions"
+    - "Windows not supported for man page installation"
+  scale_scope: "Single CLI tool, ~20-30 commands to document"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Tests will be written for docs.go commands before implementation"
+    - name: "Validation-First Workflow"
+      status: "N/A"
+      notes: "This feature does not involve workflow phase transitions"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Man page generation is a one-time operation, not in critical path"
+    - name: "Idempotency and Retry Logic"
+      status: "PASS"
+      notes: "Running 'docs man' multiple times safely overwrites existing files"
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Will use existing exit code patterns for success/failure"
+    - name: "YAML-First Artifacts"
+      status: "N/A"
+      notes: "Man pages are troff format, not YAML artifacts"
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "Will pass go fmt, go vet, and make lint"
+    - name: "Go Coding Standards"
+      status: "PASS"
+      notes: "Functions under 40 lines, wrapped errors, table-driven tests"
+    - name: "Cross-Platform Compatibility"
+      status: "PASS"
+      notes: "Man generation works everywhere; install is Unix-only (documented)"
+    - name: "Explicit Dependencies"
+      status: "PASS"
+      notes: "cobra/doc is part of existing cobra dependency, no new deps"
+    - name: "Documentation Standards"
+      status: "PASS"
+      notes: "Man pages ARE the documentation this feature provides"
+
+research_findings:
+  decisions:
+    - topic: "Man page generation library"
+      decision: "Use github.com/spf13/cobra/doc.GenManTree()"
+      rationale: "Specified in user requirements; already available via Cobra dependency"
+      alternatives_considered:
+        - "Manual troff formatting"
+        - "Third-party man page generators"
+    - topic: "System man path"
+      decision: "Use /usr/local/share/man/man1/ as default installation path"
+      rationale: "Standard location for locally-installed man pages on Linux/macOS"
+      alternatives_considered:
+        - "/usr/share/man/man1/ (requires root)"
+        - "User-specific ~/.local/share/man/man1/"
+    - topic: "Output directory"
+      decision: "Use ./man/ relative to current working directory"
+      rationale: "Specified in requirements; keeps generated files in project"
+      alternatives_considered:
+        - "./docs/man/"
+        - "./dist/man/"
+    - topic: "Command structure"
+      decision: "Create 'docs' parent command with 'man' and 'install' subcommands"
+      rationale: "Matches existing pattern (completion, commands) and allows future docs subcommands"
+      alternatives_considered:
+        - "Top-level 'man' command"
+        - "'generate man' under existing generate command"
+
+data_model:
+  entities:
+    - name: "GenManHeader"
+      description: "Cobra doc package struct for man page metadata"
+      fields:
+        - name: "Title"
+          type: "string"
+          description: "Man page title (command name)"
+          constraints: "Set automatically by GenManTree"
+        - name: "Section"
+          type: "string"
+          description: "Man page section number"
+          constraints: "Set to '1' for user commands"
+        - name: "Date"
+          type: "*time.Time"
+          description: "Man page date"
+          constraints: "Defaults to current time if nil"
+        - name: "Source"
+          type: "string"
+          description: "Source identifier"
+          constraints: "Set to 'autospec <version>'"
+        - name: "Manual"
+          type: "string"
+          description: "Manual name"
+          constraints: "Set to 'autospec Manual'"
+      relationships: []
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "man/"
+      description: "Generated man page files (.1 suffix for section 1)"
+  source_code:
+    - path: "internal/cli/docs.go"
+      description: "docs command group with man and install subcommands"
+  tests:
+    - path: "internal/cli/docs_test.go"
+      description: "Unit tests for docs command functionality"
+
+implementation_phases:
+  - phase: 1
+    name: "Core Implementation"
+    goal: "Implement docs command group with man generation and installation"
+    deliverables:
+      - "internal/cli/docs.go with docs parent command"
+      - "docs man subcommand using GenManTree()"
+      - "docs install subcommand for system path installation"
+      - "Proper error handling with wrapped errors"
+  - phase: 2
+    name: "Testing"
+    goal: "Comprehensive test coverage for docs commands"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "internal/cli/docs_test.go with table-driven tests"
+      - "Tests for directory creation, file generation, permission errors"
+  - phase: 3
+    name: "Build Integration"
+    goal: "Integrate man page generation into build workflow"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "'make docs' target in Makefile"
+      - "Verification that all quality gates pass"
+
+risks:
+  - risk: "Permission errors during system installation"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Clear error messages with manual installation instructions"
+  - risk: "Man page path varies across systems"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Use /usr/local/share/man/man1/ which is standard; document alternatives"
+  - risk: "Command names with hyphens cause ambiguous man page names"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Cobra doc package handles this; existing autospec commands don't have this issue"
+
+open_questions:
+  - question: "Should install require sudo or suggest it?"
+    context: "/usr/local/share/man/man1/ may not be writable by regular users"
+    proposed_resolution: "Attempt install, show clear error with sudo instructions if permission denied"
+  - question: "Should 'docs install' auto-generate if ./man/ doesn't exist?"
+    context: "Spec mentions this as an option for edge case handling"
+    proposed_resolution: "Display error indicating 'autospec docs man' must be run first (keep commands simple and explicit)"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-17T02:06:43Z"
+  artifact_type: "plan"

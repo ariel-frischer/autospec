@@ -183,6 +183,13 @@ View command execution history
 
 **Description**: Display a log of all autospec command executions with timestamp, command name, spec, exit code, and duration.
 
+**Automatic Logging**: All workflow commands are automatically logged to history after they complete:
+- Core stages: `specify`, `plan`, `tasks`, `implement`
+- Optional stages: `clarify`, `analyze`, `checklist`, `constitution`
+- Workflows: `run`, `prep`, `all`
+
+History entries are written **after command completion** (not at start) because the entry includes duration and exit code.
+
 **Flags**:
 - `-s, --spec <name>`: Filter by spec name
 - `-n, --limit <count>`: Limit to last N entries (most recent)
@@ -190,11 +197,14 @@ View command execution history
 
 **Output Format**:
 ```
-TIMESTAMP            COMMAND       SPEC             EXIT  DURATION
-2024-01-15 10:30:00  specify       test-feature     0     2m30s
-2024-01-15 10:35:00  plan          test-feature     0     1m15s
-2024-01-15 10:40:00  tasks         test-feature     1     45s
+TIMESTAMP            COMMAND       SPEC                  EXIT  DURATION
+2024-01-15 10:30:00  specify                             0     2m30s
+2024-01-15 10:35:00  plan          001-test-feature      0     1m15s
+2024-01-15 10:40:00  tasks         001-test-feature      1     45s
+2024-01-15 10:45:00  implement     001-test-feature      0     5m20s
 ```
+
+Note: Commands that create new specs (`specify`, `prep`, `all`, `run -s`) log with an empty spec name since the spec doesn't exist yet when the command starts.
 
 **Examples**:
 ```bash
@@ -211,9 +221,11 @@ autospec history --spec 001-feature
 autospec history --clear
 ```
 
-**Exit Codes**: 0 (success)
+**Exit Codes**: 0 (success), 3 (invalid arguments, e.g., negative limit)
 
 **File Location**: `~/.autospec/state/history.yaml`
+
+**Storage Limit**: History is automatically pruned to `max_history_entries` (default: 500). Oldest entries are removed first when the limit is exceeded. See [Configuration](#max_history_entries) to customize.
 
 ### autospec status
 
