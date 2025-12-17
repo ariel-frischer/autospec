@@ -45,6 +45,7 @@ user_stories:
     so_that: "the system remains stable under concurrent command execution"
     why_this_priority: "Essential for correctness - race conditions in event handling could cause crashes or data loss"
     independent_test: "Run concurrent goroutines publishing and subscribing, verify no race conditions with -race flag"
+    note: "kelindar/event provides thread-safety guarantees; we verify via race detector tests"
     acceptance_scenarios:
       - given: "multiple goroutines publishing events simultaneously"
         when: "events are dispatched"
@@ -54,20 +55,21 @@ user_stories:
         then: "the new subscriber receives subsequent events without affecting in-flight deliveries"
 
   - id: "US-004"
-    title: "Async event dispatch with timeout"
+    title: "Async event dispatch"
     priority: "P2"
     as_a: "CLI user"
     i_want: "event dispatch to not block command execution"
     so_that: "slow subscribers cannot delay command completion"
     why_this_priority: "Important for user experience but not core functionality - commands should not wait on notifications"
     independent_test: "Create a slow subscriber (100ms delay), verify command completes in under 10ms"
+    note: "kelindar/event runs each subscriber in its own goroutine by default (async)"
     acceptance_scenarios:
       - given: "a subscriber that takes 500ms to process an event"
-        when: "PublishAsync is called"
+        when: "events.Publish() is called"
         then: "the call returns immediately without waiting for subscriber completion"
-      - given: "a subscriber that exceeds the dispatch timeout"
-        when: "the timeout expires"
-        then: "the event delivery fails silently without affecting other subscribers"
+      - given: "a slow subscriber"
+        when: "multiple events are published rapidly"
+        then: "events queue in subscriber's goroutine; no events lost"
 
   - id: "US-005"
     title: "Migrate existing commands"
@@ -101,29 +103,33 @@ user_stories:
 requirements:
   functional:
     - id: "FR-001"
-      description: "MUST create internal/events package with Event struct and EventType constants"
+      description: "MUST add github.com/kelindar/event dependency and create internal/events package with event types"
       testable: true
-      acceptance_criteria: "Package compiles and exports Event, EventType, and all event type constants"
+      acceptance_criteria: "go.mod includes kelindar/event; package exports CommandCompleteEvent, StageCompleteEvent with Type() uint32 methods"
+      reference: "docs/events.md#event-types"
 
     - id: "FR-002"
-      description: "MUST implement thread-safe event Bus with Subscribe, SubscribeAll, Publish, and PublishAsync methods"
+      description: "MUST create internal/events/bus.go with global Dispatcher and Subscribe/Publish helper functions"
       testable: true
-      acceptance_criteria: "Bus passes race detector tests under concurrent access"
+      acceptance_criteria: "events.Subscribe() and events.Publish() wrap kelindar/event dispatcher; race detector passes"
+      reference: "docs/events.md#global-dispatcher-default"
 
     - id: "FR-003"
       description: "MUST create internal/lifecycle package with Run() function that wraps command execution"
       testable: true
-      acceptance_criteria: "Run() emits CommandStart and CommandComplete events with correct timing"
+      acceptance_criteria: "Run() emits CommandCompleteEvent with name, success, duration, and error fields"
+      reference: "docs/events.md#publishing-events"
 
     - id: "FR-004"
       description: "MUST support RunWithContext() for cancellation support"
       testable: true
-      acceptance_criteria: "Cancelled context causes Run to return context.Canceled error"
+      acceptance_criteria: "Cancelled context causes Run to return context.Canceled error and emit event with Success=false"
 
     - id: "FR-005"
       description: "MUST convert notification handler to event subscriber pattern"
       testable: true
-      acceptance_criteria: "Handler.Subscribe() registers for CommandComplete and StageComplete events"
+      acceptance_criteria: "Handler.Subscribe() uses events.Subscribe() to register for CommandCompleteEvent and StageCompleteEvent"
+      reference: "docs/events.md#subscribing-to-events"
 
     - id: "FR-006"
       description: "MUST migrate all 11 CLI commands to use lifecycle.Run()"
@@ -154,12 +160,13 @@ requirements:
     - id: "NFR-001"
       category: "performance"
       description: "Event dispatch MUST NOT add measurable latency to command execution"
-      measurable_target: "PublishAsync returns in under 1ms; synchronous Publish under 10ms for typical subscriber"
+      measurable_target: "events.Publish() returns in under 1ms (kelindar/event: zero allocations, 4-10x faster than channels)"
 
     - id: "NFR-002"
       category: "reliability"
-      description: "Subscriber failures MUST NOT crash the event bus or affect other subscribers"
-      measurable_target: "Panicking subscriber is recovered; other subscribers receive events normally"
+      description: "Subscriber failures MUST NOT crash the application or affect other subscribers"
+      measurable_target: "Subscriber handlers must include defer/recover; panics logged but not propagated"
+      reference: "docs/events.md#error-handling-in-subscribers"
 
     - id: "NFR-003"
       category: "code_quality"
@@ -214,86 +221,92 @@ success_criteria:
       target: "make test, make fmt, make lint, make build all exit 0"
 
 key_entities:
-  - name: "Event"
-    description: "Represents a lifecycle event with type, name, timing, and metadata"
+  - name: "CommandCompleteEvent"
+    description: "Emitted when a CLI command finishes execution (implements event.Event interface)"
     attributes:
-      - "Type (EventType) - categorizes the event"
-      - "Name (string) - command or stage name"
-      - "Success (bool) - whether operation succeeded"
-      - "Duration (time.Duration) - how long operation took"
-      - "Error (error) - error if operation failed"
-      - "Timestamp (time.Time) - when event occurred"
-      - "Metadata (map[string]any) - extensible key-value data"
+      - "Name (string) - command name (e.g., 'specify', 'plan')"
+      - "Success (bool) - whether command succeeded"
+      - "Duration (time.Duration) - execution time"
+      - "Error (error) - error if failed, nil otherwise"
+      - "Type() uint32 - returns TypeCommandComplete constant"
+    reference: "docs/events.md#core-events"
 
-  - name: "EventType"
-    description: "Enumeration of event categories"
+  - name: "StageCompleteEvent"
+    description: "Emitted when a workflow stage finishes (implements event.Event interface)"
     attributes:
-      - "EventCommandStart - command beginning execution"
-      - "EventCommandComplete - command finished"
-      - "EventStageStart - workflow stage beginning"
-      - "EventStageComplete - workflow stage finished"
-      - "EventError - error occurred"
-      - "EventValidationFail - validation check failed"
+      - "Name (string) - stage name"
+      - "Success (bool) - whether stage succeeded"
+      - "Duration (time.Duration) - execution time"
+      - "Type() uint32 - returns TypeStageComplete constant"
+    reference: "docs/events.md#core-events"
 
-  - name: "Bus"
-    description: "Thread-safe pub/sub event bus"
+  - name: "Event Type Constants"
+    description: "uint32 constants for kelindar/event dispatcher routing"
     attributes:
-      - "subscribers map keyed by event type"
-      - "RWMutex for thread safety"
-      - "timeout configuration for async dispatch"
+      - "TypeCommandComplete - command finished"
+      - "TypeStageComplete - workflow stage finished"
+
+  - name: "Global Dispatcher"
+    description: "kelindar/event.Dispatcher instance wrapped by internal/events package"
+    attributes:
+      - "events.Subscribe[T](handler) - registers typed handler, returns unsubscribe func"
+      - "events.Publish[T](event) - emits event to all subscribers"
+      - "Goroutine-per-subscriber for async dispatch"
+      - "Thread-safe via kelindar/event internals"
+    reference: "docs/events.md#global-dispatcher-default"
 
   - name: "Lifecycle Manager"
     description: "Wraps command execution with event emission"
     attributes:
-      - "Run() - synchronous command wrapper"
-      - "RunWithContext() - cancellation-aware wrapper"
-      - "RunStage() - stage-level wrapper"
-      - "global bus instance"
+      - "Run(name, fn) - executes fn and emits CommandCompleteEvent"
+      - "RunWithContext(ctx, name, fn) - cancellation-aware wrapper"
+      - "RunStage(name, fn) - stage-level wrapper emitting StageCompleteEvent"
+    reference: "docs/events.md#publishing-events"
 
   - name: "Notification Subscriber"
     description: "Event-driven notification handler"
     attributes:
-      - "Subscribe() - registers with event bus"
-      - "onCommandComplete() - handles command events"
-      - "onStageComplete() - handles stage events"
+      - "Subscribe() func() - registers handlers, returns unsubscribe func"
+      - "onCommandComplete(CommandCompleteEvent) - handles command events"
+      - "onStageComplete(StageCompleteEvent) - handles stage events"
+    reference: "docs/events.md#subscribing-to-events"
 
 edge_cases:
   - scenario: "Subscriber panics during event handling"
-    expected_behavior: "Panic is recovered, other subscribers still receive event, error is logged"
+    expected_behavior: "Panic is recovered by defer/recover in handler wrapper; error logged; other subscribers unaffected (each runs in separate goroutine)"
 
   - scenario: "Event published with no subscribers"
-    expected_behavior: "No error; event is silently discarded"
+    expected_behavior: "No error; event is silently discarded by kelindar/event dispatcher"
 
   - scenario: "Subscriber added during event dispatch"
-    expected_behavior: "New subscriber receives subsequent events; current dispatch unaffected"
+    expected_behavior: "New subscriber receives subsequent events; current dispatch unaffected (kelindar/event handles thread-safety)"
 
-  - scenario: "Subscriber removed during event dispatch"
-    expected_behavior: "Subscriber may or may not receive current event; subsequent events not received"
+  - scenario: "Unsubscribe called during event processing"
+    expected_behavior: "Unsubscribe returns; subscriber may finish processing current event but receives no more"
 
-  - scenario: "Context cancelled during lifecycle.Run()"
-    expected_behavior: "CommandComplete event still emitted with error=context.Canceled"
+  - scenario: "Context cancelled during lifecycle.RunWithContext()"
+    expected_behavior: "CommandCompleteEvent still emitted with Error=context.Canceled, Success=false"
 
   - scenario: "Multiple lifecycle.Run() calls nested"
-    expected_behavior: "Each call emits its own events; inner completes before outer"
+    expected_behavior: "Each call emits its own CommandCompleteEvent; inner completes before outer"
 
-  - scenario: "Event bus not initialized when lifecycle.Run() called"
-    expected_behavior: "No events emitted; command execution proceeds normally (graceful degradation)"
-
-  - scenario: "PublishAsync called after bus shutdown"
-    expected_behavior: "Event silently dropped; no panic or error"
+  - scenario: "Global dispatcher nil check"
+    expected_behavior: "events.Publish() is safe to call; if dispatcher somehow nil, function returns silently"
 
 assumptions:
   - "The existing notification handler (internal/notify) will remain as a subscriber rather than being deleted"
   - "A global event bus instance is acceptable for this use case (vs. dependency injection everywhere)"
-  - "Async dispatch timeout of 100ms is sufficient for notification delivery"
+  - "kelindar/event's goroutine-per-subscriber model provides sufficient async dispatch for notifications"
   - "Commands are executed sequentially per user session (no need for request-scoped event buses)"
   - "The 11 commands listed in the task document are the complete set requiring migration"
+  - "kelindar/event is stable and maintained (MIT license, zero external dependencies)"
 
 constraints:
   - "Must maintain backward compatibility - existing notification behavior unchanged from user perspective"
-  - "Must not add external dependencies - use only Go standard library for event bus"
+  - "Must use github.com/kelindar/event for event bus implementation (approved external dependency)"
   - "Must not break existing tests - all current tests must continue to pass"
   - "Must follow project coding standards (40-line functions, error wrapping, table-driven tests)"
+  - "Must follow patterns documented in docs/events.md for consistency"
 
 out_of_scope:
   - "Persistent event storage or replay"
@@ -303,6 +316,15 @@ out_of_scope:
   - "Configuration UI for event subscriptions"
   - "Event schema versioning"
   - "Distributed event bus for multi-process scenarios"
+  - "Custom kelindar/event dispatcher instances (using global only)"
+
+references:
+  - name: "Event System Documentation"
+    path: "docs/events.md"
+    description: "Comprehensive guide to autospec's event-driven architecture"
+  - name: "kelindar/event Repository"
+    url: "https://github.com/kelindar/event"
+    description: "High-performance in-process event dispatcher (external dependency)"
 
 _meta:
   version: "1.0.0"
