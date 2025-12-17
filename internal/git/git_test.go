@@ -66,6 +66,11 @@ func TestGetAllBranches_Real(t *testing.T) {
 	currentBranch, err := GetCurrentBranch()
 	require.NoError(t, err)
 
+	// Skip branch-in-list check if in detached HEAD state (common in CI)
+	if currentBranch == "HEAD" {
+		t.Skip("skipping branch list check in detached HEAD state")
+	}
+
 	found := false
 	for _, b := range branches {
 		if b.Name == currentBranch {
@@ -85,6 +90,11 @@ func TestGetBranchNames_Real(t *testing.T) {
 	// Current branch should be in the list
 	currentBranch, err := GetCurrentBranch()
 	require.NoError(t, err)
+
+	// Skip branch-in-list check if in detached HEAD state (common in CI)
+	if currentBranch == "HEAD" {
+		t.Skip("skipping branch list check in detached HEAD state")
+	}
 
 	assert.Contains(t, names, currentBranch)
 }
