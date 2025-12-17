@@ -75,7 +75,7 @@ func DefaultConfig() NotificationConfig {
 		OnStageComplete:      false,
 		OnError:              true,
 		OnLongRunning:        false,
-		LongRunningThreshold: 30 * time.Second,
+		LongRunningThreshold: 2 * time.Minute,
 	}
 }
 

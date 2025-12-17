@@ -153,10 +153,10 @@ func TestDefaultConfig(t *testing.T) {
 			got:      config.OnLongRunning,
 			expected: false,
 		},
-		"LongRunningThreshold defaults to 30s": {
+		"LongRunningThreshold defaults to 2m": {
 			field:    "LongRunningThreshold",
 			got:      config.LongRunningThreshold,
-			expected: 30 * time.Second,
+			expected: 2 * time.Minute,
 		},
 	}
 

@@ -704,7 +704,7 @@ notifications:
   on_stage_complete: false   # Notify after each stage
   on_error: true             # Notify on failures
   on_long_running: false     # Only notify for long commands
-  long_running_threshold: 30s # Threshold for on_long_running
+  long_running_threshold: 2m  # Threshold for on_long_running
 ```
 
 ### Hook Combinations

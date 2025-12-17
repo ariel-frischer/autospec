@@ -302,23 +302,7 @@ notifications:
   on_stage_complete: false            # Notify on each stage
   on_error: true                      # Notify on failures
   on_long_running: false              # Notify after threshold
-  long_running_threshold: 30s         # Duration threshold
-```
-
-### 🌍 Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AUTOSPEC_MAX_RETRIES` | `0` | No retries |
-| `AUTOSPEC_SPECS_DIR` | `./specs` | Specs directory |
-| `AUTOSPEC_TIMEOUT` | `2400` | 40 minutes |
-| `AUTOSPEC_YES` | `false` | Prompts enabled |
-
-```bash
-export AUTOSPEC_MAX_RETRIES=0
-export AUTOSPEC_SPECS_DIR="./specs"
-export AUTOSPEC_TIMEOUT=2400
-export AUTOSPEC_YES=false
+  long_running_threshold: 2m          # Duration threshold
 ```
 
 ### 💻 Commands

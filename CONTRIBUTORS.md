@@ -30,7 +30,7 @@ The tool is built as a **cross-platform Go binary** with the following component
 
 #### 1. CLI Layer (`internal/cli/`)
 - Cobra-based command structure
-- Commands: `workflow`, `specify`, `plan`, `tasks`, `implement`, `status`, `init`, `config`, `version`
+- Commands: `run`, `prep`, `specify`, `plan`, `tasks`, `implement`, `constitution`, `clarify`, `checklist`, `analyze`, `update-task`, `update-agent-context`, `artifact`, `yaml`, `status`, `history`, `doctor`, `clean`, `uninstall`, `init`, `config`, `version`
 - Global flags for configuration, debugging, and spec directory override
 
 #### 2. Workflow Orchestration (`internal/workflow/`)
@@ -59,16 +59,32 @@ The tool is built as a **cross-platform Go binary** with the following component
 
 ```
 internal/
-├── cli/          # Cobra commands
-├── workflow/     # Workflow orchestration & execution
-├── config/       # Configuration management (koanf)
-├── validation/   # Validation functions
+├── cli/          # Cobra commands (root, run, prep, specify, plan, tasks,
+│                 # implement, constitution, clarify, checklist, analyze,
+│                 # update_task, update_agent_context, clean, uninstall,
+│                 # doctor, status, history, config, init, version)
+├── workflow/     # Workflow orchestration, Executor, ClaudeExecutor, preflight
+├── config/       # Configuration management (koanf), defaults, XDG paths
+├── commands/     # Embedded slash command templates (.md files)
+├── validation/   # File validation, task parsing, prompt generation
 ├── retry/        # Retry state management
-├── spec/         # Spec detection
-└── git/          # Git repository helpers
+├── spec/         # Spec detection (git branch, directory scan)
+├── git/          # Git helpers (branch name, repo status)
+├── agent/        # Agent context file management (update CLAUDE.md, etc.)
+├── health/       # Dependency verification
+├── history/      # Command execution history logging
+├── lifecycle/    # Command lifecycle wrapper (timing, notifications)
+├── notify/       # Desktop notification handlers
+├── progress/     # Spinner display for operations
+├── yaml/         # YAML parsing utilities
+├── completion/   # Shell completion generation
+├── errors/       # Custom error types
+├── clean/        # Project cleanup functions
+├── uninstall/    # System uninstall functions
+└── claude/       # Claude CLI helpers
 ```
 
-See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
+See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
 
 ## Configuration
 
@@ -97,6 +113,13 @@ specs_dir: ./specs
 state_dir: ~/.autospec/state
 skip_preflight: false
 timeout: 300
+implement_method: phases  # "phases", "tasks", or "single-session"
+max_history_entries: 500
+notifications:
+  enabled: false
+  type: both  # "sound", "visual", or "both"
+  on_command_complete: true
+  on_error: true
 ```
 
 ### Configuration Options
@@ -106,11 +129,17 @@ timeout: 300
 | `claude_cmd` | string | `"claude"` | Claude CLI command |
 | `claude_args` | array | `[]` | Arguments passed to Claude CLI |
 | `custom_claude_cmd` | string | `""` | Custom command with `{{PROMPT}}` placeholder |
-| `max_retries` | int | `0` | Maximum retry attempts (0-10) |
+| `max_retries` | int | `3` | Maximum retry attempts (1-10) |
 | `specs_dir` | string | `"./specs"` | Directory for feature specs |
-| `state_dir` | string | `"~/.autospec/state"` | Retry state storage |
+| `state_dir` | string | `"~/.autospec/state"` | State storage (retry, history) |
 | `skip_preflight` | bool | `false` | Skip dependency checks |
-| `timeout` | int | `300` | Command timeout in seconds (0 = no timeout) |
+| `timeout` | int | `0` | Command timeout in seconds (0 = no timeout) |
+| `implement_method` | string | `"phases"` | Default implement mode: `phases`, `tasks`, `single-session` |
+| `max_history_entries` | int | `500` | Maximum command history entries |
+| `notifications.enabled` | bool | `false` | Enable desktop notifications |
+| `notifications.type` | string | `"both"` | Notification type: `sound`, `visual`, `both` |
+
+See [docs/reference.md](docs/reference.md) for complete configuration documentation.
 
 ### Environment Variables
 
@@ -128,10 +157,8 @@ export AUTOSPEC_TIMEOUT=600
 
 Use `custom_claude_cmd` with a `{{PROMPT}}` placeholder for wrapper scripts:
 
-```json
-{
-  "custom_claude_cmd": "my-wrapper {{PROMPT}}"
-}
+```yaml
+custom_claude_cmd: "my-wrapper {{PROMPT}}"
 ```
 
 Or via environment variable:
@@ -177,22 +204,24 @@ Performance regressions beyond 5s require immediate attention.
 
 ### Writing Tests
 
-**Example table-driven test:**
+**Map-based table-driven test (REQUIRED pattern):**
 
 ```go
 func TestValidateSpecFile(t *testing.T) {
-    tests := []struct {
-        name    string
+    t.Parallel()
+
+    tests := map[string]struct {
         specDir string
         wantErr bool
     }{
-        {"valid spec", "testdata/valid", false},
-        {"missing spec", "testdata/missing", true},
-        {"empty dir", "testdata/empty", true},
+        "valid spec":   {specDir: "testdata/valid", wantErr: false},
+        "missing spec": {specDir: "testdata/missing", wantErr: true},
+        "empty dir":    {specDir: "testdata/empty", wantErr: true},
     }
 
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
+    for name, tt := range tests {
+        t.Run(name, func(t *testing.T) {
+            t.Parallel()
             err := ValidateSpecFile(tt.specDir)
             if (err != nil) != tt.wantErr {
                 t.Errorf("ValidateSpecFile() error = %v, wantErr %v", err, tt.wantErr)
@@ -201,6 +230,8 @@ func TestValidateSpecFile(t *testing.T) {
     }
 }
 ```
+
+See [docs/go-best-practices.md](docs/go-best-practices.md) for more testing conventions.
 
 ## Exit Codes
 
@@ -211,6 +242,7 @@ All commands follow consistent exit code conventions:
 - `2`: Retry limit exhausted
 - `3`: Invalid arguments
 - `4`: Missing dependencies
+- `5`: Command timeout
 
 This supports programmatic composition and CI/CD integration.
 
@@ -222,8 +254,9 @@ This supports programmatic composition and CI/CD integration.
 2. Define `cobra.Command` with `Use`, `Short`, `Long`, `RunE`
 3. Register command in `init()` function
 4. Implement business logic by calling workflow/validation packages
-5. Add tests in `*_test.go` file
-6. Update help text and documentation
+5. **For workflow commands**: Use `lifecycle.RunWithHistory()` wrapper for notifications and history logging (see CLAUDE.md for required pattern)
+6. Add tests in `*_test.go` file
+7. Update help text and documentation
 
 ### Adding a New Validation Function
 
@@ -246,17 +279,23 @@ This supports programmatic composition and CI/CD integration.
 
 ```bash
 # Enable debug logging
-autospec --debug workflow "feature"
+autospec --debug run -a "feature"
 autospec -d plan
 
 # Check retry state
 cat ~/.autospec/state/retry.json
 
+# Check command history
+autospec history
+
 # Check config loading
 autospec config show
 
 # Verbose output
-autospec --verbose workflow "feature"
+autospec --verbose prep "feature"
+
+# Check dependencies
+autospec doctor
 ```
 
 ## Linting
@@ -297,12 +336,12 @@ make dev
 3. **Add tests for new features** (table-driven tests preferred)
 4. **Add benchmarks** for performance-critical code
 5. **Update documentation**: README.md, CLAUDE.md, and this file
-6. **Follow constitution principles** in `.autospec/memory/constitution.md`
+6. **Follow constitution principles** in `.autospec/memory/constitution.yaml`
 7. **Commit message format**: Use conventional commits style
 
 ### Constitution Principles
 
-Development follows `.autospec/memory/constitution.md`:
+Development follows `.autospec/memory/constitution.yaml`:
 
 1. **Validation-First**: All workflow transitions validated before proceeding
 2. **Test-First Development** (NON-NEGOTIABLE): Tests written before implementation
@@ -320,7 +359,15 @@ All validations complete in under 1 second.
 
 ## Project Status
 
-Fully migrated Go binary with CLI commands, configuration (koanf/YAML), retry management, validation, workflow orchestration, and spec detection.
+Fully featured Go CLI with:
+- Complete workflow orchestration (specify → plan → tasks → implement)
+- Configuration (koanf/YAML) with hierarchical loading
+- Retry management with persistent state
+- Validation with performance contracts (<10ms)
+- Spec detection (git branch, directory scan)
+- Desktop notifications (sound/visual)
+- Command history tracking
+- Shell completion (bash, zsh, fish, powershell)
 
 ## Credits
 
@@ -334,7 +381,16 @@ Built with:
 
 ## Resources
 
-- **Development guide**: [CLAUDE.md](CLAUDE.md)
-- **User guide**: [README.md](README.md)
-- **Prerequisites**: [PREREQUISITES.md](PREREQUISITES.md)
+### Documentation
+
+| File | Purpose |
+|------|---------|
+| [CLAUDE.md](CLAUDE.md) | Development guide and coding standards |
+| [README.md](README.md) | User guide and quick start |
+| [docs/architecture.md](docs/architecture.md) | System design and component diagrams |
+| [docs/reference.md](docs/reference.md) | Complete CLI command reference |
+| [docs/go-best-practices.md](docs/go-best-practices.md) | Go conventions and patterns |
+| [docs/internals.md](docs/internals.md) | Spec detection, validation, retry system |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and solutions |
+
 - **Issue tracker**: https://github.com/ariel-frischer/autospec/issues

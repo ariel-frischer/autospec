@@ -38,7 +38,7 @@ notifications:
   on_stage_complete: false            # Notify on each stage completion
   on_error: true                      # Notify on failures
   on_long_running: false              # Enable duration-based notifications
-  long_running_threshold: 30s         # Threshold for long-running notification
+  long_running_threshold: 2m          # Threshold for long-running notification
 `
 }
 
@@ -73,7 +73,7 @@ func GetDefaults() map[string]interface{} {
 			"on_stage_complete":      false,                       // Don't notify on each stage by default
 			"on_error":               true,                        // Notify on failures (default when enabled)
 			"on_long_running":        false,                       // Don't use duration threshold by default
-			"long_running_threshold": (30 * time.Second).String(), // 30 seconds threshold
+			"long_running_threshold": (2 * time.Minute).String(), // 2 minutes threshold
 		},
 		// max_history_entries: Maximum number of command history entries to retain.
 		// Oldest entries are pruned when this limit is exceeded.
