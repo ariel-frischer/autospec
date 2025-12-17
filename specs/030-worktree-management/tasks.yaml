@@ -1,0 +1,603 @@
+tasks:
+  branch: "030-worktree-management"
+  created: "2025-12-17"
+  spec_path: "specs/030-worktree-management/spec.yaml"
+  plan_path: "specs/030-worktree-management/plan.yaml"
+
+summary:
+  total_tasks: 32
+  total_phases: 8
+  parallel_opportunities: 12
+  estimated_complexity: "high"
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Project initialization and new package structure"
+    tasks:
+      - id: "T001"
+        title: "Create internal/worktree package directory structure"
+        status: "Pending"
+        type: "setup"
+        parallel: false
+        story_id: null
+        file_path: "internal/worktree/"
+        dependencies: []
+        acceptance_criteria:
+          - "Directory internal/worktree/ exists"
+          - "Package can be imported in other internal packages"
+
+  - number: 2
+    title: "Foundational"
+    purpose: "Core infrastructure that MUST be complete before user stories"
+    tasks:
+      - id: "T002"
+        title: "Implement core worktree operations in internal/worktree/worktree.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: null
+        file_path: "internal/worktree/worktree.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "Worktree struct with Path, Branch, IsMain, SpecNumber, ActiveSpec fields"
+          - "List() function returns all git worktrees"
+          - "FindMain() function locates the main worktree (has .git directory)"
+          - "IsMain() function checks if given path is main worktree"
+          - "Create() function creates new git worktree with branch"
+          - "Remove() function removes a worktree safely"
+          - "Functions under 40 lines, errors wrapped with context"
+
+      - id: "T003"
+        title: "Implement worktree operations unit tests in internal/worktree/worktree_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: null
+        file_path: "internal/worktree/worktree_test.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "Map-based table-driven tests with t.Parallel()"
+          - "Tests for List(), FindMain(), IsMain(), Create(), Remove()"
+          - "Tests use temporary git repos for isolation"
+          - "Edge cases: empty repo, multiple worktrees, invalid paths"
+
+      - id: "T004"
+        title: "Implement spec counter with file locking in internal/worktree/counter.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: null
+        file_path: "internal/worktree/counter.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "SpecCounter struct with Value, LockPath, LastUpdated, LastAllocator fields"
+          - "GetNext() function atomically increments and returns next spec number"
+          - "Reserve() function locks and reserves a spec number"
+          - "Release() function releases a reserved number on failure"
+          - "File locking using os.OpenFile with O_CREATE|O_EXCL"
+          - "Stale lock detection with 5-minute threshold"
+          - "Lock file stored at .autospec/state/spec-counter.lock in main worktree"
+          - "Spec number allocation under 100ms"
+
+      - id: "T005"
+        title: "Implement spec counter unit tests in internal/worktree/counter_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: null
+        file_path: "internal/worktree/counter_test.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "Map-based table-driven tests with t.Parallel()"
+          - "Tests for GetNext(), Reserve(), Release()"
+          - "Concurrent access test with multiple goroutines"
+          - "Stale lock detection test"
+          - "Tests use temporary directories for isolation"
+
+  - number: 3
+    title: "User Story 1 - Create worktree for new feature development"
+    purpose: "Enable developers to easily create new git worktrees when starting features"
+    story_reference: "US-001"
+    independent_test: "Run worktree creation command and verify new worktree is created with correct branch"
+    tasks:
+      - id: "T006"
+        title: "Implement worktree command group in internal/cli/worktree.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/worktree.go"
+        dependencies: ["T002", "T003"]
+        acceptance_criteria:
+          - "Cobra command group 'autospec worktree' registered"
+          - "Help text explains worktree management purpose"
+          - "Subcommands: new, list, remove, init placeholders"
+          - "Integration with root command"
+
+      - id: "T007"
+        title: "Implement worktree new command in internal/cli/worktree_new.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/worktree_new.go"
+        dependencies: ["T006"]
+        acceptance_criteria:
+          - "'autospec worktree new <name>' creates worktree with branch <name>"
+          - "Outputs new worktree path in copyable format with cd suggestion"
+          - "Uses main worktree spec counter for global numbering"
+          - "Validates git version 2.5+ before proceeding"
+          - "Handles existing worktree with same name gracefully"
+          - "Functions under 40 lines, errors wrapped with context"
+
+      - id: "T008"
+        title: "Implement worktree CLI integration tests in internal/cli/worktree_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/worktree_test.go"
+        dependencies: ["T007"]
+        acceptance_criteria:
+          - "Integration tests for 'autospec worktree new'"
+          - "Tests verify worktree creation with correct branch"
+          - "Tests verify path output format"
+          - "Tests use temporary git repos"
+          - "Map-based table-driven pattern"
+
+  - number: 4
+    title: "User Story 2 - Global spec numbering across all worktrees"
+    purpose: "Ensure spec directory numbering is globally unique across all worktrees"
+    story_reference: "US-002"
+    independent_test: "Create specs in two different worktrees and verify they get different numbers"
+    tasks:
+      - id: "T009"
+        title: "Integrate spec counter with specify command workflow"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/workflow/specify.go"
+        dependencies: ["T004", "T005", "T007"]
+        acceptance_criteria:
+          - "Specify workflow uses worktree.GetNext() for spec numbering"
+          - "Spec number reserved at specify time, not worktree creation"
+          - "Lock acquired before reading counter, released after directory created"
+          - "Fallback to local counter if not in worktree environment"
+
+      - id: "T010"
+        title: "Add integration tests for global spec numbering"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/worktree/counter_integration_test.go"
+        dependencies: ["T009"]
+        acceptance_criteria:
+          - "Test creates two worktrees from same repo"
+          - "Test runs specify in each worktree concurrently"
+          - "Verifies each spec gets unique sequential number"
+          - "Tests counter persistence across process restarts"
+
+  - number: 5
+    title: "User Story 3 - Copy gitignored files to new worktree"
+    purpose: "Ensure project-specific gitignored files are copied to new worktrees"
+    story_reference: "US-003"
+    independent_test: "Create worktree with gitignored files and verify they are copied"
+    tasks:
+      - id: "T011"
+        title: "Implement worktree config loading in internal/worktree/config.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-003"
+        file_path: "internal/worktree/config.go"
+        dependencies: ["T002"]
+        acceptance_criteria:
+          - "WorktreeConfig struct with IncludePaths, SetupScript, DefaultBranch fields"
+          - "LoadConfig() reads .autospec/worktree-include YAML file"
+          - "SaveConfig() writes config back to file"
+          - "Default config when file doesn't exist"
+          - "YAML format consistent with other autospec configs"
+
+      - id: "T012"
+        title: "Implement worktree config unit tests in internal/worktree/config_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-003"
+        file_path: "internal/worktree/config_test.go"
+        dependencies: ["T002"]
+        acceptance_criteria:
+          - "Map-based table-driven tests with t.Parallel()"
+          - "Tests for LoadConfig(), SaveConfig()"
+          - "Tests for missing file, invalid YAML, valid config"
+          - "Tests use temporary directories"
+
+      - id: "T013"
+        title: "Implement file copy logic in internal/worktree/copy.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-003"
+        file_path: "internal/worktree/copy.go"
+        dependencies: ["T011"]
+        acceptance_criteria:
+          - "CopyIncludedPaths() copies files/directories from source to dest"
+          - "Handles both files and directories recursively"
+          - "Preserves file permissions"
+          - "Reports progress for large copies"
+          - "Warns but continues on missing paths"
+          - "Errors on permission denied"
+
+      - id: "T014"
+        title: "Implement file copy unit tests in internal/worktree/copy_test.go"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-003"
+        file_path: "internal/worktree/copy_test.go"
+        dependencies: ["T011"]
+        acceptance_criteria:
+          - "Map-based table-driven tests with t.Parallel()"
+          - "Tests for file copy, directory copy, missing path"
+          - "Tests for permission preservation"
+          - "Tests use temporary directories"
+
+      - id: "T015"
+        title: "Integrate file copying into worktree new command"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/cli/worktree_new.go"
+        dependencies: ["T013", "T014"]
+        acceptance_criteria:
+          - "worktree new loads WorktreeConfig and copies listed paths"
+          - "Progress displayed during copy operation"
+          - "Warning shown if .autospec/worktree-include doesn't exist"
+          - "Copy failures reported but don't block worktree creation"
+
+  - number: 6
+    title: "User Story 4 - List and manage existing worktrees"
+    purpose: "Enable developers to see and manage all active worktrees"
+    story_reference: "US-004"
+    independent_test: "Create multiple worktrees and verify list command shows them all"
+    tasks:
+      - id: "T016"
+        title: "Implement worktree list command in internal/cli/worktree_list.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-004"
+        file_path: "internal/cli/worktree_list.go"
+        dependencies: ["T006"]
+        acceptance_criteria:
+          - "'autospec worktree list' shows all worktrees"
+          - "Output includes path, branch, spec status for each"
+          - "Marks main worktree clearly"
+          - "Shows active spec directory if present"
+          - "Supports --json flag for machine-readable output"
+
+      - id: "T017"
+        title: "Implement worktree remove command in internal/cli/worktree_remove.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-004"
+        file_path: "internal/cli/worktree_remove.go"
+        dependencies: ["T006"]
+        acceptance_criteria:
+          - "'autospec worktree remove <path>' removes worktree"
+          - "Prompts for confirmation if uncommitted changes"
+          - "Supports --force flag to skip confirmation"
+          - "Cannot remove main worktree"
+          - "Cleans up git worktree metadata"
+
+      - id: "T018"
+        title: "Add integration tests for list and remove commands"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-004"
+        file_path: "internal/cli/worktree_test.go"
+        dependencies: ["T016", "T017"]
+        acceptance_criteria:
+          - "Tests for worktree list with 0, 1, multiple worktrees"
+          - "Tests for worktree remove with and without changes"
+          - "Tests for --force flag behavior"
+          - "Tests for main worktree protection"
+
+  - number: 7
+    title: "User Story 5 & 6 - Setup script and specify warning"
+    purpose: "Generate project-specific setup scripts and warn users on active spec branches"
+    story_reference: "US-005, US-006"
+    independent_test: "Run init command and verify script created; run specify on spec branch and verify warning"
+    tasks:
+      - id: "T019"
+        title: "Implement worktree init command in internal/cli/worktree_init.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-005"
+        file_path: "internal/cli/worktree_init.go"
+        dependencies: ["T006", "T011"]
+        acceptance_criteria:
+          - "'autospec worktree init' creates .autospec/worktree-include file"
+          - "Interactive prompts for paths to include"
+          - "Creates .autospec/scripts/worktree-setup.sh template"
+          - "Makes setup script executable"
+          - "Non-destructive: warns if files already exist"
+
+      - id: "T020"
+        title: "Implement setup script execution in worktree new"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-005"
+        file_path: "internal/cli/worktree_new.go"
+        dependencies: ["T019"]
+        acceptance_criteria:
+          - "After creating worktree, checks for .autospec/scripts/worktree-setup.sh"
+          - "Executes script in new worktree directory if present"
+          - "Shows script output to user"
+          - "Supports --no-setup flag to skip script execution"
+          - "Script execution failure is warning, not error"
+
+      - id: "T021"
+        title: "Add specify command branch warning in internal/cli/specify.go"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-006"
+        file_path: "internal/cli/specify.go"
+        dependencies: ["T002"]
+        acceptance_criteria:
+          - "PreRun hook checks if current branch matches spec pattern (NNN-*)"
+          - "If on spec branch, warns user and suggests worktree creation"
+          - "Prompts user to confirm continuation or abort"
+          - "Supports --force flag to bypass warning silently"
+          - "No warning if branch doesn't match spec pattern"
+
+      - id: "T022"
+        title: "Add integration tests for init and specify warning"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: "US-005"
+        file_path: "internal/cli/worktree_test.go"
+        dependencies: ["T019", "T020", "T021"]
+        acceptance_criteria:
+          - "Tests for worktree init file creation"
+          - "Tests for setup script execution"
+          - "Tests for --no-setup flag"
+          - "Tests for specify warning on spec branch"
+          - "Tests for specify --force flag bypass"
+
+  - number: 8
+    title: "Polish & Cross-Cutting Concerns"
+    purpose: "Documentation, shell completion, and final quality assurance"
+    tasks:
+      - id: "T023"
+        title: "Create worktree user documentation in docs/worktree.md"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "docs/worktree.md"
+        dependencies: ["T015", "T018", "T022"]
+        acceptance_criteria:
+          - "Documents all worktree subcommands with examples"
+          - "Explains global spec numbering mechanism"
+          - "Documents .autospec/worktree-include format"
+          - "Includes common workflows and troubleshooting"
+
+      - id: "T024"
+        title: "Update CLAUDE.md with worktree commands"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "CLAUDE.md"
+        dependencies: ["T023"]
+        acceptance_criteria:
+          - "Commands section updated with worktree subcommands"
+          - "Worktree docs added to documentation table"
+
+      - id: "T025"
+        title: "Add shell completion for worktree subcommands"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: null
+        file_path: "internal/cli/completion.go"
+        dependencies: ["T015", "T018"]
+        acceptance_criteria:
+          - "Tab completion for 'autospec worktree' subcommands"
+          - "Path completion for worktree remove"
+          - "Works with bash, zsh, fish shells"
+
+      - id: "T026"
+        title: "Run make fmt and fix any formatting issues"
+        status: "Pending"
+        type: "refactor"
+        parallel: false
+        story_id: null
+        file_path: "internal/worktree/"
+        dependencies: ["T025"]
+        acceptance_criteria:
+          - "make fmt exits 0 with no changes"
+          - "All new Go files properly formatted"
+
+      - id: "T027"
+        title: "Run make lint and fix any linting issues"
+        status: "Pending"
+        type: "refactor"
+        parallel: false
+        story_id: null
+        file_path: "internal/worktree/"
+        dependencies: ["T026"]
+        acceptance_criteria:
+          - "make lint exits 0"
+          - "No golangci-lint errors in new code"
+          - "No go vet warnings"
+
+      - id: "T028"
+        title: "Run make test and ensure all tests pass"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "internal/worktree/"
+        dependencies: ["T027"]
+        acceptance_criteria:
+          - "make test exits 0"
+          - "All unit tests pass"
+          - "All integration tests pass"
+          - "Test coverage adequate for new code"
+
+      - id: "T029"
+        title: "Run make build and verify binary works"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "bin/autospec"
+        dependencies: ["T028"]
+        acceptance_criteria:
+          - "make build exits 0"
+          - "Binary includes worktree commands"
+          - "autospec worktree --help displays correctly"
+
+      - id: "T030"
+        title: "Manual end-to-end verification"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "specs/030-worktree-management/"
+        dependencies: ["T029"]
+        acceptance_criteria:
+          - "Create worktree from main, verify path output"
+          - "Run specify in new worktree, verify unique spec number"
+          - "Create second worktree, verify different spec number"
+          - "List worktrees shows both with correct status"
+          - "Remove worktree cleans up correctly"
+
+      - id: "T031"
+        title: "Update reference.md with worktree command documentation"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "docs/reference.md"
+        dependencies: ["T023"]
+        acceptance_criteria:
+          - "worktree command group documented in CLI reference"
+          - "All flags and arguments documented"
+          - "Examples for each subcommand"
+
+      - id: "T032"
+        title: "Cross-platform testing verification"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "internal/worktree/"
+        dependencies: ["T029"]
+        acceptance_criteria:
+          - "File locking works on Linux, macOS, Windows"
+          - "Path handling uses filepath package correctly"
+          - "No platform-specific code without build tags"
+
+dependencies:
+  user_story_order:
+    - story_id: "US-001"
+      depends_on: []
+      blocks: ["US-002", "US-003", "US-004"]
+    - story_id: "US-002"
+      depends_on: ["US-001"]
+      blocks: []
+    - story_id: "US-003"
+      depends_on: ["US-001"]
+      blocks: []
+    - story_id: "US-004"
+      depends_on: ["US-001"]
+      blocks: []
+    - story_id: "US-005"
+      depends_on: ["US-001", "US-003"]
+      blocks: []
+    - story_id: "US-006"
+      depends_on: ["US-001"]
+      blocks: []
+
+  phase_order:
+    - phase: 1
+      blocks: [2]
+    - phase: 2
+      blocks: [3, 4, 5]
+    - phase: 3
+      blocks: [4, 6, 7]
+    - phase: 4
+      blocks: [8]
+    - phase: 5
+      blocks: [8]
+    - phase: 6
+      blocks: [8]
+    - phase: 7
+      blocks: [8]
+
+parallel_execution:
+  - phase: 2
+    parallel_groups:
+      - tasks: ["T002", "T003", "T004", "T005"]
+        rationale: "Different files with no dependencies - core worktree and counter can be developed in parallel"
+  - phase: 5
+    parallel_groups:
+      - tasks: ["T011", "T012", "T013", "T014"]
+        rationale: "Config and copy functionality can be developed in parallel"
+  - phase: 6
+    parallel_groups:
+      - tasks: ["T016", "T017"]
+        rationale: "List and remove commands are independent"
+  - phase: 7
+    parallel_groups:
+      - tasks: ["T019", "T020", "T021"]
+        rationale: "Init, setup execution, and specify warning are independent"
+  - phase: 8
+    parallel_groups:
+      - tasks: ["T023", "T024", "T025", "T031"]
+        rationale: "Documentation and completion can be done in parallel"
+
+implementation_strategy:
+  mvp_scope:
+    phases: [1, 2, 3, 4]
+    description: "Setup + Foundational + worktree new + global spec numbering"
+    validation: "Create worktree, run specify, verify unique spec number"
+  incremental_delivery:
+    - milestone: "Foundation Ready"
+      phases: [1, 2]
+      deliverable: "internal/worktree package with core operations and counter"
+    - milestone: "Basic Worktree Creation"
+      phases: [1, 2, 3]
+      deliverable: "autospec worktree new command creates isolated worktrees"
+    - milestone: "MVP Complete"
+      phases: [1, 2, 3, 4]
+      deliverable: "Worktree creation with global spec numbering"
+    - milestone: "File Copying"
+      phases: [1, 2, 3, 4, 5]
+      deliverable: "Worktrees include gitignored files from config"
+    - milestone: "Full Management"
+      phases: [1, 2, 3, 4, 5, 6]
+      deliverable: "List and remove worktrees"
+    - milestone: "Complete Feature"
+      phases: [1, 2, 3, 4, 5, 6, 7, 8]
+      deliverable: "Full worktree management with docs and polish"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-17T01:20:40Z"
+  artifact_type: "tasks"
