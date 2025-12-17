@@ -62,7 +62,7 @@ phases:
       tasks:
         - id: "T004"
           title: "Implement task block command in internal/cli/task_block.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -77,7 +77,7 @@ phases:
             - "Handles re-blocking (updating reason on already blocked task)"
         - id: "T005"
           title: "Add tests for task block command in internal/cli/task_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-001"
@@ -98,7 +98,7 @@ phases:
       tasks:
         - id: "T006"
           title: "Implement task unblock command in internal/cli/task_unblock.go"
-          status: "Pending"
+          status: "InProgress"
           type: "implementation"
           parallel: false
           story_id: "US-002"
