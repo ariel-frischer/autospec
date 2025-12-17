@@ -193,8 +193,11 @@ check_path() {
 # Main installation function
 main() {
     echo ""
-    printf '%s%s%s\n' "${GREEN}" "autospec Installer" "${NC}"
-    echo "================================"
+    printf '%s\n' "${GREEN}"
+    echo '▄▀█ █ █ ▀█▀ █▀█ █▀ █▀█ █▀▀ █▀▀'
+    echo '█▀█ █▄█  █  █▄█ ▄█ █▀▀ ██▄ █▄▄'
+    printf '%s\n' "${NC}"
+    echo "         Installer"
     echo ""
 
     # Check dependencies

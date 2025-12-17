@@ -68,7 +68,7 @@ release:
 
     #### Using install script (recommended):
     ```bash
-    curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/install.sh | sh
     ```
 
     #### Manual installation:
