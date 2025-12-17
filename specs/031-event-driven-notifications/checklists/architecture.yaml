@@ -52,8 +52,8 @@ categories:
         description: "Is 'under 1ms' for events.Publish() latency precisely defined (p50, p99, worst case)?"
         quality_dimension: "clarity"
         spec_reference: "NFR-001"
-        status: "fail"
-        notes: "ACTION REQUIRED: Update NFR-001 to specify p99 < 1ms latency target for measurability"
+        status: "pass"
+        notes: "NFR-001 updated to specify p99 < 1ms latency target"
 
       - id: "CHK007"
         description: "Is the callback signature for event handlers specified?"
@@ -99,9 +99,9 @@ categories:
       - id: "CHK012"
         description: "Are requirements for subscriber goroutine lifecycle management defined?"
         quality_dimension: "coverage"
-        spec_reference: null
-        status: "fail"
-        notes: "ACTION REQUIRED: Document max concurrent subscriber limit (e.g., max 10 subscribers) for safety"
+        spec_reference: "NFR-008"
+        status: "pass"
+        notes: "NFR-008 added: Maximum 10 concurrent event subscribers per event type"
 
       - id: "CHK013"
         description: "Is event ordering guarantee (or lack thereof) documented?"
@@ -154,9 +154,9 @@ categories:
       - id: "CHK019"
         description: "Is behavior defined when events.Publish() is called after process termination begins?"
         quality_dimension: "edge_cases"
-        spec_reference: null
-        status: "fail"
-        notes: "ACTION REQUIRED: Add edge_case documenting that late publishes during SIGTERM are silently ignored"
+        spec_reference: "edge_cases"
+        status: "pass"
+        notes: "Edge case added: Late publishes during SIGTERM are silently ignored; subscribers may not receive events"
 
   - name: "Acceptance Criteria Measurability"
     description: "Can success criteria be objectively verified?"
@@ -208,10 +208,10 @@ categories:
 
 summary:
   total_items: 25
-  passed: 22
-  failed: 3
+  passed: 25
+  failed: 0
   pending: 0
-  pass_rate: "88%"
+  pass_rate: "100%"
 
 _meta:
   version: "1.0.0"

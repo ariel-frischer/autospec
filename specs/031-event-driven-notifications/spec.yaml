@@ -160,7 +160,7 @@ requirements:
     - id: "NFR-001"
       category: "performance"
       description: "Event dispatch MUST NOT add measurable latency to command execution"
-      measurable_target: "events.Publish() returns in under 1ms (kelindar/event: zero allocations, 4-10x faster than channels)"
+      measurable_target: "events.Publish() returns in under 1ms (p99); kelindar/event provides zero allocations, 4-10x faster than channels"
 
     - id: "NFR-002"
       category: "reliability"
@@ -192,6 +192,11 @@ requirements:
       category: "maintainability"
       description: "Event types MUST be minimal and well-documented"
       measurable_target: "No more than 10 event types initially; each type has doc comment explaining when emitted"
+
+    - id: "NFR-008"
+      category: "scalability"
+      description: "Event subscriber count MUST be bounded to prevent goroutine proliferation"
+      measurable_target: "Maximum 10 concurrent event subscribers per event type; Subscribe() returns error if limit exceeded"
 
 success_criteria:
   measurable_outcomes:
@@ -292,6 +297,9 @@ edge_cases:
 
   - scenario: "Global dispatcher nil check"
     expected_behavior: "events.Publish() is safe to call; if dispatcher somehow nil, function returns silently"
+
+  - scenario: "events.Publish() called during process shutdown (SIGTERM)"
+    expected_behavior: "Late publishes are silently ignored; no panic or error; subscribers may not receive events if already terminated"
 
 assumptions:
   - "The existing notification handler (internal/notify) will remain as a subscriber rather than being deleted"

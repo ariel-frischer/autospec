@@ -30,7 +30,7 @@ technical_context:
     approach: "Unit tests with map-based table-driven patterns; race detector validation; integration tests for event flow"
   target_platform: "Linux, macOS, Windows (cross-platform)"
   project_type: "cli"
-  performance_goals: "Event dispatch <1ms; zero measurable latency added to command execution"
+  performance_goals: "Event dispatch <1ms (p99); zero measurable latency added to command execution"
   constraints:
     - "Must maintain backward compatibility - existing notification behavior unchanged"
     - "Must use github.com/kelindar/event for event bus implementation"
@@ -38,6 +38,7 @@ technical_context:
     - "Functions must be under 40 lines"
     - "Errors must be wrapped with context"
     - "Tests must use map-based table-driven pattern with t.Parallel()"
+    - "Maximum 10 concurrent event subscribers per event type"
   scale_scope: "In-process event handling for single CLI session"
 
 constitution_check:
@@ -260,6 +261,10 @@ risks:
     likelihood: "low"
     impact: "low"
     mitigation: "Event system is optional; direct calls still work; complexity pays off in extensibility"
+  - risk: "Events published during process shutdown may not be delivered"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Document that late publishes during SIGTERM are silently ignored; notifications are non-critical"
 
 open_questions:
   - question: "Should we add EventCommandStart in addition to EventCommandComplete?"
