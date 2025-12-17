@@ -440,7 +440,7 @@ phases:
       tasks:
         - id: "T033"
           title: "Run full test suite and verify 85% threshold for all packages"
-          status: "InProgress"
+          status: "Blocked"
           type: "test"
           parallel: false
           story_id: null
@@ -452,7 +452,7 @@ phases:
             - "No test flakiness over 3 runs"
         - id: "T034"
           title: "Verify 90% threshold for critical packages"
-          status: "Pending"
+          status: "Blocked"
           type: "test"
           parallel: false
           story_id: null
@@ -466,7 +466,7 @@ phases:
             - "lifecycle package >= 90%"
         - id: "T035"
           title: "Pass all quality gates (make test, make fmt, make lint, make build)"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null
