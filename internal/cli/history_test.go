@@ -440,3 +440,391 @@ func TestHistoryDir(t *testing.T) {
 	actualPath := getDefaultStateDir()
 	assert.Equal(t, expectedPath, actualPath)
 }
+
+// TestRunHistory_StatusDisplay tests that the status column appears in output.
+func TestRunHistory_StatusDisplay(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		entries         []history.HistoryEntry
+		wantStatuses    []string
+		wantInOutput    []string
+		wantNotInOutput []string
+	}{
+		"displays completed status": {
+			entries: []history.HistoryEntry{
+				{
+					ID:        "brave_fox_20241215_103000",
+					Timestamp: time.Date(2024, 12, 15, 10, 30, 0, 0, time.UTC),
+					Command:   "specify",
+					Spec:      "test-feature",
+					Status:    history.StatusCompleted,
+					ExitCode:  0,
+					Duration:  "2m30s",
+				},
+			},
+			wantInOutput: []string{"completed", "brave_fox_20241215_103000", "specify"},
+		},
+		"displays running status": {
+			entries: []history.HistoryEntry{
+				{
+					ID:        "calm_river_20241215_103500",
+					Timestamp: time.Date(2024, 12, 15, 10, 35, 0, 0, time.UTC),
+					Command:   "plan",
+					Spec:      "test-feature",
+					Status:    history.StatusRunning,
+					ExitCode:  0,
+					Duration:  "",
+				},
+			},
+			wantInOutput: []string{"running", "calm_river_20241215_103500", "plan"},
+		},
+		"displays failed status": {
+			entries: []history.HistoryEntry{
+				{
+					ID:        "swift_falcon_20241215_104000",
+					Timestamp: time.Date(2024, 12, 15, 10, 40, 0, 0, time.UTC),
+					Command:   "tasks",
+					Spec:      "test-feature",
+					Status:    history.StatusFailed,
+					ExitCode:  1,
+					Duration:  "45s",
+				},
+			},
+			wantInOutput: []string{"failed", "swift_falcon_20241215_104000", "tasks"},
+		},
+		"displays cancelled status": {
+			entries: []history.HistoryEntry{
+				{
+					ID:        "gentle_owl_20241215_104500",
+					Timestamp: time.Date(2024, 12, 15, 10, 45, 0, 0, time.UTC),
+					Command:   "implement",
+					Spec:      "test-feature",
+					Status:    history.StatusCancelled,
+					ExitCode:  0,
+					Duration:  "1m20s",
+				},
+			},
+			wantInOutput: []string{"cancelled", "gentle_owl_20241215_104500", "implement"},
+		},
+		"displays dash for old entries without status": {
+			entries: []history.HistoryEntry{
+				{
+					Timestamp: time.Date(2024, 12, 15, 10, 50, 0, 0, time.UTC),
+					Command:   "specify",
+					Spec:      "old-feature",
+					Status:    "", // Empty status (old entry)
+					ExitCode:  0,
+					Duration:  "3m",
+				},
+			},
+			wantInOutput: []string{"-", "specify", "old-feature"},
+		},
+		"displays multiple entries with different statuses": {
+			entries: []history.HistoryEntry{
+				{
+					ID:        "brave_fox_20241215_103000",
+					Timestamp: time.Date(2024, 12, 15, 10, 30, 0, 0, time.UTC),
+					Command:   "specify",
+					Spec:      "feature-a",
+					Status:    history.StatusCompleted,
+					ExitCode:  0,
+					Duration:  "2m",
+				},
+				{
+					ID:        "calm_river_20241215_103500",
+					Timestamp: time.Date(2024, 12, 15, 10, 35, 0, 0, time.UTC),
+					Command:   "plan",
+					Spec:      "feature-a",
+					Status:    history.StatusRunning,
+					ExitCode:  0,
+					Duration:  "",
+				},
+				{
+					ID:        "swift_falcon_20241215_104000",
+					Timestamp: time.Date(2024, 12, 15, 10, 40, 0, 0, time.UTC),
+					Command:   "tasks",
+					Spec:      "feature-b",
+					Status:    history.StatusFailed,
+					ExitCode:  1,
+					Duration:  "1m",
+				},
+			},
+			wantInOutput: []string{"completed", "running", "failed", "feature-a", "feature-b"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+			histFile := &history.HistoryFile{Entries: tt.entries}
+			require.NoError(t, history.SaveHistory(stateDir, histFile))
+
+			cmd := createTestHistoryCmd(stateDir)
+			var buf bytes.Buffer
+			cmd.SetOut(&buf)
+
+			err := cmd.RunE(cmd, []string{})
+			require.NoError(t, err)
+
+			output := buf.String()
+			for _, want := range tt.wantInOutput {
+				assert.Contains(t, output, want, "output should contain %q", want)
+			}
+			for _, notWant := range tt.wantNotInOutput {
+				assert.NotContains(t, output, notWant, "output should not contain %q", notWant)
+			}
+		})
+	}
+}
+
+// TestRunHistory_StatusFilter tests the --status flag filtering functionality.
+func TestRunHistory_StatusFilter(t *testing.T) {
+	t.Parallel()
+
+	baseEntries := []history.HistoryEntry{
+		{
+			ID:        "brave_fox_20241215_103000",
+			Timestamp: time.Date(2024, 12, 15, 10, 30, 0, 0, time.UTC),
+			Command:   "specify",
+			Spec:      "feature-a",
+			Status:    history.StatusCompleted,
+			ExitCode:  0,
+			Duration:  "2m",
+		},
+		{
+			ID:        "calm_river_20241215_103500",
+			Timestamp: time.Date(2024, 12, 15, 10, 35, 0, 0, time.UTC),
+			Command:   "plan",
+			Spec:      "feature-a",
+			Status:    history.StatusRunning,
+			ExitCode:  0,
+			Duration:  "",
+		},
+		{
+			ID:        "swift_falcon_20241215_104000",
+			Timestamp: time.Date(2024, 12, 15, 10, 40, 0, 0, time.UTC),
+			Command:   "tasks",
+			Spec:      "feature-b",
+			Status:    history.StatusFailed,
+			ExitCode:  1,
+			Duration:  "1m",
+		},
+		{
+			ID:        "gentle_owl_20241215_104500",
+			Timestamp: time.Date(2024, 12, 15, 10, 45, 0, 0, time.UTC),
+			Command:   "implement",
+			Spec:      "feature-c",
+			Status:    history.StatusCancelled,
+			ExitCode:  0,
+			Duration:  "30s",
+		},
+	}
+
+	tests := map[string]struct {
+		statusFilter    string
+		wantInOutput    []string
+		wantNotInOutput []string
+	}{
+		"filter by completed": {
+			statusFilter:    "completed",
+			wantInOutput:    []string{"completed", "specify", "feature-a"},
+			wantNotInOutput: []string{"running", "failed", "cancelled", "plan", "tasks", "implement"},
+		},
+		"filter by running": {
+			statusFilter:    "running",
+			wantInOutput:    []string{"running", "plan", "feature-a"},
+			wantNotInOutput: []string{"completed", "failed", "cancelled", "specify", "tasks", "implement"},
+		},
+		"filter by failed": {
+			statusFilter:    "failed",
+			wantInOutput:    []string{"failed", "tasks", "feature-b"},
+			wantNotInOutput: []string{"completed", "running", "cancelled", "specify", "plan", "implement"},
+		},
+		"filter by cancelled": {
+			statusFilter:    "cancelled",
+			wantInOutput:    []string{"cancelled", "implement", "feature-c"},
+			wantNotInOutput: []string{"completed", "running", "failed", "specify", "plan", "tasks"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+			histFile := &history.HistoryFile{Entries: baseEntries}
+			require.NoError(t, history.SaveHistory(stateDir, histFile))
+
+			cmd := createTestHistoryCmd(stateDir)
+			require.NoError(t, cmd.Flags().Set("status", tt.statusFilter))
+
+			var buf bytes.Buffer
+			cmd.SetOut(&buf)
+
+			err := cmd.RunE(cmd, []string{})
+			require.NoError(t, err)
+
+			output := buf.String()
+			for _, want := range tt.wantInOutput {
+				assert.Contains(t, output, want, "output should contain %q", want)
+			}
+			for _, notWant := range tt.wantNotInOutput {
+				assert.NotContains(t, output, notWant, "output should not contain %q", notWant)
+			}
+		})
+	}
+}
+
+// TestRunHistory_StatusFilter_NoMatch tests empty result for non-matching status filter.
+func TestRunHistory_StatusFilter_NoMatch(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	// Create history with only completed entries
+	histFile := &history.HistoryFile{
+		Entries: []history.HistoryEntry{
+			{
+				ID:        "brave_fox_20241215_103000",
+				Timestamp: time.Date(2024, 12, 15, 10, 30, 0, 0, time.UTC),
+				Command:   "specify",
+				Spec:      "feature-a",
+				Status:    history.StatusCompleted,
+				ExitCode:  0,
+				Duration:  "2m",
+			},
+		},
+	}
+	require.NoError(t, history.SaveHistory(stateDir, histFile))
+
+	cmd := createTestHistoryCmd(stateDir)
+	require.NoError(t, cmd.Flags().Set("status", "running"))
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.RunE(cmd, []string{})
+	require.NoError(t, err)
+
+	output := buf.String()
+	assert.Contains(t, output, "No matching entries for status 'running'")
+}
+
+// TestRunHistory_StatusAndSpecFilter tests combining --status and --spec flags.
+func TestRunHistory_StatusAndSpecFilter(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	histFile := &history.HistoryFile{
+		Entries: []history.HistoryEntry{
+			{
+				ID:        "brave_fox_20241215_103000",
+				Timestamp: time.Date(2024, 12, 15, 10, 30, 0, 0, time.UTC),
+				Command:   "specify",
+				Spec:      "feature-a",
+				Status:    history.StatusCompleted,
+				ExitCode:  0,
+				Duration:  "2m",
+			},
+			{
+				ID:        "calm_river_20241215_103500",
+				Timestamp: time.Date(2024, 12, 15, 10, 35, 0, 0, time.UTC),
+				Command:   "plan",
+				Spec:      "feature-a",
+				Status:    history.StatusFailed,
+				ExitCode:  1,
+				Duration:  "1m",
+			},
+			{
+				ID:        "swift_falcon_20241215_104000",
+				Timestamp: time.Date(2024, 12, 15, 10, 40, 0, 0, time.UTC),
+				Command:   "tasks",
+				Spec:      "feature-b",
+				Status:    history.StatusCompleted,
+				ExitCode:  0,
+				Duration:  "30s",
+			},
+		},
+	}
+	require.NoError(t, history.SaveHistory(stateDir, histFile))
+
+	// Filter by spec AND status
+	cmd := createTestHistoryCmd(stateDir)
+	require.NoError(t, cmd.Flags().Set("spec", "feature-a"))
+	require.NoError(t, cmd.Flags().Set("status", "completed"))
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.RunE(cmd, []string{})
+	require.NoError(t, err)
+
+	output := buf.String()
+	assert.Contains(t, output, "specify")
+	assert.Contains(t, output, "feature-a")
+	assert.Contains(t, output, "completed")
+	assert.NotContains(t, output, "plan")  // Same spec but different status
+	assert.NotContains(t, output, "tasks") // Same status but different spec
+	assert.NotContains(t, output, "feature-b")
+}
+
+// TestRunHistory_BackwardCompatibility tests that old entries without status display correctly.
+func TestRunHistory_BackwardCompatibility(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	// Create history with a mix of old and new entries
+	histFile := &history.HistoryFile{
+		Entries: []history.HistoryEntry{
+			// Old entry without ID and status
+			{
+				Timestamp: time.Date(2024, 12, 15, 10, 30, 0, 0, time.UTC),
+				Command:   "specify",
+				Spec:      "old-feature",
+				ExitCode:  0,
+				Duration:  "2m",
+			},
+			// New entry with ID and status
+			{
+				ID:        "brave_fox_20241215_103500",
+				Timestamp: time.Date(2024, 12, 15, 10, 35, 0, 0, time.UTC),
+				Command:   "plan",
+				Spec:      "new-feature",
+				Status:    history.StatusCompleted,
+				ExitCode:  0,
+				Duration:  "1m",
+			},
+		},
+	}
+	require.NoError(t, history.SaveHistory(stateDir, histFile))
+
+	cmd := createTestHistoryCmd(stateDir)
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.RunE(cmd, []string{})
+	require.NoError(t, err)
+
+	output := buf.String()
+	// Both old and new entries should be displayed
+	assert.Contains(t, output, "specify")
+	assert.Contains(t, output, "plan")
+	assert.Contains(t, output, "old-feature")
+	assert.Contains(t, output, "new-feature")
+	// New entry should have its status
+	assert.Contains(t, output, "completed")
+}
+
+// TestHistoryStatusFlagExists verifies the --status flag is registered.
+func TestHistoryStatusFlagExists(t *testing.T) {
+	t.Parallel()
+
+	f := historyCmd.Flags().Lookup("status")
+	require.NotNil(t, f, "status flag should exist")
+	assert.Equal(t, "", f.Shorthand, "status flag should have no shorthand")
+}

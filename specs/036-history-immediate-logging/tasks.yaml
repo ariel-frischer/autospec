@@ -233,7 +233,7 @@ phases:
             - "Functions under 40 lines"
         - id: "T015"
           title: "Write tests for history status display and filter in internal/cli/history_test.go"
-          status: "InProgress"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-004"
@@ -247,7 +247,7 @@ phases:
             - "Test empty result for non-matching filter"
         - id: "T016"
           title: "Update history command documentation in docs/reference.md"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: "US-004"
@@ -264,7 +264,7 @@ phases:
       tasks:
         - id: "T017"
           title: "Run all quality gates: make test, make fmt, make lint, make build"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -277,7 +277,7 @@ phases:
             - "make build succeeds"
         - id: "T018"
           title: "Manual end-to-end testing of immediate logging workflow"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null

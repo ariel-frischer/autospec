@@ -181,28 +181,40 @@ View command execution history
 
 **Syntax**: `autospec history [flags]`
 
-**Description**: Display a log of all autospec command executions with timestamp, command name, spec, exit code, and duration.
+**Description**: Display a log of all autospec command executions with timestamp, unique ID, status, command name, spec, exit code, and duration.
 
-**Automatic Logging**: All workflow commands are automatically logged to history after they complete:
+**Automatic Logging**: All workflow commands are automatically logged to history:
 - Core stages: `specify`, `plan`, `tasks`, `implement`
 - Optional stages: `clarify`, `analyze`, `checklist`, `constitution`
 - Workflows: `run`, `prep`, `all`
 
-History entries are written **after command completion** (not at start) because the entry includes duration and exit code.
+**Two-Phase Logging**: History entries are written **immediately when commands start** (with status `running`) and updated when commands complete. This ensures:
+- Running commands are visible in history
+- No history data is lost if a command crashes or is interrupted
+- Each entry has a unique, memorable ID for tracking
 
 **Flags**:
 - `-s, --spec <name>`: Filter by spec name
 - `-n, --limit <count>`: Limit to last N entries (most recent)
+- `--status <value>`: Filter by status (`running`, `completed`, `failed`, `cancelled`)
 - `--clear`: Clear all history
 
 **Output Format**:
 ```
-TIMESTAMP            COMMAND       SPEC                  EXIT  DURATION
-2024-01-15 10:30:00  specify                             0     2m30s
-2024-01-15 10:35:00  plan          001-test-feature      0     1m15s
-2024-01-15 10:40:00  tasks         001-test-feature      1     45s
-2024-01-15 10:45:00  implement     001-test-feature      0     5m20s
+TIMESTAMP            ID                              STATUS      COMMAND       SPEC              EXIT  DURATION
+2024-01-15 10:30:00  brave_fox_20240115_103000       completed   specify       -                 0     2m30s
+2024-01-15 10:35:00  calm_river_20240115_103500      completed   plan          001-test-feature  0     1m15s
+2024-01-15 10:40:00  swift_falcon_20240115_104000    failed      tasks         001-test-feature  1     45s
+2024-01-15 10:45:00  gentle_owl_20240115_104500      running     implement     001-test-feature  0
 ```
+
+**Columns**:
+- **ID**: Unique identifier in `adjective_noun_YYYYMMDD_HHMMSS` format (memorable and sortable)
+- **STATUS**: Current state with color coding:
+  - Green: `completed` (successful execution)
+  - Yellow: `running` (currently executing)
+  - Red: `failed` (error occurred) or `cancelled` (user interrupted)
+  - `-`: Old entries without status (backward compatibility)
 
 Note: Commands that create new specs (`specify`, `prep`, `all`, `run -s`) log with an empty spec name since the spec doesn't exist yet when the command starts.
 
@@ -216,6 +228,15 @@ autospec history -n 10
 
 # Filter by spec name
 autospec history --spec 001-feature
+
+# Filter by status (see running commands)
+autospec history --status running
+
+# Filter by failed commands
+autospec history --status failed
+
+# Combine filters
+autospec history --spec 001-feature --status completed
 
 # Clear all history
 autospec history --clear
