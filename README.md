@@ -87,6 +87,19 @@ autospec constitution
 
 ## 🎮 Usage
 
+### 🔄 Core Flow Commands
+
+The core workflow runs four stages in sequence, each creating a YAML artifact:
+
+| Stage | Command | Creates | Description |
+|-------|---------|---------|-------------|
+| **specify** | `autospec specify "desc"` | `specs/001-feature/spec.yaml` | Feature specification with requirements |
+| **plan** | `autospec plan` | `specs/001-feature/plan.yaml` | Implementation design and architecture |
+| **tasks** | `autospec tasks` | `specs/001-feature/tasks.yaml` | Actionable task breakdown with dependencies |
+| **implement** | `autospec implement` | — | Executes tasks, updates status in tasks.yaml |
+
+> 📌 **Branch creation:** `specify` automatically creates and checks out a new feature branch (e.g., `spec/001-user-auth`) before generating the spec.
+
 ### ✅ Recommended Workflow
 
 1. Generate the specification
@@ -98,7 +111,7 @@ autospec run -s "Add user authentication with OAuth"
 autospec run -pti
 ```
 
-> ⚠️ **Note:** New specs automatically create and checkout a feature branch (e.g., `spec/001-user-auth`). This iterative approach lets you review and refine the spec before committing to implementation.
+> 💡 This iterative approach lets you review and refine the spec before committing to implementation.
 
 ### 🎛️ Flexible Stage Selection with `run`
 
@@ -124,23 +137,6 @@ autospec run -tlzi
 # All core with skip confirmations (-y)
 autospec run -a -y "Feature description"
 ```
-
-### 🚩 Stage Flags Reference
-
-| Flag | Stage | Description |
-|------|-------|-------------|
-| `-s` | specify | Generate feature specification |
-| `-p` | plan | Generate implementation plan |
-| `-t` | tasks | Generate task breakdown |
-| `-i` | implement | Execute implementation |
-| `-a` | all | All core stages (`-spti`) |
-| `-n` | constitution | Create/update project constitution |
-| `-r` | clarify | Refine spec with Q&A |
-| `-l` | checklist | Generate validation checklist |
-| `-z` | analyze | Cross-artifact consistency check |
-
-> 📌 Stages always execute in canonical order regardless of flag order:
-> `constitution → specify → clarify → plan → tasks → checklist → analyze → implement`
 
 ### ⚡ Shortcut Commands
 
@@ -213,6 +209,23 @@ autospec checklist "Include a11y checks"
 # Cross-artifact consistency analysis
 autospec analyze "Verify API contracts"
 ```
+
+### 🚩 Stage Flags Reference
+
+| Flag | Stage | Description |
+|------|-------|-------------|
+| `-s` | specify | Generate feature specification |
+| `-p` | plan | Generate implementation plan |
+| `-t` | tasks | Generate task breakdown |
+| `-i` | implement | Execute implementation |
+| `-a` | all | All core stages (`-spti`) |
+| `-n` | constitution | Create/update project constitution |
+| `-r` | clarify | Refine spec with Q&A |
+| `-l` | checklist | Generate validation checklist |
+| `-z` | analyze | Cross-artifact consistency check |
+
+> 📌 Stages always execute in canonical order regardless of flag order:
+> `constitution → specify → clarify → plan → tasks → checklist → analyze → implement`
 
 ### 📝 Task Management
 
