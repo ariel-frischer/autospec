@@ -112,24 +112,25 @@ for name, tt := range tests {
 }
 ```
 
-### CLI Command Notification Handlers (REQUIRED)
+### CLI Command Lifecycle Wrapper (REQUIRED)
 
-All workflow CLI commands in `internal/cli/` MUST use the lifecycle wrapper for notifications. This ensures users receive completion notifications (sound/visual) when commands finish, with automatic timing and panic recovery.
+All workflow CLI commands in `internal/cli/` MUST use the lifecycle wrapper for notifications and history logging. This ensures users receive completion notifications (sound/visual) when commands finish, with automatic timing, panic recovery, and command history tracking.
 
-Required pattern using `lifecycle.Run()`:
+Required pattern using `lifecycle.RunWithHistory()`:
 
 ```go
 import (
+    "github.com/ariel-frischer/autospec/internal/history"
     "github.com/ariel-frischer/autospec/internal/lifecycle"
     "github.com/ariel-frischer/autospec/internal/notify"
 )
 
-// Create notification handler
+// Create notification handler and history logger
 notifHandler := notify.NewHandler(cfg.Notifications)
-orch.Executor.NotificationHandler = notifHandler
+historyLogger := history.NewWriter(cfg.StateDir, cfg.MaxHistoryEntries)
 
-// Wrap command execution in lifecycle.Run() - handles timing and notification
-return lifecycle.Run(notifHandler, "command-name", func() error {
+// Wrap command execution with lifecycle for timing, notification, and history
+return lifecycle.RunWithHistory(notifHandler, historyLogger, "command-name", specName, func() error {
     // Execute the command logic
     return orch.ExecuteXxx(...)
 })
@@ -138,20 +139,22 @@ return lifecycle.Run(notifHandler, "command-name", func() error {
 The lifecycle wrapper provides:
 - Automatic timing (start time, duration calculation)
 - Notification dispatch (`OnCommandComplete` with correct parameters)
+- Two-phase history logging (WriteStart → UpdateComplete)
+- Crash/interrupt visibility (entries remain "running" if process terminates abnormally)
 - Panic recovery for notification handlers
-- Nil handler safety (no-op if handler is nil)
+- Nil handler safety (no-op if handler or logger is nil)
 
-For context-aware commands (cancellation support), use `lifecycle.RunWithContext()`:
+For context-aware commands (cancellation support), use `lifecycle.RunWithHistoryContext()`:
 
 ```go
-return lifecycle.RunWithContext(ctx, notifHandler, "command-name", func(ctx context.Context) error {
-    return orch.ExecuteWithContext(ctx, ...)
+return lifecycle.RunWithHistoryContext(cmd.Context(), notifHandler, historyLogger, "command-name", specName, func(_ context.Context) error {
+    return orch.ExecuteXxx(...)
 })
 ```
 
 Commands requiring this pattern: `specify`, `plan`, `tasks`, `clarify`, `analyze`, `checklist`, `constitution`, `prep`, `run`, `implement`, `all`.
 
-Regression test: `TestAllCommandsHaveNotificationSupport` in `internal/cli/specify_test.go` verifies all commands use the lifecycle wrapper (not legacy boilerplate).
+Regression test: `TestAllCommandsHaveNotificationSupport` in `internal/cli/specify_test.go` verifies all commands use the lifecycle wrapper (`RunWithHistory` or `RunWithHistoryContext`).
 
 ## Spec Generation (MUST)
 
