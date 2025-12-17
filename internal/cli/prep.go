@@ -3,10 +3,10 @@ package cli
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
+	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/workflow"
 	"github.com/spf13/cobra"
@@ -51,47 +51,39 @@ This is useful when you want to review the generated artifacts before implementa
 			return cliErr
 		}
 
-		// Override skip-preflight from flag if set
-		if cmd.Flags().Changed("skip-preflight") {
-			cfg.SkipPreflight = skipPreflight
-		}
-
-		// Override max-retries from flag if set
-		if cmd.Flags().Changed("max-retries") {
-			cfg.MaxRetries = maxRetries
-		}
-
-		// Check if constitution exists (required for all workflow stages)
-		constitutionCheck := workflow.CheckConstitutionExists()
-		if !constitutionCheck.Exists {
-			fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
-			return fmt.Errorf("constitution required")
-		}
-
-		// Create workflow orchestrator
-		orchestrator := workflow.NewWorkflowOrchestrator(cfg)
-
-		// Create notification handler and attach to executor
+		// Create notification handler
 		notifHandler := notify.NewHandler(cfg.Notifications)
-		orchestrator.Executor.NotificationHandler = notifHandler
 
-		// Track command start time
-		startTime := time.Now()
-		notifHandler.SetStartTime(startTime)
+		// Wrap command execution with lifecycle for timing and notification
+		return lifecycle.Run(notifHandler, "prep", func() error {
+			// Override skip-preflight from flag if set
+			if cmd.Flags().Changed("skip-preflight") {
+				cfg.SkipPreflight = skipPreflight
+			}
 
-		// Run complete workflow (specify → plan → tasks, no implementation)
-		execErr := orchestrator.RunCompleteWorkflow(featureDescription)
+			// Override max-retries from flag if set
+			if cmd.Flags().Changed("max-retries") {
+				cfg.MaxRetries = maxRetries
+			}
 
-		// Calculate duration and send command completion notification
-		duration := time.Since(startTime)
-		success := execErr == nil
-		notifHandler.OnCommandComplete("prep", success, duration)
+			// Check if constitution exists (required for all workflow stages)
+			constitutionCheck := workflow.CheckConstitutionExists()
+			if !constitutionCheck.Exists {
+				fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
+				return fmt.Errorf("constitution required")
+			}
 
-		if execErr != nil {
-			return fmt.Errorf("prep workflow failed: %w", execErr)
-		}
+			// Create workflow orchestrator
+			orchestrator := workflow.NewWorkflowOrchestrator(cfg)
+			orchestrator.Executor.NotificationHandler = notifHandler
 
-		return nil
+			// Run complete workflow (specify → plan → tasks, no implementation)
+			if err := orchestrator.RunCompleteWorkflow(featureDescription); err != nil {
+				return fmt.Errorf("prep workflow failed: %w", err)
+			}
+
+			return nil
+		})
 	},
 }
 

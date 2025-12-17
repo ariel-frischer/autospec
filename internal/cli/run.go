@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
+	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/validation"
@@ -265,10 +265,6 @@ func executeStages(orchestrator *workflow.WorkflowOrchestrator, stageConfig *wor
 	notifHandler := notify.NewHandler(orchestrator.Config.Notifications)
 	orchestrator.Executor.NotificationHandler = notifHandler
 
-	// Track command start time
-	startTime := time.Now()
-	notifHandler.SetStartTime(startTime)
-
 	ctx := &stageExecutionContext{
 		orchestrator:        orchestrator,
 		notificationHandler: notifHandler,
@@ -282,26 +278,18 @@ func executeStages(orchestrator *workflow.WorkflowOrchestrator, stageConfig *wor
 		ctx.specDir = specMetadata.Directory
 	}
 
-	var execErr error
-	for i, stage := range stages {
-		fmt.Printf("[Stage %d/%d] %s...\n", i+1, len(stages), stage)
-		if err := ctx.executeStage(stage); err != nil {
-			execErr = fmt.Errorf("executing stage %s: %w", stage, err)
-			break
+	// Wrap stage execution with lifecycle for timing and notification
+	return lifecycle.Run(notifHandler, "run", func() error {
+		for i, stage := range stages {
+			fmt.Printf("[Stage %d/%d] %s...\n", i+1, len(stages), stage)
+			if err := ctx.executeStage(stage); err != nil {
+				return fmt.Errorf("executing stage %s: %w", stage, err)
+			}
 		}
-	}
 
-	// Calculate duration and send command completion notification
-	duration := time.Since(startTime)
-	success := execErr == nil
-	notifHandler.OnCommandComplete("run", success, duration)
-
-	if execErr != nil {
-		return execErr
-	}
-
-	printWorkflowSummary(stages, ctx.specName, ctx.specDir, ctx.ranImplement)
-	return nil
+		printWorkflowSummary(stages, ctx.specName, ctx.specDir, ctx.ranImplement)
+		return nil
+	})
 }
 
 // executeStage dispatches to the appropriate stage handler

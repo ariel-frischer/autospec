@@ -143,98 +143,90 @@ The --tasks mode provides maximum context isolation:
 			return cliErr
 		}
 
-		// Override skip-preflight from flag if set
-		if cmd.Flags().Changed("skip-preflight") {
-			cfg.SkipPreflight = skipPreflight
-		}
-
-		// Override max-retries from flag if set
-		if cmd.Flags().Changed("max-retries") {
-			cfg.MaxRetries = maxRetries
-		}
-
-		// Apply config default execution mode when no execution mode flags are provided
-		// CLI flags take precedence over config, so only apply config if no flags are set
-		noExecutionModeFlags := !cmd.Flags().Changed("phases") &&
-			!cmd.Flags().Changed("tasks") &&
-			!cmd.Flags().Changed("phase") &&
-			!cmd.Flags().Changed("from-phase") &&
-			!cmd.Flags().Changed("from-task") &&
-			!cmd.Flags().Changed("single-session")
-
-		// If --single-session flag is explicitly set, ensure phase/task modes are disabled
-		if singleSession {
-			runAllPhases = false
-			taskMode = false
-		}
-
-		if noExecutionModeFlags && cfg.ImplementMethod != "" {
-			switch cfg.ImplementMethod {
-			case "phases":
-				runAllPhases = true
-			case "tasks":
-				taskMode = true
-			case "single-session":
-				// Legacy behavior: no phase/task mode (default state)
-				// runAllPhases and taskMode are already false
-			}
-			// Empty string uses the default from config (phases), which is already handled above
-		}
-
-		// Check if constitution exists (required for implement)
-		constitutionCheck := workflow.CheckConstitutionExists()
-		if !constitutionCheck.Exists {
-			fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
-			return NewExitError(ExitInvalidArguments)
-		}
-
-		// Auto-detect spec directory for prerequisite validation
-		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
-		if err != nil {
-			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
-		}
-		PrintSpecInfo(metadata)
-
-		// Validate tasks.yaml exists (required for implement stage)
-		prereqResult := workflow.ValidateStagePrerequisites(workflow.StageImplement, metadata.Directory)
-		if !prereqResult.Valid {
-			fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
-			return NewExitError(ExitInvalidArguments)
-		}
-
-		// Create workflow orchestrator
-		orch := workflow.NewWorkflowOrchestrator(cfg)
-
-		// Create notification handler and attach to executor
+		// Create notification handler
 		notifHandler := notify.NewHandler(cfg.Notifications)
-		orch.Executor.NotificationHandler = notifHandler
 
-		// Track command start time
-		startTime := time.Now()
-		notifHandler.SetStartTime(startTime)
+		// Wrap command execution with lifecycle for timing and notification
+		return lifecycle.Run(notifHandler, "implement", func() error {
+			// Override skip-preflight from flag if set
+			if cmd.Flags().Changed("skip-preflight") {
+				cfg.SkipPreflight = skipPreflight
+			}
 
-		// Build phase execution options
-		phaseOpts := workflow.PhaseExecutionOptions{
-			RunAllPhases: runAllPhases,
-			SinglePhase:  singlePhase,
-			FromPhase:    fromPhase,
-			TaskMode:     taskMode,
-			FromTask:     fromTask,
-		}
+			// Override max-retries from flag if set
+			if cmd.Flags().Changed("max-retries") {
+				cfg.MaxRetries = maxRetries
+			}
 
-		// Execute implement stage with optional prompt and phase options
-		execErr := orch.ExecuteImplement(specName, prompt, resume, phaseOpts)
+			// Apply config default execution mode when no execution mode flags are provided
+			// CLI flags take precedence over config, so only apply config if no flags are set
+			noExecutionModeFlags := !cmd.Flags().Changed("phases") &&
+				!cmd.Flags().Changed("tasks") &&
+				!cmd.Flags().Changed("phase") &&
+				!cmd.Flags().Changed("from-phase") &&
+				!cmd.Flags().Changed("from-task") &&
+				!cmd.Flags().Changed("single-session")
 
-		// Calculate duration and send command completion notification
-		duration := time.Since(startTime)
-		success := execErr == nil
-		notifHandler.OnCommandComplete("implement", success, duration)
+			// If --single-session flag is explicitly set, ensure phase/task modes are disabled
+			if singleSession {
+				runAllPhases = false
+				taskMode = false
+			}
 
-		if execErr != nil {
-			return fmt.Errorf("implement stage failed: %w", execErr)
-		}
+			if noExecutionModeFlags && cfg.ImplementMethod != "" {
+				switch cfg.ImplementMethod {
+				case "phases":
+					runAllPhases = true
+				case "tasks":
+					taskMode = true
+				case "single-session":
+					// Legacy behavior: no phase/task mode (default state)
+					// runAllPhases and taskMode are already false
+				}
+				// Empty string uses the default from config (phases), which is already handled above
+			}
 
-		return nil
+			// Check if constitution exists (required for implement)
+			constitutionCheck := workflow.CheckConstitutionExists()
+			if !constitutionCheck.Exists {
+				fmt.Fprint(os.Stderr, constitutionCheck.ErrorMessage)
+				return NewExitError(ExitInvalidArguments)
+			}
+
+			// Auto-detect spec directory for prerequisite validation
+			metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+			if err != nil {
+				return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
+			}
+			PrintSpecInfo(metadata)
+
+			// Validate tasks.yaml exists (required for implement stage)
+			prereqResult := workflow.ValidateStagePrerequisites(workflow.StageImplement, metadata.Directory)
+			if !prereqResult.Valid {
+				fmt.Fprint(os.Stderr, prereqResult.ErrorMessage)
+				return NewExitError(ExitInvalidArguments)
+			}
+
+			// Create workflow orchestrator
+			orch := workflow.NewWorkflowOrchestrator(cfg)
+			orch.Executor.NotificationHandler = notifHandler
+
+			// Build phase execution options
+			phaseOpts := workflow.PhaseExecutionOptions{
+				RunAllPhases: runAllPhases,
+				SinglePhase:  singlePhase,
+				FromPhase:    fromPhase,
+				TaskMode:     taskMode,
+				FromTask:     fromTask,
+			}
+
+			// Execute implement stage with optional prompt and phase options
+			if err := orch.ExecuteImplement(specName, prompt, resume, phaseOpts); err != nil {
+				return fmt.Errorf("implement stage failed: %w", err)
+			}
+
+			return nil
+		})
 	},
 }
 

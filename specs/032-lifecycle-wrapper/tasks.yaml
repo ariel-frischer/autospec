@@ -195,7 +195,7 @@ phases:
             - "Command behavior unchanged; notification fires on completion"
         - id: "T014"
           title: "Migrate implement.go to use lifecycle.Run() wrapper"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-002"
@@ -206,7 +206,7 @@ phases:
             - "Command behavior unchanged; notification fires on completion"
         - id: "T015"
           title: "Migrate prep.go to use lifecycle.Run() wrapper"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-002"
@@ -217,7 +217,7 @@ phases:
             - "Command behavior unchanged; notification fires on completion"
         - id: "T016"
           title: "Migrate run.go to use lifecycle.Run() wrapper"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-002"
@@ -228,7 +228,7 @@ phases:
             - "Command behavior unchanged; notification fires on completion"
         - id: "T017"
           title: "Migrate all.go to use lifecycle.Run() wrapper"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-002"
