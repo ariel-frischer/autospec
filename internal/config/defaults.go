@@ -66,13 +66,13 @@ func GetDefaults() map[string]interface{} {
 		// notifications: Notification settings for command and stage completion.
 		// Disabled by default (opt-in). When enabled, defaults to both sound and visual notifications.
 		"notifications": map[string]interface{}{
-			"enabled":                false,                       // Disabled by default (opt-in)
-			"type":                   "both",                      // Both sound and visual when enabled
-			"sound_file":             "",                          // Use system default sound
-			"on_command_complete":    true,                        // Notify when command finishes (default when enabled)
-			"on_stage_complete":      false,                       // Don't notify on each stage by default
-			"on_error":               true,                        // Notify on failures (default when enabled)
-			"on_long_running":        false,                       // Don't use duration threshold by default
+			"enabled":                false,                      // Disabled by default (opt-in)
+			"type":                   "both",                     // Both sound and visual when enabled
+			"sound_file":             "",                         // Use system default sound
+			"on_command_complete":    true,                       // Notify when command finishes (default when enabled)
+			"on_stage_complete":      false,                      // Don't notify on each stage by default
+			"on_error":               true,                       // Notify on failures (default when enabled)
+			"on_long_running":        false,                      // Don't use duration threshold by default
 			"long_running_threshold": (2 * time.Minute).String(), // 2 minutes threshold
 		},
 		// max_history_entries: Maximum number of command history entries to retain.
