@@ -10,7 +10,17 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"os"
 	"time"
+)
+
+// Status constants for history entries.
+const (
+	StatusCompleted = "completed"
+	StatusFailed    = "failed"
+	StatusCancelled = "cancelled"
 )
 
 // Run wraps command execution with timing and notification dispatch.
@@ -31,7 +41,7 @@ func Run(handler NotificationHandler, name string, fn func() error) error {
 }
 
 // RunWithHistory wraps command execution with timing, notification, and history logging.
-// It behaves like Run but also logs the command execution to history.
+// It uses two-phase history logging: WriteStart before execution, UpdateComplete after.
 //
 // Parameters:
 //   - handler: notification handler (may be nil)
@@ -40,15 +50,19 @@ func Run(handler NotificationHandler, name string, fn func() error) error {
 //   - spec: spec name for history (may be empty)
 //   - fn: the command function to execute
 //
-// History is logged after the command completes, regardless of success or failure.
+// History entry is written immediately when command starts (with "running" status),
+// then updated with final status when command completes. This ensures crash/interrupt
+// visibility - entries remain with "running" status if the process terminates abnormally.
 // History logging errors are non-fatal (written to stderr, don't affect return value).
 func RunWithHistory(handler NotificationHandler, logger HistoryLogger, name, spec string, fn func() error) error {
 	start := time.Now()
+	entryID := writeHistoryStart(logger, name, spec)
+
 	fnErr := fn()
 	duration := time.Since(start)
 
 	notifyCommandComplete(handler, name, fnErr == nil, duration)
-	logHistory(logger, name, spec, fnErr, duration)
+	updateHistoryComplete(logger, entryID, fnErr, duration)
 
 	return fnErr
 }
@@ -77,7 +91,7 @@ func RunWithContext(ctx context.Context, handler NotificationHandler, name strin
 }
 
 // RunWithHistoryContext wraps context-aware command execution with history logging.
-// It behaves like RunWithContext but also logs the command execution to history.
+// It uses two-phase history logging: WriteStart before execution, UpdateComplete after.
 //
 // Parameters:
 //   - ctx: context for cancellation
@@ -87,16 +101,18 @@ func RunWithContext(ctx context.Context, handler NotificationHandler, name strin
 //   - spec: spec name for history (may be empty)
 //   - fn: the command function to execute
 //
-// History is logged after the command completes, regardless of success or failure.
-// History logging errors are non-fatal (written to stderr, don't affect return value).
+// History entry is written immediately when command starts (with "running" status),
+// then updated with final status when command completes. Context cancellation results
+// in "cancelled" status. History logging errors are non-fatal.
 func RunWithHistoryContext(ctx context.Context, handler NotificationHandler, logger HistoryLogger, name, spec string, fn func(context.Context) error) error {
 	start := time.Now()
+	entryID := writeHistoryStart(logger, name, spec)
 
 	// Check if context is already cancelled
 	if err := ctx.Err(); err != nil {
 		duration := time.Since(start)
 		notifyCommandComplete(handler, name, false, duration)
-		logHistory(logger, name, spec, err, duration)
+		updateHistoryComplete(logger, entryID, err, duration)
 		return err
 	}
 
@@ -104,7 +120,7 @@ func RunWithHistoryContext(ctx context.Context, handler NotificationHandler, log
 	duration := time.Since(start)
 
 	notifyCommandComplete(handler, name, fnErr == nil, duration)
-	logHistory(logger, name, spec, fnErr, duration)
+	updateHistoryComplete(logger, entryID, fnErr, duration)
 
 	return fnErr
 }
@@ -138,16 +154,43 @@ func notifyStageComplete(handler NotificationHandler, name string, success bool)
 	handler.OnStageComplete(name, success)
 }
 
-// logHistory safely logs command execution to history with panic recovery.
-func logHistory(logger HistoryLogger, name, spec string, fnErr error, duration time.Duration) {
+// writeHistoryStart safely writes a "running" history entry with panic recovery.
+// Returns the entry ID for later update, or empty string if logging failed.
+func writeHistoryStart(logger HistoryLogger, name, spec string) string {
 	if logger == nil {
+		return ""
+	}
+	defer func() { _ = recover() }()
+
+	id, err := logger.WriteStart(name, spec)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to write history start: %v\n", err)
+		return ""
+	}
+	return id
+}
+
+// updateHistoryComplete safely updates a history entry with final status.
+// Uses panic recovery to ensure command completion is not affected.
+func updateHistoryComplete(logger HistoryLogger, entryID string, fnErr error, duration time.Duration) {
+	if logger == nil || entryID == "" {
 		return
 	}
 	defer func() { _ = recover() }()
 
-	exitCode := 0
-	if fnErr != nil {
-		exitCode = 1
+	status, exitCode := determineStatusAndCode(fnErr)
+	if err := logger.UpdateComplete(entryID, exitCode, status, duration); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to update history: %v\n", err)
 	}
-	logger.LogCommand(name, spec, exitCode, duration)
+}
+
+// determineStatusAndCode determines the status and exit code from an error.
+func determineStatusAndCode(fnErr error) (status string, exitCode int) {
+	if fnErr == nil {
+		return StatusCompleted, 0
+	}
+	if errors.Is(fnErr, context.Canceled) || errors.Is(fnErr, context.DeadlineExceeded) {
+		return StatusCancelled, 1
+	}
+	return StatusFailed, 1
 }

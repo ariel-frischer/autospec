@@ -106,12 +106,16 @@ func displayEntries(cmd *cobra.Command, entries []history.HistoryEntry) {
 	out := cmd.OutOrStdout()
 
 	green := color.New(color.FgGreen).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 
 	for _, entry := range entries {
 		// Format timestamp
 		timestamp := entry.Timestamp.Format("2006-01-02 15:04:05")
+
+		// Format status with color coding
+		statusStr := formatStatus(entry.Status, green, yellow, red)
 
 		// Color exit code
 		exitCodeStr := fmt.Sprintf("%d", entry.ExitCode)
@@ -127,12 +131,48 @@ func displayEntries(cmd *cobra.Command, entries []history.HistoryEntry) {
 			spec = "-"
 		}
 
-		fmt.Fprintf(out, "%s  %s  %-15s  exit=%s  %s\n",
+		// Format ID (truncate or show "-" if empty)
+		id := formatID(entry.ID)
+
+		fmt.Fprintf(out, "%s  %-30s  %-10s  %s  %-15s  exit=%s  %s\n",
 			cyan(timestamp),
+			id,
+			statusStr,
 			fmt.Sprintf("%-12s", entry.Command),
 			spec,
 			exitCodeStr,
 			entry.Duration,
 		)
 	}
+}
+
+// formatStatus returns a color-coded status string.
+func formatStatus(status string, green, yellow, red func(a ...interface{}) string) string {
+	switch status {
+	case history.StatusCompleted:
+		return green(fmt.Sprintf("%-10s", status))
+	case history.StatusRunning:
+		return yellow(fmt.Sprintf("%-10s", status))
+	case history.StatusFailed, history.StatusCancelled:
+		return red(fmt.Sprintf("%-10s", status))
+	default:
+		// Old entries without status field
+		if status == "" {
+			return fmt.Sprintf("%-10s", "-")
+		}
+		return fmt.Sprintf("%-10s", status)
+	}
+}
+
+// formatID returns a formatted ID string (truncated or placeholder).
+func formatID(id string) string {
+	if id == "" {
+		return fmt.Sprintf("%-30s", "-")
+	}
+	// IDs are in adjective_noun_YYYYMMDD_HHMMSS format (~26+ chars)
+	// Display full ID as it's designed to be memorable
+	if len(id) > 30 {
+		return id[:30]
+	}
+	return fmt.Sprintf("%-30s", id)
 }

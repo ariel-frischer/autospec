@@ -321,11 +321,27 @@ func TestRunDurationAccuracy(t *testing.T) {
 	}
 }
 
-// mockLogger records history calls for testing.
+// mockLogger records history calls for testing two-phase logging.
 type mockLogger struct {
 	mu           sync.Mutex
-	historyCalls []historyCall
+	startCalls   []startCall
+	updateCalls  []updateCall
+	historyCalls []historyCall // kept for backward compat tests
 	shouldPanic  bool
+	nextID       int
+}
+
+type startCall struct {
+	command string
+	spec    string
+	id      string
+}
+
+type updateCall struct {
+	id       string
+	exitCode int
+	status   string
+	duration time.Duration
 }
 
 type historyCall struct {
@@ -342,6 +358,40 @@ func (m *mockLogger) LogCommand(command, spec string, exitCode int, duration tim
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.historyCalls = append(m.historyCalls, historyCall{command, spec, exitCode, duration})
+}
+
+func (m *mockLogger) WriteStart(command, spec string) (string, error) {
+	if m.shouldPanic {
+		panic("logger panic")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.nextID++
+	id := "mock_id_" + string(rune('0'+m.nextID))
+	m.startCalls = append(m.startCalls, startCall{command, spec, id})
+	return id, nil
+}
+
+func (m *mockLogger) UpdateComplete(id string, exitCode int, status string, duration time.Duration) error {
+	if m.shouldPanic {
+		panic("logger panic")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.updateCalls = append(m.updateCalls, updateCall{id, exitCode, status, duration})
+	return nil
+}
+
+func (m *mockLogger) getStartCalls() []startCall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]startCall{}, m.startCalls...)
+}
+
+func (m *mockLogger) getUpdateCalls() []updateCall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]updateCall{}, m.updateCalls...)
 }
 
 func (m *mockLogger) getHistoryCalls() []historyCall {
@@ -362,6 +412,7 @@ func TestRunWithHistory(t *testing.T) {
 		fn           func() error
 		wantErr      error
 		wantSuccess  bool
+		wantStatus   string
 		wantExitCode int
 	}{
 		"success": {
@@ -371,6 +422,7 @@ func TestRunWithHistory(t *testing.T) {
 			fn:           func() error { return nil },
 			wantErr:      nil,
 			wantSuccess:  true,
+			wantStatus:   StatusCompleted,
 			wantExitCode: 0,
 		},
 		"failure": {
@@ -380,6 +432,7 @@ func TestRunWithHistory(t *testing.T) {
 			fn:           func() error { return errTest },
 			wantErr:      errTest,
 			wantSuccess:  false,
+			wantStatus:   StatusFailed,
 			wantExitCode: 1,
 		},
 		"empty spec": {
@@ -389,6 +442,7 @@ func TestRunWithHistory(t *testing.T) {
 			fn:           func() error { return nil },
 			wantErr:      nil,
 			wantSuccess:  true,
+			wantStatus:   StatusCompleted,
 			wantExitCode: 0,
 		},
 		"nil handler": {
@@ -398,6 +452,7 @@ func TestRunWithHistory(t *testing.T) {
 			fn:           func() error { return nil },
 			wantErr:      nil,
 			wantSuccess:  true,
+			wantStatus:   StatusCompleted,
 			wantExitCode: 0,
 		},
 		"nil logger": {
@@ -407,6 +462,7 @@ func TestRunWithHistory(t *testing.T) {
 			fn:           func() error { return nil },
 			wantErr:      nil,
 			wantSuccess:  true,
+			wantStatus:   "",
 			wantExitCode: 0,
 		},
 		"both nil": {
@@ -416,6 +472,7 @@ func TestRunWithHistory(t *testing.T) {
 			fn:           func() error { return nil },
 			wantErr:      nil,
 			wantSuccess:  true,
+			wantStatus:   "",
 			wantExitCode: 0,
 		},
 		"logger panics": {
@@ -425,6 +482,7 @@ func TestRunWithHistory(t *testing.T) {
 			fn:           func() error { return errTest },
 			wantErr:      errTest,
 			wantSuccess:  false,
+			wantStatus:   "",
 			wantExitCode: 1,
 		},
 	}
@@ -454,25 +512,204 @@ func TestRunWithHistory(t *testing.T) {
 				}
 			}
 
-			// Check logger was called (if not nil and not panicking)
+			// Check two-phase logger calls (if not nil and not panicking)
 			if tt.logger != nil && !tt.logger.shouldPanic {
-				calls := tt.logger.getHistoryCalls()
-				if len(calls) != 1 {
-					t.Errorf("logger got %d calls, want 1", len(calls))
+				// Verify WriteStart was called
+				startCalls := tt.logger.getStartCalls()
+				if len(startCalls) != 1 {
+					t.Errorf("logger got %d start calls, want 1", len(startCalls))
 				} else {
-					if calls[0].command != "test-cmd" {
-						t.Errorf("logger got command %q, want %q", calls[0].command, "test-cmd")
+					if startCalls[0].command != "test-cmd" {
+						t.Errorf("start call got command %q, want %q", startCalls[0].command, "test-cmd")
 					}
-					if calls[0].spec != tt.spec {
-						t.Errorf("logger got spec %q, want %q", calls[0].spec, tt.spec)
-					}
-					if calls[0].exitCode != tt.wantExitCode {
-						t.Errorf("logger got exitCode %d, want %d", calls[0].exitCode, tt.wantExitCode)
-					}
-					if calls[0].duration <= 0 {
-						t.Error("logger duration should be positive")
+					if startCalls[0].spec != tt.spec {
+						t.Errorf("start call got spec %q, want %q", startCalls[0].spec, tt.spec)
 					}
 				}
+
+				// Verify UpdateComplete was called
+				updateCalls := tt.logger.getUpdateCalls()
+				if len(updateCalls) != 1 {
+					t.Errorf("logger got %d update calls, want 1", len(updateCalls))
+				} else {
+					if updateCalls[0].status != tt.wantStatus {
+						t.Errorf("update call got status %q, want %q", updateCalls[0].status, tt.wantStatus)
+					}
+					if updateCalls[0].exitCode != tt.wantExitCode {
+						t.Errorf("update call got exitCode %d, want %d", updateCalls[0].exitCode, tt.wantExitCode)
+					}
+					if updateCalls[0].duration <= 0 {
+						t.Error("update call duration should be positive")
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestRunWithHistoryContext_TwoPhaseLogging(t *testing.T) {
+	t.Parallel()
+
+	errTest := errors.New("test error")
+
+	tests := map[string]struct {
+		ctx          context.Context
+		fn           func(context.Context) error
+		wantErr      error
+		wantStatus   string
+		wantExitCode int
+	}{
+		"success": {
+			ctx:          context.Background(),
+			fn:           func(ctx context.Context) error { return nil },
+			wantErr:      nil,
+			wantStatus:   StatusCompleted,
+			wantExitCode: 0,
+		},
+		"failure": {
+			ctx:          context.Background(),
+			fn:           func(ctx context.Context) error { return errTest },
+			wantErr:      errTest,
+			wantStatus:   StatusFailed,
+			wantExitCode: 1,
+		},
+		"context already cancelled": {
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				return ctx
+			}(),
+			fn:           func(ctx context.Context) error { return nil },
+			wantErr:      context.Canceled,
+			wantStatus:   StatusCancelled,
+			wantExitCode: 1,
+		},
+		"context cancelled during execution": {
+			ctx: context.Background(),
+			fn: func(ctx context.Context) error {
+				return context.Canceled
+			},
+			wantErr:      context.Canceled,
+			wantStatus:   StatusCancelled,
+			wantExitCode: 1,
+		},
+		"context deadline exceeded": {
+			ctx: func() context.Context {
+				ctx, cancel := context.WithTimeout(context.Background(), 0)
+				cancel()
+				return ctx
+			}(),
+			fn:           func(ctx context.Context) error { return nil },
+			wantErr:      context.DeadlineExceeded,
+			wantStatus:   StatusCancelled,
+			wantExitCode: 1,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			handler := &mockHandler{}
+			logger := &mockLogger{}
+
+			err := RunWithHistoryContext(tt.ctx, handler, logger, "test-cmd", "test-spec", tt.fn)
+
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("RunWithHistoryContext() error = %v, want %v", err, tt.wantErr)
+			}
+
+			// Verify WriteStart was called
+			startCalls := logger.getStartCalls()
+			if len(startCalls) != 1 {
+				t.Errorf("logger got %d start calls, want 1", len(startCalls))
+			} else {
+				if startCalls[0].command != "test-cmd" {
+					t.Errorf("start call got command %q, want %q", startCalls[0].command, "test-cmd")
+				}
+			}
+
+			// Verify UpdateComplete was called with correct status
+			updateCalls := logger.getUpdateCalls()
+			if len(updateCalls) != 1 {
+				t.Errorf("logger got %d update calls, want 1", len(updateCalls))
+			} else {
+				if updateCalls[0].status != tt.wantStatus {
+					t.Errorf("update call got status %q, want %q", updateCalls[0].status, tt.wantStatus)
+				}
+				if updateCalls[0].exitCode != tt.wantExitCode {
+					t.Errorf("update call got exitCode %d, want %d", updateCalls[0].exitCode, tt.wantExitCode)
+				}
+			}
+		})
+	}
+}
+
+func TestRunWithHistoryContext_NilLogger(t *testing.T) {
+	t.Parallel()
+
+	handler := &mockHandler{}
+	err := RunWithHistoryContext(context.Background(), handler, nil, "test-cmd", "test-spec", func(ctx context.Context) error {
+		return nil
+	})
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// Handler should still be called
+	calls := handler.getCommandCalls()
+	if len(calls) != 1 {
+		t.Errorf("handler got %d calls, want 1", len(calls))
+	}
+}
+
+func TestDetermineStatusAndCode(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		err          error
+		wantStatus   string
+		wantExitCode int
+	}{
+		"nil error": {
+			err:          nil,
+			wantStatus:   StatusCompleted,
+			wantExitCode: 0,
+		},
+		"regular error": {
+			err:          errors.New("some error"),
+			wantStatus:   StatusFailed,
+			wantExitCode: 1,
+		},
+		"context canceled": {
+			err:          context.Canceled,
+			wantStatus:   StatusCancelled,
+			wantExitCode: 1,
+		},
+		"context deadline exceeded": {
+			err:          context.DeadlineExceeded,
+			wantStatus:   StatusCancelled,
+			wantExitCode: 1,
+		},
+		"wrapped context canceled": {
+			err:          errors.Join(errors.New("wrapped"), context.Canceled),
+			wantStatus:   StatusCancelled,
+			wantExitCode: 1,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			status, exitCode := determineStatusAndCode(tt.err)
+
+			if status != tt.wantStatus {
+				t.Errorf("determineStatusAndCode() status = %q, want %q", status, tt.wantStatus)
+			}
+			if exitCode != tt.wantExitCode {
+				t.Errorf("determineStatusAndCode() exitCode = %d, want %d", exitCode, tt.wantExitCode)
 			}
 		})
 	}

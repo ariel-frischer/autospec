@@ -46,7 +46,7 @@ phases:
             - "Existing fields (Timestamp, Command, Spec, ExitCode, Duration) preserved"
         - id: "T003"
           title: "Create ID generator with word lists in internal/history/idgen.go"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: null
@@ -60,7 +60,7 @@ phases:
             - "Functions under 40 lines per coding standards"
         - id: "T004"
           title: "Write tests for ID generation in internal/history/idgen_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -73,7 +73,7 @@ phases:
             - "Test all words in lists are lowercase alphanumeric"
         - id: "T005"
           title: "Write tests for enhanced HistoryEntry in internal/history/history_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -92,7 +92,7 @@ phases:
       tasks:
         - id: "T006"
           title: "Implement WriteStart method in internal/history/writer.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -108,7 +108,7 @@ phases:
             - "Functions under 40 lines, errors wrapped with context"
         - id: "T007"
           title: "Write tests for WriteStart in internal/history/writer_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-001"
@@ -128,7 +128,7 @@ phases:
       tasks:
         - id: "T008"
           title: "Implement UpdateComplete method in internal/history/writer.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -143,7 +143,7 @@ phases:
             - "Functions under 40 lines, errors wrapped with context"
         - id: "T009"
           title: "Write tests for UpdateComplete in internal/history/writer_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -158,7 +158,7 @@ phases:
             - "Test error returned when ID not found"
         - id: "T010"
           title: "Extend HistoryLogger interface in internal/lifecycle/handler.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -170,7 +170,7 @@ phases:
             - "Existing LogCommand method preserved for backward compatibility"
         - id: "T011"
           title: "Modify lifecycle wrappers for two-phase logging in internal/lifecycle/lifecycle.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -185,7 +185,7 @@ phases:
             - "Functions under 40 lines, errors wrapped with context"
         - id: "T012"
           title: "Write tests for lifecycle two-phase logging in internal/lifecycle/lifecycle_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -206,7 +206,7 @@ phases:
       tasks:
         - id: "T013"
           title: "Add status column to history output in internal/cli/history.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -220,7 +220,7 @@ phases:
             - "Functions under 40 lines"
         - id: "T014"
           title: "Add --status filter flag to history command in internal/cli/history.go"
-          status: "Pending"
+          status: "InProgress"
           type: "implementation"
           parallel: false
           story_id: "US-004"

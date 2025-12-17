@@ -45,4 +45,24 @@ type HistoryLogger interface {
 	//   - exitCode: the exit code (0 = success)
 	//   - duration: how long the command took to execute
 	LogCommand(command, spec string, exitCode int, duration time.Duration)
+
+	// WriteStart creates a history entry with 'running' status immediately when
+	// a command starts. Returns the generated unique ID for later update.
+	// Parameters:
+	//   - command: the command name (e.g., "specify", "plan", "implement")
+	//   - spec: the spec name being worked on (may be empty)
+	// Returns:
+	//   - string: the unique entry ID for use with UpdateComplete
+	//   - error: any error during entry creation
+	WriteStart(command, spec string) (string, error)
+
+	// UpdateComplete updates a running history entry with final status.
+	// Parameters:
+	//   - id: the unique entry ID returned by WriteStart
+	//   - exitCode: the exit code (0 = success)
+	//   - status: the final status (completed, failed, cancelled)
+	//   - duration: how long the command took to execute
+	// Returns:
+	//   - error: any error during entry update
+	UpdateComplete(id string, exitCode int, status string, duration time.Duration) error
 }
