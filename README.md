@@ -34,13 +34,13 @@ curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/instal
 - ✅ **Smart Validation** — Validates artifacts exist and meet completeness criteria before proceeding
 - 🔁 **Configurable Retry Logic** — Automatic retries with persistent state tracking
 - ⚡ **Performance Optimized** — Sub-second validation (<10ms per check), <50ms startup
-- 🖥️ **Cross-Platform** — Native binaries for Linux, macOS (Intel/Apple Silicon), and Windows
+- 🖥️ **Cross-Platform** — Native binaries for Linux and macOS (Intel/Apple Silicon). Windows users: use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
 - 🎛️ **Flexible Stage Selection** — Mix and match stages with intuitive flags (`-spti`, `-a`, etc.)
 - 🏗️ **Constitution Support** — Project-level principles that guide all specifications
 - 🔍 **Cross-Artifact Analysis** — Consistency checks across spec, plan, and tasks
 - 📋 **Custom Checklists** — Auto-generated validation checklists per feature
 - 🧪 **Comprehensive Testing** — Unit tests, benchmarks, and integration tests
-- 🐚 **Shell Completion** — Tab completion for bash, zsh, fish, and PowerShell
+- 🐚 **Shell Completion** — Tab completion for bash, zsh, and fish
 - 🔔 **OS Notifications** — Native desktop notifications with custom sound support
 - 📜 **History Tracking** — View and filter command execution history with status, duration, and exit codes
 
@@ -345,7 +345,6 @@ Or install for a specific shell:
 autospec completion install bash
 autospec completion install zsh
 autospec completion install fish
-autospec completion install powershell
 ```
 
 See [docs/SHELL-COMPLETION.md](docs/SHELL-COMPLETION.md) for detailed setup and manual instructions.

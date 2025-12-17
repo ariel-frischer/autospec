@@ -16,7 +16,7 @@ The tool automates the SpecKit methodology—a systematic approach to feature de
 - **Smart Spec Detection**: Automatically detects current feature from git branch or directory structure
 - **Flexible Configuration**: Hierarchical configuration system supporting global, local, and environment-based settings
 - **Health Checks**: Built-in dependency verification and system health diagnostics
-- **Cross-Platform**: Runs on Linux, macOS, and Windows
+- **Cross-Platform**: Runs on Linux and macOS (Windows users: use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install))
 - **Performance-Optimized**: Sub-second validation checks with <10ms validation functions
 - **Progress Indicators**: Real-time feedback during long-running operations
 
@@ -99,7 +99,7 @@ Ready to streamline your development workflow?
 autospec is actively developed and maintained. The project recently transitioned from bash scripts to a cross-platform Go binary, providing:
 
 - Faster execution and better error handling
-- Cross-platform support (Linux, macOS, Windows)
+- Cross-platform support (Linux, macOS)
 - Improved retry logic and state management
 - Enhanced progress indicators and user feedback
 

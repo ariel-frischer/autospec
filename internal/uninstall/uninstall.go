@@ -1,3 +1,5 @@
+//go:build !windows
+
 // Package uninstall provides functionality for completely removing autospec from a system.
 package uninstall
 
