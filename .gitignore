@@ -44,6 +44,9 @@ coverage.txt
 cover.out
 *.prof
 
+# Generated release notes
+.release/notes.md
+
 # Go build cache
 .cache/
 

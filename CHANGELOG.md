@@ -7,44 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-12-16
+
 ### Added
 
-- Structured error handling with actionable remediation guidance
-- Command help output with usage examples for better user guidance
-- `--dry-run` flag for commands to preview actions without execution
-- Required constitution checks before command execution
-- Unit tests for error handling and command help output validation
-- `update-task` command for managing task status in tasks.yaml during implementation
+- `history` command with two-phase logging, status tracking, and `--status` filter
+- Cross-platform notifications for command/stage completion (macOS, Linux)
+- Claude settings validation and automatic permission configuration
+- Profile management system for configuration presets
+- Lifecycle wrapper for CLI commands (timing, notifications, history)
+- Context injection for phase execution (performance optimization)
+- Task-level execution mode with `--tasks` and `--from-task` flags
+- `--single-session` flag for legacy single-session execution
+- `--from-phase` and `--phase` flags for phase-level control
+- `implement_method` config option for default execution mode
+- Prerequisite validation for CLI commands (pre-flight artifact checks)
+- Artifact validation for analysis, checklist, and constitution YAML files
 - Optional stage commands: `constitution`, `clarify`, `checklist`, `analyze`
-- Stage selection flags for the `run` command (`-s`, `-p`, `-t`, `-i`, `-a`)
-- Optional stage flags: `-n` (constitution), `-r` (clarify), `-l` (checklist), `-z` (analyze)
-- Flexible stage workflow with canonical execution order
-- `run` command for flexible execution of workflow stages
-- Renamed `full` command to `all` for better clarity
-- Artifact dependency checks in preflight validation
-- `StageConfig` for managing execution stages and dependencies
-- Helper scripts for YAML workflow automation
-- `skip_confirmations` config option and `AUTOSPEC_YES` environment variable
-- Implementation command for executing tasks defined in tasks.yaml
-- YAML-structured output format for specifications (spec.yaml, plan.yaml, tasks.yaml)
-- Comprehensive documentation (ARCHITECTURE.md, OVERVIEW.md, QUICKSTART.md, REFERENCE.md)
-- GitHub issue templates (bug report, feature request)
-- Pull request template
-- Shell completion support
-- Troubleshooting guide
+- `run` command with stage selection flags (`-s`, `-p`, `-t`, `-i`, `-a`, `-n`, `-r`, `-l`, `-z`)
+- `--dry-run` flag for previewing actions
+- `--debug` flag for verbose logging
+- `update-task` command for task status management
+- Spec status tracking with automatic completion marking
+- `skip_confirmations` config and `AUTOSPEC_YES` environment variable
+- `config migrate` command for config file migration
+- Custom Claude command support with `{{PROMPT}}` placeholder
+- claude-clean integration for readable streaming output
+- Auto-updates to spec.yaml and tasks.yaml during execution
+- Phase-isolated sessions (80%+ cost savings on large specs)
+- Quickstart guide with interactive demo script
+- Internals documentation guide
+- Checklists documentation for requirement validation
+- Shell completion support (bash, zsh, fish)
 
 ### Changed
 
-- Updated command descriptions and help text throughout CLI
-- Checklist structure now uses 'description' and 'status' fields
-- Preflight checks now focus on YAML artifacts
-- Renamed speckit commands to autospec for consistency
+- Renamed "phase" to "stage" throughout codebase for clarity
+- Dropped Windows support; WSL recommended
+- Long-running notification threshold: 30s → 2 minutes
+- Renamed `full` command to `all`
+- Refactored tests to map-based table-driven pattern
+- Improved error handling with context wrapping
 
 ### Fixed
 
 - Constitution requirement checks across all commands
 - Task status tracking during implementation
 - Artifact dependency validation
+- Claude settings configuration in `init` command
 
 ## [0.2.0] - 2025-01-15
 
@@ -92,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ariel-frischer/autospec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ariel-frischer/autospec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ariel-frischer/autospec/releases/tag/v0.1.0
