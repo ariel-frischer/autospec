@@ -4,9 +4,9 @@ tasks:
     spec_path: "specs/038-test-coverage-85/spec.yaml"
     plan_path: "specs/038-test-coverage-85/plan.yaml"
 summary:
-    total_tasks: 35
-    total_phases: 7
-    parallel_opportunities: 18
+    total_tasks: 45
+    total_phases: 8
+    parallel_opportunities: 23
     estimated_complexity: "high"
 phases:
     - number: 1
@@ -440,7 +440,7 @@ phases:
       tasks:
         - id: "T033"
           title: "Run full test suite and verify 85% threshold for all packages"
-          status: "Blocked"
+          status: "Pending"
           type: "test"
           parallel: false
           story_id: null
@@ -452,7 +452,7 @@ phases:
             - "No test flakiness over 3 runs"
         - id: "T034"
           title: "Verify 90% threshold for critical packages"
-          status: "Blocked"
+          status: "Pending"
           type: "test"
           parallel: false
           story_id: null
@@ -481,6 +481,148 @@ phases:
       title: "Polish & Cross-Cutting Concerns"
       purpose: "Documentation and cleanup"
       tasks: []
+    - number: 8
+      title: "Mock-Based Integration Testing"
+      purpose: "Create isolated mock infrastructure for testing without real Claude CLI calls or git branch changes"
+      tasks:
+        - id: "T036"
+          title: "Create mocks/ directory structure with README documenting usage"
+          status: "Pending"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "mocks/README.md"
+          dependencies: []
+          acceptance_criteria:
+            - "Create mocks/ directory in project root"
+            - "Add README.md explaining mock purpose and usage"
+            - "Create mocks/scripts/ for shell script mocks"
+            - "Create mocks/fixtures/ for test data"
+        - id: "T037"
+          title: "Create mock-claude.sh that simulates Claude CLI without cost"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "mocks/scripts/mock-claude.sh"
+          dependencies: ["T036"]
+          acceptance_criteria:
+            - "Script accepts same arguments as claude CLI"
+            - "Script reads MOCK_RESPONSE_FILE env var to return canned responses"
+            - "Script writes call log to MOCK_CALL_LOG for verification"
+            - "Script supports MOCK_EXIT_CODE for error simulation"
+            - "Script supports MOCK_DELAY for timeout simulation"
+            - "Script NEVER makes network calls or runs actual claude"
+        - id: "T038"
+          title: "Create mock artifact generators (spec.yaml, plan.yaml, tasks.yaml)"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "mocks/scripts/generate-mock-artifacts.sh"
+          dependencies: ["T036"]
+          acceptance_criteria:
+            - "Script creates valid spec.yaml with configurable feature name"
+            - "Script creates valid plan.yaml linked to spec"
+            - "Script creates valid tasks.yaml with configurable task count"
+            - "All generated artifacts pass validation (autospec validate)"
+            - "Outputs to specified directory (default: temp dir)"
+        - id: "T039"
+          title: "Create git isolation helper that prevents real branch changes"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/testutil/git_isolation.go"
+          dependencies: ["T036"]
+          acceptance_criteria:
+            - "WithIsolatedGitRepo creates temp git repo and changes to it"
+            - "Automatically restores original directory on cleanup"
+            - "Captures original branch and restores if accidentally changed"
+            - "Provides helper to verify no branch pollution occurred"
+            - "Works with t.Cleanup for automatic restoration"
+        - id: "T040"
+          title: "Create mock executor test helper for workflow tests"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/testutil/mock_executor.go"
+          dependencies: ["T036"]
+          acceptance_criteria:
+            - "MockExecutorBuilder provides fluent API for configuring responses"
+            - "Supports staging different responses for sequential calls"
+            - "Supports artifact generation on execute (write to temp files)"
+            - "Records all calls with timestamps for verification"
+            - "Integrates with mock-claude.sh for integration tests"
+        - id: "T041"
+          title: "Add integration tests using mock infrastructure for workflow orchestration"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/integration_test.go"
+          dependencies: ["T037", "T038", "T039", "T040"]
+          acceptance_criteria:
+            - "Test full specify->plan->tasks flow with mocks"
+            - "Test retry behavior with simulated failures"
+            - "Test timeout handling with MOCK_DELAY"
+            - "Verify no real Claude calls made (check MOCK_CALL_LOG)"
+            - "Verify git branch unchanged after tests"
+        - id: "T042"
+          title: "Add integration tests for task status updates without branch pollution"
+          status: "Pending"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/task_status_integration_test.go"
+          dependencies: ["T038", "T039"]
+          acceptance_criteria:
+            - "Test autospec task complete on mock tasks.yaml"
+            - "Test status transitions (Pending->InProgress->Completed)"
+            - "Verify tasks.yaml modifications are isolated to temp dir"
+            - "Verify original repo tasks.yaml unchanged"
+        - id: "T043"
+          title: "Create mock fixtures for common test scenarios"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "mocks/fixtures/"
+          dependencies: ["T036"]
+          acceptance_criteria:
+            - "Create valid-spec.yaml fixture for basic tests"
+            - "Create valid-plan.yaml fixture linked to spec"
+            - "Create valid-tasks.yaml fixture with sample tasks"
+            - "Create invalid-* fixtures for error testing"
+            - "Create partial-* fixtures for edge cases"
+        - id: "T044"
+          title: "Add test for mock-claude.sh behavior verification"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "mocks/scripts/mock-claude_test.go"
+          dependencies: ["T037"]
+          acceptance_criteria:
+            - "Test mock responds with MOCK_RESPONSE_FILE content"
+            - "Test mock logs calls to MOCK_CALL_LOG"
+            - "Test mock returns MOCK_EXIT_CODE"
+            - "Test mock delays with MOCK_DELAY"
+            - "Test mock never makes network calls"
+        - id: "T045"
+          title: "Document mock testing patterns in docs/testing-mocks.md"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/testing-mocks.md"
+          dependencies: ["T041", "T042"]
+          acceptance_criteria:
+            - "Document mock-claude.sh usage and configuration"
+            - "Document git isolation patterns"
+            - "Provide example test code snippets"
+            - "Explain when to use mocks vs real integration tests"
 dependencies:
     user_story_order:
         - story_id: "US-001"
@@ -505,6 +647,8 @@ dependencies:
           blocks: [6]
         - phase: 6
           blocks: [7]
+        - phase: 7
+          blocks: [8]
 parallel_execution:
     - phase: 2
       parallel_groups:
@@ -532,6 +676,12 @@ parallel_execution:
       parallel_groups:
         - tasks: ["T031", "T032"]
           rationale: "Different packages, no dependencies"
+    - phase: 8
+      parallel_groups:
+        - tasks: ["T038", "T039", "T040", "T043"]
+          rationale: "Independent mock creation tasks, no dependencies between them"
+        - tasks: ["T042", "T045"]
+          rationale: "Different test/doc files, can run in parallel after T041"
 implementation_strategy:
     mvp_scope:
         phases: [1, 2, 3]
@@ -550,6 +700,9 @@ implementation_strategy:
         - milestone: "Complete"
           phases: [1, 2, 3, 4, 5, 6]
           deliverable: "All coverage thresholds met, quality gates pass"
+        - milestone: "Mock Testing Infrastructure"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8]
+          deliverable: "Isolated mock testing with no real Claude calls or git branch pollution"
 _meta:
     version: "1.0.0"
     generator: "autospec"
