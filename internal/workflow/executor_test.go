@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/progress"
 	"github.com/ariel-frischer/autospec/internal/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -448,4 +449,406 @@ func TestDebugLog(t *testing.T) {
 		// but we verify it doesn't crash
 		executor.debugLog("test message %s", "arg")
 	})
+}
+
+// TestHandleExecutionFailure tests the handleExecutionFailure method (T010)
+func TestHandleExecutionFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		initialRetryCount int
+		maxRetries        int
+		wantRetryCount    int
+		wantExhausted     bool
+		wantErrorContains string
+	}{
+		"first failure increments retry count": {
+			initialRetryCount: 0,
+			maxRetries:        3,
+			wantRetryCount:    1,
+			wantExhausted:     false,
+			wantErrorContains: "command execution failed",
+		},
+		"second failure increments retry count": {
+			initialRetryCount: 1,
+			maxRetries:        3,
+			wantRetryCount:    2,
+			wantExhausted:     false,
+			wantErrorContains: "command execution failed",
+		},
+		"max retry limit reached returns exhausted": {
+			initialRetryCount: 3,
+			maxRetries:        3,
+			wantRetryCount:    3,
+			wantExhausted:     true,
+			wantErrorContains: "retry limit exhausted",
+		},
+		"one before max increments to max": {
+			initialRetryCount: 2,
+			maxRetries:        3,
+			wantRetryCount:    3,
+			wantExhausted:     false,
+			wantErrorContains: "command execution failed",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+
+			// Pre-set retry state if needed
+			if tc.initialRetryCount > 0 {
+				state := &retry.RetryState{
+					SpecName:   "test-spec",
+					Phase:      "specify",
+					Count:      tc.initialRetryCount,
+					MaxRetries: tc.maxRetries,
+				}
+				require.NoError(t, retry.SaveRetryState(stateDir, state))
+			}
+
+			executor := &Executor{
+				StateDir:            stateDir,
+				MaxRetries:          tc.maxRetries,
+				ProgressDisplay:     nil, // Use nil to skip display calls
+				NotificationHandler: nil, // Use nil to skip notification calls
+			}
+
+			// Load or create retry state
+			retryState, err := retry.LoadRetryState(stateDir, "test-spec", "specify", tc.maxRetries)
+			require.NoError(t, err)
+
+			result := &StageResult{
+				Stage: StageSpecify,
+			}
+
+			stageInfo := progress.StageInfo{
+				Name:        "specify",
+				Number:      1,
+				TotalStages: 4,
+			}
+
+			execErr := errors.New("claude execution error")
+
+			// Call handleExecutionFailure
+			returnErr := executor.handleExecutionFailure(result, retryState, stageInfo, execErr)
+
+			// Verify error message
+			assert.Error(t, returnErr)
+			assert.Contains(t, returnErr.Error(), tc.wantErrorContains)
+
+			// Verify result state
+			if tc.wantExhausted {
+				assert.True(t, result.Exhausted)
+			}
+			assert.Equal(t, tc.wantRetryCount, result.RetryCount)
+
+			// Verify result.Error is set correctly
+			assert.Contains(t, result.Error.Error(), "command execution failed")
+		})
+	}
+}
+
+// TestHandleValidationFailure tests the handleValidationFailure method
+func TestHandleValidationFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		initialRetryCount int
+		maxRetries        int
+		wantRetryCount    int
+		wantExhausted     bool
+		wantErrorContains string
+	}{
+		"first validation failure increments count": {
+			initialRetryCount: 0,
+			maxRetries:        3,
+			wantRetryCount:    1,
+			wantExhausted:     false,
+			wantErrorContains: "validation failed",
+		},
+		"max retry limit reached on validation": {
+			initialRetryCount: 3,
+			maxRetries:        3,
+			wantRetryCount:    3,
+			wantExhausted:     true,
+			wantErrorContains: "validation failed and retry exhausted",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+
+			// Pre-set retry state if needed
+			if tc.initialRetryCount > 0 {
+				state := &retry.RetryState{
+					SpecName:   "test-spec",
+					Phase:      "plan",
+					Count:      tc.initialRetryCount,
+					MaxRetries: tc.maxRetries,
+				}
+				require.NoError(t, retry.SaveRetryState(stateDir, state))
+			}
+
+			executor := &Executor{
+				StateDir:            stateDir,
+				MaxRetries:          tc.maxRetries,
+				ProgressDisplay:     nil,
+				NotificationHandler: nil,
+			}
+
+			// Load or create retry state
+			retryState, err := retry.LoadRetryState(stateDir, "test-spec", "plan", tc.maxRetries)
+			require.NoError(t, err)
+
+			result := &StageResult{
+				Stage: StagePlan,
+			}
+
+			stageInfo := progress.StageInfo{
+				Name:        "plan",
+				Number:      2,
+				TotalStages: 4,
+			}
+
+			validationErr := errors.New("schema validation failed")
+
+			// Call handleValidationFailure
+			returnErr := executor.handleValidationFailure(result, retryState, stageInfo, validationErr)
+
+			// Verify error message
+			assert.Error(t, returnErr)
+			assert.Contains(t, returnErr.Error(), tc.wantErrorContains)
+
+			// Verify result state
+			if tc.wantExhausted {
+				assert.True(t, result.Exhausted)
+			}
+			assert.Equal(t, tc.wantRetryCount, result.RetryCount)
+
+			// Verify result.Error is set correctly
+			assert.Contains(t, result.Error.Error(), "validation failed")
+		})
+	}
+}
+
+// TestHandleRetryIncrement tests the handleRetryIncrement method
+func TestHandleRetryIncrement(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		initialCount    int
+		maxRetries      int
+		exhaustedMsg    string
+		wantCount       int
+		wantExhausted   bool
+		wantErrContains string
+	}{
+		"increment from zero": {
+			initialCount:    0,
+			maxRetries:      3,
+			exhaustedMsg:    "test exhausted",
+			wantCount:       1,
+			wantExhausted:   false,
+			wantErrContains: "original",
+		},
+		"increment to max": {
+			initialCount:    2,
+			maxRetries:      3,
+			exhaustedMsg:    "test exhausted",
+			wantCount:       3,
+			wantExhausted:   false,
+			wantErrContains: "original",
+		},
+		"increment past max returns exhausted": {
+			initialCount:    3,
+			maxRetries:      3,
+			exhaustedMsg:    "test exhausted",
+			wantCount:       3,
+			wantExhausted:   true,
+			wantErrContains: "test exhausted",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+
+			// Pre-set retry state
+			state := &retry.RetryState{
+				SpecName:   "test-spec",
+				Phase:      "specify",
+				Count:      tc.initialCount,
+				MaxRetries: tc.maxRetries,
+			}
+			require.NoError(t, retry.SaveRetryState(stateDir, state))
+
+			executor := &Executor{
+				StateDir:   stateDir,
+				MaxRetries: tc.maxRetries,
+			}
+
+			// Load retry state
+			retryState, err := retry.LoadRetryState(stateDir, "test-spec", "specify", tc.maxRetries)
+			require.NoError(t, err)
+
+			originalErr := errors.New("original error")
+
+			result := &StageResult{
+				Stage: StageSpecify,
+				Error: originalErr, // Set Error since handleRetryIncrement returns it on success
+			}
+
+			// Call handleRetryIncrement
+			returnedResult, returnErr := executor.handleRetryIncrement(result, retryState, originalErr, tc.exhaustedMsg)
+
+			// Verify result
+			assert.Equal(t, tc.wantCount, returnedResult.RetryCount)
+			if tc.wantExhausted {
+				assert.True(t, returnedResult.Exhausted)
+				assert.Contains(t, returnErr.Error(), tc.exhaustedMsg)
+			} else {
+				assert.False(t, returnedResult.Exhausted)
+				// When not exhausted, the function returns result.Error
+				assert.Contains(t, returnErr.Error(), "original")
+			}
+		})
+	}
+}
+
+// TestCompleteStageSuccessNoNotify tests the completeStageSuccessNoNotify method
+func TestCompleteStageSuccessNoNotify(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	// Pre-set retry state with non-zero count
+	state := &retry.RetryState{
+		SpecName:   "test-spec",
+		Phase:      "specify",
+		Count:      2,
+		MaxRetries: 3,
+	}
+	require.NoError(t, retry.SaveRetryState(stateDir, state))
+
+	executor := &Executor{
+		StateDir:        stateDir,
+		MaxRetries:      3,
+		ProgressDisplay: nil, // Use nil to skip display calls
+	}
+
+	result := &StageResult{
+		Stage:   StageSpecify,
+		Success: true,
+	}
+
+	stageInfo := progress.StageInfo{
+		Name:        "specify",
+		Number:      1,
+		TotalStages: 4,
+	}
+
+	// Call completeStageSuccessNoNotify
+	executor.completeStageSuccessNoNotify(result, stageInfo, "test-spec", StageSpecify)
+
+	// Verify retry count was reset
+	loaded, err := retry.LoadRetryState(stateDir, "test-spec", "specify", 3)
+	require.NoError(t, err)
+	assert.Equal(t, 0, loaded.Count)
+}
+
+// TestHandleExecutionFailure_NilHandlers tests behavior with nil handlers
+func TestHandleExecutionFailure_NilHandlers(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	executor := &Executor{
+		StateDir:            stateDir,
+		MaxRetries:          3,
+		ProgressDisplay:     nil, // nil handler
+		NotificationHandler: nil, // nil handler
+	}
+
+	retryState, err := retry.LoadRetryState(stateDir, "test-spec", "specify", 3)
+	require.NoError(t, err)
+
+	result := &StageResult{
+		Stage: StageSpecify,
+	}
+
+	stageInfo := progress.StageInfo{
+		Name: "specify",
+	}
+
+	execErr := errors.New("test error")
+
+	// Should not panic with nil handlers
+	returnErr := executor.handleExecutionFailure(result, retryState, stageInfo, execErr)
+
+	assert.Error(t, returnErr)
+	assert.Contains(t, returnErr.Error(), "command execution failed")
+}
+
+// TestErrorMessageFormatting tests error message formatting in failure handlers
+func TestErrorMessageFormatting(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		originalErr    error
+		handler        string
+		wantErrPrefix  string
+	}{
+		"execution failure wraps error": {
+			originalErr:   errors.New("connection timeout"),
+			handler:       "execution",
+			wantErrPrefix: "command execution failed",
+		},
+		"validation failure wraps error": {
+			originalErr:   errors.New("schema mismatch"),
+			handler:       "validation",
+			wantErrPrefix: "validation failed",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+
+			executor := &Executor{
+				StateDir:   stateDir,
+				MaxRetries: 3,
+			}
+
+			retryState, err := retry.LoadRetryState(stateDir, "test-spec", "specify", 3)
+			require.NoError(t, err)
+
+			result := &StageResult{Stage: StageSpecify}
+			stageInfo := progress.StageInfo{Name: "specify"}
+
+			var returnErr error
+			switch tc.handler {
+			case "execution":
+				returnErr = executor.handleExecutionFailure(result, retryState, stageInfo, tc.originalErr)
+			case "validation":
+				returnErr = executor.handleValidationFailure(result, retryState, stageInfo, tc.originalErr)
+			}
+
+			// Verify error formatting
+			assert.Error(t, returnErr)
+			assert.Contains(t, result.Error.Error(), tc.wantErrPrefix)
+
+			// Verify original error is wrapped
+			assert.ErrorIs(t, result.Error, tc.originalErr)
+		})
+	}
 }
