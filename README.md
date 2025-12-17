@@ -163,34 +163,22 @@ autospec st -v
 
 Control how implementation runs with different levels of context isolation:
 
-| Mode | Flag | Isolation | Use Case |
-|------|------|-----------|----------|
-| Phase | (default) | 1 session per phase | Balanced cost/context |
-| Task | `--tasks` | 1 session per task | Complex tasks, max isolation |
-| Single | `--single-session` | 1 session for all | Small specs, simple tasks |
-
 ```bash
-# Default: one session per phase
+# Phase mode (default): 1 session per phase - balanced cost/context
 autospec implement
+autospec implement --from-phase 3   # Resume from phase 3 onwards
+autospec implement --phase 3        # Run only phase 3
 
-# Resume from phase 3 onwards
-autospec implement --from-phase 3
-
-# Run only phase 3
-autospec implement --phase 3
-
-# One session per task (max isolation)
+# Task mode: 1 session per task - complex tasks, max isolation
 autospec implement --tasks
+autospec implement --from-task T005 # Resume from task T005 onwards
+autospec implement --task T003      # Run only task T003
 
-# Resume from task T005 onwards
-autospec implement --from-task T005
-
-# Run only task T003
-autospec implement --task T003
-
-# Single session for all tasks
+# Single mode: 1 session for all - small specs, simple tasks
 autospec implement --single-session
 ```
+
+> 📌 Set the default mode via config: `implement_method: phases | tasks | single-session`
 
 > 📌 `--tasks`, `--phases`, and `--single-session` are mutually exclusive. Task-level execution respects dependency order and validates each task completes before proceeding.
 
