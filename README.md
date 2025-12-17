@@ -56,7 +56,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
 | Status Updates | Manual | **Auto-updates** spec.yaml & tasks.yaml |
 | Phase Orchestration | Manual | **Automated** with dependencies |
 | Session Isolation | Single session | **Per-phase/task** (80%+ cost savings) |
-| Dependencies | Requires SpecKit CLI | **Self-contained** (only needs Claude CLI) |
+| Implementation | Shell scripts | **Go** (type-safe, single binary) |
 
 ## 📦 Quick Start
 
