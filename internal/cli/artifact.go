@@ -301,6 +301,9 @@ func formatValidationResult(result *validation.ValidationResult, filePath string
 			}
 		}
 
+		// Display warnings if any
+		displayWarnings(result, out)
+
 		return nil
 	}
 
@@ -402,4 +405,25 @@ func runAutoFix(filePath string, artType validation.ArtifactType, out, errOut io
 	}
 
 	return nil
+}
+
+// displayWarnings displays validation warnings if any exist.
+func displayWarnings(result *validation.ValidationResult, out io.Writer) {
+	if !result.HasWarnings() {
+		return
+	}
+
+	yellow := color.New(color.FgYellow).SprintFunc()
+	fmt.Fprintf(out, "\n%s %d warning(s):\n", yellow("⚠"), len(result.Warnings))
+
+	for _, warning := range result.Warnings {
+		fmt.Fprintf(out, "  • ")
+		if warning.Line > 0 {
+			fmt.Fprintf(out, "line %d: ", warning.Line)
+		}
+		fmt.Fprintf(out, "%s\n", warning.Message)
+		if warning.Hint != "" {
+			fmt.Fprintf(out, "    %s %s\n", yellow("Hint:"), warning.Hint)
+		}
+	}
 }

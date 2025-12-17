@@ -1,0 +1,44 @@
+# Test fixture: blocked task without blocked_reason
+# Expected: validation passes with 1 warning about missing blocked_reason
+
+tasks:
+  branch: "001-example-feature"
+  created: "2025-01-15"
+  spec_path: "specs/001-example-feature/spec.yaml"
+  plan_path: "specs/001-example-feature/plan.yaml"
+
+summary:
+  total_tasks: 2
+  total_phases: 1
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Initialize project"
+    tasks:
+      - id: "T001"
+        title: "Create user model"
+        status: "Completed"
+        type: "setup"
+        parallel: false
+        dependencies: []
+        acceptance_criteria:
+          - "User struct exists"
+
+      - id: "T002"
+        title: "Implement password hashing"
+        status: "Blocked"
+        type: "implementation"
+        parallel: false
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "HashPassword function exists"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "1.0.0"
+  created: "2025-01-15T12:00:00Z"
+  artifact_type: "tasks"

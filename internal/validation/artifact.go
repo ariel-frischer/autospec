@@ -80,11 +80,20 @@ type ArtifactSummary struct {
 	Counts map[string]int // Key counts (stories, tasks, phases, etc.)
 }
 
+// ValidationWarning represents a non-fatal validation warning.
+type ValidationWarning struct {
+	Path    string // JSON-path style field location
+	Line    int    // 1-based line number in source file
+	Message string // Human-readable warning description
+	Hint    string // Suggestion for addressing the warning
+}
+
 // ValidationResult represents the complete validation outcome for an artifact.
 type ValidationResult struct {
-	Valid   bool               // True if artifact passed all validation
-	Errors  []*ValidationError // List of validation errors found
-	Summary *ArtifactSummary   // Summary statistics (populated on valid artifacts)
+	Valid    bool                 // True if artifact passed all validation
+	Errors   []*ValidationError   // List of validation errors found
+	Warnings []*ValidationWarning // List of validation warnings (non-fatal)
+	Summary  *ArtifactSummary     // Summary statistics (populated on valid artifacts)
 }
 
 // HasErrors returns true if there are any validation errors.
@@ -96,6 +105,16 @@ func (r *ValidationResult) HasErrors() bool {
 func (r *ValidationResult) AddError(err *ValidationError) {
 	r.Errors = append(r.Errors, err)
 	r.Valid = false
+}
+
+// AddWarning adds a validation warning to the result without affecting validity.
+func (r *ValidationResult) AddWarning(warning *ValidationWarning) {
+	r.Warnings = append(r.Warnings, warning)
+}
+
+// HasWarnings returns true if there are any validation warnings.
+func (r *ValidationResult) HasWarnings() bool {
+	return len(r.Warnings) > 0
 }
 
 // ArtifactValidator defines the interface for artifact validation.

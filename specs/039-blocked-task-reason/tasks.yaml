@@ -135,7 +135,7 @@ phases:
       tasks:
         - id: "T008"
           title: "Update status command to display blocked reasons in internal/cli/status.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-003"
@@ -148,7 +148,7 @@ phases:
             - "Missing reasons shown as '(no reason provided)'"
         - id: "T009"
           title: "Implement task list command with filters in internal/cli/task_list.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-003"
@@ -163,7 +163,7 @@ phases:
             - "Blocked tasks show their reasons"
         - id: "T010"
           title: "Add tests for status blocked reason display in internal/cli/status_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-003"
@@ -176,7 +176,7 @@ phases:
             - "Tests use map-based table-driven pattern with t.Parallel()"
         - id: "T011"
           title: "Add tests for task list command in internal/cli/task_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-003"
@@ -196,7 +196,7 @@ phases:
       tasks:
         - id: "T012"
           title: "Add validation warning for missing blocked_reason in internal/validation/artifact_tasks.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -210,7 +210,7 @@ phases:
             - "Validation still passes (exit 0) with warning"
         - id: "T013"
           title: "Update artifact command to display blocked reasons in internal/cli/artifact.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -222,7 +222,7 @@ phases:
             - "Warning count incremented for blocked tasks without reason"
         - id: "T014"
           title: "Add tests for blocked_reason validation in internal/validation/artifact_tasks_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-004"
@@ -240,7 +240,7 @@ phases:
       tasks:
         - id: "T015"
           title: "Update autospec.implement.md with block/unblock syntax in internal/commands/autospec.implement.md"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -253,7 +253,7 @@ phases:
             - "Include examples of block/unblock workflow"
         - id: "T016"
           title: "Handle edge cases for block/unblock operations"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: null
@@ -266,7 +266,7 @@ phases:
             - "Re-blocking updates reason without error"
         - id: "T017"
           title: "Add edge case tests for block/unblock in internal/cli/task_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -279,7 +279,7 @@ phases:
             - "Tests use map-based table-driven pattern with t.Parallel()"
         - id: "T018"
           title: "Run quality gates: make test, make fmt, make lint, make build"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
@@ -71,6 +72,11 @@ var statusCmd = &cobra.Command{
 			fmt.Print(validation.FormatTaskSummary(stats))
 		}
 
+		// Display blocked tasks with reasons
+		if err == nil && stats != nil && stats.BlockedTasks > 0 {
+			displayBlockedTasks(tasksPath)
+		}
+
 		// Show phase details in verbose mode
 		if verbose && stats != nil {
 			fmt.Println()
@@ -94,4 +100,52 @@ func init() {
 	statusCmd.GroupID = GroupGettingStarted
 	rootCmd.AddCommand(statusCmd)
 	statusCmd.Flags().BoolP("verbose", "v", false, "Show all tasks, not just unchecked")
+}
+
+// displayBlockedTasks shows blocked tasks with their reasons
+func displayBlockedTasks(tasksPath string) {
+	tasks, err := validation.GetAllTasks(tasksPath)
+	if err != nil {
+		return
+	}
+
+	blockedTasks := filterBlockedTasks(tasks)
+	if len(blockedTasks) == 0 {
+		return
+	}
+
+	fmt.Println("\n  Blocked tasks:")
+	for _, task := range blockedTasks {
+		reason := formatBlockedReason(task.BlockedReason)
+		fmt.Printf("    %s: %s\n", task.ID, truncateStatusReason(task.Title, 50))
+		fmt.Printf("       Reason: %s\n", reason)
+	}
+}
+
+// filterBlockedTasks returns only tasks with Blocked status
+func filterBlockedTasks(tasks []validation.TaskItem) []validation.TaskItem {
+	var blocked []validation.TaskItem
+	for _, task := range tasks {
+		if strings.EqualFold(task.Status, "Blocked") {
+			blocked = append(blocked, task)
+		}
+	}
+	return blocked
+}
+
+// formatBlockedReason formats the blocked reason for display
+// Returns "(no reason provided)" if reason is empty
+func formatBlockedReason(reason string) string {
+	if reason == "" {
+		return "(no reason provided)"
+	}
+	return truncateStatusReason(reason, 80)
+}
+
+// truncateStatusReason truncates a string to maxLen characters with ellipsis
+func truncateStatusReason(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
 }

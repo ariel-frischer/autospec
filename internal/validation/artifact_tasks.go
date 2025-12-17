@@ -224,6 +224,26 @@ func (v *TasksValidator) validateTask(node *yaml.Node, path string, result *Vali
 	if criteriaNode != nil {
 		validateFieldType(criteriaNode, path+".acceptance_criteria", yaml.SequenceNode, "array", result)
 	}
+
+	// Validate blocked_reason for blocked tasks
+	v.validateBlockedReason(node, path, statusNode, result)
+}
+
+// validateBlockedReason checks that blocked tasks have a reason.
+func (v *TasksValidator) validateBlockedReason(node *yaml.Node, path string, statusNode *yaml.Node, result *ValidationResult) {
+	if statusNode == nil || statusNode.Value != "Blocked" {
+		return
+	}
+
+	blockedReasonNode := findNode(node, "blocked_reason")
+	if blockedReasonNode == nil || blockedReasonNode.Value == "" {
+		result.AddWarning(&ValidationWarning{
+			Path:    path + ".blocked_reason",
+			Line:    getNodeLine(statusNode),
+			Message: "blocked task is missing a blocked_reason",
+			Hint:    "Add a blocked_reason field to document why this task is blocked",
+		})
+	}
 }
 
 // validateAllDependencies validates all task dependencies after collecting task IDs.
@@ -408,6 +428,33 @@ func (v *TasksValidator) buildSummary(root *yaml.Node, taskIDs map[string]int) *
 	summary.Counts["in_progress"] = inProgress
 	summary.Counts["completed"] = completed
 	summary.Counts["blocked"] = blocked
+	summary.Counts["blocked_without_reason"] = countBlockedWithoutReason(phasesNode)
 
 	return summary
+}
+
+// countBlockedWithoutReason counts blocked tasks that are missing a blocked_reason.
+func countBlockedWithoutReason(phasesNode *yaml.Node) int {
+	if phasesNode == nil || phasesNode.Kind != yaml.SequenceNode {
+		return 0
+	}
+
+	count := 0
+	for _, phaseNode := range phasesNode.Content {
+		tasksNode := findNode(phaseNode, "tasks")
+		if tasksNode == nil || tasksNode.Kind != yaml.SequenceNode {
+			continue
+		}
+		for _, taskNode := range tasksNode.Content {
+			statusNode := findNode(taskNode, "status")
+			if statusNode == nil || statusNode.Value != "Blocked" {
+				continue
+			}
+			blockedReasonNode := findNode(taskNode, "blocked_reason")
+			if blockedReasonNode == nil || blockedReasonNode.Value == "" {
+				count++
+			}
+		}
+	}
+	return count
 }

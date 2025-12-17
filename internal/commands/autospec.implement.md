@@ -170,12 +170,56 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    Valid status values: `Pending`, `InProgress`, `Completed`, `Blocked`
 
+   **Blocking tasks with reasons** (preferred method for documenting blockers):
+   ```bash
+   # Block a task and document why it's blocked
+   autospec task block T001 --reason "Waiting for API access from third-party team"
+
+   # Update the reason for an already blocked task
+   autospec task block T001 --reason "Updated: API approved, waiting for credentials"
+   ```
+
+   **Unblocking tasks**:
+   ```bash
+   # Unblock a task (defaults to Pending status)
+   autospec task unblock T001
+
+   # Unblock and immediately set to InProgress
+   autospec task unblock T001 --status InProgress
+   ```
+
+   **Listing tasks by status**:
+   ```bash
+   # List all tasks
+   autospec task list
+
+   # List only blocked tasks (shows reasons)
+   autospec task list --blocked
+
+   # List pending tasks
+   autospec task list --pending
+
+   # List in-progress tasks
+   autospec task list --in-progress
+
+   # List completed tasks
+   autospec task list --completed
+
+   # Combine filters
+   autospec task list --blocked --pending
+   ```
+
    **Implementation workflow for each task**:
    1. Mark task as InProgress: `autospec update-task T00X InProgress`
    2. Implement the task
    3. Verify implementation meets acceptance criteria
    4. Mark task as Completed: `autospec update-task T00X Completed`
    5. Move to next task
+
+   **Handling blocked tasks**:
+   1. If blocked by external dependency: `autospec task block T00X --reason "Reason"`
+   2. Document the blocker clearly so others understand what needs resolution
+   3. When blocker is resolved: `autospec task unblock T00X [--status InProgress]`
 
    - Report progress after each completed task
    - Halt execution if any non-parallel task fails

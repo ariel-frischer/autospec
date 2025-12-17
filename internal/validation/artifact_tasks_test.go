@@ -299,3 +299,119 @@ func TestNewArtifactValidator_Unknown(t *testing.T) {
 		t.Error("NewArtifactValidator(unknown) should return error")
 	}
 }
+
+func TestTasksValidator_BlockedReasonValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		filename     string
+		wantValid    bool
+		wantWarnings int
+		wantMessage  string
+	}{
+		"blocked task without reason triggers warning": {
+			filename:     "blocked_without_reason.yaml",
+			wantValid:    true,
+			wantWarnings: 1,
+			wantMessage:  "blocked task is missing a blocked_reason",
+		},
+		"blocked task with reason has no warning": {
+			filename:     "blocked_with_reason.yaml",
+			wantValid:    true,
+			wantWarnings: 0,
+			wantMessage:  "",
+		},
+		"blocked task with empty reason triggers warning": {
+			filename:     "blocked_empty_reason.yaml",
+			wantValid:    true,
+			wantWarnings: 1,
+			wantMessage:  "blocked task is missing a blocked_reason",
+		},
+		"blocked_reason on non-blocked task is ignored": {
+			filename:     "reason_on_non_blocked.yaml",
+			wantValid:    true,
+			wantWarnings: 0,
+			wantMessage:  "",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			validator := &TasksValidator{}
+			result := validator.Validate(filepath.Join("testdata", "tasks", tt.filename))
+
+			if result.Valid != tt.wantValid {
+				t.Errorf("Valid = %v, want %v", result.Valid, tt.wantValid)
+				for _, err := range result.Errors {
+					t.Logf("  Error: %s", err.Error())
+				}
+			}
+
+			if len(result.Warnings) != tt.wantWarnings {
+				t.Errorf("got %d warnings, want %d", len(result.Warnings), tt.wantWarnings)
+				for _, w := range result.Warnings {
+					t.Logf("  Warning: %s", w.Message)
+				}
+			}
+
+			if tt.wantMessage != "" && len(result.Warnings) > 0 {
+				found := false
+				for _, w := range result.Warnings {
+					if strings.Contains(w.Message, tt.wantMessage) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("expected warning containing %q, not found", tt.wantMessage)
+				}
+			}
+		})
+	}
+}
+
+func TestTasksValidator_BlockedWithoutReasonCount(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		filename  string
+		wantCount int
+	}{
+		"blocked without reason counted in summary": {
+			filename:  "blocked_without_reason.yaml",
+			wantCount: 1,
+		},
+		"blocked with reason not counted": {
+			filename:  "blocked_with_reason.yaml",
+			wantCount: 0,
+		},
+		"blocked with empty reason counted": {
+			filename:  "blocked_empty_reason.yaml",
+			wantCount: 1,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			validator := &TasksValidator{}
+			result := validator.Validate(filepath.Join("testdata", "tasks", tt.filename))
+
+			if !result.Valid {
+				t.Fatalf("validation failed unexpectedly: %v", result.Errors)
+			}
+
+			if result.Summary == nil {
+				t.Fatal("expected summary to be populated")
+			}
+
+			count := result.Summary.Counts["blocked_without_reason"]
+			if count != tt.wantCount {
+				t.Errorf("blocked_without_reason count = %d, want %d", count, tt.wantCount)
+			}
+		})
+	}
+}
