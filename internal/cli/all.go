@@ -58,11 +58,13 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
 			return cliErr
 		}
 
-		// Create notification handler
+		// Create notification handler and history logger
 		notifHandler := notify.NewHandler(cfg.Notifications)
+		historyLogger := history.NewWriter(cfg.StateDir, cfg.MaxHistoryEntries)
 
-		// Wrap command execution with lifecycle for timing and notification
-		return lifecycle.Run(notifHandler, "all", func() error {
+		// Wrap command execution with lifecycle for timing, notification, and history
+		// Note: spec name is empty for all since we're creating a new spec
+		return lifecycle.RunWithHistory(notifHandler, historyLogger, "all", "", func() error {
 			// Override skip-preflight from flag if set
 			if cmd.Flags().Changed("skip-preflight") {
 				cfg.SkipPreflight = skipPreflight

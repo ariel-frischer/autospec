@@ -53,11 +53,13 @@ This command has no prerequisites - it can be run at any time.`,
 			return cliErr
 		}
 
-		// Create notification handler
+		// Create notification handler and history logger
 		notifHandler := notify.NewHandler(cfg.Notifications)
+		historyLogger := history.NewWriter(cfg.StateDir, cfg.MaxHistoryEntries)
 
-		// Wrap command execution with lifecycle for timing and notification
-		return lifecycle.Run(notifHandler, "constitution", func() error {
+		// Wrap command execution with lifecycle for timing, notification, and history
+		// Note: constitution is project-level, no spec name
+		return lifecycle.RunWithHistory(notifHandler, historyLogger, "constitution", "", func() error {
 			// Override skip-preflight from flag if set
 			if cmd.Flags().Changed("skip-preflight") {
 				cfg.SkipPreflight = skipPreflight

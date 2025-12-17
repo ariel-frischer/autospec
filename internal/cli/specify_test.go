@@ -127,9 +127,10 @@ func TestSpecifyCmd_NotificationIntegration(t *testing.T) {
 	})
 
 	t.Run("uses lifecycle.Run wrapper", func(t *testing.T) {
-		assert.True(t,
-			strings.Contains(source, "lifecycle.Run("),
-			"specify.go must use lifecycle.Run() wrapper for timing and notification")
+		usesLifecycle := strings.Contains(source, "lifecycle.Run(") ||
+			strings.Contains(source, "lifecycle.RunWithHistory(")
+		assert.True(t, usesLifecycle,
+			"specify.go must use lifecycle wrapper for timing, notification, and history")
 	})
 }
 
@@ -188,12 +189,14 @@ func TestAllCommandsHaveNotificationSupport(t *testing.T) {
 					"%s must create notification handler", fileName)
 			})
 
-			// Commands MUST use lifecycle.Run() or lifecycle.RunWithContext()
+			// Commands MUST use lifecycle wrapper (Run, RunWithHistory, RunWithContext, or RunWithHistoryContext)
 			t.Run("uses lifecycle wrapper", func(t *testing.T) {
 				usesLifecycle := strings.Contains(source, "lifecycle.Run(") ||
-					strings.Contains(source, "lifecycle.RunWithContext(")
+					strings.Contains(source, "lifecycle.RunWithContext(") ||
+					strings.Contains(source, "lifecycle.RunWithHistory(") ||
+					strings.Contains(source, "lifecycle.RunWithHistoryContext(")
 				assert.True(t, usesLifecycle,
-					"%s must use lifecycle.Run() or lifecycle.RunWithContext() wrapper", fileName)
+					"%s must use lifecycle wrapper (Run, RunWithHistory, RunWithContext, or RunWithHistoryContext)", fileName)
 			})
 
 			// Commands must NOT use direct OnCommandComplete calls (legacy boilerplate)
@@ -202,6 +205,19 @@ func TestAllCommandsHaveNotificationSupport(t *testing.T) {
 				hasDirectCall := strings.Contains(source, ".OnCommandComplete(")
 				assert.False(t, hasDirectCall,
 					"%s should not call OnCommandComplete directly - use lifecycle.Run() instead", fileName)
+			})
+
+			// Commands MUST import history package and create history logger
+			t.Run("history import", func(t *testing.T) {
+				assert.True(t,
+					strings.Contains(source, `"github.com/ariel-frischer/autospec/internal/history"`),
+					"%s must import history package", fileName)
+			})
+
+			t.Run("history logger creation", func(t *testing.T) {
+				assert.True(t,
+					strings.Contains(source, "history.NewWriter("),
+					"%s must create history logger with history.NewWriter()", fileName)
 			})
 		})
 	}
