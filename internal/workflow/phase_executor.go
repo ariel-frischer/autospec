@@ -1,6 +1,6 @@
 // Package workflow provides phase execution functionality.
 // PhaseExecutor handles phase-based implementation execution.
-// Related: internal/workflow/workflow.go (orchestrator), internal/workflow/interfaces.go (interface definition)
+// Related: internal/workflow/orchestrator.go, internal/workflow/interfaces.go (interface definition)
 // Tags: workflow, phase-executor, implementation, phases
 package workflow
 
@@ -279,6 +279,74 @@ func (p *PhaseExecutor) printPhasesSummary(tasksPath, specDir string) {
 
 	// Mark spec as completed
 	markSpecCompletedAndPrint(specDir)
+}
+
+// ExecuteDefault runs all implementation in a single Claude session.
+// This is the default behavior when no --phases, --tasks, or --phase flags are specified.
+func (p *PhaseExecutor) ExecuteDefault(specName, specDir, prompt string, resume bool) error {
+	p.debugLog("ExecuteDefault called: spec=%s, resume=%v", specName, resume)
+
+	// Check progress
+	fmt.Printf("Progress: checking tasks...\n\n")
+
+	// Build command with optional prompt and resume flag
+	command := p.buildDefaultCommand(prompt, resume)
+	p.printExecuting("/autospec.implement", prompt)
+
+	result, err := p.executor.ExecuteStage(
+		specName,
+		StageImplement,
+		command,
+		func(sd string) error {
+			tasksPath := validation.GetTasksFilePath(sd)
+			return p.executor.ValidateTasksComplete(tasksPath)
+		},
+	)
+
+	if err != nil {
+		if result.Exhausted {
+			fmt.Println("\nImplementation paused.")
+			fmt.Println("To resume: autospec implement --resume")
+			return fmt.Errorf("implementation stage exhausted retries: %w", err)
+		}
+		return fmt.Errorf("implementation failed: %w", err)
+	}
+
+	// Show task completion stats
+	fmt.Println("\n✓ All tasks completed!")
+	fmt.Println()
+	tasksPath := validation.GetTasksFilePath(specDir)
+	stats, statsErr := validation.GetTaskStats(tasksPath)
+	if statsErr == nil && stats.TotalTasks > 0 {
+		fmt.Println("Task Summary:")
+		fmt.Print(validation.FormatTaskSummary(stats))
+	}
+
+	return nil
+}
+
+// buildDefaultCommand constructs the implement command for default mode.
+func (p *PhaseExecutor) buildDefaultCommand(prompt string, resume bool) string {
+	command := "/autospec.implement"
+	if resume {
+		command += " --resume"
+	}
+	if prompt != "" {
+		if resume {
+			return fmt.Sprintf("/autospec.implement --resume \"%s\"", prompt)
+		}
+		return fmt.Sprintf("/autospec.implement \"%s\"", prompt)
+	}
+	return command
+}
+
+// printExecuting prints the executing message for a command.
+func (p *PhaseExecutor) printExecuting(baseCmd, prompt string) {
+	if prompt != "" {
+		fmt.Printf("Executing: %s \"%s\"\n", baseCmd, prompt)
+	} else {
+		fmt.Printf("Executing: %s\n", baseCmd)
+	}
 }
 
 // Compile-time interface compliance check.

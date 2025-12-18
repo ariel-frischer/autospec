@@ -1,5 +1,5 @@
 // Package workflow defines interfaces for executor types enabling dependency injection and testing.
-// Related: internal/workflow/workflow.go (orchestrator), internal/workflow/mocks_test.go (test doubles)
+// Related: internal/workflow/orchestrator.go, internal/workflow/mocks_test.go (test doubles)
 // Tags: workflow, interfaces, dependency-injection, executors
 package workflow
 
@@ -7,7 +7,8 @@ import "github.com/ariel-frischer/autospec/internal/validation"
 
 // StageExecutorInterface defines the contract for stage execution (specify, plan, tasks).
 // Implementations handle the core workflow stages that transform feature descriptions into
-// specifications, plans, and task breakdowns.
+// specifications, plans, and task breakdowns. Also handles auxiliary stages like constitution,
+// clarify, checklist, and analyze.
 //
 // Design rationale: Narrow interface following Go idiom "accept interfaces, return concrete types"
 // to enable focused mocking in unit tests without coupling to implementation details.
@@ -26,6 +27,22 @@ type StageExecutorInterface interface {
 	// specNameArg: spec name or empty string to auto-detect from git branch
 	// prompt: optional custom prompt to pass to the tasks command
 	ExecuteTasks(specNameArg string, prompt string) error
+
+	// ExecuteConstitution runs the constitution stage with optional prompt.
+	// Constitution creates or updates the project constitution file.
+	ExecuteConstitution(prompt string) error
+
+	// ExecuteClarify runs the clarify stage with optional prompt.
+	// Clarify refines the specification by asking targeted clarification questions.
+	ExecuteClarify(specName string, prompt string) error
+
+	// ExecuteChecklist runs the checklist stage with optional prompt.
+	// Checklist generates a custom checklist for the current feature.
+	ExecuteChecklist(specName string, prompt string) error
+
+	// ExecuteAnalyze runs the analyze stage with optional prompt.
+	// Analyze performs cross-artifact consistency and quality analysis.
+	ExecuteAnalyze(specName string, prompt string) error
 }
 
 // PhaseExecutorInterface defines the contract for phase-based implementation execution.
@@ -36,6 +53,7 @@ type StageExecutorInterface interface {
 // - Execute all phases sequentially (--phases flag)
 // - Execute a specific phase (--phase N flag)
 // - Resume from a specific phase (--from-phase N flag)
+// - Execute all in a single session (default mode)
 type PhaseExecutorInterface interface {
 	// ExecutePhaseLoop iterates through phases from startPhase to totalPhases.
 	// Each phase runs in a separate Claude session with phase-specific context.
@@ -52,6 +70,14 @@ type PhaseExecutorInterface interface {
 	// phaseNumber: 1-based phase number to execute
 	// prompt: optional custom prompt
 	ExecuteSinglePhase(specName string, phaseNumber int, prompt string) error
+
+	// ExecuteDefault runs all implementation in a single Claude session.
+	// This is the default behavior when no --phases, --tasks, or --phase flags are specified.
+	// specName: the spec directory name
+	// specDir: full path to spec directory (for tasks.yaml lookup)
+	// prompt: optional custom prompt
+	// resume: whether to resume from previous session
+	ExecuteDefault(specName, specDir, prompt string, resume bool) error
 }
 
 // TaskExecutorInterface defines the contract for task-level implementation execution.

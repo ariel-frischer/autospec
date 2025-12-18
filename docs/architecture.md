@@ -17,23 +17,34 @@ autospec is built as a modular Go application with clear separation of concerns 
 
 ```mermaid
 graph TB
-    CLI[CLI Layer<br/>internal/cli] --> Workflow[Workflow Orchestration<br/>internal/workflow]
+    CLI[CLI Layer<br/>internal/cli] --> Orchestrator[WorkflowOrchestrator<br/>internal/workflow]
     CLI --> Config[Configuration<br/>internal/config]
     CLI --> Commands[Embedded Commands<br/>internal/commands]
-    Workflow --> Executor[Stage Executor<br/>internal/workflow]
-    Workflow --> Validation[Validation<br/>internal/validation]
-    Workflow --> Retry[Retry Management<br/>internal/retry]
+
+    Orchestrator --> StageExec[StageExecutor<br/>specify/plan/tasks]
+    Orchestrator --> PhaseExec[PhaseExecutor<br/>phase-based impl]
+    Orchestrator --> TaskExec[TaskExecutor<br/>task-based impl]
+
+    StageExec --> Executor[Executor<br/>Claude execution]
+    PhaseExec --> Executor
+    TaskExec --> Executor
+
+    Executor --> Validation[Validation<br/>internal/validation]
+    Executor --> Retry[Retry Management<br/>internal/retry]
     Executor --> Claude[Claude Integration<br/>internal/workflow]
+
     CLI --> Health[Health Checks<br/>internal/health]
     CLI --> Spec[Spec Detection<br/>internal/spec]
     CLI --> Git[Git Integration<br/>internal/git]
-    Workflow --> Progress[Progress Display<br/>internal/progress]
+    Orchestrator --> Progress[Progress Display<br/>internal/progress]
 
     classDef primary fill:#e1f5ff,stroke:#0066cc,stroke-width:2px
     classDef secondary fill:#f0f0f0,stroke:#666,stroke-width:1px
     classDef embedded fill:#e6ffe6,stroke:#339933,stroke-width:1px
+    classDef executor fill:#fff0f5,stroke:#cc3366,stroke-width:2px
 
-    class CLI,Workflow,Executor primary
+    class CLI,Orchestrator primary
+    class StageExec,PhaseExec,TaskExec,Executor executor
     class Config,Validation,Retry,Claude,Health,Spec,Git,Progress secondary
     class Commands embedded
 ```
@@ -44,7 +55,84 @@ User-facing Cobra commands (internal/cli/root.go:1): Parse args, load config, in
 
 ### 2. Workflow Orchestration (internal/workflow/)
 
-Multi-stage execution with validation and retry (internal/workflow/workflow.go:1): Execute stages in order, validate outputs, retry on failure
+Multi-stage execution with validation and retry. The workflow package uses a layered architecture:
+
+- **WorkflowOrchestrator** (orchestrator.go): High-level coordination, delegates to specialized executors
+- **StageExecutor** (stage_executor.go): Handles specify, plan, tasks, and auxiliary stages (constitution, clarify, etc.)
+- **PhaseExecutor** (phase_executor.go): Handles phase-based implementation with context files
+- **TaskExecutor** (task_executor.go): Handles individual task execution with dependency validation
+- **Executor** (executor.go): Low-level Claude command execution with retry logic
+
+### Executor Architecture
+
+The workflow package uses a Strategy pattern with specialized executors:
+
+```mermaid
+classDiagram
+    class WorkflowOrchestrator {
+        -stageExecutor StageExecutorInterface
+        -phaseExecutor PhaseExecutorInterface
+        -taskExecutor TaskExecutorInterface
+        +ExecuteSpecify(desc) string, error
+        +ExecutePlan(name, prompt) error
+        +ExecuteTasks(name, prompt) error
+        +ExecuteImplement(name, opts) error
+        +ExecuteConstitution(prompt) error
+        +ExecuteClarify(name, prompt) error
+    }
+
+    class StageExecutorInterface {
+        <<interface>>
+        +ExecuteSpecify(desc) string, error
+        +ExecutePlan(name, prompt) error
+        +ExecuteTasks(name, prompt) error
+        +ExecuteConstitution(prompt) error
+        +ExecuteClarify(name, prompt) error
+        +ExecuteChecklist(name, prompt) error
+        +ExecuteAnalyze(name, prompt) error
+    }
+
+    class PhaseExecutorInterface {
+        <<interface>>
+        +ExecutePhaseLoop(name, path, phases, start, total, prompt) error
+        +ExecuteSinglePhase(name, num, prompt) error
+        +ExecuteDefault(name, dir, prompt, resume) error
+    }
+
+    class TaskExecutorInterface {
+        <<interface>>
+        +ExecuteTaskLoop(name, path, tasks, start, total, prompt) error
+        +ExecuteSingleTask(name, id, title, prompt) error
+        +PrepareTaskExecution(path, from) tasks, start, total, error
+    }
+
+    class StageExecutor {
+        -executor *Executor
+        -specsDir string
+    }
+
+    class PhaseExecutor {
+        -executor *Executor
+        -specsDir string
+    }
+
+    class TaskExecutor {
+        -executor *Executor
+        -specsDir string
+    }
+
+    WorkflowOrchestrator --> StageExecutorInterface
+    WorkflowOrchestrator --> PhaseExecutorInterface
+    WorkflowOrchestrator --> TaskExecutorInterface
+    StageExecutorInterface <|.. StageExecutor
+    PhaseExecutorInterface <|.. PhaseExecutor
+    TaskExecutorInterface <|.. TaskExecutor
+```
+
+This architecture provides:
+- **Separation of Concerns**: Each executor handles one execution strategy
+- **Testability**: Interfaces enable mock-based unit testing
+- **Single Responsibility**: Orchestrator coordinates, executors execute
 
 ### 3. Configuration (internal/config/)
 
@@ -138,7 +226,16 @@ internal/
 ├── cli/          # Cobra CLI commands (root, run, all, prep, specify, plan, tasks,
 │                 # implement, constitution, clarify, checklist, analyze, update_task,
 │                 # update_agent_context, clean, uninstall, doctor, status, config, init, version)
-├── workflow/     # WorkflowOrchestrator, Executor, ClaudeExecutor, PreflightChecks
+├── workflow/     # Workflow orchestration and execution
+│   ├── orchestrator.go    # WorkflowOrchestrator - high-level coordination
+│   ├── stage_executor.go  # StageExecutor - specify/plan/tasks/constitution/clarify/etc.
+│   ├── phase_executor.go  # PhaseExecutor - phase-based implementation
+│   ├── task_executor.go   # TaskExecutor - task-based implementation
+│   ├── executor.go        # Executor - Claude command execution with retry
+│   ├── interfaces.go      # Interface definitions for dependency injection
+│   ├── preflight.go       # PreflightChecks - dependency verification
+│   ├── validators.go      # Stage validation functions
+│   └── context.go         # Phase context file generation
 ├── config/       # Config loading (koanf), defaults, XDG paths, YAML validation
 ├── commands/     # Embedded slash command templates (.md files)
 ├── validation/   # File validation, task parsing, prompt generation

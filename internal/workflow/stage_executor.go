@@ -1,6 +1,6 @@
 // Package workflow provides stage execution functionality.
 // StageExecutor handles specify, plan, and tasks stage execution.
-// Related: internal/workflow/workflow.go (orchestrator), internal/workflow/interfaces.go (interface definition)
+// Related: internal/workflow/orchestrator.go, internal/workflow/interfaces.go (interface definition)
 // Tags: workflow, stage-executor, specify, plan, tasks
 package workflow
 
@@ -10,6 +10,7 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/retry"
 	"github.com/ariel-frischer/autospec/internal/spec"
+	"github.com/ariel-frischer/autospec/internal/validation"
 )
 
 // StageExecutor handles specify, plan, and tasks stage execution.
@@ -192,6 +193,115 @@ func (s *StageExecutor) buildTasksCommand(prompt string) string {
 		return fmt.Sprintf("/autospec.tasks \"%s\"", prompt)
 	}
 	return "/autospec.tasks"
+}
+
+// ExecuteConstitution runs the constitution stage with optional prompt.
+// Constitution creates or updates the project constitution file.
+func (s *StageExecutor) ExecuteConstitution(prompt string) error {
+	s.debugLog("ExecuteConstitution called with prompt: %s", prompt)
+
+	command := s.buildCommand("/autospec.constitution", prompt)
+	s.printExecuting("/autospec.constitution", prompt)
+
+	result, err := s.executor.ExecuteStage(
+		"", // No spec name needed for constitution
+		StageConstitution,
+		command,
+		func(specDir string) error { return nil }, // Constitution doesn't produce tracked artifacts
+	)
+
+	if err != nil {
+		if result.Exhausted {
+			return fmt.Errorf("constitution stage exhausted retries: %w", err)
+		}
+		return fmt.Errorf("constitution failed: %w", err)
+	}
+
+	fmt.Println("\n✓ Constitution updated!")
+	return nil
+}
+
+// ExecuteClarify runs the clarify stage with optional prompt.
+// Clarify refines the specification by asking targeted clarification questions.
+func (s *StageExecutor) ExecuteClarify(specName string, prompt string) error {
+	s.debugLog("ExecuteClarify called for spec: %s, prompt: %s", specName, prompt)
+
+	command := s.buildCommand("/autospec.clarify", prompt)
+	s.printExecuting("/autospec.clarify", prompt)
+
+	result, err := s.executor.ExecuteStage(specName, StageClarify, command,
+		func(specDir string) error { return validation.ValidateSpecFile(specDir) })
+
+	if err != nil {
+		if result.Exhausted {
+			return fmt.Errorf("clarify stage exhausted retries: %w", err)
+		}
+		return fmt.Errorf("clarify failed: %w", err)
+	}
+
+	fmt.Printf("\n✓ Clarification complete for specs/%s/\n", specName)
+	return nil
+}
+
+// ExecuteChecklist runs the checklist stage with optional prompt.
+// Checklist generates a custom checklist for the current feature.
+func (s *StageExecutor) ExecuteChecklist(specName string, prompt string) error {
+	s.debugLog("ExecuteChecklist called for spec: %s, prompt: %s", specName, prompt)
+
+	command := s.buildCommand("/autospec.checklist", prompt)
+	s.printExecuting("/autospec.checklist", prompt)
+
+	result, err := s.executor.ExecuteStage(specName, StageChecklist, command,
+		func(specDir string) error { return nil })
+
+	if err != nil {
+		if result.Exhausted {
+			return fmt.Errorf("checklist stage exhausted retries: %w", err)
+		}
+		return fmt.Errorf("checklist failed: %w", err)
+	}
+
+	fmt.Printf("\n✓ Checklist generated for specs/%s/\n", specName)
+	return nil
+}
+
+// ExecuteAnalyze runs the analyze stage with optional prompt.
+// Analyze performs cross-artifact consistency and quality analysis.
+func (s *StageExecutor) ExecuteAnalyze(specName string, prompt string) error {
+	s.debugLog("ExecuteAnalyze called for spec: %s, prompt: %s", specName, prompt)
+
+	command := s.buildCommand("/autospec.analyze", prompt)
+	s.printExecuting("/autospec.analyze", prompt)
+
+	result, err := s.executor.ExecuteStage(specName, StageAnalyze, command,
+		func(specDir string) error { return nil })
+
+	if err != nil {
+		if result.Exhausted {
+			return fmt.Errorf("analyze stage exhausted retries: %w", err)
+		}
+		return fmt.Errorf("analyze failed: %w", err)
+	}
+
+	fmt.Printf("\n✓ Analysis complete for specs/%s/\n", specName)
+	return nil
+}
+
+// buildCommand constructs a command with optional prompt.
+func (s *StageExecutor) buildCommand(baseCmd, prompt string) string {
+	if prompt != "" {
+		return fmt.Sprintf("%s \"%s\"", baseCmd, prompt)
+	}
+	return baseCmd
+}
+
+// printExecuting prints the executing message for a command.
+func (s *StageExecutor) printExecuting(baseCmd, prompt string) {
+	if prompt != "" {
+		fmt.Printf("Executing: %s \"%s\"\n", baseCmd, prompt)
+	} else {
+		fmt.Printf("Executing: %s\n", baseCmd)
+	}
 }
 
 // Compile-time interface compliance check.

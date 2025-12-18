@@ -1,6 +1,6 @@
 // Package workflow provides task execution functionality.
 // TaskExecutor handles task-level implementation execution.
-// Related: internal/workflow/workflow.go (orchestrator), internal/workflow/interfaces.go (interface definition)
+// Related: internal/workflow/orchestrator.go, internal/workflow/interfaces.go (interface definition)
 // Tags: workflow, task-executor, implementation, tasks
 package workflow
 

@@ -237,7 +237,7 @@ phases:
       tasks:
         - id: "T017"
           title: "Refactor WorkflowOrchestrator to pure coordination logic"
-          status: "InProgress"
+          status: "Completed"
           type: "refactor"
           parallel: false
           story_id: null
@@ -250,7 +250,7 @@ phases:
             - "All existing tests pass"
         - id: "T018"
           title: "Rename workflow.go to orchestrator.go"
-          status: "Pending"
+          status: "Completed"
           type: "refactor"
           parallel: false
           story_id: null
@@ -262,7 +262,7 @@ phases:
             - "All tests pass"
         - id: "T019"
           title: "Create orchestrator_test.go with mock-based tests"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -276,7 +276,7 @@ phases:
             - "Map-based table-driven tests with t.Parallel()"
         - id: "T020"
           title: "Update docs/architecture.md with new component diagram"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: "US-004"
@@ -288,7 +288,7 @@ phases:
             - "Dependency injection pattern explained"
         - id: "T021"
           title: "Run quality gates: make test, make fmt, make lint, make build"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null

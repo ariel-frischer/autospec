@@ -1,5 +1,5 @@
-// Package workflow tests mock implementations for ClaudeExecutor and PreflightChecker.
-// Related: internal/workflow/claude.go, internal/workflow/preflight.go
+// Package workflow tests mock implementations for ClaudeExecutor, PreflightChecker, and Executor interfaces.
+// Related: internal/workflow/claude.go, internal/workflow/preflight.go, internal/workflow/interfaces.go
 // Tags: workflow, mocks, testing, executor, preflight, test-doubles
 package workflow
 
@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/ariel-frischer/autospec/internal/validation"
 )
 
 // MockClaudeExecutor is a mock implementation of ClaudeExecutor for testing.
@@ -247,3 +249,288 @@ func (m *mockPreflightChecker) Reset() {
 	m.PromptUserCalled = false
 	m.PromptUserCalls = make([]string, 0)
 }
+
+// =============================================================================
+// Mock Executor Interface Implementations
+// =============================================================================
+
+// MockStageExecutor is a mock implementation of StageExecutorInterface for testing.
+type MockStageExecutor struct {
+	// Return values
+	SpecifyResult     string
+	SpecifyError      error
+	PlanError         error
+	TasksError        error
+	ConstitutionError error
+	ClarifyError      error
+	ChecklistError    error
+	AnalyzeError      error
+
+	// Call tracking
+	SpecifyCalls      []string // Feature descriptions
+	PlanCalls         []PlanCall
+	TasksCalls        []TasksCall
+	ConstitutionCalls []string // Prompts
+	ClarifyCalls      []ClarifyCall
+	ChecklistCalls    []ChecklistCall
+	AnalyzeCalls      []AnalyzeCall
+}
+
+// PlanCall records a call to ExecutePlan.
+type PlanCall struct {
+	SpecNameArg string
+	Prompt      string
+}
+
+// TasksCall records a call to ExecuteTasks.
+type TasksCall struct {
+	SpecNameArg string
+	Prompt      string
+}
+
+// ClarifyCall records a call to ExecuteClarify.
+type ClarifyCall struct {
+	SpecName string
+	Prompt   string
+}
+
+// ChecklistCall records a call to ExecuteChecklist.
+type ChecklistCall struct {
+	SpecName string
+	Prompt   string
+}
+
+// AnalyzeCall records a call to ExecuteAnalyze.
+type AnalyzeCall struct {
+	SpecName string
+	Prompt   string
+}
+
+// NewMockStageExecutor creates a new MockStageExecutor with default success behavior.
+func NewMockStageExecutor() *MockStageExecutor {
+	return &MockStageExecutor{
+		SpecifyResult:     "001-test-feature",
+		SpecifyCalls:      make([]string, 0),
+		PlanCalls:         make([]PlanCall, 0),
+		TasksCalls:        make([]TasksCall, 0),
+		ConstitutionCalls: make([]string, 0),
+		ClarifyCalls:      make([]ClarifyCall, 0),
+		ChecklistCalls:    make([]ChecklistCall, 0),
+		AnalyzeCalls:      make([]AnalyzeCall, 0),
+	}
+}
+
+// ExecuteSpecify implements StageExecutorInterface.
+func (m *MockStageExecutor) ExecuteSpecify(featureDescription string) (string, error) {
+	m.SpecifyCalls = append(m.SpecifyCalls, featureDescription)
+	return m.SpecifyResult, m.SpecifyError
+}
+
+// ExecutePlan implements StageExecutorInterface.
+func (m *MockStageExecutor) ExecutePlan(specNameArg string, prompt string) error {
+	m.PlanCalls = append(m.PlanCalls, PlanCall{SpecNameArg: specNameArg, Prompt: prompt})
+	return m.PlanError
+}
+
+// ExecuteTasks implements StageExecutorInterface.
+func (m *MockStageExecutor) ExecuteTasks(specNameArg string, prompt string) error {
+	m.TasksCalls = append(m.TasksCalls, TasksCall{SpecNameArg: specNameArg, Prompt: prompt})
+	return m.TasksError
+}
+
+// ExecuteConstitution implements StageExecutorInterface.
+func (m *MockStageExecutor) ExecuteConstitution(prompt string) error {
+	m.ConstitutionCalls = append(m.ConstitutionCalls, prompt)
+	return m.ConstitutionError
+}
+
+// ExecuteClarify implements StageExecutorInterface.
+func (m *MockStageExecutor) ExecuteClarify(specName string, prompt string) error {
+	m.ClarifyCalls = append(m.ClarifyCalls, ClarifyCall{SpecName: specName, Prompt: prompt})
+	return m.ClarifyError
+}
+
+// ExecuteChecklist implements StageExecutorInterface.
+func (m *MockStageExecutor) ExecuteChecklist(specName string, prompt string) error {
+	m.ChecklistCalls = append(m.ChecklistCalls, ChecklistCall{SpecName: specName, Prompt: prompt})
+	return m.ChecklistError
+}
+
+// ExecuteAnalyze implements StageExecutorInterface.
+func (m *MockStageExecutor) ExecuteAnalyze(specName string, prompt string) error {
+	m.AnalyzeCalls = append(m.AnalyzeCalls, AnalyzeCall{SpecName: specName, Prompt: prompt})
+	return m.AnalyzeError
+}
+
+// Compile-time interface compliance check.
+var _ StageExecutorInterface = (*MockStageExecutor)(nil)
+
+// MockPhaseExecutor is a mock implementation of PhaseExecutorInterface for testing.
+type MockPhaseExecutor struct {
+	// Return values
+	PhaseLoopError   error
+	SinglePhaseError error
+	DefaultError     error
+
+	// Call tracking
+	PhaseLoopCalls   []PhaseLoopCall
+	SinglePhaseCalls []SinglePhaseCall
+	DefaultCalls     []DefaultCall
+}
+
+// PhaseLoopCall records a call to ExecutePhaseLoop.
+type PhaseLoopCall struct {
+	SpecName    string
+	TasksPath   string
+	Phases      []validation.PhaseInfo
+	StartPhase  int
+	TotalPhases int
+	Prompt      string
+}
+
+// SinglePhaseCall records a call to ExecuteSinglePhase.
+type SinglePhaseCall struct {
+	SpecName    string
+	PhaseNumber int
+	Prompt      string
+}
+
+// DefaultCall records a call to ExecuteDefault.
+type DefaultCall struct {
+	SpecName string
+	SpecDir  string
+	Prompt   string
+	Resume   bool
+}
+
+// NewMockPhaseExecutor creates a new MockPhaseExecutor with default success behavior.
+func NewMockPhaseExecutor() *MockPhaseExecutor {
+	return &MockPhaseExecutor{
+		PhaseLoopCalls:   make([]PhaseLoopCall, 0),
+		SinglePhaseCalls: make([]SinglePhaseCall, 0),
+		DefaultCalls:     make([]DefaultCall, 0),
+	}
+}
+
+// ExecutePhaseLoop implements PhaseExecutorInterface.
+func (m *MockPhaseExecutor) ExecutePhaseLoop(specName, tasksPath string, phases []validation.PhaseInfo, startPhase, totalPhases int, prompt string) error {
+	m.PhaseLoopCalls = append(m.PhaseLoopCalls, PhaseLoopCall{
+		SpecName:    specName,
+		TasksPath:   tasksPath,
+		Phases:      phases,
+		StartPhase:  startPhase,
+		TotalPhases: totalPhases,
+		Prompt:      prompt,
+	})
+	return m.PhaseLoopError
+}
+
+// ExecuteSinglePhase implements PhaseExecutorInterface.
+func (m *MockPhaseExecutor) ExecuteSinglePhase(specName string, phaseNumber int, prompt string) error {
+	m.SinglePhaseCalls = append(m.SinglePhaseCalls, SinglePhaseCall{
+		SpecName:    specName,
+		PhaseNumber: phaseNumber,
+		Prompt:      prompt,
+	})
+	return m.SinglePhaseError
+}
+
+// ExecuteDefault implements PhaseExecutorInterface.
+func (m *MockPhaseExecutor) ExecuteDefault(specName, specDir, prompt string, resume bool) error {
+	m.DefaultCalls = append(m.DefaultCalls, DefaultCall{
+		SpecName: specName,
+		SpecDir:  specDir,
+		Prompt:   prompt,
+		Resume:   resume,
+	})
+	return m.DefaultError
+}
+
+// Compile-time interface compliance check.
+var _ PhaseExecutorInterface = (*MockPhaseExecutor)(nil)
+
+// MockTaskExecutor is a mock implementation of TaskExecutorInterface for testing.
+type MockTaskExecutor struct {
+	// Return values
+	TaskLoopError     error
+	SingleTaskError   error
+	PrepareResult     []validation.TaskItem
+	PrepareStartIdx   int
+	PrepareTotalTasks int
+	PrepareError      error
+
+	// Call tracking
+	TaskLoopCalls   []TaskLoopCall
+	SingleTaskCalls []SingleTaskCall
+	PrepareCalls    []PrepareCall
+}
+
+// TaskLoopCall records a call to ExecuteTaskLoop.
+type TaskLoopCall struct {
+	SpecName     string
+	TasksPath    string
+	OrderedTasks []validation.TaskItem
+	StartIdx     int
+	TotalTasks   int
+	Prompt       string
+}
+
+// SingleTaskCall records a call to ExecuteSingleTask.
+type SingleTaskCall struct {
+	SpecName  string
+	TaskID    string
+	TaskTitle string
+	Prompt    string
+}
+
+// PrepareCall records a call to PrepareTaskExecution.
+type PrepareCall struct {
+	TasksPath string
+	FromTask  string
+}
+
+// NewMockTaskExecutor creates a new MockTaskExecutor with default success behavior.
+func NewMockTaskExecutor() *MockTaskExecutor {
+	return &MockTaskExecutor{
+		PrepareResult:   make([]validation.TaskItem, 0),
+		TaskLoopCalls:   make([]TaskLoopCall, 0),
+		SingleTaskCalls: make([]SingleTaskCall, 0),
+		PrepareCalls:    make([]PrepareCall, 0),
+	}
+}
+
+// ExecuteTaskLoop implements TaskExecutorInterface.
+func (m *MockTaskExecutor) ExecuteTaskLoop(specName, tasksPath string, orderedTasks []validation.TaskItem, startIdx, totalTasks int, prompt string) error {
+	m.TaskLoopCalls = append(m.TaskLoopCalls, TaskLoopCall{
+		SpecName:     specName,
+		TasksPath:    tasksPath,
+		OrderedTasks: orderedTasks,
+		StartIdx:     startIdx,
+		TotalTasks:   totalTasks,
+		Prompt:       prompt,
+	})
+	return m.TaskLoopError
+}
+
+// ExecuteSingleTask implements TaskExecutorInterface.
+func (m *MockTaskExecutor) ExecuteSingleTask(specName, taskID, taskTitle, prompt string) error {
+	m.SingleTaskCalls = append(m.SingleTaskCalls, SingleTaskCall{
+		SpecName:  specName,
+		TaskID:    taskID,
+		TaskTitle: taskTitle,
+		Prompt:    prompt,
+	})
+	return m.SingleTaskError
+}
+
+// PrepareTaskExecution implements TaskExecutorInterface.
+func (m *MockTaskExecutor) PrepareTaskExecution(tasksPath string, fromTask string) ([]validation.TaskItem, int, int, error) {
+	m.PrepareCalls = append(m.PrepareCalls, PrepareCall{
+		TasksPath: tasksPath,
+		FromTask:  fromTask,
+	})
+	return m.PrepareResult, m.PrepareStartIdx, m.PrepareTotalTasks, m.PrepareError
+}
+
+// Compile-time interface compliance check.
+var _ TaskExecutorInterface = (*MockTaskExecutor)(nil)

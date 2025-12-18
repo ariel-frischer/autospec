@@ -770,44 +770,7 @@ func TestShouldSkipTask(t *testing.T) {
 
 // NOTE: TestGetUpdatedPhaseInfo moved to phase_executor_test.go as TestPhaseExecutor_GetUpdatedPhaseInfo
 
-// TestBuildImplementCommand tests the implement command builder
-func TestBuildImplementCommand(t *testing.T) {
-	t.Parallel()
-
-	cfg := &config.Configuration{
-		ClaudeCmd:  "claude",
-		SpecsDir:   "./specs",
-		MaxRetries: 3,
-		StateDir:   "~/.autospec/state",
-	}
-
-	orchestrator := NewWorkflowOrchestrator(cfg)
-
-	tests := map[string]struct {
-		resume      bool
-		wantCommand string
-	}{
-		"without resume": {
-			resume:      false,
-			wantCommand: "/autospec.implement",
-		},
-		"with resume": {
-			resume:      true,
-			wantCommand: "/autospec.implement --resume",
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			command := orchestrator.buildImplementCommand(tt.resume)
-			if command != tt.wantCommand {
-				t.Errorf("buildImplementCommand() = %q, want %q", command, tt.wantCommand)
-			}
-		})
-	}
-}
+// NOTE: TestBuildImplementCommand moved to phase_executor_test.go as TestPhaseExecutor_BuildDefaultCommand
 
 // NOTE: TestPrintPhaseCompletion moved to phase_executor_test.go as TestPhaseExecutor_PrintPhaseCompletion
 
@@ -1945,14 +1908,11 @@ func TestRunFullWorkflow(t *testing.T) {
 			orchestrator := NewWorkflowOrchestrator(cfg)
 			tt.setupFiles(specsDir)
 
-			// Verify command format includes resume flag
-			command := orchestrator.buildImplementCommand(tt.resume)
-			if tt.resume && !strings.Contains(command, "--resume") {
-				t.Errorf("command should contain --resume flag")
+			// Verify orchestrator is properly configured
+			if orchestrator.SpecsDir != specsDir {
+				t.Errorf("SpecsDir = %v, want %v", orchestrator.SpecsDir, specsDir)
 			}
-			if !tt.resume && strings.Contains(command, "--resume") {
-				t.Errorf("command should not contain --resume flag")
-			}
+			// NOTE: buildImplementCommand test moved to phase_executor_test.go
 		})
 	}
 }
@@ -2606,119 +2566,9 @@ func TestExecuteSpecifyAndPlanTasks(t *testing.T) {
 	}
 }
 
-// TestValidateTasksCompleteFunc tests the validateTasksCompleteFunc method
-func TestValidateTasksCompleteFunc(t *testing.T) {
-	tests := map[string]struct {
-		tasksContent string
-		wantErr      bool
-	}{
-		"all tasks completed": {
-			tasksContent: `tasks:
-  branch: "test"
-summary:
-  total_tasks: 2
-phases:
-  - number: 1
-    title: "Test"
-    purpose: "Testing"
-    tasks:
-      - id: "T001"
-        title: "Task 1"
-        status: "Completed"
-        type: "implementation"
-        parallel: false
-        dependencies: []
-      - id: "T002"
-        title: "Task 2"
-        status: "Completed"
-        type: "implementation"
-        parallel: false
-        dependencies: []
-_meta:
-  artifact_type: "tasks"
-`,
-			wantErr: false,
-		},
-		"some tasks pending": {
-			tasksContent: `tasks:
-  branch: "test"
-summary:
-  total_tasks: 2
-phases:
-  - number: 1
-    title: "Test"
-    purpose: "Testing"
-    tasks:
-      - id: "T001"
-        title: "Task 1"
-        status: "Completed"
-        type: "implementation"
-        parallel: false
-        dependencies: []
-      - id: "T002"
-        title: "Task 2"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        dependencies: []
-_meta:
-  artifact_type: "tasks"
-`,
-			wantErr: true,
-		},
-		"blocked tasks": {
-			tasksContent: `tasks:
-  branch: "test"
-summary:
-  total_tasks: 1
-phases:
-  - number: 1
-    title: "Test"
-    purpose: "Testing"
-    tasks:
-      - id: "T001"
-        title: "Task 1"
-        status: "Blocked"
-        type: "implementation"
-        parallel: false
-        dependencies: []
-_meta:
-  artifact_type: "tasks"
-`,
-			wantErr: true, // Blocked tasks count as incomplete
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			specDir := filepath.Join(tmpDir, "spec")
-			os.MkdirAll(specDir, 0755)
-
-			tasksPath := filepath.Join(specDir, "tasks.yaml")
-			if err := os.WriteFile(tasksPath, []byte(tt.tasksContent), 0644); err != nil {
-				t.Fatalf("Failed to write tasks.yaml: %v", err)
-			}
-
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   tmpDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
-
-			orchestrator := NewWorkflowOrchestrator(cfg)
-			err := orchestrator.validateTasksCompleteFunc(specDir)
-
-			if tt.wantErr && err == nil {
-				t.Error("Expected error but got nil")
-			}
-			if !tt.wantErr && err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
-		})
-	}
-}
+// NOTE: TestValidateTasksCompleteFunc removed - validateTasksCompleteFunc was an internal method
+// that has been delegated to executor. Task completion validation is now tested via
+// executor.ValidateTasksComplete in executor_test.go
 
 // =============================================================================
 // Test Helper Functions for Execute* Method Tests
@@ -3923,45 +3773,9 @@ func TestExecuteImplementFromPhase(t *testing.T) {
 	})
 }
 
-// TestHandleImplementError tests the implement error handler
-func TestHandleImplementError(t *testing.T) {
-	tests := map[string]struct {
-		exhausted    bool
-		wantContains string
-	}{
-		"exhausted retries": {
-			exhausted:    true,
-			wantContains: "exhausted",
-		},
-		"non-exhausted error": {
-			exhausted:    false,
-			wantContains: "implementation failed",
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			specName := "001-test-feature"
-
-			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
-
-			result := &StageResult{
-				Exhausted: tt.exhausted,
-			}
-			originalErr := fmt.Errorf("mock error")
-
-			err := orchestrator.handleImplementError(result, "test feature", originalErr)
-
-			if err == nil {
-				t.Fatal("handleImplementError() error = nil, want error")
-			}
-			if !strings.Contains(err.Error(), tt.wantContains) {
-				t.Errorf("handleImplementError() error = %v, want containing %q", err, tt.wantContains)
-			}
-		})
-	}
-}
+// NOTE: TestHandleImplementError removed - handleImplementError was an internal method
+// that has been delegated to PhaseExecutor.ExecuteDefault. Error handling is now tested
+// via the PhaseExecutor tests in phase_executor_test.go
 
 // TestRunFullWorkflow_Error tests error paths in RunFullWorkflow
 func TestRunFullWorkflow_Error(t *testing.T) {
@@ -4116,7 +3930,6 @@ func TestExecuteImplement_Modes(t *testing.T) {
 // executeAndVerifyTask, executeTaskLoop) have been moved to executor-specific test files
 // (task_executor_test.go, phase_executor_test.go) as part of the refactoring to delegate
 // execution logic to specialized executors.
-
 
 // TestSchemaValidationIntegration tests that schema validators are properly wired into workflow
 // These tests verify FR-006: executePlan(), executeTasks(), and executeSpecify() pass schema validator functions to ExecuteStage()
@@ -5044,4 +4857,287 @@ _meta:
 			t.Errorf("Error format mismatch across entry points:\n  run -a: %s\n  tasks: %s", runErr, tasksErr)
 		}
 	})
+}
+
+// =============================================================================
+// Mock-Based Orchestrator Delegation Tests
+// =============================================================================
+// These tests verify that WorkflowOrchestrator correctly delegates to injected executors.
+
+// TestOrchestratorDelegation_StageExecutor verifies orchestrator delegates to StageExecutor.
+func TestOrchestratorDelegation_StageExecutor(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		setup   func(*MockStageExecutor)
+		action  func(*WorkflowOrchestrator) error
+		verify  func(*testing.T, *MockStageExecutor)
+		wantErr bool
+	}{
+		"ExecuteConstitution delegates to StageExecutor": {
+			setup: func(m *MockStageExecutor) {},
+			action: func(orch *WorkflowOrchestrator) error {
+				return orch.ExecuteConstitution("test prompt")
+			},
+			verify: func(t *testing.T, m *MockStageExecutor) {
+				if len(m.ConstitutionCalls) != 1 {
+					t.Errorf("ConstitutionCalls = %d, want 1", len(m.ConstitutionCalls))
+				}
+				if m.ConstitutionCalls[0] != "test prompt" {
+					t.Errorf("ConstitutionCalls[0] = %q, want %q", m.ConstitutionCalls[0], "test prompt")
+				}
+			},
+			wantErr: false,
+		},
+		"ExecuteConstitution propagates errors": {
+			setup: func(m *MockStageExecutor) {
+				m.ConstitutionError = fmt.Errorf("constitution failed")
+			},
+			action: func(orch *WorkflowOrchestrator) error {
+				return orch.ExecuteConstitution("")
+			},
+			verify: func(t *testing.T, m *MockStageExecutor) {
+				if len(m.ConstitutionCalls) != 1 {
+					t.Errorf("ConstitutionCalls = %d, want 1", len(m.ConstitutionCalls))
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockStage := NewMockStageExecutor()
+			tt.setup(mockStage)
+
+			cfg := &config.Configuration{
+				ClaudeCmd:  "echo",
+				SpecsDir:   t.TempDir(),
+				MaxRetries: 3,
+				StateDir:   filepath.Join(t.TempDir(), "state"),
+			}
+
+			orch := NewWorkflowOrchestratorWithExecutors(cfg, ExecutorOptions{
+				StageExecutor: mockStage,
+			})
+			orch.SkipPreflight = true
+
+			err := tt.action(orch)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error = %v, wantErr = %v", err, tt.wantErr)
+			}
+
+			tt.verify(t, mockStage)
+		})
+	}
+}
+
+// TestOrchestratorDelegation_PhaseExecutor verifies orchestrator delegates to PhaseExecutor.
+func TestOrchestratorDelegation_PhaseExecutor(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		setupSpec func(string)
+		setup     func(*MockPhaseExecutor)
+		action    func(*WorkflowOrchestrator, string) error
+		verify    func(*testing.T, *MockPhaseExecutor)
+		wantErr   bool
+	}{
+		"ExecuteImplementSinglePhase delegates to PhaseExecutor": {
+			setupSpec: func(specDir string) {
+				writeTestTasksForDelegation(t, specDir)
+			},
+			setup: func(m *MockPhaseExecutor) {},
+			action: func(orch *WorkflowOrchestrator, specName string) error {
+				// Create minimal metadata
+				metadata := &spec.Metadata{
+					Number:    "001",
+					Name:      "test",
+					Directory: filepath.Join(orch.SpecsDir, specName),
+				}
+				return orch.ExecuteImplementSinglePhase(specName, metadata, "", 1)
+			},
+			verify: func(t *testing.T, m *MockPhaseExecutor) {
+				if len(m.SinglePhaseCalls) != 1 {
+					t.Errorf("SinglePhaseCalls = %d, want 1", len(m.SinglePhaseCalls))
+					return
+				}
+				if m.SinglePhaseCalls[0].PhaseNumber != 1 {
+					t.Errorf("PhaseNumber = %d, want 1", m.SinglePhaseCalls[0].PhaseNumber)
+				}
+			},
+			wantErr: false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			specsDir := filepath.Join(tmpDir, "specs")
+			specName := "001-test"
+			specDir := filepath.Join(specsDir, specName)
+			os.MkdirAll(specDir, 0755)
+
+			tt.setupSpec(specDir)
+
+			mockPhase := NewMockPhaseExecutor()
+			tt.setup(mockPhase)
+
+			cfg := &config.Configuration{
+				ClaudeCmd:  "echo",
+				SpecsDir:   specsDir,
+				MaxRetries: 3,
+				StateDir:   filepath.Join(tmpDir, "state"),
+			}
+
+			orch := NewWorkflowOrchestratorWithExecutors(cfg, ExecutorOptions{
+				PhaseExecutor: mockPhase,
+			})
+			orch.SkipPreflight = true
+
+			err := tt.action(orch, specName)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error = %v, wantErr = %v", err, tt.wantErr)
+			}
+
+			tt.verify(t, mockPhase)
+		})
+	}
+}
+
+// TestOrchestratorDelegation_TaskExecutor verifies orchestrator delegates to TaskExecutor.
+func TestOrchestratorDelegation_TaskExecutor(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		setupSpec func(string)
+		setup     func(*MockTaskExecutor)
+		action    func(*WorkflowOrchestrator, string) error
+		verify    func(*testing.T, *MockTaskExecutor)
+		wantErr   bool
+	}{
+		"ExecuteImplementWithTasks delegates to TaskExecutor": {
+			setupSpec: func(specDir string) {
+				writeTestTasksForDelegation(t, specDir)
+			},
+			setup: func(m *MockTaskExecutor) {
+				m.PrepareResult = []validation.TaskItem{
+					{ID: "T001", Title: "Test Task", Status: "Pending"},
+				}
+				m.PrepareTotalTasks = 1
+			},
+			action: func(orch *WorkflowOrchestrator, specName string) error {
+				metadata := &spec.Metadata{
+					Number:    "001",
+					Name:      "test",
+					Directory: filepath.Join(orch.SpecsDir, specName),
+				}
+				return orch.ExecuteImplementWithTasks(specName, metadata, "", "")
+			},
+			verify: func(t *testing.T, m *MockTaskExecutor) {
+				if len(m.PrepareCalls) != 1 {
+					t.Errorf("PrepareCalls = %d, want 1", len(m.PrepareCalls))
+				}
+				if len(m.TaskLoopCalls) != 1 {
+					t.Errorf("TaskLoopCalls = %d, want 1", len(m.TaskLoopCalls))
+				}
+			},
+			wantErr: false,
+		},
+		"ExecuteImplementWithTasks propagates PrepareTaskExecution error": {
+			setupSpec: func(specDir string) {
+				writeTestTasksForDelegation(t, specDir)
+			},
+			setup: func(m *MockTaskExecutor) {
+				m.PrepareError = fmt.Errorf("prepare failed")
+			},
+			action: func(orch *WorkflowOrchestrator, specName string) error {
+				metadata := &spec.Metadata{
+					Number:    "001",
+					Name:      "test",
+					Directory: filepath.Join(orch.SpecsDir, specName),
+				}
+				return orch.ExecuteImplementWithTasks(specName, metadata, "", "")
+			},
+			verify: func(t *testing.T, m *MockTaskExecutor) {
+				if len(m.PrepareCalls) != 1 {
+					t.Errorf("PrepareCalls = %d, want 1", len(m.PrepareCalls))
+				}
+				// TaskLoop should not be called if Prepare fails
+				if len(m.TaskLoopCalls) != 0 {
+					t.Errorf("TaskLoopCalls = %d, want 0", len(m.TaskLoopCalls))
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			specsDir := filepath.Join(tmpDir, "specs")
+			specName := "001-test"
+			specDir := filepath.Join(specsDir, specName)
+			os.MkdirAll(specDir, 0755)
+
+			tt.setupSpec(specDir)
+
+			mockTask := NewMockTaskExecutor()
+			tt.setup(mockTask)
+
+			cfg := &config.Configuration{
+				ClaudeCmd:  "echo",
+				SpecsDir:   specsDir,
+				MaxRetries: 3,
+				StateDir:   filepath.Join(tmpDir, "state"),
+			}
+
+			orch := NewWorkflowOrchestratorWithExecutors(cfg, ExecutorOptions{
+				TaskExecutor: mockTask,
+			})
+			orch.SkipPreflight = true
+
+			err := tt.action(orch, specName)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error = %v, wantErr = %v", err, tt.wantErr)
+			}
+
+			tt.verify(t, mockTask)
+		})
+	}
+}
+
+// writeTestTasksForDelegation writes a minimal tasks.yaml for delegation tests.
+func writeTestTasksForDelegation(t *testing.T, specDir string) {
+	t.Helper()
+	tasksContent := `tasks:
+  branch: "001-test"
+summary:
+  total_tasks: 1
+phases:
+  - number: 1
+    title: "Test Phase"
+    purpose: "Testing delegation"
+    tasks:
+      - id: "T001"
+        title: "Test Task"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        dependencies: []
+_meta:
+  artifact_type: "tasks"
+`
+	if err := os.WriteFile(filepath.Join(specDir, "tasks.yaml"), []byte(tasksContent), 0644); err != nil {
+		t.Fatalf("Failed to write tasks.yaml: %v", err)
+	}
 }
