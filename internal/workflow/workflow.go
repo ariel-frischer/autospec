@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/retry"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/validation"
 )
@@ -255,6 +256,13 @@ func (w *WorkflowOrchestrator) runPreflightChecks() error {
 
 // executeSpecify executes the /autospec.specify command and returns the spec name
 func (w *WorkflowOrchestrator) executeSpecify(featureDescription string) (string, error) {
+	// Reset retry state for specify stage - each specify run creates a NEW spec,
+	// so retry state from previous specify runs should not persist.
+	// The empty specName ("") is intentional since we don't know the spec name yet.
+	if err := retry.ResetRetryCount(w.Executor.StateDir, "", string(StageSpecify)); err != nil {
+		w.debugLog("Warning: failed to reset specify retry state: %v", err)
+	}
+
 	command := fmt.Sprintf("/autospec.specify \"%s\"", featureDescription)
 
 	// Use validation with detection since spec name is not known until Claude creates it.
@@ -271,7 +279,9 @@ func (w *WorkflowOrchestrator) executeSpecify(featureDescription string) (string
 	)
 
 	if err != nil {
-		return "", fmt.Errorf("specify failed after %d attempts: %w", result.RetryCount, err)
+		// RetryCount is number of retries, so total attempts = RetryCount + 1 (initial + retries)
+		totalAttempts := result.RetryCount + 1
+		return "", fmt.Errorf("specify failed after %d total attempts (%d retries): %w", totalAttempts, result.RetryCount, err)
 	}
 
 	// Detect the newly created spec
@@ -305,10 +315,12 @@ func (w *WorkflowOrchestrator) executePlan(specName string, prompt string) error
 	)
 
 	if err != nil {
+		// RetryCount is number of retries, so total attempts = RetryCount + 1 (initial + retries)
+		totalAttempts := result.RetryCount + 1
 		if result.Exhausted {
-			return fmt.Errorf("plan stage exhausted retries: %w", err)
+			return fmt.Errorf("plan stage exhausted retries after %d total attempts: %w", totalAttempts, err)
 		}
-		return fmt.Errorf("plan failed after %d attempts: %w", result.RetryCount, err)
+		return fmt.Errorf("plan failed after %d total attempts (%d retries): %w", totalAttempts, result.RetryCount, err)
 	}
 
 	// Also check for research.md (optional but usually created)
@@ -335,10 +347,12 @@ func (w *WorkflowOrchestrator) executeTasks(specName string, prompt string) erro
 	)
 
 	if err != nil {
+		// RetryCount is number of retries, so total attempts = RetryCount + 1 (initial + retries)
+		totalAttempts := result.RetryCount + 1
 		if result.Exhausted {
-			return fmt.Errorf("tasks stage exhausted retries: %w", err)
+			return fmt.Errorf("tasks stage exhausted retries after %d total attempts: %w", totalAttempts, err)
 		}
-		return fmt.Errorf("tasks failed after %d attempts: %w", result.RetryCount, err)
+		return fmt.Errorf("tasks failed after %d total attempts (%d retries): %w", totalAttempts, result.RetryCount, err)
 	}
 
 	return nil
