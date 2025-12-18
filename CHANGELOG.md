@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retry state resets automatically when starting the specify stage
 
 ### Fixed
+- Retry context instructions now dynamically injected only during retries (reduces token waste on first-run executions)
 - Improved artifact validation shows both missing and invalid files in error output
 
 ## [0.3.2] - 2025-12-17
