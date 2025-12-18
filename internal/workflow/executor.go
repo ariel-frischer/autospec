@@ -184,9 +184,7 @@ func (e *Executor) ExecuteStage(specName string, stage Stage, command string, va
 			result.Exhausted = true
 			result.RetryCount = retryState.Count
 			result.Error = fmt.Errorf("validation failed: %w", validationErr)
-			if e.ProgressDisplay != nil {
-				e.ProgressDisplay.FailStage(stageInfo, result.Error)
-			}
+			e.failStageProgress(stageInfo, result.Error)
 			return result, fmt.Errorf("validation failed and retry exhausted: %w", validationErr)
 		}
 
@@ -309,14 +307,13 @@ func (e *Executor) handleRetryIncrement(result *StageResult, retryState *retry.R
 
 // completeStageSuccessNoNotify handles successful stage completion without sending stage notification.
 // Stage notification is handled by lifecycle.RunStage wrapper.
+// Uses Progress controller if set, falls back to deprecated ProgressDisplay field.
 func (e *Executor) completeStageSuccessNoNotify(result *StageResult, stageInfo progress.StageInfo, specName string, stage Stage) {
-	if e.ProgressDisplay != nil {
-		e.debugLog("Showing completion in progress display")
-		stageInfo.Status = progress.StageCompleted
-		if err := e.ProgressDisplay.CompleteStage(stageInfo); err != nil {
-			fmt.Printf("Warning: progress display error: %v\n", err)
-		}
-	}
+	e.debugLog("Showing completion in progress display")
+	stageInfo.Status = progress.StageCompleted
+
+	// Complete stage in progress display
+	e.completeStageProgress(stageInfo)
 
 	e.debugLog("Resetting retry count")
 	if err := retry.ResetRetryCount(e.StateDir, specName, string(stage)); err != nil {
