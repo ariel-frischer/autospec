@@ -134,7 +134,25 @@ See [Configuration Reference](/autospec/reference/configuration) for customizati
 
 ---
 
-## Step 4: Run Your First Workflow
+## Step 4: Create Project Constitution
+
+Create a constitution for your project (required once per project):
+
+```bash
+autospec constitution
+```
+
+This launches a Claude session that analyzes your codebase and creates `.autospec/memory/constitution.yaml` containing your project's:
+- Coding standards and conventions
+- Architectural principles
+- Testing requirements
+- Documentation standards
+
+The constitution ensures Claude follows your project's patterns during implementation.
+
+---
+
+## Step 5: Run Your First Workflow
 
 Navigate to your project and run a complete workflow:
 

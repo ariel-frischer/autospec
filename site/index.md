@@ -96,6 +96,9 @@ autospec doctor
 # Initialize autospec configuration
 autospec init
 
+# Create project constitution (once per project, triggers Claude session)
+autospec constitution
+
 # Create your first specification
 autospec run -a "Add user authentication with OAuth"
 ```
