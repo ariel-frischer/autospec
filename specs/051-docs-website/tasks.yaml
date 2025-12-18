@@ -173,7 +173,7 @@ phases:
       tasks:
         - id: "T011"
           title: "Create guides section parent page"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -185,7 +185,7 @@ phases:
             - "nav_order places it after Reference"
         - id: "T012"
           title: "Create troubleshooting guide"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-004"
@@ -198,7 +198,7 @@ phases:
             - "Solutions with code examples"
         - id: "T013"
           title: "Create FAQ page"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-004"
@@ -211,7 +211,7 @@ phases:
             - "Clear, concise answers"
         - id: "T014"
           title: "Create architecture section parent page"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-005"
@@ -223,7 +223,7 @@ phases:
             - "nav_order places it after Guides"
         - id: "T015"
           title: "Create architecture overview page"
-          status: "Pending"
+          status: "InProgress"
           type: "implementation"
           parallel: true
           story_id: "US-005"
