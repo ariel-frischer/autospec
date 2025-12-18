@@ -4,7 +4,7 @@ This guide covers strategies for running multiple autospec workflows, whether se
 
 ## Understanding Branch Behavior
 
-**Important**: When you run `autospec specify` or `autospec run`, the command creates a new feature branch and **automatically checks it out**. This is critical to understand when planning parallel workflows.
+**Important**: When you run `autospec specify` or `autospec run -a`, the command creates a new feature branch and **automatically checks it out**. This is critical to understand when planning parallel workflows.
 
 ```bash
 # Before: on main branch
@@ -25,9 +25,9 @@ For features that should be developed one after another, use shell command chain
 
 ```bash
 # Complete one feature fully before starting the next
-autospec run "Add user authentication" && \
-autospec run "Add user profile page" && \
-autospec run "Add password reset flow"
+autospec run -a "Add user authentication" && \
+autospec run -a "Add user profile page" && \
+autospec run -a "Add password reset flow"
 ```
 
 ### Sequential with Review Points
@@ -80,23 +80,23 @@ git worktree add ../myapp-search feature/search
 ```bash
 # Terminal 1
 cd ~/projects/myapp-auth
-autospec run "Add user authentication with OAuth"
+autospec run -a "Add user authentication with OAuth"
 
 # Terminal 2
 cd ~/projects/myapp-profile
-autospec run "Add user profile page with avatar upload"
+autospec run -a "Add user profile page with avatar upload"
 
 # Terminal 3
 cd ~/projects/myapp-search
-autospec run "Add full-text search with Elasticsearch"
+autospec run -a "Add full-text search with Elasticsearch"
 ```
 
 Or launch all in background:
 
 ```bash
-cd ~/projects/myapp-auth && autospec run "Add user auth" &
-cd ~/projects/myapp-profile && autospec run "Add profile page" &
-cd ~/projects/myapp-search && autospec run "Add search" &
+cd ~/projects/myapp-auth && autospec run -a "Add user auth" &
+cd ~/projects/myapp-profile && autospec run -a "Add profile page" &
+cd ~/projects/myapp-search && autospec run -a "Add search" &
 wait  # Wait for all to complete
 ```
 
@@ -257,7 +257,7 @@ for feature in "${FEATURES[@]}"; do
     desc="${feature#*:}"
     (
         cd "${REPO_DIR}-${name}"
-        autospec run "${desc}"
+        autospec run -a "${desc}"
     ) &
     pids+=($!)
 done
