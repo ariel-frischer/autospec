@@ -1,5 +1,5 @@
 ---
-description: Review Claude conversations to identify autospec improvement opportunities.
+description: Review NEW Claude conversations to identify autospec improvement opportunities.
 ---
 
 ## User Input
@@ -10,7 +10,15 @@ $ARGUMENTS
 
 ## Purpose
 
-Analyze Claude Code conversation history to identify patterns, inefficiencies, and improvement opportunities for the autospec workflow. This command helps maintain a feedback loop for continuous improvement.
+Analyze **NEW, UNREVIEWED** Claude Code conversations to identify patterns, inefficiencies, and improvement opportunities for the autospec workflow.
+
+## CRITICAL: Only Analyze NEW Conversations
+
+**DO NOT re-analyze conversations already documented in observations.md.**
+
+1. Check `.dev/feedback/reviewed.txt` - these are ALREADY analyzed
+2. Only process conversations NOT in that file
+3. The helper script's `unreviewed` command filters automatically
 
 ## Context Files
 

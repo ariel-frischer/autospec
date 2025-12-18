@@ -13,7 +13,7 @@ This document is part of the autospec feedback system:
 | `.dev/tasks/observations.md` | Central observations document (this file) |
 | `.dev/feedback/reviewed.txt` | Registry of analyzed conversation IDs |
 | `scripts/parse-claude-conversation.sh` | CLI helper for parsing conversations |
-| `.claude/commands/feedback.md` | Slash command for guided analysis |
+| `.claude/commands/session-review.md` | Slash command for guided analysis |
 
 ### Quick Start
 
@@ -31,10 +31,10 @@ This document is part of the autospec feedback system:
 ### Using the Slash Command
 
 ```
-/feedback              # Show next unreviewed conversation
-/feedback status       # Show review progress
-/feedback <id>         # Analyze specific conversation
-/feedback patterns     # Cross-session pattern analysis
+/session-review              # Show next unreviewed conversation
+/session-review status       # Show review progress
+/session-review <id>         # Analyze specific conversation
+/session-review patterns     # Cross-session pattern analysis
 ```
 
 ---
