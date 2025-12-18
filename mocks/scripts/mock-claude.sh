@@ -220,6 +220,29 @@ _meta:
 TASKS_EOF
 }
 
+# Update tasks.yaml to mark all tasks as Completed (simulates implementation)
+mark_tasks_completed() {
+    local spec_dir="$1"
+    local tasks_file="$spec_dir/tasks.yaml"
+
+    # Only update if tasks.yaml exists
+    if [[ ! -f "$tasks_file" ]]; then
+        return
+    fi
+
+    # Use sed to replace status: "Pending" with status: "Completed"
+    # Also handle InProgress status
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS sed requires different syntax
+        sed -i '' 's/status: "Pending"/status: "Completed"/g' "$tasks_file"
+        sed -i '' 's/status: "InProgress"/status: "Completed"/g' "$tasks_file"
+    else
+        # GNU sed
+        sed -i 's/status: "Pending"/status: "Completed"/g' "$tasks_file"
+        sed -i 's/status: "InProgress"/status: "Completed"/g' "$tasks_file"
+    fi
+}
+
 # Detect command type and generate appropriate artifact
 generate_artifact() {
     if [[ -z "${MOCK_ARTIFACT_DIR:-}" ]]; then
@@ -235,6 +258,8 @@ generate_artifact() {
         generate_plan "$spec_dir"
     elif [[ "$command" == *"/autospec.tasks"* ]]; then
         generate_tasks "$spec_dir"
+    elif [[ "$command" == *"/autospec.implement"* ]]; then
+        mark_tasks_completed "$spec_dir"
     fi
 }
 

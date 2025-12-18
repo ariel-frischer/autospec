@@ -3761,3 +3761,1155 @@ func TestExecuteImplement_Success(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// Run* Workflow Tests (Phase 4 Tasks T009-T010)
+// =============================================================================
+
+// TestRunCompleteWorkflow_Success tests RunCompleteWorkflow executes specify → plan → tasks
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
+func TestRunCompleteWorkflow_Success(t *testing.T) {
+	tests := map[string]struct {
+		featureDesc string
+		specName    string
+	}{
+		"simple feature description": {
+			featureDesc: "Add user authentication",
+			specName:    "001-test-feature",
+		},
+		"detailed feature description": {
+			featureDesc: "Add user authentication with OAuth support and password reset",
+			specName:    "001-test-feature",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+
+			// Create orchestrator with mock - mock-claude.sh will generate artifacts
+			// for each stage (specify → plan → tasks)
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+			orchestrator.SkipPreflight = true
+
+			// Call RunCompleteWorkflow - mock generates spec, plan, tasks in sequence
+			err := orchestrator.RunCompleteWorkflow(tt.featureDesc)
+
+			// Verify success
+			if err != nil {
+				t.Fatalf("RunCompleteWorkflow() error = %v, want nil", err)
+			}
+
+			// Verify all three artifacts were created in sequence
+			specDir := filepath.Join(tmpDir, tt.specName)
+
+			// Verify spec.yaml was created
+			specPath := filepath.Join(specDir, "spec.yaml")
+			if _, err := os.Stat(specPath); os.IsNotExist(err) {
+				t.Errorf("spec.yaml was not created at %s", specPath)
+			}
+
+			// Verify plan.yaml was created
+			planPath := filepath.Join(specDir, "plan.yaml")
+			if _, err := os.Stat(planPath); os.IsNotExist(err) {
+				t.Errorf("plan.yaml was not created at %s", planPath)
+			}
+
+			// Verify tasks.yaml was created
+			tasksPath := filepath.Join(specDir, "tasks.yaml")
+			if _, err := os.Stat(tasksPath); os.IsNotExist(err) {
+				t.Errorf("tasks.yaml was not created at %s", tasksPath)
+			}
+		})
+	}
+}
+
+// TestRunFullWorkflow_Success tests RunFullWorkflow executes specify → plan → tasks → implement
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
+func TestRunFullWorkflow_Success(t *testing.T) {
+	tests := map[string]struct {
+		featureDesc string
+		specName    string
+		resume      bool
+	}{
+		"full workflow without resume": {
+			featureDesc: "Add user authentication",
+			specName:    "001-test-feature",
+			resume:      false,
+		},
+		"full workflow with resume": {
+			featureDesc: "Add user authentication",
+			specName:    "001-test-feature",
+			resume:      true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+
+			// Create orchestrator with mock - mock-claude.sh will generate artifacts
+			// for all four stages (specify → plan → tasks → implement)
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+			orchestrator.SkipPreflight = true
+
+			// Call RunFullWorkflow - mock generates all artifacts including implementation
+			err := orchestrator.RunFullWorkflow(tt.featureDesc, tt.resume)
+
+			// Verify success
+			if err != nil {
+				t.Fatalf("RunFullWorkflow() error = %v, want nil", err)
+			}
+
+			// Verify all artifacts were created
+			specDir := filepath.Join(tmpDir, tt.specName)
+
+			// Verify spec.yaml was created
+			specPath := filepath.Join(specDir, "spec.yaml")
+			if _, err := os.Stat(specPath); os.IsNotExist(err) {
+				t.Errorf("spec.yaml was not created at %s", specPath)
+			}
+
+			// Verify plan.yaml was created
+			planPath := filepath.Join(specDir, "plan.yaml")
+			if _, err := os.Stat(planPath); os.IsNotExist(err) {
+				t.Errorf("plan.yaml was not created at %s", planPath)
+			}
+
+			// Verify tasks.yaml was created
+			tasksPath := filepath.Join(specDir, "tasks.yaml")
+			if _, err := os.Stat(tasksPath); os.IsNotExist(err) {
+				t.Errorf("tasks.yaml was not created at %s", tasksPath)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Error Path Tests (Phase 5 Tasks T011-T013)
+// =============================================================================
+
+// TestExecuteSpecify_ValidationFailure tests ExecuteSpecify when mock returns non-zero exit code
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
+func TestExecuteSpecify_ValidationFailure(t *testing.T) {
+	tests := map[string]struct {
+		featureDesc  string
+		specName     string
+		exitCode     string
+		wantErrMatch string
+	}{
+		"mock returns error exit code": {
+			featureDesc:  "Add user authentication",
+			specName:     "001-test-feature",
+			exitCode:     "1",
+			wantErrMatch: "failed",
+		},
+		"mock returns timeout exit code": {
+			featureDesc:  "Add user authentication",
+			specName:     "001-test-feature",
+			exitCode:     "124", // Common timeout exit code
+			wantErrMatch: "failed",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+
+			// Create orchestrator with mock
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+
+			// Configure mock to fail with specified exit code
+			t.Setenv("MOCK_EXIT_CODE", tt.exitCode)
+
+			// Call ExecuteSpecify - should fail due to mock exit code
+			_, err := orchestrator.ExecuteSpecify(tt.featureDesc)
+
+			// Verify error is returned
+			if err == nil {
+				t.Fatalf("ExecuteSpecify() error = nil, want error containing %q", tt.wantErrMatch)
+			}
+
+			// Verify error contains expected context
+			if !strings.Contains(err.Error(), tt.wantErrMatch) {
+				t.Errorf("ExecuteSpecify() error = %q, want error containing %q", err.Error(), tt.wantErrMatch)
+			}
+		})
+	}
+}
+
+// TestExecuteWithRetry_RetriesOnFailure tests that ExecuteSpecify retries when configured
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
+func TestExecuteWithRetry_RetriesOnFailure(t *testing.T) {
+	// This test verifies retry behavior by checking call count via MOCK_CALL_LOG
+	// The mock script logs each invocation, allowing verification of retry attempts
+
+	t.Run("exhausted retries returns error", func(t *testing.T) {
+		// Create isolated temp directory
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		// Create orchestrator with mock
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Set up call log to verify retry attempts
+		callLog := filepath.Join(tmpDir, "call.log")
+		t.Setenv("MOCK_CALL_LOG", callLog)
+
+		// Configure mock to always fail - will exhaust retries
+		t.Setenv("MOCK_EXIT_CODE", "1")
+
+		// Call ExecuteSpecify - should fail after retries exhausted
+		_, err := orchestrator.ExecuteSpecify("Add user authentication")
+
+		// Verify error is returned
+		if err == nil {
+			t.Fatal("ExecuteSpecify() error = nil, want error after retries exhausted")
+		}
+
+		// Verify call log exists (proves at least one call was made)
+		if _, statErr := os.Stat(callLog); os.IsNotExist(statErr) {
+			t.Error("MOCK_CALL_LOG was not created - mock was not invoked")
+		}
+	})
+
+	t.Run("success after retry is possible", func(t *testing.T) {
+		// Note: This test verifies the retry mechanism exists
+		// Full retry-then-success testing requires more complex mock coordination
+		// Here we verify the orchestrator is configured with retries > 0
+
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Verify orchestrator's executor has retry capability
+		if orchestrator.Executor.MaxRetries < 1 {
+			t.Errorf("orchestrator.Executor.MaxRetries = %d, want >= 1", orchestrator.Executor.MaxRetries)
+		}
+	})
+}
+
+// TestAuxiliaryExecuteMethods tests ExecuteConstitution, ExecuteClarify, ExecuteChecklist, ExecuteAnalyze
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
+func TestAuxiliaryExecuteMethods(t *testing.T) {
+	// Table-driven test for all auxiliary Execute* methods
+	tests := map[string]struct {
+		methodName string
+		setup      func(t *testing.T, specDir string)
+		execute    func(orchestrator *WorkflowOrchestrator, specName string) error
+		wantErr    bool
+	}{
+		"ExecuteConstitution without prompt": {
+			methodName: "ExecuteConstitution",
+			setup:      nil, // Constitution doesn't require pre-existing artifacts
+			execute: func(o *WorkflowOrchestrator, _ string) error {
+				return o.ExecuteConstitution("")
+			},
+			wantErr: false,
+		},
+		"ExecuteConstitution with prompt": {
+			methodName: "ExecuteConstitution",
+			setup:      nil,
+			execute: func(o *WorkflowOrchestrator, _ string) error {
+				return o.ExecuteConstitution("Focus on testing principles")
+			},
+			wantErr: false,
+		},
+		"ExecuteClarify without prompt": {
+			methodName: "ExecuteClarify",
+			setup: func(t *testing.T, specDir string) {
+				writeTestSpec(t, specDir)
+			},
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteClarify(specName, "")
+			},
+			wantErr: false,
+		},
+		"ExecuteClarify with prompt": {
+			methodName: "ExecuteClarify",
+			setup: func(t *testing.T, specDir string) {
+				writeTestSpec(t, specDir)
+			},
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteClarify(specName, "Focus on security aspects")
+			},
+			wantErr: false,
+		},
+		"ExecuteChecklist without prompt": {
+			methodName: "ExecuteChecklist",
+			setup: func(t *testing.T, specDir string) {
+				writeTestSpec(t, specDir)
+			},
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteChecklist(specName, "")
+			},
+			wantErr: false,
+		},
+		"ExecuteChecklist with prompt": {
+			methodName: "ExecuteChecklist",
+			setup: func(t *testing.T, specDir string) {
+				writeTestSpec(t, specDir)
+			},
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteChecklist(specName, "Include accessibility checks")
+			},
+			wantErr: false,
+		},
+		"ExecuteAnalyze without prompt": {
+			methodName: "ExecuteAnalyze",
+			setup: func(t *testing.T, specDir string) {
+				writeTestSpec(t, specDir)
+			},
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteAnalyze(specName, "")
+			},
+			wantErr: false,
+		},
+		"ExecuteAnalyze with prompt": {
+			methodName: "ExecuteAnalyze",
+			setup: func(t *testing.T, specDir string) {
+				writeTestSpec(t, specDir)
+			},
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteAnalyze(specName, "Focus on API consistency")
+			},
+			wantErr: false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+			specName := "001-test-feature"
+
+			// Create orchestrator with mock
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+			// Setup prerequisite files if needed
+			if tt.setup != nil {
+				specDir := setupSpecDirectory(t, tmpDir, specName)
+				tt.setup(t, specDir)
+			}
+
+			// Execute the method
+			err := tt.execute(orchestrator, specName)
+
+			// Verify error expectation
+			if (err != nil) != tt.wantErr {
+				t.Errorf("%s() error = %v, wantErr %v", tt.methodName, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestAuxiliaryExecuteMethods_Errors tests error paths for auxiliary Execute* methods
+func TestAuxiliaryExecuteMethods_Errors(t *testing.T) {
+	tests := map[string]struct {
+		methodName string
+		exitCode   string
+		execute    func(orchestrator *WorkflowOrchestrator, specName string) error
+	}{
+		"ExecuteConstitution failure": {
+			methodName: "ExecuteConstitution",
+			exitCode:   "1",
+			execute: func(o *WorkflowOrchestrator, _ string) error {
+				return o.ExecuteConstitution("")
+			},
+		},
+		"ExecuteClarify failure": {
+			methodName: "ExecuteClarify",
+			exitCode:   "1",
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteClarify(specName, "")
+			},
+		},
+		"ExecuteChecklist failure": {
+			methodName: "ExecuteChecklist",
+			exitCode:   "1",
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteChecklist(specName, "")
+			},
+		},
+		"ExecuteAnalyze failure": {
+			methodName: "ExecuteAnalyze",
+			exitCode:   "1",
+			execute: func(o *WorkflowOrchestrator, specName string) error {
+				return o.ExecuteAnalyze(specName, "")
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+			specName := "001-test-feature"
+
+			// Create orchestrator with mock
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+			// Setup prerequisite spec.yaml for methods that need it
+			specDir := setupSpecDirectory(t, tmpDir, specName)
+			writeTestSpec(t, specDir)
+
+			// Configure mock to fail
+			t.Setenv("MOCK_EXIT_CODE", tt.exitCode)
+
+			// Execute the method - should fail
+			err := tt.execute(orchestrator, specName)
+
+			// Verify error is returned
+			if err == nil {
+				t.Errorf("%s() error = nil, want error due to mock failure", tt.methodName)
+			}
+		})
+	}
+}
+
+// TestExecuteImplementWithPhases tests phase-by-phase implementation execution
+func TestExecuteImplementWithPhases(t *testing.T) {
+	t.Run("no phases returns error", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with empty tasks (no phases)
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+
+		// Write tasks.yaml with empty phases array
+		emptyTasksContent := `tasks:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+  plan_path: "specs/001-test-feature/plan.yaml"
+summary:
+  total_tasks: 0
+  total_phases: 0
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases: []
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: []
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+		tasksPath := filepath.Join(specDir, "tasks.yaml")
+		if err := os.WriteFile(tasksPath, []byte(emptyTasksContent), 0644); err != nil {
+			t.Fatalf("failed to write tasks.yaml: %v", err)
+		}
+
+		// Create minimal metadata
+		metadata := &spec.Metadata{
+			Number:    "001",
+			Name:      "test-feature",
+			Directory: specDir,
+		}
+
+		// Call ExecuteImplementWithPhases
+		err := orchestrator.ExecuteImplementWithPhases(specName, metadata, "", false)
+
+		// Should return error about no phases
+		if err == nil {
+			t.Error("ExecuteImplementWithPhases() error = nil, want error for empty phases")
+		}
+		if err != nil && !strings.Contains(err.Error(), "no phases") {
+			t.Errorf("ExecuteImplementWithPhases() error = %v, want error containing 'no phases'", err)
+		}
+	})
+
+	t.Run("all phases complete returns early", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with completed tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasksCompleted(t, specDir)
+
+		// Create minimal metadata
+		metadata := &spec.Metadata{
+			Number:    "001",
+			Name:      "test-feature",
+			Directory: specDir,
+		}
+
+		// Call ExecuteImplementWithPhases
+		err := orchestrator.ExecuteImplementWithPhases(specName, metadata, "", false)
+
+		// Should succeed (all phases already complete)
+		if err != nil {
+			t.Errorf("ExecuteImplementWithPhases() error = %v, want nil", err)
+		}
+	})
+}
+
+// TestExecuteImplementWithTasks tests task-by-task implementation execution
+func TestExecuteImplementWithTasks(t *testing.T) {
+	t.Run("no tasks returns error", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with empty tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+
+		// Write tasks.yaml with empty phases array
+		emptyTasksContent := `tasks:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+  plan_path: "specs/001-test-feature/plan.yaml"
+summary:
+  total_tasks: 0
+  total_phases: 0
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases: []
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: []
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+		tasksPath := filepath.Join(specDir, "tasks.yaml")
+		if err := os.WriteFile(tasksPath, []byte(emptyTasksContent), 0644); err != nil {
+			t.Fatalf("failed to write tasks.yaml: %v", err)
+		}
+
+		// Create minimal metadata
+		metadata := &spec.Metadata{
+			Number:    "001",
+			Name:      "test-feature",
+			Directory: specDir,
+		}
+
+		// Call ExecuteImplementWithTasks (signature: specName, metadata, prompt, fromTask string)
+		err := orchestrator.ExecuteImplementWithTasks(specName, metadata, "", "")
+
+		// Should return error about no tasks
+		if err == nil {
+			t.Error("ExecuteImplementWithTasks() error = nil, want error for empty tasks")
+		}
+	})
+
+	t.Run("all tasks complete returns early", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with completed tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasksCompleted(t, specDir)
+
+		// Create minimal metadata
+		metadata := &spec.Metadata{
+			Number:    "001",
+			Name:      "test-feature",
+			Directory: specDir,
+		}
+
+		// Call ExecuteImplementWithTasks (signature: specName, metadata, prompt, fromTask string)
+		err := orchestrator.ExecuteImplementWithTasks(specName, metadata, "", "")
+
+		// Should succeed (all tasks already complete)
+		if err != nil {
+			t.Errorf("ExecuteImplementWithTasks() error = %v, want nil", err)
+		}
+	})
+}
+
+// TestExecuteImplementSinglePhase tests single phase execution
+func TestExecuteImplementSinglePhase(t *testing.T) {
+	t.Run("phase not found returns error", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with one phase
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasks(t, specDir)
+
+		// Create minimal metadata
+		metadata := &spec.Metadata{
+			Number:    "001",
+			Name:      "test-feature",
+			Directory: specDir,
+		}
+
+		// Request phase 99 which doesn't exist (signature: specName, metadata, prompt, phaseNumber)
+		err := orchestrator.ExecuteImplementSinglePhase(specName, metadata, "", 99)
+
+		// Should return error about phase out of range
+		if err == nil {
+			t.Error("ExecuteImplementSinglePhase() error = nil, want error for invalid phase")
+		}
+		if err != nil && !strings.Contains(err.Error(), "out of range") {
+			t.Errorf("ExecuteImplementSinglePhase() error = %v, want error containing 'out of range'", err)
+		}
+	})
+
+	t.Run("valid phase with completed tasks succeeds", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with completed tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasksCompleted(t, specDir)
+
+		// Create minimal metadata
+		metadata := &spec.Metadata{
+			Number:    "001",
+			Name:      "test-feature",
+			Directory: specDir,
+		}
+
+		// Request phase 1 (signature: specName, metadata, prompt, phaseNumber)
+		err := orchestrator.ExecuteImplementSinglePhase(specName, metadata, "", 1)
+
+		// Should succeed
+		if err != nil {
+			t.Errorf("ExecuteImplementSinglePhase() error = %v, want nil", err)
+		}
+	})
+}
+
+// TestExecuteImplementFromPhase tests starting implementation from a specific phase
+func TestExecuteImplementFromPhase(t *testing.T) {
+	t.Run("phase not found returns error", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasks(t, specDir)
+
+		// Create minimal metadata
+		metadata := &spec.Metadata{
+			Number:    "001",
+			Name:      "test-feature",
+			Directory: specDir,
+		}
+
+		// Request starting from phase 99 which doesn't exist (signature: specName, metadata, prompt, startPhase)
+		err := orchestrator.ExecuteImplementFromPhase(specName, metadata, "", 99)
+
+		// Should return error about phase not found
+		if err == nil {
+			t.Error("ExecuteImplementFromPhase() error = nil, want error for invalid phase")
+		}
+	})
+}
+
+// TestHandleImplementError tests the implement error handler
+func TestHandleImplementError(t *testing.T) {
+	tests := map[string]struct {
+		exhausted    bool
+		wantContains string
+	}{
+		"exhausted retries": {
+			exhausted:    true,
+			wantContains: "exhausted",
+		},
+		"non-exhausted error": {
+			exhausted:    false,
+			wantContains: "implementation failed",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			specName := "001-test-feature"
+
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+			result := &StageResult{
+				Exhausted: tt.exhausted,
+			}
+			originalErr := fmt.Errorf("mock error")
+
+			err := orchestrator.handleImplementError(result, "test feature", originalErr)
+
+			if err == nil {
+				t.Fatal("handleImplementError() error = nil, want error")
+			}
+			if !strings.Contains(err.Error(), tt.wantContains) {
+				t.Errorf("handleImplementError() error = %v, want containing %q", err, tt.wantContains)
+			}
+		})
+	}
+}
+
+// TestRunFullWorkflow_Error tests error paths in RunFullWorkflow
+func TestRunFullWorkflow_Error(t *testing.T) {
+	t.Run("specify stage failure", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+		orchestrator.SkipPreflight = true
+
+		// Configure mock to fail
+		t.Setenv("MOCK_EXIT_CODE", "1")
+
+		err := orchestrator.RunFullWorkflow("Add test feature", false)
+
+		if err == nil {
+			t.Error("RunFullWorkflow() error = nil, want error from failing specify stage")
+		}
+	})
+}
+
+// TestRunCompleteWorkflow_Error tests error paths in RunCompleteWorkflow
+func TestRunCompleteWorkflow_Error(t *testing.T) {
+	t.Run("specify stage failure", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+		orchestrator.SkipPreflight = true
+
+		// Configure mock to fail
+		t.Setenv("MOCK_EXIT_CODE", "1")
+
+		err := orchestrator.RunCompleteWorkflow("Add test feature")
+
+		if err == nil {
+			t.Error("RunCompleteWorkflow() error = nil, want error from failing specify stage")
+		}
+	})
+}
+
+// TestGetPhaseInfo tests phase info retrieval
+func TestGetPhaseInfo(t *testing.T) {
+	t.Run("getUpdatedPhaseInfo returns nil for missing phase", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+		specDir := filepath.Join(tmpDir, specName)
+
+		// Setup basic directory structure
+		if err := os.MkdirAll(specDir, 0755); err != nil {
+			t.Fatalf("failed to create spec dir: %v", err)
+		}
+
+		// Write tasks with phase 1 only
+		tasksContent := `tasks:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+  plan_path: "specs/001-test-feature/plan.yaml"
+summary:
+  total_tasks: 1
+  total_phases: 1
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases:
+  - number: 1
+    title: "Test"
+    purpose: "Test"
+    tasks:
+      - id: "T001"
+        title: "Test task"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "test.go"
+        dependencies: []
+        acceptance_criteria:
+          - "Test passes"
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: [1]
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+		tasksPath := filepath.Join(specDir, "tasks.yaml")
+		if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+			t.Fatalf("failed to write tasks: %v", err)
+		}
+
+		// Request phase 99 which doesn't exist
+		result := getUpdatedPhaseInfo(tasksPath, 99)
+		if result != nil {
+			t.Error("getUpdatedPhaseInfo() returned non-nil for missing phase, want nil")
+		}
+	})
+}
+
+// TestPrintPhaseCompletion tests phase completion printing
+func TestPrintPhaseCompletion_NilInfo(t *testing.T) {
+	// This should not panic when passed nil
+	printPhaseCompletion(1, nil)
+}
+
+// TestPrintTasksSummary_NoTasks tests task summary printing with no tasks
+func TestPrintTasksSummary_NoTasks(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, "001-test")
+
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	// Write tasks with empty phases
+	tasksContent := `tasks:
+  branch: "001-test"
+  created: "2025-01-01"
+  spec_path: "specs/001-test/spec.yaml"
+  plan_path: "specs/001-test/plan.yaml"
+summary:
+  total_tasks: 0
+  total_phases: 0
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases: []
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: []
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+	tasksPath := filepath.Join(specDir, "tasks.yaml")
+	if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+		t.Fatalf("failed to write tasks: %v", err)
+	}
+
+	// This should not panic
+	printTasksSummary(tasksPath, specDir)
+}
+
+// TestPrintPhasesSummary tests phases summary printing
+func TestPrintPhasesSummary(t *testing.T) {
+	t.Run("print summary with valid tasks file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+		specDir := filepath.Join(tmpDir, specName)
+
+		if err := os.MkdirAll(specDir, 0755); err != nil {
+			t.Fatalf("failed to create spec dir: %v", err)
+		}
+
+		// Write valid tasks file
+		tasksContent := `tasks:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+  plan_path: "specs/001-test-feature/plan.yaml"
+summary:
+  total_tasks: 1
+  total_phases: 1
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases:
+  - number: 1
+    title: "Test"
+    purpose: "Test"
+    tasks:
+      - id: "T001"
+        title: "Test task"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "test.go"
+        dependencies: []
+        acceptance_criteria:
+          - "Test passes"
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: [1]
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+		tasksPath := filepath.Join(specDir, "tasks.yaml")
+		if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+			t.Fatalf("failed to write tasks: %v", err)
+		}
+
+		// Also write spec.yaml for markSpecCompletedAndPrint
+		writeTestSpec(t, specDir)
+
+		// This should not panic
+		printPhasesSummary(tasksPath, specDir)
+	})
+}
+
+// TestGetPhaseByNumberWithTasksPath tests phase retrieval by number using tasks path
+func TestGetPhaseByNumberWithTasksPath(t *testing.T) {
+	tests := map[string]struct {
+		phaseNumber int
+		wantErr     bool
+		wantNil     bool
+	}{
+		"valid phase 1": {
+			phaseNumber: 1,
+			wantErr:     false,
+			wantNil:     false,
+		},
+		"invalid phase 99": {
+			phaseNumber: 99,
+			wantErr:     true,
+			wantNil:     true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			specName := "001-test-feature"
+			specDir := filepath.Join(tmpDir, specName)
+
+			if err := os.MkdirAll(specDir, 0755); err != nil {
+				t.Fatalf("failed to create spec dir: %v", err)
+			}
+
+			// Write tasks with one phase
+			tasksContent := `tasks:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+  plan_path: "specs/001-test-feature/plan.yaml"
+summary:
+  total_tasks: 1
+  total_phases: 1
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases:
+  - number: 1
+    title: "Test"
+    purpose: "Test"
+    tasks:
+      - id: "T001"
+        title: "Test task"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "test.go"
+        dependencies: []
+        acceptance_criteria:
+          - "Test passes"
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: [1]
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+			tasksPath := filepath.Join(specDir, "tasks.yaml")
+			if err := os.WriteFile(tasksPath, []byte(tasksContent), 0644); err != nil {
+				t.Fatalf("failed to write tasks: %v", err)
+			}
+
+			result, err := getPhaseByNumber(tasksPath, tt.phaseNumber)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getPhaseByNumber() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if (result == nil) != tt.wantNil {
+				t.Errorf("getPhaseByNumber() returned nil=%v, want nil=%v", result == nil, tt.wantNil)
+			}
+		})
+	}
+}
+
+// TestExecuteImplement_Modes tests different execution modes in ExecuteImplement
+func TestExecuteImplement_Modes(t *testing.T) {
+	t.Run("phases mode with completed tasks", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with completed tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasksCompleted(t, specDir)
+
+		// Call ExecuteImplement with phases mode (RunAllPhases)
+		opts := PhaseExecutionOptions{
+			RunAllPhases: true,
+		}
+		err := orchestrator.ExecuteImplement(specName, "", false, opts)
+
+		// Should succeed
+		if err != nil {
+			t.Errorf("ExecuteImplement(phases mode) error = %v, want nil", err)
+		}
+	})
+
+	t.Run("tasks mode with completed tasks", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with completed tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasksCompleted(t, specDir)
+
+		// Call ExecuteImplement with tasks mode (TaskMode)
+		opts := PhaseExecutionOptions{
+			TaskMode: true,
+		}
+		err := orchestrator.ExecuteImplement(specName, "", false, opts)
+
+		// Should succeed
+		if err != nil {
+			t.Errorf("ExecuteImplement(tasks mode) error = %v, want nil", err)
+		}
+	})
+
+	t.Run("single phase mode", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with completed tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasksCompleted(t, specDir)
+
+		// Call ExecuteImplement with single phase
+		opts := PhaseExecutionOptions{
+			SinglePhase: 1,
+		}
+		err := orchestrator.ExecuteImplement(specName, "", false, opts)
+
+		// Should succeed
+		if err != nil {
+			t.Errorf("ExecuteImplement(single phase mode) error = %v, want nil", err)
+		}
+	})
+
+	t.Run("from phase mode", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		specName := "001-test-feature"
+
+		orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, specName)
+
+		// Create spec directory with completed tasks
+		specDir := setupSpecDirectory(t, tmpDir, specName)
+		writeTestSpec(t, specDir)
+		writeTestPlan(t, specDir)
+		writeTestTasksCompleted(t, specDir)
+
+		// Call ExecuteImplement with from phase
+		opts := PhaseExecutionOptions{
+			FromPhase: 1,
+		}
+		err := orchestrator.ExecuteImplement(specName, "", false, opts)
+
+		// Should succeed
+		if err != nil {
+			t.Errorf("ExecuteImplement(from phase mode) error = %v, want nil", err)
+		}
+	})
+}

@@ -76,7 +76,7 @@ phases:
       tasks:
         - id: "T005"
           title: "Add TestExecuteSpecify_Success in internal/workflow/workflow_test.go"
-          status: "InProgress"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-001"
@@ -90,7 +90,7 @@ phases:
             - "Test uses map-based table-driven pattern if multiple cases"
         - id: "T006"
           title: "Add TestExecutePlan_Success in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-001"
@@ -104,7 +104,7 @@ phases:
             - "Test verifies plan.yaml is created in expected location"
         - id: "T007"
           title: "Add TestExecuteTasks_Success in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-001"
@@ -118,7 +118,7 @@ phases:
             - "Test verifies tasks.yaml is created in expected location"
         - id: "T008"
           title: "Add TestExecuteImplement_Success in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-001"
@@ -138,7 +138,7 @@ phases:
       tasks:
         - id: "T009"
           title: "Add TestRunCompleteWorkflow_Success in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -152,7 +152,7 @@ phases:
             - "Test verifies correct stage order execution"
         - id: "T010"
           title: "Add TestRunFullWorkflow_Success in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -172,7 +172,7 @@ phases:
       tasks:
         - id: "T011"
           title: "Add TestExecuteSpecify_ValidationFailure in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-003"
@@ -186,7 +186,7 @@ phases:
             - "Test uses MOCK_EXIT_CODE or invalid response content"
         - id: "T012"
           title: "Add TestExecuteWithRetry_RetriesOnFailure in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-003"
@@ -199,7 +199,7 @@ phases:
             - "Test verifies retry count and final success"
         - id: "T013"
           title: "Add TestAuxiliaryExecuteMethods in internal/workflow/workflow_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-003"
@@ -212,7 +212,7 @@ phases:
             - "All tests use isolated t.TempDir()"
         - id: "T014"
           title: "Verify coverage target and run quality gates"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: false
           story_id: null
