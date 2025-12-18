@@ -3257,15 +3257,313 @@ _meta:
 }
 
 // =============================================================================
+// Test Helper Functions for Execute* Method Tests
+// =============================================================================
+// These helpers are defined here to avoid import cycle with testutil package.
+
+// findMockClaudePath locates the mock-claude.sh script relative to the repo root.
+func findMockClaudePath(t *testing.T) string {
+	t.Helper()
+
+	// Get the path to the current source file
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("failed to determine current file location")
+	}
+
+	// Navigate from internal/workflow/ to repo root
+	repoRoot := filepath.Join(filepath.Dir(currentFile), "..", "..")
+
+	// Try the primary location first
+	mockPath := filepath.Join(repoRoot, "mocks", "scripts", "mock-claude.sh")
+	if _, err := os.Stat(mockPath); err == nil {
+		return mockPath
+	}
+
+	// Fallback location
+	mockPath = filepath.Join(repoRoot, "tests", "mocks", "mock-claude.sh")
+	if _, err := os.Stat(mockPath); err == nil {
+		return mockPath
+	}
+
+	t.Fatalf("mock-claude.sh not found at expected locations")
+	return ""
+}
+
+// newTestOrchestratorWithSpecName creates a WorkflowOrchestrator configured for testing.
+// It uses mock-claude.sh as the Claude command to avoid real API calls.
+// Sets environment variables so mock-claude.sh creates the appropriate artifacts.
+func newTestOrchestratorWithSpecName(t *testing.T, specsDir, specName string) *WorkflowOrchestrator {
+	t.Helper()
+
+	// Find the mock-claude.sh script path
+	mockClaudePath := findMockClaudePath(t)
+
+	// Create state directory within the test temp area
+	stateDir := filepath.Join(specsDir, ".autospec", "state")
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		t.Fatalf("failed to create state directory: %v", err)
+	}
+
+	cfg := &config.Configuration{
+		ClaudeCmd:     mockClaudePath,
+		ClaudeArgs:    []string{},
+		SpecsDir:      specsDir,
+		StateDir:      stateDir,
+		MaxRetries:    1, // Minimal retries for faster tests
+		SkipPreflight: true,
+		Timeout:       30, // 30 second timeout for tests
+	}
+
+	// Set environment variables for mock-claude.sh to generate artifacts
+	t.Setenv("MOCK_ARTIFACT_DIR", specsDir)
+	t.Setenv("MOCK_SPEC_NAME", specName)
+
+	return NewWorkflowOrchestrator(cfg)
+}
+
+// setupSpecDirectory creates a test spec directory with the given name.
+func setupSpecDirectory(t *testing.T, specsDir, specName string) string {
+	t.Helper()
+
+	specDir := filepath.Join(specsDir, specName)
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec directory: %v", err)
+	}
+	return specDir
+}
+
+// writeTestSpec writes a valid spec.yaml to the given spec directory.
+func writeTestSpec(t *testing.T, specDir string) {
+	t.Helper()
+	content := `feature:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  status: "Draft"
+  input: "test"
+user_stories:
+  - id: "US-001"
+    title: "Test"
+    priority: "P1"
+    as_a: "dev"
+    i_want: "test"
+    so_that: "it works"
+    why_this_priority: "test"
+    independent_test: "test"
+    acceptance_scenarios:
+      - given: "a"
+        when: "b"
+        then: "c"
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "test"
+      testable: true
+      acceptance_criteria: "test"
+  non_functional:
+    - id: "NFR-001"
+      category: "code_quality"
+      description: "test"
+      measurable_target: "test"
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "test"
+      metric: "test"
+      target: "test"
+key_entities: []
+edge_cases: []
+assumptions: []
+constraints: []
+out_of_scope: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "spec"
+`
+	path := filepath.Join(specDir, "spec.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec.yaml: %v", err)
+	}
+}
+
+// writeTestPlan writes a valid plan.yaml to the given spec directory.
+func writeTestPlan(t *testing.T, specDir string) {
+	t.Helper()
+	content := `plan:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+summary: "Test plan"
+technical_context:
+  language: "Go"
+  framework: "None"
+  primary_dependencies: []
+  storage: "None"
+  testing:
+    framework: "Go testing"
+    approach: "Unit tests"
+  target_platform: "Linux"
+  project_type: "cli"
+  performance_goals: "Fast"
+  constraints: []
+  scale_scope: "Small"
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates: []
+research_findings:
+  decisions: []
+data_model:
+  entities: []
+api_contracts:
+  endpoints: []
+project_structure:
+  documentation: []
+  source_code: []
+  tests: []
+implementation_phases:
+  - phase: 1
+    name: "Test"
+    goal: "Test"
+    deliverables: []
+risks: []
+open_questions: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "plan"
+`
+	path := filepath.Join(specDir, "plan.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write plan.yaml: %v", err)
+	}
+}
+
+// writeTestTasks writes a valid tasks.yaml to the given spec directory.
+// Tasks have status "Pending" which is the default pre-implementation state.
+func writeTestTasks(t *testing.T, specDir string) {
+	t.Helper()
+	content := `tasks:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+  plan_path: "specs/001-test-feature/plan.yaml"
+summary:
+  total_tasks: 1
+  total_phases: 1
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases:
+  - number: 1
+    title: "Test"
+    purpose: "Test"
+    tasks:
+      - id: "T001"
+        title: "Test task"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "test.go"
+        dependencies: []
+        acceptance_criteria:
+          - "Test passes"
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: [1]
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+	path := filepath.Join(specDir, "tasks.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write tasks.yaml: %v", err)
+	}
+}
+
+// writeTestTasksCompleted writes tasks.yaml with all tasks marked Completed.
+// Used for testing ExecuteImplement which validates task completion.
+func writeTestTasksCompleted(t *testing.T, specDir string) {
+	t.Helper()
+	content := `tasks:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  spec_path: "specs/001-test-feature/spec.yaml"
+  plan_path: "specs/001-test-feature/plan.yaml"
+summary:
+  total_tasks: 1
+  total_phases: 1
+  parallel_opportunities: 0
+  estimated_complexity: "low"
+phases:
+  - number: 1
+    title: "Test"
+    purpose: "Test"
+    tasks:
+      - id: "T001"
+        title: "Test task"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "test.go"
+        dependencies: []
+        acceptance_criteria:
+          - "Test passes"
+dependencies:
+  user_story_order: []
+  phase_order: []
+parallel_execution: []
+implementation_strategy:
+  mvp_scope:
+    phases: [1]
+    description: "MVP"
+    validation: "Tests pass"
+  incremental_delivery: []
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "test"
+  created: "2025-01-01T00:00:00Z"
+  artifact_type: "tasks"
+`
+	path := filepath.Join(specDir, "tasks.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write tasks.yaml: %v", err)
+	}
+}
+
+// writeAllTestArtifacts writes all three artifact files (spec, plan, tasks).
+func writeAllTestArtifacts(t *testing.T, specDir string) {
+	t.Helper()
+	writeTestSpec(t, specDir)
+	writeTestPlan(t, specDir)
+	writeTestTasks(t, specDir)
+}
+
+// =============================================================================
 // Execute* Method Tests with Mock Infrastructure (Phase 3 Tasks T005-T008)
 // =============================================================================
-// These tests use NewTestOrchestrator which configures mock-claude.sh to
-// generate valid artifact files, enabling actual Execute* method testing.
+// These tests use newTestOrchestratorWithSpecName which configures mock-claude.sh
+// to generate valid artifact files, enabling actual Execute* method testing.
 
 // TestExecuteSpecify_Success tests ExecuteSpecify creates spec.yaml via mock
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
 func TestExecuteSpecify_Success(t *testing.T) {
-	t.Parallel()
-
 	tests := map[string]struct {
 		featureDesc string
 		specName    string
@@ -3286,13 +3584,13 @@ func TestExecuteSpecify_Success(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
 
 			// Create isolated temp directory
 			tmpDir := t.TempDir()
 
 			// Create orchestrator with mock - mock-claude.sh will create artifacts
-			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
 
 			// Call ExecuteSpecify - mock will generate spec.yaml
 			specName, err := orchestrator.ExecuteSpecify(tt.featureDesc)
@@ -3317,9 +3615,8 @@ func TestExecuteSpecify_Success(t *testing.T) {
 }
 
 // TestExecutePlan_Success tests ExecutePlan creates plan.yaml via mock
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
 func TestExecutePlan_Success(t *testing.T) {
-	t.Parallel()
-
 	tests := map[string]struct {
 		specName string
 		prompt   string
@@ -3336,17 +3633,17 @@ func TestExecutePlan_Success(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
 
 			// Create isolated temp directory
 			tmpDir := t.TempDir()
 
 			// Create orchestrator with mock
-			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
 
 			// Setup prerequisite spec.yaml
-			specDir := testutil.SetupSpecDirectory(t, tmpDir, tt.specName)
-			testutil.WriteTestSpec(t, specDir)
+			specDir := setupSpecDirectory(t, tmpDir, tt.specName)
+			writeTestSpec(t, specDir)
 
 			// Call ExecutePlan - mock will generate plan.yaml
 			err := orchestrator.ExecutePlan(tt.specName, tt.prompt)
@@ -3366,9 +3663,8 @@ func TestExecutePlan_Success(t *testing.T) {
 }
 
 // TestExecuteTasks_Success tests ExecuteTasks creates tasks.yaml via mock
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
 func TestExecuteTasks_Success(t *testing.T) {
-	t.Parallel()
-
 	tests := map[string]struct {
 		specName string
 		prompt   string
@@ -3385,18 +3681,18 @@ func TestExecuteTasks_Success(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
 
 			// Create isolated temp directory
 			tmpDir := t.TempDir()
 
 			// Create orchestrator with mock
-			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
 
 			// Setup prerequisite spec.yaml and plan.yaml
-			specDir := testutil.SetupSpecDirectory(t, tmpDir, tt.specName)
-			testutil.WriteTestSpec(t, specDir)
-			testutil.WriteTestPlan(t, specDir)
+			specDir := setupSpecDirectory(t, tmpDir, tt.specName)
+			writeTestSpec(t, specDir)
+			writeTestPlan(t, specDir)
 
 			// Call ExecuteTasks - mock will generate tasks.yaml
 			err := orchestrator.ExecuteTasks(tt.specName, tt.prompt)
@@ -3416,9 +3712,8 @@ func TestExecuteTasks_Success(t *testing.T) {
 }
 
 // TestExecuteImplement_Success tests ExecuteImplement completes without error
+// Note: Cannot use t.Parallel() because tests use t.Setenv for mock-claude.sh configuration
 func TestExecuteImplement_Success(t *testing.T) {
-	t.Parallel()
-
 	tests := map[string]struct {
 		specName  string
 		prompt    string
@@ -3441,17 +3736,20 @@ func TestExecuteImplement_Success(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Note: No t.Parallel() - these tests use t.Setenv which doesn't work with parallel
 
 			// Create isolated temp directory
 			tmpDir := t.TempDir()
 
 			// Create orchestrator with mock
-			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+			orchestrator := newTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
 
-			// Setup all prerequisite artifacts
-			specDir := testutil.SetupSpecDirectory(t, tmpDir, tt.specName)
-			testutil.WriteAllTestArtifacts(t, specDir)
+			// Setup all prerequisite artifacts with completed tasks
+			// ExecuteImplement validates that all tasks are completed
+			specDir := setupSpecDirectory(t, tmpDir, tt.specName)
+			writeTestSpec(t, specDir)
+			writeTestPlan(t, specDir)
+			writeTestTasksCompleted(t, specDir)
 
 			// Call ExecuteImplement
 			err := orchestrator.ExecuteImplement(tt.specName, tt.prompt, tt.resume, tt.phaseOpts)
