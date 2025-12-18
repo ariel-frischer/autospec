@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "site/**"
       - "docs/**"
-      - "README.md"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -22,32 +22,32 @@ jobs:
   build:
     name: Build Documentation
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: site
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Copy documentation
-        run: |
-          mkdir -p _site
-          cp -r docs/* _site/
-          cp README.md _site/index.md
-
-          # Create a simple index page if docs/README.md exists
-          if [ -f docs/README.md ]; then
-            cp docs/README.md _site/index.md
-          fi
-
       - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./
-          destination: ./_site
+        run: bundle exec jekyll build --baseurl "/autospec"
+        env:
+          JEKYLL_ENV: production
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/_site
 
   deploy:
     name: Deploy to GitHub Pages

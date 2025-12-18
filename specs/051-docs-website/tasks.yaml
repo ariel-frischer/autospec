@@ -223,7 +223,7 @@ phases:
             - "nav_order places it after Guides"
         - id: "T015"
           title: "Create architecture overview page"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-005"
@@ -236,7 +236,7 @@ phases:
             - "Stage vs phase explanation"
         - id: "T016"
           title: "Create internals documentation page"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-005"
@@ -255,7 +255,7 @@ phases:
       tasks:
         - id: "T017"
           title: "Update GitHub Actions docs.yml workflow"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-006"
@@ -268,7 +268,7 @@ phases:
             - "Workflow triggers on push to main"
         - id: "T018"
           title: "Verify Go binary excludes website assets"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-006"
@@ -281,7 +281,7 @@ phases:
             - "grep for 'site/' in embed directives returns empty"
         - id: "T019"
           title: "Add cross-page navigation and internal links"
-          status: "Pending"
+          status: "InProgress"
           type: "implementation"
           parallel: true
           story_id: "US-001"
