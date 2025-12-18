@@ -44,8 +44,9 @@ type BranchInfo struct {
 	Remote   string // Remote name (e.g., "origin") if IsRemote is true
 }
 
-// GetAllBranches returns a list of all local and remote branches
-// It filters out HEAD pointers and duplicates
+// GetAllBranches returns a list of all local and remote branches.
+// Filters out HEAD pointers and deduplicates (local preferred over remote).
+// Uses git branch -a with --format for clean parsing.
 func GetAllBranches() ([]BranchInfo, error) {
 	if !IsGitRepository() {
 		return nil, nil
@@ -75,7 +76,9 @@ func getBranchLines() ([]string, error) {
 	return strings.Split(strings.TrimSpace(string(output)), "\n"), nil
 }
 
-// collectBranches parses branch lines and deduplicates them
+// collectBranches parses branch lines and deduplicates them.
+// Uses seen map for O(1) duplicate detection. When duplicate found,
+// prefers local branch over remote (replaces remote with local in-place).
 func collectBranches(lines []string) []BranchInfo {
 	seen := make(map[string]bool)
 	var branches []BranchInfo
@@ -97,7 +100,11 @@ func collectBranches(lines []string) []BranchInfo {
 	return branches
 }
 
-// parseBranchLine parses a single branch line into BranchInfo
+// parseBranchLine parses a single branch line into BranchInfo.
+// Handles three formats:
+//   - "remotes/origin/main" → Remote="origin", Name="main", IsRemote=true
+//   - "origin/main" → Remote="origin", Name="main", IsRemote=true
+//   - "main" → Name="main", IsRemote=false
 func parseBranchLine(line string) *BranchInfo {
 	var info BranchInfo
 
@@ -127,7 +134,9 @@ func parseBranchLine(line string) *BranchInfo {
 	return &info
 }
 
-// addBranchWithDedup adds a branch, handling duplicates (prefer local over remote)
+// addBranchWithDedup adds a branch, handling duplicates (prefer local over remote).
+// If branch name already seen and new branch is local, replaces the existing
+// remote branch in-place via linear scan. Otherwise appends if not seen.
 func addBranchWithDedup(branches []BranchInfo, info BranchInfo, seen map[string]bool) []BranchInfo {
 	key := info.Name
 

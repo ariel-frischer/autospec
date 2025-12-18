@@ -64,7 +64,14 @@ func (m *Metadata) FormatInfo() string {
 	return fmt.Sprintf("✓ Using spec: %s (%s)", m.Directory, methodDesc)
 }
 
-// DetectCurrentSpec attempts to detect the current spec from git branch or directory
+// DetectCurrentSpec attempts to detect the current spec from git branch or directory.
+//
+// Two-strategy detection:
+//  1. Git branch: Parse branch name matching "NNN-name" pattern, verify directory exists
+//  2. Fallback: Glob all spec directories, sort by modification time, return most recent
+//
+// Strategy 1 provides branch-based workflow; Strategy 2 handles detached HEAD or non-git.
+// Returns Detection field indicating which strategy succeeded.
 func DetectCurrentSpec(specsDir string) (*Metadata, error) {
 	// Strategy 1: Try git branch name
 	if git.IsGitRepository() {
@@ -139,7 +146,14 @@ func DetectCurrentSpec(specsDir string) (*Metadata, error) {
 	return nil, fmt.Errorf("could not parse spec directory name: %s", baseName)
 }
 
-// GetSpecDirectory returns the full path to a spec directory given its number or name
+// GetSpecDirectory returns the full path to a spec directory given its number or name.
+//
+// Three-level matching (tries in order, returns first match):
+//  1. Exact: "002-migration" → specs/002-migration
+//  2. Number: "002" → specs/002-* (glob, must be unique)
+//  3. Name: "migration" → specs/*-migration (glob, must be unique)
+//
+// Returns error if multiple matches found (ambiguous) or no matches.
 func GetSpecDirectory(specsDir, specIdentifier string) (string, error) {
 	// Try exact match first (e.g., "002-go-binary-migration")
 	exactPath := filepath.Join(specsDir, specIdentifier)

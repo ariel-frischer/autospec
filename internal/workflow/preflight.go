@@ -146,10 +146,10 @@ func generateMissingDirsWarning(missingDirs []string, gitRoot string) string {
 	return sb.String()
 }
 
-// PromptUserToContinueWithReader prompts the user to continue despite pre-flight failures,
-// reading input from the provided reader. This variant allows for testing stdin input.
-// Returns true if user wants to continue (y/yes), false otherwise.
-// Returns (false, nil) on EOF to gracefully handle input termination.
+// PromptUserToContinueWithReader prompts the user to continue despite pre-flight failures.
+// Reader injection pattern: accepts io.Reader for testability (vs hardcoded os.Stdin).
+// EOF handling: returns (false, nil) instead of error for graceful termination.
+// Response parsing: case-insensitive, accepts "y" or "yes".
 func PromptUserToContinueWithReader(warningMessage string, reader io.Reader) (bool, error) {
 	// Print warning
 	fmt.Fprint(os.Stderr, warningMessage)
@@ -269,7 +269,9 @@ func FindSpecsDirectory(specsDir string) (string, error) {
 }
 
 // CheckArtifactDependencies checks if required artifacts exist for the selected stages.
-// It returns a PreflightResult with MissingArtifacts populated.
+// Performs two-level validation: (1) file existence, (2) schema validity.
+// Both missing and invalid artifacts cause Passed=false since the workflow cannot proceed.
+// Returns PreflightResult with MissingArtifacts and InvalidArtifacts populated.
 func CheckArtifactDependencies(stageConfig *StageConfig, specDir string) *PreflightResult {
 	result := &PreflightResult{
 		Passed:           true,
@@ -321,9 +323,15 @@ func validateArtifactSchema(artifact, specDir string) error {
 	}
 }
 
-// GeneratePrerequisiteError generates a human-readable error message
-// for missing prerequisites. This is a hard error because no earlier
-// selected stage will produce these artifacts.
+// GeneratePrerequisiteError generates a human-readable error message for missing prerequisites.
+//
+// Message structure:
+//  1. List missing artifacts (files that don't exist)
+//  2. List invalid artifacts (files that exist but fail schema validation)
+//  3. Show which stages require which problematic artifacts (triple-nested loop)
+//  4. Suggest remediation commands based on artifact type
+//
+// The stage→artifact mapping helps users understand why the check failed.
 func GeneratePrerequisiteError(stageConfig *StageConfig, missingArtifacts []string, invalidArtifacts map[string]string) string {
 	var sb strings.Builder
 
