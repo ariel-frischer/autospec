@@ -172,7 +172,7 @@ requirements:
     - id: "FR-005"
       description: "MUST maintain backwards compatibility with existing CLI commands"
       testable: true
-      acceptance_criteria: "All existing CLI commands (specify, plan, tasks, implement) work unchanged"
+      acceptance_criteria: "All existing CLI commands work unchanged: core stages (specify, plan, tasks, implement, constitution), optional stages (clarify, checklist, analyze), and orchestration (all, run, prep)"
     - id: "FR-006"
       description: "MUST add compile-time interface compliance checks for new interfaces"
       testable: true
