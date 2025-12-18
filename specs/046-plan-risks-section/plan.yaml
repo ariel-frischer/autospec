@@ -1,0 +1,230 @@
+plan:
+  branch: "046-plan-risks-section"
+  created: "2025-12-18"
+  spec_path: "specs/046-plan-risks-section/spec.yaml"
+
+summary: |
+  This plan adds comprehensive validation and display support for the optional risks section
+  in plan.yaml. The core schema already defines risks as an optional array; this implementation
+  enhances validation to enforce required fields (id, description, likelihood, impact), validates
+  enum values and ID patterns, emits warnings for unmitigated high-impact risks, and displays
+  risk summaries in the status command.
+
+  The approach is minimally invasive: extending the existing PlanValidator with a validateRisks
+  method, adding warning support to ValidationResult, and updating the status command to read
+  and display risk information from plan.yaml.
+
+technical_context:
+  language: "Go"
+  framework: "None"
+  primary_dependencies:
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing for plan.yaml validation"
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "CLI command framework for status command"
+    - name: "testing"
+      version: "stdlib"
+      purpose: "Go test framework"
+  storage: "Filesystem (plan.yaml files)"
+  testing:
+    framework: "Go testing with testify"
+    approach: "Map-based table-driven unit tests with golden files for validation"
+  target_platform: "linux, darwin, windows"
+  project_type: "cli"
+  performance_goals: "Validation with risks section completes in <10ms"
+  constraints:
+    - "Must maintain backward compatibility with existing plan.yaml files"
+    - "Risks section must remain optional"
+    - "Validation performance must stay under 10ms total"
+    - "Risk ID format must match existing ID patterns (RISK-NNN)"
+  scale_scope: "Single file validation; no cross-file risk aggregation"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Plan includes tests for all new validation logic before implementation"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "PASS"
+      notes: "Extends existing artifact validation infrastructure"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "Risk validation adds negligible overhead to existing <10ms validation"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "N/A"
+      notes: "Validation is stateless; no retry logic needed"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Functions under 40 lines; errors wrapped with context; map-based table tests"
+
+research_findings:
+  decisions:
+    - topic: "Risk field validation approach"
+      decision: "Add validateRisks method to PlanValidator following existing pattern"
+      rationale: "Consistent with validatePlanSection, validateTechnicalContext, validateImplementationPhases"
+      alternatives_considered:
+        - "Add risks validation to schema.go Children (rejected: schema defines structure, not semantic validation)"
+        - "Create separate RiskValidator (rejected: risks are plan-specific, not standalone artifacts)"
+    - topic: "Warning mechanism for unmitigated high-impact risks"
+      decision: "Add Warnings field to ValidationResult, emit warning without failing validation"
+      rationale: "Warnings are advisory, should not block workflow; matches 'SHOULD' requirement in spec"
+      alternatives_considered:
+        - "Log warning to stderr only (rejected: warnings should be part of structured result)"
+        - "Create separate warning type (rejected: ValidationResult already handles errors)"
+    - topic: "Risk summary in status command"
+      decision: "Parse plan.yaml directly in status command, display risk count and breakdown"
+      rationale: "Status command already reads tasks.yaml; similar pattern for plan.yaml risks"
+      alternatives_considered:
+        - "Add risks to TaskStats (rejected: risks are plan artifacts, not task artifacts)"
+        - "Create separate risk stats type (rejected: over-engineering for simple count display)"
+    - topic: "Risk ID pattern validation"
+      decision: "Use regex pattern RISK-\\d{3} matching existing FR-NNN, NFR-NNN patterns"
+      rationale: "Consistent with spec.yaml ID patterns; familiar to users"
+      alternatives_considered:
+        - "Allow any string ID (rejected: structured IDs enable cross-referencing)"
+        - "Use UUID format (rejected: human-readable IDs preferred for artifacts)"
+
+data_model:
+  entities:
+    - name: "Risk"
+      description: "An identified implementation risk with assessment and mitigation"
+      fields:
+        - name: "id"
+          type: "string"
+          description: "Unique identifier in RISK-NNN format"
+          constraints: "Required, matches pattern RISK-\\d{3}"
+        - name: "risk"
+          type: "string"
+          description: "Brief description of the risk"
+          constraints: "Required (field name is 'risk' not 'description' per existing testdata)"
+        - name: "likelihood"
+          type: "string"
+          description: "Probability of occurrence"
+          constraints: "Required, enum: low, medium, high"
+        - name: "impact"
+          type: "string"
+          description: "Severity if risk materializes"
+          constraints: "Required, enum: low, medium, high"
+        - name: "mitigation"
+          type: "string"
+          description: "Strategy to address the risk"
+          constraints: "Optional; warning if empty when impact is high"
+      relationships: []
+    - name: "ValidationWarning"
+      description: "Advisory message that does not fail validation"
+      fields:
+        - name: "Path"
+          type: "string"
+          description: "YAML path to the element with the warning"
+          constraints: "None"
+        - name: "Line"
+          type: "int"
+          description: "Line number in source file"
+          constraints: "Optional"
+        - name: "Message"
+          type: "string"
+          description: "Human-readable warning message"
+          constraints: "Required"
+      relationships:
+        - target: "ValidationResult"
+          type: "many-to-one"
+          description: "ValidationResult contains zero or more warnings"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "specs/046-plan-risks-section/spec.yaml"
+      description: "Feature specification"
+    - path: "specs/046-plan-risks-section/plan.yaml"
+      description: "Implementation plan (this file)"
+  source_code:
+    - path: "internal/validation/artifact_plan.go"
+      description: "PlanValidator with new validateRisks method"
+    - path: "internal/validation/validation.go"
+      description: "ValidationResult with new Warnings field"
+    - path: "internal/validation/schema.go"
+      description: "PlanSchema risks field with Children definitions"
+    - path: "internal/cli/status.go"
+      description: "Status command with risk summary display"
+  tests:
+    - path: "internal/validation/artifact_plan_test.go"
+      description: "Tests for risk validation including edge cases"
+    - path: "internal/validation/testdata/plan/valid.yaml"
+      description: "Golden file updated with comprehensive risks section"
+    - path: "internal/validation/testdata/plan/risks_*.yaml"
+      description: "Additional test fixtures for risk validation edge cases"
+    - path: "internal/cli/status_test.go"
+      description: "Tests for risk summary display in status command"
+
+implementation_phases:
+  - phase: 1
+    name: "Schema and Validation Foundation"
+    goal: "Add risks field validation to PlanValidator and warning support to ValidationResult"
+    deliverables:
+      - "Add ValidationWarning type to validation.go"
+      - "Add Warnings []ValidationWarning field to ValidationResult"
+      - "Add AddWarning method to ValidationResult"
+      - "Update PlanSchema risks field with Children definitions"
+      - "Add validateRisks method to PlanValidator"
+      - "Tests for risk required fields, enum values, ID pattern"
+
+  - phase: 2
+    name: "Warning Emission and Display"
+    goal: "Implement warning for unmitigated high-impact risks and update artifact command output"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Warning emission for high-impact risks without mitigation"
+      - "Update artifact command to display warnings in output"
+      - "Tests for warning emission scenarios"
+
+  - phase: 3
+    name: "Status Command Integration"
+    goal: "Display risk summary in autospec st output when plan.yaml contains risks"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Parse plan.yaml risks section in status command"
+      - "Display risk count and impact breakdown"
+      - "Handle missing/empty risks gracefully"
+      - "Tests for status command risk display"
+
+risks:
+  - id: "RISK-001"
+    risk: "Backward compatibility break with existing plan.yaml files"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "All new fields are optional; only add warnings not errors for existing valid files"
+
+  - id: "RISK-002"
+    risk: "Validation performance regression"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Risk validation adds simple field checks; benchmark tests verify <10ms"
+
+  - id: "RISK-003"
+    risk: "Inconsistent risk ID format with existing testdata"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Existing testdata uses 'risk' field without id; support both patterns initially"
+
+open_questions:
+  - question: "Should duplicate risk IDs be a warning or error?"
+    context: "Spec says 'warning about duplicate IDs (non-blocking)' in edge cases"
+    proposed_resolution: "Implement as warning per spec; duplicate IDs are non-blocking"
+
+  - question: "Should the status command show individual risks or just summary?"
+    context: "US-003 shows summary with count and breakdown by impact level"
+    proposed_resolution: "Summary only in normal mode; could add --verbose for full list later"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-18T05:19:15Z"
+  artifact_type: "plan"
