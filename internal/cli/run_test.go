@@ -288,3 +288,45 @@ func TestOptionalStageHasAnyStage(t *testing.T) {
 		})
 	}
 }
+
+// TestJoinStageNames tests the joinStageNames helper function for display formatting.
+func TestJoinStageNames(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		names []string
+		want  string
+	}{
+		"empty slice returns empty string": {
+			names: []string{},
+			want:  "",
+		},
+		"single stage returns just the name": {
+			names: []string{"specify"},
+			want:  "specify",
+		},
+		"two stages joined with arrow": {
+			names: []string{"specify", "plan"},
+			want:  "specify → plan",
+		},
+		"three stages joined with arrows": {
+			names: []string{"specify", "plan", "tasks"},
+			want:  "specify → plan → tasks",
+		},
+		"full workflow chain": {
+			names: []string{"constitution", "specify", "clarify", "plan", "tasks", "checklist", "analyze", "implement"},
+			want:  "constitution → specify → clarify → plan → tasks → checklist → analyze → implement",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := joinStageNames(tt.names)
+			if got != tt.want {
+				t.Errorf("joinStageNames(%v) = %q, want %q", tt.names, got, tt.want)
+			}
+		})
+	}
+}

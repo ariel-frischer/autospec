@@ -828,3 +828,44 @@ func TestHistoryStatusFlagExists(t *testing.T) {
 	require.NotNil(t, f, "status flag should exist")
 	assert.Equal(t, "", f.Shorthand, "status flag should have no shorthand")
 }
+
+// TestFormatID tests the formatID function for history display.
+func TestFormatID(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		id   string
+		want string
+	}{
+		"empty string returns dash padded": {
+			id:   "",
+			want: "-                             ", // 30 chars with dash
+		},
+		"short ID is padded to 30 chars": {
+			id:   "brave_fox",
+			want: "brave_fox                     ", // 30 chars
+		},
+		"exactly 30 chars stays same": {
+			id:   "brave_fox_20241215_103000abcd",
+			want: "brave_fox_20241215_103000abcd ", // 30 chars
+		},
+		"ID longer than 30 chars is truncated": {
+			id:   "brave_fox_20241215_103000abcdefghij",
+			want: "brave_fox_20241215_103000abcde", // truncated to 30
+		},
+		"typical ID format": {
+			id:   "brave_fox_20241215_103000",
+			want: "brave_fox_20241215_103000     ", // padded to 30
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := formatID(tt.id)
+			assert.Equal(t, 30, len(got), "formatID should always return 30 chars, got %d", len(got))
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
