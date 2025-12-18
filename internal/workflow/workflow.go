@@ -257,12 +257,17 @@ func (w *WorkflowOrchestrator) runPreflightChecks() error {
 func (w *WorkflowOrchestrator) executeSpecify(featureDescription string) (string, error) {
 	command := fmt.Sprintf("/autospec.specify \"%s\"", featureDescription)
 
+	// Use validation with detection since spec name is not known until Claude creates it.
+	// MakeSpecSchemaValidatorWithDetection detects the newly created spec directory
+	// and validates it, rather than using the empty specName passed to ExecuteStage.
+	validateFunc := MakeSpecSchemaValidatorWithDetection(w.SpecsDir)
+
 	// Execute with validation and retry
 	result, err := w.Executor.ExecuteStage(
 		"", // Spec name not known yet
 		StageSpecify,
 		command,
-		ValidateSpecSchema,
+		validateFunc,
 	)
 
 	if err != nil && !result.Exhausted {

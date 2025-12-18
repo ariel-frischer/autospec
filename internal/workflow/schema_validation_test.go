@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -244,4 +245,182 @@ type validationErrorForTest struct {
 
 func (e *validationErrorForTest) Error() string {
 	return e.message
+}
+
+// TestMakeSpecSchemaValidatorWithDetection tests that the detection-based validator
+// correctly finds and validates the newly created spec directory.
+// This prevents regression of the bug where executeSpecify passed empty specName
+// causing validation to look in specs/ instead of specs/<spec-name>/.
+func TestMakeSpecSchemaValidatorWithDetection(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		setupFunc   func(t *testing.T) string // Returns specsDir
+		wantErr     bool
+		errContains string
+		description string
+	}{
+		"detects and validates valid spec": {
+			setupFunc: func(t *testing.T) string {
+				t.Helper()
+				tmpDir := t.TempDir()
+				specsDir := filepath.Join(tmpDir, "specs")
+				specDir := filepath.Join(specsDir, "001-test-feature")
+				if err := os.MkdirAll(specDir, 0755); err != nil {
+					t.Fatalf("failed to create spec dir: %v", err)
+				}
+				// Create valid spec.yaml
+				validSpec := `feature:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  status: "Draft"
+  input: "Test feature"
+user_stories:
+  - id: "US-001"
+    title: "Test story"
+    priority: "P1"
+    as_a: "user"
+    i_want: "test"
+    so_that: "test"
+    acceptance_scenarios: []
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "Test requirement"
+      testable: true
+      acceptance_criteria: "Test passes"
+`
+				if err := os.WriteFile(filepath.Join(specDir, "spec.yaml"), []byte(validSpec), 0644); err != nil {
+					t.Fatalf("failed to write spec.yaml: %v", err)
+				}
+				return specsDir
+			},
+			wantErr:     false,
+			description: "Should detect spec directory and validate successfully",
+		},
+		"detects and fails on invalid spec": {
+			setupFunc: func(t *testing.T) string {
+				t.Helper()
+				tmpDir := t.TempDir()
+				specsDir := filepath.Join(tmpDir, "specs")
+				specDir := filepath.Join(specsDir, "002-invalid-feature")
+				if err := os.MkdirAll(specDir, 0755); err != nil {
+					t.Fatalf("failed to create spec dir: %v", err)
+				}
+				// Create invalid spec.yaml (missing requirements)
+				invalidSpec := `feature:
+  branch: "002-invalid-feature"
+  created: "2025-01-01"
+user_stories: []
+# missing: requirements
+`
+				if err := os.WriteFile(filepath.Join(specDir, "spec.yaml"), []byte(invalidSpec), 0644); err != nil {
+					t.Fatalf("failed to write spec.yaml: %v", err)
+				}
+				return specsDir
+			},
+			wantErr:     true,
+			errContains: "missing required field: requirements",
+			description: "Should detect spec directory and return validation error",
+		},
+		"fails when no spec directory exists": {
+			setupFunc: func(t *testing.T) string {
+				t.Helper()
+				tmpDir := t.TempDir()
+				specsDir := filepath.Join(tmpDir, "specs")
+				if err := os.MkdirAll(specsDir, 0755); err != nil {
+					t.Fatalf("failed to create specs dir: %v", err)
+				}
+				// No spec directories inside
+				return specsDir
+			},
+			wantErr:     true,
+			errContains: "detecting spec for validation",
+			description: "Should fail when no spec directory can be detected",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			specsDir := tc.setupFunc(t)
+			validateFunc := MakeSpecSchemaValidatorWithDetection(specsDir)
+
+			// Call with empty string (simulating ExecuteStage with empty specName)
+			err := validateFunc("")
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("expected error, got nil; %s", tc.description)
+					return
+				}
+				if tc.errContains != "" && !strings.Contains(err.Error(), tc.errContains) {
+					t.Errorf("error = %q, want error containing %q; %s",
+						err.Error(), tc.errContains, tc.description)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("unexpected error: %v; %s", err, tc.description)
+			}
+		})
+	}
+}
+
+// TestMakeSpecSchemaValidatorWithDetection_IgnoresSpecDirArg verifies that the
+// returned validator ignores the specDir argument and uses detection instead.
+// This is the key behavior that fixes the bug.
+func TestMakeSpecSchemaValidatorWithDetection_IgnoresSpecDirArg(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	specsDir := filepath.Join(tmpDir, "specs")
+	specDir := filepath.Join(specsDir, "001-test-feature")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	// Create valid spec.yaml
+	validSpec := `feature:
+  branch: "001-test-feature"
+  created: "2025-01-01"
+  status: "Draft"
+  input: "Test feature"
+user_stories:
+  - id: "US-001"
+    title: "Test story"
+    priority: "P1"
+    as_a: "user"
+    i_want: "test"
+    so_that: "test"
+    acceptance_scenarios: []
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "Test requirement"
+      testable: true
+      acceptance_criteria: "Test passes"
+`
+	if err := os.WriteFile(filepath.Join(specDir, "spec.yaml"), []byte(validSpec), 0644); err != nil {
+		t.Fatalf("failed to write spec.yaml: %v", err)
+	}
+
+	validateFunc := MakeSpecSchemaValidatorWithDetection(specsDir)
+
+	// Call with various invalid paths - should all succeed because detector ignores them
+	testPaths := []string{
+		"",                                  // Empty (the bug case)
+		"/nonexistent/path",                 // Nonexistent path
+		filepath.Join(specsDir, ""),         // specsDir with empty suffix
+		filepath.Join(specsDir, "wrong-spec"), // Wrong spec name
+	}
+
+	for _, path := range testPaths {
+		err := validateFunc(path)
+		if err != nil {
+			t.Errorf("validateFunc(%q) returned error: %v; validator should ignore specDir arg", path, err)
+		}
+	}
 }
