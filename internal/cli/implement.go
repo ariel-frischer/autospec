@@ -246,11 +246,11 @@ type ExecutionModeFlags struct {
 
 // ExecutionModeResult holds the resolved execution mode
 type ExecutionModeResult struct {
-	RunAllPhases  bool
-	TaskMode      bool
-	SinglePhase   int
-	FromPhase     int
-	FromTask      string
+	RunAllPhases bool
+	TaskMode     bool
+	SinglePhase  int
+	FromPhase    int
+	FromTask     string
 }
 
 // resolveExecutionMode determines the execution mode based on CLI flags and config.
