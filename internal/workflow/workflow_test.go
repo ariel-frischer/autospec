@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -3250,6 +3251,214 @@ _meta:
 			}
 			if !tt.wantErr && err != nil {
 				t.Errorf("Unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Execute* Method Tests with Mock Infrastructure (Phase 3 Tasks T005-T008)
+// =============================================================================
+// These tests use NewTestOrchestrator which configures mock-claude.sh to
+// generate valid artifact files, enabling actual Execute* method testing.
+
+// TestExecuteSpecify_Success tests ExecuteSpecify creates spec.yaml via mock
+func TestExecuteSpecify_Success(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		featureDesc string
+		specName    string
+	}{
+		"simple feature description": {
+			featureDesc: "Add user authentication",
+			specName:    "001-test-feature",
+		},
+		"multiline feature description": {
+			featureDesc: "Add user authentication\nwith OAuth support",
+			specName:    "001-test-feature",
+		},
+		"feature with special characters": {
+			featureDesc: "Add 'user' authentication with \"quotes\"",
+			specName:    "001-test-feature",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+
+			// Create orchestrator with mock - mock-claude.sh will create artifacts
+			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+
+			// Call ExecuteSpecify - mock will generate spec.yaml
+			specName, err := orchestrator.ExecuteSpecify(tt.featureDesc)
+
+			// Verify success
+			if err != nil {
+				t.Fatalf("ExecuteSpecify() error = %v, want nil", err)
+			}
+
+			if specName != tt.specName {
+				t.Errorf("ExecuteSpecify() specName = %q, want %q", specName, tt.specName)
+			}
+
+			// Verify spec.yaml was created
+			specDir := filepath.Join(tmpDir, tt.specName)
+			specPath := filepath.Join(specDir, "spec.yaml")
+			if _, err := os.Stat(specPath); os.IsNotExist(err) {
+				t.Errorf("spec.yaml was not created at %s", specPath)
+			}
+		})
+	}
+}
+
+// TestExecutePlan_Success tests ExecutePlan creates plan.yaml via mock
+func TestExecutePlan_Success(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		specName string
+		prompt   string
+	}{
+		"no prompt": {
+			specName: "001-test-feature",
+			prompt:   "",
+		},
+		"with prompt": {
+			specName: "001-test-feature",
+			prompt:   "Focus on security",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+
+			// Create orchestrator with mock
+			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+
+			// Setup prerequisite spec.yaml
+			specDir := testutil.SetupSpecDirectory(t, tmpDir, tt.specName)
+			testutil.WriteTestSpec(t, specDir)
+
+			// Call ExecutePlan - mock will generate plan.yaml
+			err := orchestrator.ExecutePlan(tt.specName, tt.prompt)
+
+			// Verify success
+			if err != nil {
+				t.Fatalf("ExecutePlan() error = %v, want nil", err)
+			}
+
+			// Verify plan.yaml was created
+			planPath := filepath.Join(specDir, "plan.yaml")
+			if _, err := os.Stat(planPath); os.IsNotExist(err) {
+				t.Errorf("plan.yaml was not created at %s", planPath)
+			}
+		})
+	}
+}
+
+// TestExecuteTasks_Success tests ExecuteTasks creates tasks.yaml via mock
+func TestExecuteTasks_Success(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		specName string
+		prompt   string
+	}{
+		"no prompt": {
+			specName: "001-test-feature",
+			prompt:   "",
+		},
+		"with prompt": {
+			specName: "001-test-feature",
+			prompt:   "Break into small steps",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+
+			// Create orchestrator with mock
+			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+
+			// Setup prerequisite spec.yaml and plan.yaml
+			specDir := testutil.SetupSpecDirectory(t, tmpDir, tt.specName)
+			testutil.WriteTestSpec(t, specDir)
+			testutil.WriteTestPlan(t, specDir)
+
+			// Call ExecuteTasks - mock will generate tasks.yaml
+			err := orchestrator.ExecuteTasks(tt.specName, tt.prompt)
+
+			// Verify success
+			if err != nil {
+				t.Fatalf("ExecuteTasks() error = %v, want nil", err)
+			}
+
+			// Verify tasks.yaml was created
+			tasksPath := filepath.Join(specDir, "tasks.yaml")
+			if _, err := os.Stat(tasksPath); os.IsNotExist(err) {
+				t.Errorf("tasks.yaml was not created at %s", tasksPath)
+			}
+		})
+	}
+}
+
+// TestExecuteImplement_Success tests ExecuteImplement completes without error
+func TestExecuteImplement_Success(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		specName  string
+		prompt    string
+		resume    bool
+		phaseOpts PhaseExecutionOptions
+	}{
+		"default execution": {
+			specName:  "001-test-feature",
+			prompt:    "",
+			resume:    false,
+			phaseOpts: PhaseExecutionOptions{},
+		},
+		"with prompt": {
+			specName:  "001-test-feature",
+			prompt:    "Focus on error handling",
+			resume:    false,
+			phaseOpts: PhaseExecutionOptions{},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create isolated temp directory
+			tmpDir := t.TempDir()
+
+			// Create orchestrator with mock
+			orchestrator := testutil.NewTestOrchestratorWithSpecName(t, tmpDir, tt.specName)
+
+			// Setup all prerequisite artifacts
+			specDir := testutil.SetupSpecDirectory(t, tmpDir, tt.specName)
+			testutil.WriteAllTestArtifacts(t, specDir)
+
+			// Call ExecuteImplement
+			err := orchestrator.ExecuteImplement(tt.specName, tt.prompt, tt.resume, tt.phaseOpts)
+
+			// Verify success (implementation completes without error)
+			if err != nil {
+				t.Fatalf("ExecuteImplement() error = %v, want nil", err)
 			}
 		})
 	}

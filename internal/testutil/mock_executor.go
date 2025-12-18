@@ -446,6 +446,13 @@ func writeArtifact(dir, filename, content string) {
 // The specsDir parameter should be an isolated temp directory (e.g., t.TempDir()).
 func NewTestOrchestrator(t *testing.T, specsDir string) *workflow.WorkflowOrchestrator {
 	t.Helper()
+	return NewTestOrchestratorWithSpecName(t, specsDir, "001-test-feature")
+}
+
+// NewTestOrchestratorWithSpecName creates a WorkflowOrchestrator with a custom spec name.
+// This is useful when testing specific spec naming scenarios.
+func NewTestOrchestratorWithSpecName(t *testing.T, specsDir, specName string) *workflow.WorkflowOrchestrator {
+	t.Helper()
 
 	// Find the mock-claude.sh script path
 	mockClaudePath := findMockClaudePath(t)
@@ -465,6 +472,10 @@ func NewTestOrchestrator(t *testing.T, specsDir string) *workflow.WorkflowOrches
 		SkipPreflight: true,
 		Timeout:       30, // 30 second timeout for tests
 	}
+
+	// Set environment variables for mock-claude.sh to generate artifacts
+	t.Setenv("MOCK_ARTIFACT_DIR", specsDir)
+	t.Setenv("MOCK_SPEC_NAME", specName)
 
 	return workflow.NewWorkflowOrchestrator(cfg)
 }
