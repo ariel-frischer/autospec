@@ -391,6 +391,23 @@ autospec config show
 
 See [docs/troubleshooting.md](docs/troubleshooting.md) for common issues and solutions.
 
+## 📝 Slash Commands for Interactive Sessions
+
+`autospec init` installs slash commands to `.claude/commands/autospec.*.md` for use in normal Claude Code sessions:
+
+```bash
+/autospec.specify    # Generate spec.yaml interactively
+/autospec.plan       # Generate plan.yaml
+/autospec.tasks      # Generate tasks.yaml
+/autospec.implement  # Execute implementation
+/autospec.clarify    # Refine specifications
+/autospec.analyze    # Cross-artifact analysis
+/autospec.checklist  # Generate quality checklist
+/autospec.constitution  # Create project constitution
+```
+
+Use these when you prefer chat-based iteration over autospec's automated (`-p`) mode.
+
 ## 💡 Pro Tips
 
 ### Optional Dependencies

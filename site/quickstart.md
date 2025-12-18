@@ -132,6 +132,21 @@ timeout: 0
 
 See [Configuration Reference](/autospec/reference/configuration) for customization options.
 
+`autospec init` also installs slash commands to `.claude/commands/autospec.*.md`:
+
+| Command | Purpose |
+|:--------|:--------|
+| `/autospec.specify` | Generate spec.yaml interactively |
+| `/autospec.plan` | Generate plan.yaml |
+| `/autospec.tasks` | Generate tasks.yaml |
+| `/autospec.implement` | Execute implementation |
+| `/autospec.clarify` | Refine specifications |
+| `/autospec.analyze` | Cross-artifact analysis |
+| `/autospec.checklist` | Generate quality checklist |
+| `/autospec.constitution` | Create project constitution |
+
+Use these in normal Claude Code sessions when you prefer chat-based iteration over autospec's automated (`-p`) mode.
+
 ---
 
 ## Step 4: Create Project Constitution
@@ -165,10 +180,14 @@ autospec run -a "Add a health check endpoint at /health"
 
 **What happens:**
 
-1. **Specify**: Claude generates a detailed specification with requirements
-2. **Plan**: Technical implementation plan with architecture decisions
-3. **Tasks**: Ordered task breakdown with dependencies
-4. **Implement**: Executes tasks and updates progress
+Creates `specs/add-health-check-endpoint/` with YAML artifacts:
+
+| Stage | Creates | Contents |
+|:------|:--------|:---------|
+| Specify | `spec.yaml` | Requirements, acceptance criteria |
+| Plan | `plan.yaml` | Architecture, design decisions |
+| Tasks | `tasks.yaml` | Ordered tasks with dependencies |
+| Implement | Updates `tasks.yaml` | Task status as work completes |
 
 Expected output:
 ```
