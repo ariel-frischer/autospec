@@ -108,8 +108,8 @@ autospec init
 # Create project constitution (once per project, triggers Claude session)
 autospec constitution
 
-# Create your first specification
-autospec run -a "Add user authentication with OAuth"
+# Create your first specification (also runs git checkout for feature branch)
+autospec run -s "Add user authentication with OAuth"
 ```
 
 [View Full Quickstart Guide](/autospec/quickstart){: .btn .btn-outline }

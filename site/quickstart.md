@@ -167,49 +167,42 @@ The constitution ensures Claude follows your project's patterns during implement
 
 ---
 
-## Step 5: Run Your First Workflow
+## Step 5: Create Your First Specification
 
-Navigate to your project and run a complete workflow:
+Navigate to your project and create a specification:
 
 ```bash
 cd your-project
 
-# Generate everything: spec → plan → tasks → implement
-autospec run -a "Add a health check endpoint at /health"
+# Generate spec.yaml only (also creates feature branch via git checkout)
+autospec run -s "Add a health check endpoint at /health"
 ```
 
 **What happens:**
 
-Creates `specs/add-health-check-endpoint/` with YAML artifacts:
+Creates `specs/add-health-check-endpoint/` with your specification:
 
-| Stage | Creates | Contents |
-|:------|:--------|:---------|
-| Specify | `spec.yaml` | Requirements, acceptance criteria |
-| Plan | `plan.yaml` | Architecture, design decisions |
-| Tasks | `tasks.yaml` | Ordered tasks with dependencies |
-| Implement | Updates `tasks.yaml` | Task status as work completes |
+| File | Contents |
+|:-----|:---------|
+| `spec.yaml` | Requirements, acceptance criteria, success metrics |
 
 Expected output:
 ```
 → Executing specify stage...
-✓ Specification created: specs/001-health-check/spec.yaml
+✓ Specification created: specs/add-health-check-endpoint/spec.yaml
 ✓ Validation passed
+```
 
-→ Executing plan stage...
-✓ Plan created: specs/001-health-check/plan.yaml
-✓ Validation passed
+To continue with planning and implementation, run additional stages:
 
-→ Executing tasks stage...
-✓ Tasks created: specs/001-health-check/tasks.yaml
-✓ Validation passed
-
-→ Executing implement stage...
-✓ Implementation complete
+```bash
+# Continue with plan + tasks + implement
+autospec run -pti
 ```
 
 ---
 
-## Step 5: Review Generated Artifacts
+## Step 6: Review Generated Artifacts
 
 Check what was created:
 
