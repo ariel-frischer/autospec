@@ -446,9 +446,142 @@ Areas designed for future extension:
 4. **Custom Health Checks**: Extend health check framework
 5. **Progress Reporters**: Implement alternative progress display formats
 
+## Architecture Refactoring Roadmap
+
+Identified refactoring opportunities organized by priority and dependencies. Each issue has a comprehensive spec in `.dev/tasks/`.
+
+### Execution Order
+
+**Wave 1: Template/Doc Changes (Low Risk, Immediate Benefit)**
+
+| # | Issue | Priority | Effort | Token Savings |
+|---|-------|----------|--------|---------------|
+| 1 | File Reading Discipline | CRITICAL | Low | 30-50K/session |
+| 2 | Context Efficiency Guidance | HIGH | Low | 10-20K/session |
+| 3 | Sandbox Documentation | MEDIUM | Low | 2-5K/session |
+
+**Wave 2: Schema/Feature Changes**
+
+| # | Issue | Priority | Effort | Description |
+|---|-------|----------|--------|-------------|
+| 4 | Phase Context Metadata | HIGH | Medium | Add _context_meta to phase files |
+| 5 | Large File Handling | MEDIUM | Medium | Add _implementation_hints to tasks.yaml |
+| 6 | Test Infrastructure Caching | MEDIUM | Medium | New notes.yaml artifact |
+
+**Wave 3: DI Foundation (Before Major Refactoring)**
+
+| # | Issue | Priority | Effort | Description |
+|---|-------|----------|--------|-------------|
+| 7 | Dependency Injection | MEDIUM | Medium | Interfaces for testability |
+
+**Wave 4: Core Refactoring (Can Run in Parallel)**
+
+| # | Issue | Priority | Effort | Description |
+|---|-------|----------|--------|-------------|
+| 8 | Executor Separation | HIGH | Medium | Split display/notify/retry from Executor |
+| 9 | CLI Subpackages | MEDIUM | Low | Organize 47 CLI files into subpackages |
+
+**Wave 5: Major Refactoring**
+
+| # | Issue | Priority | Effort | Dependencies |
+|---|-------|----------|--------|--------------|
+| 10 | WorkflowOrchestrator Split | HIGH | High | arch-4 |
+| 11 | Strategy Pattern | MEDIUM | Medium | arch-1 |
+
+**Wave 6: Polish (Can Run in Parallel)**
+
+| # | Issue | Priority | Effort |
+|---|-------|----------|--------|
+| 12 | Validation Schema Split | LOW | Low |
+| 13 | Type-Safe Enums | LOW | Low |
+| 14 | Structured Logging | LOW | Low |
+| 15 | Validator Composition | LOW | Low |
+
+### Quick Commands
+
+**Wave 1 - Template/Doc Changes:**
+```bash
+# 1. File Reading Discipline (CRITICAL)
+autospec specify "$(cat .dev/tasks/fixes/fix-1-file-reading-discipline.md)"
+
+# 2. Context Efficiency Guidance
+autospec specify "$(cat .dev/tasks/fixes/fix-3-context-efficiency.md)"
+
+# 3. Sandbox Documentation
+autospec specify "$(cat .dev/tasks/fixes/fix-4-sandbox-documentation.md)"
+```
+
+**Wave 2 - Schema/Feature Changes:**
+```bash
+# 4. Phase Context Metadata
+autospec specify "$(cat .dev/tasks/fixes/fix-2-phase-context-metadata.md)"
+
+# 5. Large File Handling
+autospec specify "$(cat .dev/tasks/fixes/fix-5-large-file-handling.md)"
+
+# 6. Test Infrastructure Caching
+autospec specify "$(cat .dev/tasks/fixes/fix-6-test-infrastructure-caching.md)"
+```
+
+**Wave 3 - DI Foundation:**
+```bash
+# 7. Dependency Injection
+autospec specify "$(cat .dev/tasks/arch/arch-4-dependency-injection.md)"
+```
+
+**Wave 4 - Core Refactoring:**
+```bash
+# 8. Executor Separation
+autospec specify "$(cat .dev/tasks/arch/arch-2-executor-separation.md)"
+
+# 9. CLI Subpackages
+autospec specify "$(cat .dev/tasks/arch/arch-3-cli-subpackages.md)"
+```
+
+**Wave 5 - Major Refactoring:**
+```bash
+# 10. WorkflowOrchestrator Split
+autospec specify "$(cat .dev/tasks/arch/arch-1-workflow-orchestrator-split.md)"
+
+# 11. Strategy Pattern
+autospec specify "$(cat .dev/tasks/arch/arch-5-strategy-pattern.md)"
+```
+
+**Wave 6 - Polish:**
+```bash
+# 12. Validation Schema Split
+autospec specify "$(cat .dev/tasks/arch/arch-6-validation-schema-split.md)"
+
+# 13. Type-Safe Enums
+autospec specify "$(cat .dev/tasks/arch/arch-7-type-safe-enums.md)"
+
+# 14. Structured Logging
+autospec specify "$(cat .dev/tasks/arch/arch-8-structured-logging.md)"
+
+# 15. Validator Composition
+autospec specify "$(cat .dev/tasks/arch/arch-9-validator-composition.md)"
+```
+
+### Full Workflow Example
+
+Run full autospec flow on any issue:
+```bash
+# Specify → Plan → Tasks (preparation)
+autospec prep "$(cat .dev/tasks/fixes/fix-1-file-reading-discipline.md)"
+
+# Then implement
+autospec implement --phases
+```
+
+Or run everything in one shot:
+```bash
+autospec run -a "$(cat .dev/tasks/fixes/fix-1-file-reading-discipline.md)"
+```
+
 ## Further Reading
 
 - **[Quick Start Guide](./quickstart.md)**: Get started with basic usage
 - **[Command Reference](./reference.md)**: Complete command and configuration documentation
 - **[Troubleshooting](./troubleshooting.md)**: Common issues and solutions
 - **[CLAUDE.md](../CLAUDE.md)**: Detailed development guidelines for contributors
+- **[Architecture Decoupling Analysis](../.dev/tasks/architecture-decoupling-analysis.md)**: Full analysis document
