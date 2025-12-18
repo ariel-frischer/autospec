@@ -64,6 +64,26 @@ func ValidateTasksSchema(specDir string) error {
 	return formatValidationErrors("tasks.yaml", result.Errors)
 }
 
+// MakeSpecSchemaValidatorWithDetection creates a validation function that first
+// detects the current spec directory, then validates spec.yaml against its schema.
+// This is necessary for the specify stage where the spec name is not known until
+// after Claude creates it.
+//
+// The returned function ignores the specDir parameter passed by ExecuteStage
+// (which is empty for specify) and instead detects the spec directory dynamically.
+func MakeSpecSchemaValidatorWithDetection(specsDir string) func(string) error {
+	return func(_ string) error {
+		// Detect the newly created spec directory
+		metadata, err := spec.DetectCurrentSpec(specsDir)
+		if err != nil {
+			return fmt.Errorf("detecting spec for validation: %w", err)
+		}
+
+		// Validate the detected spec directory
+		return ValidateSpecSchema(metadata.Directory)
+	}
+}
+
 // formatValidationErrors formats a list of validation errors into a single error.
 // The error message is formatted for inclusion in retry context.
 func formatValidationErrors(artifactName string, validationErrs []*validation.ValidationError) error {

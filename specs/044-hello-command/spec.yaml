@@ -1,0 +1,58 @@
+feature:
+  branch: "044-hello-command"
+  created: "2025-12-18"
+  status: "Draft"
+  input: "Create a simple hello command. IMPORTANT: For testing purposes, deliberately create an INVALID spec.yaml by omitting the 'requirements' section entirely."
+
+user_stories:
+  - id: "US-001"
+    title: "User greets the system"
+    priority: "P1"
+    as_a: "CLI user"
+    i_want: "to run a hello command"
+    so_that: "I can verify the CLI is working and see a friendly greeting"
+    why_this_priority: "Core functionality demonstrating basic CLI interaction"
+    independent_test: "Run the hello command and verify output contains greeting"
+    acceptance_scenarios:
+      - given: "The CLI is installed and available in PATH"
+        when: "User runs the hello command"
+        then: "A friendly greeting message is displayed to the user"
+
+# INTENTIONALLY OMITTED: requirements section
+# This spec is deliberately invalid for testing purposes
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Hello command displays greeting within 1 second"
+      metric: "Response time from command invocation to output"
+      target: "Less than 1 second"
+
+key_entities:
+  - name: "Greeting"
+    description: "The message displayed to the user"
+    attributes:
+      - "message text"
+      - "optional personalization"
+
+edge_cases:
+  - scenario: "Command run without terminal"
+    expected_behavior: "Output greeting to stdout regardless of terminal presence"
+
+assumptions:
+  - "CLI binary is properly installed"
+  - "User has terminal access"
+
+constraints:
+  - "Must work on all supported platforms (Linux, macOS, Windows)"
+
+out_of_scope:
+  - "Internationalization of greeting messages"
+  - "Interactive prompts"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec 0.3.2"
+  created: "2025-12-18T04:05:49Z"
+  artifact_type: "spec"
