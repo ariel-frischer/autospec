@@ -1,0 +1,27 @@
+# Jekyll build artifacts
+_site/
+.jekyll-cache/
+.jekyll-metadata
+
+# Bundler
+vendor/bundle/
+.bundle/
+
+# Ruby version managers
+.ruby-version
+.ruby-gemset
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sass cache
+.sass-cache/
+
+# Node (if using any JS tools)
+node_modules/

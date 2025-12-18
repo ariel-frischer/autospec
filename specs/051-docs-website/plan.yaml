@@ -1,0 +1,263 @@
+plan:
+  branch: "051-docs-website"
+  created: "2025-12-18"
+  spec_path: "specs/051-docs-website/spec.yaml"
+
+summary: |
+  Transform the existing Jekyll-based GitHub Pages documentation from a basic Cayman theme
+  into a modern, well-organized documentation website. The implementation leverages the
+  existing Jekyll infrastructure and GitHub Actions workflow, replacing the Cayman theme
+  with Just the Docs - a modern Jekyll theme specifically designed for documentation sites.
+
+  Key technical decisions: Use Just the Docs theme for its built-in navigation, search,
+  syntax highlighting, copy-to-clipboard, and responsive design. Create a new site/ directory
+  for website assets to keep them separate from the Go binary (no embed directives will
+  reference this directory). Reorganize existing docs/*.md content into a proper page hierarchy
+  with frontmatter for navigation. The GitHub Actions workflow will be updated to build from
+  the site/ directory while preserving docs/ as the source for markdown documentation.
+
+technical_context:
+  language: "Markdown/YAML"
+  framework: "Jekyll with Just the Docs theme"
+  primary_dependencies:
+    - name: "jekyll"
+      version: "~> 4.3"
+      purpose: "Static site generation for GitHub Pages"
+    - name: "just-the-docs"
+      version: "~> 0.8"
+      purpose: "Modern documentation theme with navigation, search, syntax highlighting"
+    - name: "rouge"
+      version: "~> 4.0"
+      purpose: "Syntax highlighting for code blocks (bundled with Jekyll)"
+  storage: "None"
+  testing:
+    framework: "Manual verification and CI build"
+    approach: "Jekyll build validation in CI; manual testing of navigation and responsiveness"
+  target_platform: "GitHub Pages (static hosting)"
+  project_type: "documentation-website"
+  performance_goals: "LCP < 3s on 4G connection; pages load without JavaScript for core content"
+  constraints:
+    - "Must use Jekyll (GitHub Pages native support)"
+    - "Static files only - no server-side processing"
+    - "Website source in site/ directory, not in internal/ or Go packages"
+    - "Cannot increase CI build time by more than 2 minutes"
+    - "No large images/videos embedded in repository"
+    - "Must maintain existing URL structure where possible"
+  scale_scope: "Documentation website serving <1000 daily visitors"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "N/A"
+      notes: "This is primarily markdown/YAML configuration; no Go code to test. Jekyll build in CI serves as validation."
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Jekyll build will validate all pages compile correctly before deployment."
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Just the Docs is optimized for fast loading; static pages meet <3s LCP target."
+    - name: "Code Formatting"
+      status: "N/A"
+      notes: "No Go code changes; markdown formatting is standard."
+    - name: "Go Coding Standards"
+      status: "N/A"
+      notes: "No Go code changes in this feature."
+    - name: "YAML-First Artifacts"
+      status: "PASS"
+      notes: "All configuration uses YAML (Jekyll _config.yml, page frontmatter)."
+    - name: "Documentation Standards"
+      status: "PASS"
+      notes: "This feature IS documentation improvement."
+
+research_findings:
+  decisions:
+    - topic: "Jekyll theme selection"
+      decision: "Use Just the Docs theme"
+      rationale: "Purpose-built for documentation sites with built-in navigation sidebar, search, syntax highlighting, copy-to-clipboard, dark mode support, and responsive design. Active maintenance and GitHub Pages compatible."
+      alternatives_considered:
+        - "Minimal Mistakes - more blog-focused, heavier"
+        - "Docsy - requires Hugo, not Jekyll"
+        - "Custom Cayman customization - high effort, limited features"
+    - topic: "Website source location"
+      decision: "Create site/ directory at repository root"
+      rationale: "Keeps website assets completely separate from Go source code. docs/ remains as source markdown files that can be processed into site/. No risk of embed directives accidentally including website assets."
+      alternatives_considered:
+        - "Keep in docs/ - would require careful exclusion from Go binary"
+        - "Create website/ directory - site/ is shorter and conventional"
+    - topic: "Content organization strategy"
+      decision: "Mirror docs/*.md structure in site/ with proper frontmatter"
+      rationale: "Preserves existing content while adding navigation metadata. Allows incremental migration without breaking existing documentation."
+      alternatives_considered:
+        - "Complete rewrite of all docs - high risk, unnecessary"
+        - "Symlinks from site/ to docs/ - Jekyll doesn't handle well"
+    - topic: "Build workflow approach"
+      decision: "Update existing docs.yml workflow to build from site/ directory"
+      rationale: "Minimal CI changes; existing workflow structure is sound. Just change source directory and ensure Jekyll builds correctly."
+      alternatives_considered:
+        - "New dedicated workflow - adds complexity"
+        - "Build in CI job - already done, just needs path update"
+
+data_model:
+  entities:
+    - name: "Page"
+      description: "A single documentation page in the website"
+      fields:
+        - name: "title"
+          type: "string"
+          description: "Page title displayed in navigation and browser tab"
+          constraints: "Required in frontmatter"
+        - name: "nav_order"
+          type: "integer"
+          description: "Position in navigation menu (lower numbers first)"
+          constraints: "Optional, defaults to alphabetical"
+        - name: "parent"
+          type: "string"
+          description: "Parent page title for nested navigation"
+          constraints: "Optional, only for child pages"
+        - name: "has_children"
+          type: "boolean"
+          description: "Whether this page has child pages"
+          constraints: "Optional, defaults to false"
+        - name: "permalink"
+          type: "string"
+          description: "URL path for the page"
+          constraints: "Optional, auto-generated from filename"
+      relationships:
+        - target: "Navigation"
+          type: "many-to-one"
+          description: "Each page belongs to one navigation section"
+    - name: "Navigation"
+      description: "Site navigation structure defined by page frontmatter"
+      fields:
+        - name: "sections"
+          type: "array"
+          description: "Top-level navigation sections"
+          constraints: "Defined by pages with nav_order and no parent"
+        - name: "items"
+          type: "array"
+          description: "Child pages within a section"
+          constraints: "Defined by pages with parent field"
+      relationships:
+        - target: "Page"
+          type: "one-to-many"
+          description: "Navigation contains multiple pages"
+    - name: "CodeBlock"
+      description: "Formatted code example with syntax highlighting"
+      fields:
+        - name: "language"
+          type: "string"
+          description: "Programming language for syntax highlighting"
+          constraints: "bash, yaml, go, json, etc."
+        - name: "content"
+          type: "string"
+          description: "The code content"
+          constraints: "None"
+        - name: "copy_enabled"
+          type: "boolean"
+          description: "Whether copy button is shown"
+          constraints: "Default true in Just the Docs"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/*.md"
+      description: "Source markdown documentation files (existing)"
+    - path: "site/index.md"
+      description: "Homepage with feature highlights and quickstart CTA"
+    - path: "site/quickstart.md"
+      description: "Step-by-step getting started guide"
+    - path: "site/reference/*.md"
+      description: "CLI reference pages (commands, flags, exit codes)"
+    - path: "site/architecture/*.md"
+      description: "Architecture and internals documentation"
+    - path: "site/guides/*.md"
+      description: "How-to guides (configuration, troubleshooting, FAQ)"
+  source_code:
+    - path: "site/_config.yml"
+      description: "Jekyll configuration with Just the Docs theme settings"
+    - path: "site/_sass/"
+      description: "Custom SCSS overrides if needed"
+    - path: "site/assets/"
+      description: "Static assets (minimal - no large images)"
+  tests:
+    - path: ".github/workflows/docs.yml"
+      description: "CI workflow validates Jekyll build succeeds"
+
+implementation_phases:
+  - phase: 1
+    name: "Theme Setup and Configuration"
+    goal: "Set up Just the Docs theme with proper Jekyll configuration in site/ directory"
+    deliverables:
+      - "Create site/ directory structure"
+      - "Configure _config.yml with Just the Docs theme"
+      - "Create Gemfile for local development"
+      - "Basic homepage with navigation structure"
+  - phase: 2
+    name: "Content Migration"
+    goal: "Migrate existing docs/*.md content to site/ with proper frontmatter"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Quickstart page with copy-to-clipboard code blocks"
+      - "CLI reference pages (commands, configuration)"
+      - "Architecture and internals documentation"
+      - "Troubleshooting and FAQ pages"
+  - phase: 3
+    name: "Navigation and Polish"
+    goal: "Finalize navigation structure, ensure responsive design, add finishing touches"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Complete navigation hierarchy in frontmatter"
+      - "Responsive design verification"
+      - "Cross-page linking and consistency"
+      - "Update GitHub Actions workflow for site/ directory"
+  - phase: 4
+    name: "Verification and Quality Gates"
+    goal: "Verify all requirements met, pass quality gates, ensure Go binary unaffected"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Jekyll build succeeds in CI"
+      - "Go binary size unchanged (no website embeds)"
+      - "All docs/*.md content accessible via website"
+      - "Make test, make fmt, make lint, make build all pass"
+
+risks:
+  - risk: "Jekyll build issues with Just the Docs theme"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Just the Docs is widely used and well-documented; test locally before CI"
+  - risk: "URL structure changes break external links"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Maintain existing URLs where possible; add redirects if needed using Jekyll-redirect-from plugin"
+  - risk: "CI build time increases beyond 2 minute limit"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Just the Docs is lightweight; Jekyll builds are typically fast (<30 seconds)"
+  - risk: "Mobile responsiveness issues"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Just the Docs has built-in responsive design; test on multiple viewport widths"
+
+open_questions:
+  - question: "Should we enable Just the Docs search feature?"
+    context: "Search is out of scope per spec but Just the Docs includes it by default"
+    proposed_resolution: "Enable by default since it's built-in; no additional effort required"
+  - question: "Should we enable dark mode?"
+    context: "Dark mode toggle is out of scope per spec but Just the Docs supports it"
+    proposed_resolution: "Leave disabled initially; can be enabled with minimal config change later"
+  - question: "How to handle duplicate QUICKSTART.md and quickstart.md?"
+    context: "docs/ has both QUICKSTART.md and quickstart.md with different content"
+    proposed_resolution: "Consolidate into single site/quickstart.md with best content from both"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-18T09:01:25Z"
+  artifact_type: "plan"
