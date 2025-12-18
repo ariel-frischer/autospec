@@ -61,6 +61,101 @@ func TestSourceURLConstant(t *testing.T) {
 		"Lost the autospec! This sauce is missing its main ingredient!")
 }
 
+// TestCenterText tests the centerText function for version display formatting.
+func TestCenterText(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		text  string
+		width int
+		want  string
+	}{
+		"text shorter than width is centered": {
+			text:  "hello",
+			width: 11,
+			want:  "   hello", // (11-5)/2 = 3 spaces prefix
+		},
+		"text equal to width returns text": {
+			text:  "hello",
+			width: 5,
+			want:  "hello",
+		},
+		"text longer than width returns text": {
+			text:  "hello world",
+			width: 5,
+			want:  "hello world",
+		},
+		"empty text with width returns spaces": {
+			text:  "",
+			width: 4,
+			want:  "  ", // (4-0)/2 = 2 spaces
+		},
+		"odd padding rounds down": {
+			text:  "hi",
+			width: 7,
+			want:  "  hi", // (7-2)/2 = 2 spaces
+		},
+		"unicode text is handled correctly": {
+			text:  "→",
+			width: 5,
+			want:  "  →", // (5-1)/2 = 2 spaces
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := centerText(tt.text, tt.width)
+			if got != tt.want {
+				t.Errorf("centerText(%q, %d) = %q, want %q", tt.text, tt.width, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestTruncateCommit tests the truncateCommit function for version display.
+func TestTruncateCommit(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		commit string
+		want   string
+	}{
+		"short commit stays same": {
+			commit: "abc123",
+			want:   "abc123",
+		},
+		"exactly 8 chars stays same": {
+			commit: "abc12345",
+			want:   "abc12345",
+		},
+		"long commit is truncated to 8 chars": {
+			commit: "abc123456789",
+			want:   "abc12345",
+		},
+		"empty string stays empty": {
+			commit: "",
+			want:   "",
+		},
+		"full SHA is truncated": {
+			commit: "a1b2c3d4e5f6g7h8i9j0",
+			want:   "a1b2c3d4",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := truncateCommit(tt.commit)
+			if got != tt.want {
+				t.Errorf("truncateCommit(%q) = %q, want %q", tt.commit, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSauceCmdMetadata(t *testing.T) {
 	t.Parallel()
 
