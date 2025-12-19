@@ -1,0 +1,270 @@
+plan:
+  branch: "058-config-set-command"
+  created: "2025-12-18"
+  spec_path: "specs/058-config-set-command/spec.yaml"
+
+summary: |
+  This implementation adds CLI commands to set, toggle, and get configuration values
+  without manually editing YAML files. The feature extends the existing `autospec config`
+  command with three new subcommands: `set`, `toggle`, and `get`. The implementation
+  leverages the existing config package (internal/config) for path resolution and validation,
+  while adding new functionality for type inference, key path parsing, and atomic file writes.
+
+  Key technical decisions include using gopkg.in/yaml.v3's Node API to preserve comments
+  and formatting, defining a schema of known configuration keys with their types for validation,
+  and supporting dotted key notation for nested configuration (e.g., notifications.enabled).
+  The implementation follows the project's constitution principles for test-first development,
+  error wrapping, and function length limits.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8.0+"
+      purpose: "CLI command structure and argument parsing"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML parsing with Node API for comment preservation"
+    - name: "github.com/knadh/koanf/v2"
+      version: "existing"
+      purpose: "Configuration loading (read operations)"
+  storage: "YAML files (~/.config/autospec/config.yml, .autospec/config.yml)"
+  testing:
+    framework: "testing (Go standard library)"
+    approach: "Map-based table-driven tests with t.Parallel(); unit tests for key parsing, type inference, and file operations; integration tests for end-to-end command execution"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Config operations complete in <100ms (NFR-006)"
+  constraints:
+    - "Must use existing config file locations"
+    - "Must maintain backwards compatibility with existing config files"
+    - "Cannot modify environment variable configuration via this command"
+    - "Must work with existing hierarchical config priority system"
+    - "Functions must be <40 lines"
+    - "All errors must be wrapped with context"
+  scale_scope: "Single-user CLI tool with local file storage"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Tests will be written before implementation for all new functions"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "N/A"
+      notes: "This feature doesn't involve workflow phase transitions"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "Config operations target <100ms per NFR-006"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "PASS"
+      notes: "Config set operations are idempotent; atomic writes prevent corruption"
+    - name: "Standardized Exit Codes (PRIN-005)"
+      status: "PASS"
+      notes: "Will use exit code 3 for invalid arguments, 0 for success"
+    - name: "YAML-First Artifacts (PRIN-006)"
+      status: "PASS"
+      notes: "Config files are YAML; using yaml.v3 for all operations"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "Will pass make fmt and make lint"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Functions <40 lines, wrapped errors, map-based table tests, interface-in/concrete-out"
+    - name: "Command Template Independence (PRIN-012)"
+      status: "N/A"
+      notes: "This feature doesn't modify command templates"
+
+research_findings:
+  decisions:
+    - topic: "YAML comment preservation"
+      decision: "Use yaml.v3 Node API with yaml.Unmarshal to Node, modify, then Marshal"
+      rationale: "yaml.v3 Node API preserves comments and formatting unlike struct-based parsing"
+      alternatives_considered:
+        - "Struct-based parsing (loses comments)"
+        - "String manipulation (fragile and error-prone)"
+    - topic: "Key path parsing"
+      decision: "Split on '.' and traverse/create nested map structure"
+      rationale: "Simple, standard approach matching user expectations from tools like jq"
+      alternatives_considered:
+        - "JSONPath syntax (overcomplicated for this use case)"
+    - topic: "Type inference"
+      decision: "Ordered inference: bool literals → integers → duration validation → string fallback"
+      rationale: "Covers all config types while being predictable; durations stored as strings after validation"
+      alternatives_considered:
+        - "Require explicit type flags (worse UX)"
+        - "Infer from schema only (doesn't handle new string values)"
+    - topic: "Atomic file writes"
+      decision: "Write to temp file, then rename (os.Rename is atomic on POSIX)"
+      rationale: "Prevents corruption if process is killed mid-write (NFR-007)"
+      alternatives_considered:
+        - "Direct file write (risk of corruption)"
+        - "File locking (platform-specific complexity)"
+    - topic: "Configuration schema definition"
+      decision: "Define ConfigKeySchema struct with path, type, allowed values, and description; register all keys in a map"
+      rationale: "Enables validation, help text, and future shell completion"
+      alternatives_considered:
+        - "Reflection on Configuration struct (doesn't capture enum values)"
+        - "External schema file (additional complexity)"
+
+data_model:
+  entities:
+    - name: "ConfigKeySchema"
+      description: "Defines a known configuration key with its expected type and validation rules"
+      fields:
+        - name: "Path"
+          type: "string"
+          description: "Dotted key path (e.g., 'notifications.enabled')"
+          constraints: "Non-empty, valid dotted notation"
+        - name: "Type"
+          type: "ConfigValueType (enum: bool, int, duration, string, enum)"
+          description: "Expected value type for validation"
+          constraints: "Must be one of the defined types"
+        - name: "AllowedValues"
+          type: "[]string"
+          description: "Valid values for enum types"
+          constraints: "Non-empty only for enum type"
+        - name: "Description"
+          type: "string"
+          description: "Human-readable description for help text"
+          constraints: "Non-empty"
+        - name: "Default"
+          type: "interface{}"
+          description: "Default value from GetDefaults()"
+          constraints: "Type matches Type field"
+      relationships: []
+    - name: "ConfigScope"
+      description: "Target location for configuration changes"
+      fields:
+        - name: "Level"
+          type: "string (user|project)"
+          description: "Configuration level"
+          constraints: "Must be 'user' or 'project'"
+        - name: "FilePath"
+          type: "string"
+          description: "Absolute path to the config file"
+          constraints: "Valid file path"
+      relationships: []
+    - name: "ParsedValue"
+      description: "A configuration value after type inference and validation"
+      fields:
+        - name: "Raw"
+          type: "string"
+          description: "Original string input from user"
+          constraints: "Non-empty"
+        - name: "Parsed"
+          type: "interface{}"
+          description: "Value converted to correct type"
+          constraints: "Type matches schema"
+        - name: "InferredType"
+          type: "ConfigValueType"
+          description: "Type determined by inference or schema"
+          constraints: "Valid type"
+      relationships:
+        - target: "ConfigKeySchema"
+          type: "validated-against"
+          description: "Value is validated against the key's schema"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CHANGELOG.md"
+      description: "Add entry for config set/toggle/get commands (FR-013)"
+  source_code:
+    - path: "internal/config/setter.go"
+      description: "Core logic for setting config values (key parsing, type inference, YAML manipulation)"
+    - path: "internal/config/schema.go"
+      description: "Configuration key schema definitions and validation"
+    - path: "internal/cli/config_set.go"
+      description: "CLI command handlers for config set, toggle, get subcommands"
+  tests:
+    - path: "internal/config/setter_test.go"
+      description: "Unit tests for key path parsing, type inference, atomic writes"
+    - path: "internal/config/schema_test.go"
+      description: "Unit tests for schema validation logic"
+    - path: "internal/cli/config_set_test.go"
+      description: "Integration tests for CLI command execution"
+
+implementation_phases:
+  - phase: 1
+    name: "Schema and Type Infrastructure"
+    goal: "Define configuration key schema and type inference logic"
+    deliverables:
+      - "ConfigKeySchema struct definition"
+      - "ConfigValueType enum (bool, int, duration, string, enum)"
+      - "Registry of all known config keys with types and allowed values"
+      - "Type inference function (InferType)"
+      - "Value validation against schema (ValidateValue)"
+      - "Unit tests for schema and type inference"
+  - phase: 2
+    name: "Key Path Parsing and YAML Manipulation"
+    goal: "Implement key path parsing and comment-preserving YAML operations"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "ParseKeyPath function for dotted notation"
+      - "SetNestedValue function using yaml.v3 Node API"
+      - "GetNestedValue function for reading values"
+      - "Atomic file write helper (writeAtomically)"
+      - "Unit tests for path parsing and YAML manipulation"
+  - phase: 3
+    name: "CLI Commands Implementation"
+    goal: "Implement the config set, toggle, and get subcommands"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "config set subcommand with --user and --project flags"
+      - "config toggle subcommand with --user and --project flags"
+      - "config get subcommand with source display"
+      - "Success/error messages with actionable feedback"
+      - "Integration tests for all commands"
+  - phase: 4
+    name: "Documentation and Final Quality Gates"
+    goal: "Add CHANGELOG entry and ensure all quality gates pass"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "CHANGELOG.md entry for the new feature"
+      - "All tests pass (make test)"
+      - "Code formatted (make fmt)"
+      - "Linters pass (make lint)"
+      - "Build succeeds (make build)"
+
+risks:
+  - risk: "Comment preservation may not work perfectly for all YAML structures"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Test with various YAML files including edge cases; accept minor formatting changes as acceptable"
+  - risk: "Cross-platform atomic write behavior differences"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Use os.Rename which is atomic on POSIX; Windows may need WriteFile with CREATE_NEW flag"
+  - risk: "Type inference ambiguity (e.g., '0' could be int or string)"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Schema-first validation: if key is known, use schema type; only infer for unknown keys (which fail validation anyway)"
+  - risk: "Duration parsing accepts invalid formats"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Use time.ParseDuration for validation; store as string after successful parse"
+
+open_questions:
+  - question: "Should config set support array values (e.g., claude_args)?"
+    context: "The spec mentions claude_args but array manipulation via CLI is complex"
+    proposed_resolution: "Out of scope for initial implementation; users can still edit YAML directly for arrays"
+  - question: "Should toggle create the key if it doesn't exist?"
+    context: "Spec mentions 'toggle treats missing boolean as false, so toggle creates it as true'"
+    proposed_resolution: "Yes, per the spec edge case definition - toggle on missing key creates it as true"
+  - question: "Should config get show all sources or just the effective value?"
+    context: "FR-011 says 'display current value and source'"
+    proposed_resolution: "Show effective value with source file path; optionally show if overridden by higher-priority source"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec 0.4.0"
+  created: "2025-12-18T23:53:20Z"
+  artifact_type: "plan"

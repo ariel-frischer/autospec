@@ -1,0 +1,355 @@
+tasks:
+    branch: "058-config-set-command"
+    created: "2025-12-18"
+    spec_path: "specs/058-config-set-command/spec.yaml"
+    plan_path: "specs/058-config-set-command/plan.yaml"
+summary:
+    total_tasks: 18
+    total_phases: 6
+    parallel_opportunities: 5
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create new source files with package structure"
+      tasks:
+        - id: "T001"
+          title: "Create internal/config/schema.go with ConfigKeySchema type and ConfigValueType enum"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/config/schema.go"
+          dependencies: []
+          acceptance_criteria:
+            - "ConfigValueType enum defined with TypeBool, TypeInt, TypeDuration, TypeString, TypeEnum"
+            - "ConfigKeySchema struct defined with Path, Type, AllowedValues, Description, Default fields"
+            - "File compiles without errors"
+        - id: "T002"
+          title: "Create internal/config/setter.go with package declaration and imports"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/config/setter.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "File created with config package declaration"
+            - "Required imports for yaml.v3, os, path/filepath, time"
+            - "File compiles without errors"
+    - number: 2
+      title: "Foundational"
+      purpose: "Core infrastructure that MUST be complete before user stories"
+      tasks:
+        - id: "T003"
+          title: "Implement known config keys registry in internal/config/schema.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/config/schema.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "KnownKeys map[string]ConfigKeySchema populated with all config keys from spec"
+            - "Keys include: notifications.enabled, notifications.type, notifications.on_command_complete, notifications.on_error, notifications.on_long_running, notifications.long_running_threshold, max_retries, timeout, skip_preflight, skip_confirmations, claude_cmd, specs_dir"
+            - "Each key has correct Type and AllowedValues for enums"
+            - "GetKeySchema(path string) function returns schema or error for unknown key"
+        - id: "T004"
+          title: "Write tests for schema validation in internal/config/schema_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/config/schema_test.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "Tests use map-based table-driven pattern with t.Parallel()"
+            - "Test GetKeySchema returns correct schema for known keys"
+            - "Test GetKeySchema returns error for unknown keys"
+            - "Test all enum types have non-empty AllowedValues"
+        - id: "T005"
+          title: "Implement InferType and ValidateValue functions in internal/config/schema.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/config/schema.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "InferType(value string) returns ConfigValueType based on: true/false->bool, integers->int, valid durations->duration, else string"
+            - "ValidateValue(key string, value string) returns parsed value or error"
+            - "Enum values validated against AllowedValues list"
+            - "Duration values validated with time.ParseDuration"
+            - "Error messages include valid options for enums (NFR-005)"
+        - id: "T006"
+          title: "Write tests for type inference and validation in internal/config/schema_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/config/schema_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Test InferType for bool literals (true, false)"
+            - "Test InferType for integers (0, 5, -1)"
+            - "Test InferType for durations (5m, 1h30m, 10s)"
+            - "Test InferType for strings (hello, path/to/file)"
+            - "Test ValidateValue rejects wrong types (abc for max_retries)"
+            - "Test ValidateValue rejects invalid enum values"
+    - number: 3
+      title: "User Story 1 - Set configuration value via CLI"
+      purpose: "Enable users to set configuration values using autospec config set command"
+      story_reference: "US-001"
+      independent_test: "Run 'autospec config set max_retries 5' and verify the value is persisted"
+      tasks:
+        - id: "T007"
+          title: "Implement ParseKeyPath function in internal/config/setter.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/config/setter.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "ParseKeyPath splits dotted notation into []string"
+            - "Handles single-level keys (max_retries -> ['max_retries'])"
+            - "Handles nested keys (notifications.enabled -> ['notifications', 'enabled'])"
+            - "Returns error for empty string"
+        - id: "T008"
+          title: "Implement SetNestedValue using yaml.v3 Node API in internal/config/setter.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/config/setter.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "Creates nested map structure if parent keys don't exist"
+            - "Preserves existing comments and formatting"
+            - "Sets value with correct YAML type (bool, int, string)"
+            - "Function is under 40 lines"
+        - id: "T009"
+          title: "Implement writeAtomically helper in internal/config/setter.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/config/setter.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "Writes content to temp file first"
+            - "Uses os.Rename to atomically replace target (NFR-007)"
+            - "Creates parent directories if they don't exist (FR-005)"
+            - "Function is under 40 lines"
+        - id: "T010"
+          title: "Implement SetConfigValue main function in internal/config/setter.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/config/setter.go"
+          dependencies: ["T008", "T009"]
+          acceptance_criteria:
+            - "Reads existing YAML file or creates empty node if missing (FR-004)"
+            - "Validates key against schema (FR-006)"
+            - "Validates value type (FR-007)"
+            - "Uses SetNestedValue to update node tree"
+            - "Uses writeAtomically to persist changes"
+            - "All errors wrapped with context (NFR-002)"
+        - id: "T011"
+          title: "Write tests for setter functions in internal/config/setter_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/config/setter_test.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "Tests use map-based table-driven pattern with t.Parallel()"
+            - "Test ParseKeyPath with various dotted paths"
+            - "Test SetNestedValue creates nested structure"
+            - "Test SetNestedValue preserves comments"
+            - "Test SetConfigValue creates file when missing"
+            - "Test SetConfigValue handles invalid YAML gracefully"
+        - id: "T012"
+          title: "Implement config set CLI subcommand in internal/cli/config_set.go"
+          status: "InProgress"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/config_set.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "Accepts key and value as positional arguments"
+            - "Defaults to user-level config when no flag specified"
+            - "Displays confirmation message after success (FR-012)"
+            - "Uses exit code 3 for invalid arguments"
+            - "Uses exit code 0 for success"
+    - number: 4
+      title: "User Story 2 - Set configuration at project level"
+      purpose: "Enable project-specific configuration via --project flag"
+      story_reference: "US-002"
+      independent_test: "Run 'autospec config set timeout 15m --project' and verify .autospec/config.yml is updated"
+      tasks:
+        - id: "T013"
+          title: "Add --user and --project flags to config set command"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/config_set.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "--user flag writes to ~/.config/autospec/config.yml (FR-003)"
+            - "--project flag writes to .autospec/config.yml (FR-003)"
+            - "Error when --project used outside project directory"
+            - "Flags are mutually exclusive"
+            - "Default is --user when neither specified"
+        - id: "T014"
+          title: "Write integration tests for config set command in internal/cli/config_set_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/config_set_test.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "Tests use map-based table-driven pattern with t.Parallel()"
+            - "Test setting value at user level"
+            - "Test setting value at project level"
+            - "Test error when --project used outside project"
+            - "Test confirmation message format"
+            - "Test invalid key error message includes valid keys"
+    - number: 5
+      title: "User Story 3 & 4 - Toggle and Get commands"
+      purpose: "Add toggle command for booleans and get command for viewing values"
+      story_reference: "US-003, US-004"
+      independent_test: "Run 'autospec config toggle notifications.enabled' and 'autospec config get max_retries'"
+      tasks:
+        - id: "T015"
+          title: "Implement GetNestedValue and config get CLI subcommand"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/config_set.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "GetNestedValue reads value from YAML node tree"
+            - "config get displays current value with source file path (FR-011)"
+            - "Shows effective value when set in multiple sources"
+            - "Supports --user and --project flags to read from specific source"
+        - id: "T016"
+          title: "Implement config toggle CLI subcommand"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/cli/config_set.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "Toggles boolean value between true and false (FR-010)"
+            - "Creates key as true if it doesn't exist (edge case from spec)"
+            - "Returns error for non-boolean keys"
+            - "Supports --user and --project flags"
+            - "Displays confirmation message after toggle"
+        - id: "T017"
+          title: "Write integration tests for toggle and get commands"
+          status: "Pending"
+          type: "test"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/cli/config_set_test.go"
+          dependencies: ["T015", "T016"]
+          acceptance_criteria:
+            - "Test toggle flips boolean value"
+            - "Test toggle creates key if missing (as true)"
+            - "Test toggle error on non-boolean key"
+            - "Test get shows value and source"
+            - "Test get shows effective value when overridden"
+    - number: 6
+      title: "Polish & Quality Gates"
+      purpose: "Documentation and final quality checks"
+      tasks:
+        - id: "T018"
+          title: "Add CHANGELOG.md entry and pass all quality gates"
+          status: "Pending"
+          type: "documentation"
+          parallel: false
+          story_id: null
+          file_path: "CHANGELOG.md"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "CHANGELOG.md contains entry for config set/toggle/get commands (FR-013)"
+            - "make test passes (FR-014)"
+            - "make fmt produces no changes (FR-014)"
+            - "make lint passes (FR-014)"
+            - "make build succeeds (FR-014)"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002", "US-003", "US-004"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: ["US-003", "US-004"]
+        - story_id: "US-003"
+          depends_on: ["US-002"]
+          blocks: []
+        - story_id: "US-004"
+          depends_on: ["US-002"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4, 5]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+parallel_execution:
+    - phase: 1
+      parallel_groups:
+        - tasks: ["T001", "T002"]
+          rationale: "T002 can be created concurrently with T001 after initial setup"
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T004", "T006"]
+          rationale: "Tests for different schema functions can be written in parallel"
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T009", "T011"]
+          rationale: "Atomic write helper is independent; tests can be written after implementation"
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T015", "T016"]
+          rationale: "Get and toggle commands are independent implementations"
+        - tasks: ["T017"]
+          rationale: "Tests for both commands after implementation"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + config set command (US-001)"
+        validation: "Run 'autospec config set max_retries 5' and verify value persisted in ~/.config/autospec/config.yml"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "Schema validation and type inference infrastructure"
+        - milestone: "Core Set Command"
+          phases: [1, 2, 3]
+          deliverable: "Users can set config values at user level"
+        - milestone: "Project Scope Support"
+          phases: [1, 2, 3, 4]
+          deliverable: "Users can set config values at both user and project level"
+        - milestone: "Full Feature Complete"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "All commands (set, toggle, get) working with documentation"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec 0.4.0"
+    created: "2025-12-18T23:55:32Z"
+    artifact_type: "tasks"

@@ -1,0 +1,382 @@
+feature:
+  branch: "058-config-set-command"
+  created: "2025-12-18"
+  status: "Draft"
+  input: |
+    # Config Set Command
+
+    Add CLI commands to edit/toggle configuration values without manually editing YAML files.
+
+    ## Problem
+
+    Currently, to change configuration values users must:
+    1. Manually edit `~/.config/autospec/config.yml` (user-level)
+    2. Manually edit `.autospec/config.yml` (project-level)
+    3. Use environment variables for temporary overrides
+
+    There's no CLI command to persistently set/toggle configuration values.
+
+    ## Proposed Solution
+
+    Add `autospec config set` subcommand:
+
+    ```bash
+    # Set a value (user-level by default)
+    autospec config set notifications.enabled true
+    autospec config set max_retries 5
+
+    # Set at project level
+    autospec config set notifications.enabled true --project
+
+    # Explicit user level
+    autospec config set timeout 10m --user
+    ```
+
+    ### Scope Options
+
+    | Flag | Target File |
+    |------|-------------|
+    | `--user` | `~/.config/autospec/config.yml` |
+    | `--project` | `.autospec/config.yml` |
+    | (default) | User config |
+
+    ### Type Inference
+
+    The command should infer types from the value:
+    - `true`/`false` → boolean
+    - Numbers → integer
+    - Duration strings (`5m`, `1h`) → string (validated as duration)
+    - Everything else → string
+
+    ### Supported Keys
+
+    Common configuration keys to support:
+    - `notifications.enabled` (bool)
+    - `notifications.type` (string: "sound", "visual", "both")
+    - `notifications.on_command_complete` (bool)
+    - `notifications.on_error` (bool)
+    - `notifications.on_long_running` (bool)
+    - `notifications.long_running_threshold` (duration)
+    - `max_retries` (int)
+    - `timeout` (duration)
+    - `skip_preflight` (bool)
+    - `skip_confirmations` (bool)
+    - `claude_cmd` (string)
+    - `specs_dir` (string)
+
+    ## Implementation Notes
+
+    ### File Handling
+    1. Read existing YAML (or create new if missing)
+    2. Parse dotted key path (e.g., `notifications.enabled` → nested map)
+    3. Set value with correct type
+    4. Write back preserving comments where possible (use `gopkg.in/yaml.v3` node API)
+
+    ### Validation
+    - Validate key exists in schema
+    - Validate value type matches expected type
+    - For enums (like `notifications.type`), validate against allowed values
+
+    ### Edge Cases
+    - Creating nested structure when parent keys don't exist
+    - Handling invalid key paths gracefully
+    - Config file doesn't exist yet → create it
+    - Final task must be to add this change ONE line to CHANGELOG.md
+
+    ## Alternative: Toggle Command
+
+    For boolean values, a dedicated toggle might be useful:
+
+    ```bash
+    autospec config toggle notifications.enabled
+    autospec config toggle skip_preflight --project
+    ```
+
+    ## Testing
+
+    - Unit tests for key path parsing
+    - Unit tests for type inference
+    - Integration tests for file read/write roundtrip
+    - Tests for creating config when missing
+    - Tests for nested key creation
+
+    ## Priority
+
+    Medium - Nice to have for UX, but env vars provide a workaround.
+
+user_stories:
+  - id: "US-001"
+    title: "Set configuration value via CLI"
+    priority: "P1"
+    as_a: "CLI user"
+    i_want: "to set configuration values using a command"
+    so_that: "I don't have to manually edit YAML files and risk syntax errors"
+    why_this_priority: "Core functionality - the primary purpose of this feature"
+    independent_test: "Run 'autospec config set max_retries 5' and verify the value is persisted"
+    acceptance_scenarios:
+      - given: "a user wants to change max_retries to 5"
+        when: "they run 'autospec config set max_retries 5'"
+        then: "the value is written to ~/.config/autospec/config.yml and subsequent commands use max_retries=5"
+      - given: "a user wants to enable notifications"
+        when: "they run 'autospec config set notifications.enabled true'"
+        then: "the nested notifications.enabled value is set to boolean true in the config file"
+
+  - id: "US-002"
+    title: "Set configuration at project level"
+    priority: "P1"
+    as_a: "developer working on a specific project"
+    i_want: "to set configuration values at the project level"
+    so_that: "project-specific settings are stored in the project and shared with the team"
+    why_this_priority: "Essential for team workflows - project configs are version-controlled"
+    independent_test: "Run 'autospec config set timeout 15m --project' and verify .autospec/config.yml is updated"
+    acceptance_scenarios:
+      - given: "a user in a project directory"
+        when: "they run 'autospec config set timeout 15m --project'"
+        then: "the value is written to .autospec/config.yml in the project root"
+      - given: "a user not in a project directory"
+        when: "they run 'autospec config set key value --project'"
+        then: "an error is displayed indicating no project config location found"
+
+  - id: "US-003"
+    title: "Toggle boolean configuration values"
+    priority: "P2"
+    as_a: "CLI user"
+    i_want: "to toggle boolean settings without knowing their current value"
+    so_that: "I can quickly flip settings on/off during workflow"
+    why_this_priority: "Convenience feature that improves UX but not blocking"
+    independent_test: "Run 'autospec config toggle notifications.enabled' twice and verify value flips each time"
+    acceptance_scenarios:
+      - given: "notifications.enabled is currently false"
+        when: "user runs 'autospec config toggle notifications.enabled'"
+        then: "notifications.enabled becomes true"
+      - given: "notifications.enabled is currently true"
+        when: "user runs 'autospec config toggle notifications.enabled'"
+        then: "notifications.enabled becomes false"
+      - given: "user tries to toggle a non-boolean key"
+        when: "they run 'autospec config toggle max_retries'"
+        then: "an error is displayed indicating the key is not a boolean"
+
+  - id: "US-004"
+    title: "View current configuration value"
+    priority: "P2"
+    as_a: "CLI user"
+    i_want: "to see the current value of a specific configuration key"
+    so_that: "I can verify what value is set before changing it"
+    why_this_priority: "Useful diagnostic feature that supports the set command"
+    independent_test: "Run 'autospec config get max_retries' and verify it displays the current value"
+    acceptance_scenarios:
+      - given: "max_retries is set to 3 in user config"
+        when: "user runs 'autospec config get max_retries'"
+        then: "the output shows '3' with indication of the source file"
+      - given: "a key is set in both user and project config"
+        when: "user runs 'autospec config get timeout'"
+        then: "the effective value is shown along with the source (project overrides user)"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST accept dotted key paths for nested configuration (e.g., notifications.enabled)"
+      testable: true
+      acceptance_criteria: "Running 'config set notifications.enabled true' creates/updates the nested YAML structure correctly"
+
+    - id: "FR-002"
+      description: "MUST infer value types automatically: true/false→boolean, integers→int, durations→string with validation"
+      testable: true
+      acceptance_criteria: "Setting 'true' stores boolean, '5' stores integer, '10m' stores validated duration string"
+
+    - id: "FR-003"
+      description: "MUST support --user and --project flags to target specific config files"
+      testable: true
+      acceptance_criteria: "--user writes to ~/.config/autospec/config.yml, --project writes to .autospec/config.yml"
+
+    - id: "FR-004"
+      description: "MUST create the config file if it doesn't exist when setting a value"
+      testable: true
+      acceptance_criteria: "Setting a value when no config file exists creates the file with proper structure"
+
+    - id: "FR-005"
+      description: "MUST create parent directories if they don't exist when creating config files"
+      testable: true
+      acceptance_criteria: "Setting a value when ~/.config/autospec/ doesn't exist creates the directory tree"
+
+    - id: "FR-006"
+      description: "MUST validate that the key is a known configuration key"
+      testable: true
+      acceptance_criteria: "Setting an unknown key like 'foo.bar' returns an error listing valid keys"
+
+    - id: "FR-007"
+      description: "MUST validate that the value type matches the expected type for the key"
+      testable: true
+      acceptance_criteria: "Setting max_retries to 'abc' returns an error about expecting an integer"
+
+    - id: "FR-008"
+      description: "MUST validate enum values against allowed options"
+      testable: true
+      acceptance_criteria: "Setting notifications.type to 'invalid' returns an error listing valid options"
+
+    - id: "FR-009"
+      description: "MUST preserve existing comments and formatting in YAML files when possible"
+      testable: true
+      acceptance_criteria: "Updating a value in a file with comments retains those comments"
+
+    - id: "FR-010"
+      description: "MUST implement toggle subcommand for boolean configuration keys"
+      testable: true
+      acceptance_criteria: "'config toggle notifications.enabled' flips the boolean value"
+
+    - id: "FR-011"
+      description: "MUST implement get subcommand to display current value and source"
+      testable: true
+      acceptance_criteria: "'config get max_retries' shows value and which config file it came from"
+
+    - id: "FR-012"
+      description: "MUST display confirmation message after successful set/toggle operation"
+      testable: true
+      acceptance_criteria: "After setting a value, output shows 'Set notifications.enabled = true in ~/.config/autospec/config.yml'"
+
+    - id: "FR-013"
+      description: "MUST add one line entry to CHANGELOG.md for this feature"
+      testable: true
+      acceptance_criteria: "CHANGELOG.md contains entry describing the config set command feature"
+
+    - id: "FR-014"
+      description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
+      testable: true
+      acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "code_quality"
+      description: "All functions must be under 40 lines; extract helpers for complex logic"
+      measurable_target: "No function exceeds 40 lines excluding comments"
+
+    - id: "NFR-002"
+      category: "code_quality"
+      description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
+      measurable_target: "Zero bare 'return err' statements in new code"
+
+    - id: "NFR-003"
+      category: "code_quality"
+      description: "Tests must use map-based table-driven pattern with t.Parallel()"
+      measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
+
+    - id: "NFR-004"
+      category: "code_quality"
+      description: "Accept interfaces, return concrete types"
+      measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
+
+    - id: "NFR-005"
+      category: "usability"
+      description: "Error messages must clearly indicate what went wrong and how to fix it"
+      measurable_target: "All error messages include the invalid value and list of valid options when applicable"
+
+    - id: "NFR-006"
+      category: "performance"
+      description: "Config operations complete quickly without noticeable delay"
+      measurable_target: "Set/get/toggle operations complete in under 100ms"
+
+    - id: "NFR-007"
+      category: "reliability"
+      description: "File operations must be atomic to prevent corruption on interruption"
+      measurable_target: "Config file is never left in partial/corrupt state even if process is killed mid-write"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Users can set any supported configuration value via CLI command"
+      metric: "Successful completion rate of config set operations"
+      target: "100% of valid key-value pairs are persisted correctly"
+
+    - id: "SC-002"
+      description: "Users can toggle boolean settings without knowing current value"
+      metric: "Toggle command correctly flips value"
+      target: "100% of toggle operations produce opposite boolean value"
+
+    - id: "SC-003"
+      description: "Invalid configuration attempts provide actionable error messages"
+      metric: "Error messages include valid options or format hints"
+      target: "100% of validation errors include remediation guidance"
+
+    - id: "SC-004"
+      description: "Configuration files maintain integrity after multiple operations"
+      metric: "File corruption rate after set/toggle operations"
+      target: "Zero file corruption incidents"
+
+key_entities:
+  - name: "ConfigKey"
+    description: "A known configuration key with its expected type and validation rules"
+    attributes:
+      - "path: dotted key path (e.g., 'notifications.enabled')"
+      - "type: expected value type (bool, int, duration, string, enum)"
+      - "allowed_values: list of valid values for enum types"
+      - "description: human-readable description for help text"
+
+  - name: "ConfigScope"
+    description: "The target location for configuration changes"
+    attributes:
+      - "level: 'user' or 'project'"
+      - "file_path: absolute path to the config file"
+      - "exists: whether the file currently exists"
+
+  - name: "ConfigValue"
+    description: "A parsed and validated configuration value"
+    attributes:
+      - "raw: original string input from user"
+      - "parsed: converted value in correct type"
+      - "type: inferred or validated type"
+
+edge_cases:
+  - scenario: "Setting a value when config file doesn't exist"
+    expected_behavior: "Create the file with proper YAML structure containing just the set value"
+
+  - scenario: "Setting a nested key when parent keys don't exist"
+    expected_behavior: "Create the full nested structure (e.g., setting notifications.enabled creates notifications: map first)"
+
+  - scenario: "Setting a value in project scope when not in a project directory"
+    expected_behavior: "Return error explaining no .autospec directory found in current or parent directories"
+
+  - scenario: "Toggling a key that doesn't exist yet"
+    expected_behavior: "Toggle treats missing boolean as false, so toggle creates it as true"
+
+  - scenario: "Setting a duration with invalid format"
+    expected_behavior: "Return error with valid duration format examples (e.g., '5m', '1h30m', '2h')"
+
+  - scenario: "Concurrent writes to the same config file"
+    expected_behavior: "Use file locking or atomic write to prevent corruption"
+
+  - scenario: "Config file exists but is not valid YAML"
+    expected_behavior: "Return error indicating the file is corrupt and needs manual inspection"
+
+  - scenario: "User provides numeric string that should be string type"
+    expected_behavior: "For keys like specs_dir, treat as string even if value looks like number"
+
+assumptions:
+  - "User has write permissions to the target config file location"
+  - "YAML files use standard indentation (2 spaces)"
+  - "gopkg.in/yaml.v3 is available and used for YAML manipulation"
+  - "The existing config package can be extended with setter functionality"
+  - "Users understand dotted notation for nested keys"
+  - "Duration strings follow Go's time.ParseDuration format"
+
+constraints:
+  - "Must use existing config file locations (no new paths introduced)"
+  - "Must maintain backwards compatibility with existing config files"
+  - "Cannot modify environment variable configuration via this command"
+  - "Must work with the existing hierarchical config priority system"
+
+out_of_scope:
+  - "GUI or interactive configuration editor"
+  - "Batch setting of multiple values in one command"
+  - "Configuration file migration or upgrade tools"
+  - "Setting environment-level configuration"
+  - "Remote/cloud configuration synchronization"
+  - "Configuration encryption or secrets management"
+  - "Undo/rollback functionality for config changes"
+  - "Configuration diffing between scopes"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-18T23:51:38Z"
+  artifact_type: "spec"
