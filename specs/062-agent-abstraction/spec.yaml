@@ -123,9 +123,9 @@ requirements:
       acceptance_criteria: "Validate() returns appropriate error when CLI not found or required env vars missing"
 
     - id: "FR-008"
-      description: "MUST integrate with existing Config struct, supporting agent_preset and custom_agent_cmd fields"
+      description: "MUST integrate with existing Config struct, supporting agent_preset and custom_agent_cmd fields with priority: custom_agent_cmd > agent_preset > legacy fields (claude_cmd/custom_claude_cmd) > default (claude)"
       testable: true
-      acceptance_criteria: "Config.GetAgent() returns correct agent based on configuration priority"
+      acceptance_criteria: "Config.GetAgent() returns correct agent based on configuration priority order"
 
     - id: "FR-009"
       description: "MUST maintain backward compatibility with deprecated claude_cmd, claude_args, and custom_claude_cmd config fields"
@@ -262,9 +262,9 @@ key_entities:
       - "parsed: structured output if available"
 
 folder_organization:
-  note: "internal/agent/ already exists for AGENTS.md file management - use internal/executor/ for CLI agent abstraction"
+  note: "internal/agent/ already exists for AGENTS.md file management - use internal/cliagent/ for CLI agent abstraction"
   packages:
-    - path: "internal/executor/"
+    - path: "internal/cliagent/"
       description: "New package for CLI agent abstraction and execution"
       files:
         - name: "agent.go"
@@ -298,7 +298,7 @@ folder_organization:
         - "Add agent_preset field (string)"
         - "Add custom_agent_cmd field (string)"
         - "Deprecate claude_cmd, claude_args, custom_claude_cmd with migration"
-        - "Add GetAgent() method returning executor.Agent"
+        - "Add GetAgent() method returning cliagent.Agent"
 
     - path: "internal/workflow/"
       description: "Refactor existing workflow package"
@@ -368,6 +368,16 @@ out_of_scope:
   - "Performance benchmarking between different agents"
   - "Agent-specific error recovery strategies"
   - "Multi-agent orchestration (running multiple agents on same task)"
+
+clarifications:
+  - date: "2025-12-19"
+    question: "What is the configuration priority when multiple agent sources are specified?"
+    answer: "custom_agent_cmd > agent_preset > legacy fields > default (claude)"
+    applied_to: "requirements.functional (FR-008)"
+  - date: "2025-12-19"
+    question: "What should the new package be named to avoid confusion with existing internal/agent/?"
+    answer: "internal/cliagent/ - explicit about CLI agent purpose, no ambiguity"
+    applied_to: "folder_organization"
 
 references:
   - id: "REF-001"
