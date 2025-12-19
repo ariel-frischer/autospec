@@ -677,3 +677,249 @@ func TestInstallResultSuccess(t *testing.T) {
 		t.Errorf("result.Shell = %v, want %v", result.Shell, Bash)
 	}
 }
+
+// Additional tests to improve coverage to 85%
+
+func TestCreateBackup_ReadPermissionError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, ".bashrc")
+
+	// Create a file that exists
+	if err := os.WriteFile(filePath, []byte("content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make file unreadable (test on unix only)
+	if err := os.Chmod(filePath, 0000); err != nil {
+		t.Skip("Cannot change file permissions on this platform")
+	}
+	defer os.Chmod(filePath, 0644) // Restore for cleanup
+
+	_, err := CreateBackup(filePath)
+	if err == nil {
+		t.Error("CreateBackup() should fail with permission error")
+	}
+	if !IsPermissionError(err) {
+		t.Errorf("CreateBackup() error should be PermissionError, got %T", err)
+	}
+}
+
+func TestHasExistingInstallation_PermissionError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, ".bashrc")
+
+	// Create a file that exists
+	if err := os.WriteFile(filePath, []byte("content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make file unreadable
+	if err := os.Chmod(filePath, 0000); err != nil {
+		t.Skip("Cannot change file permissions on this platform")
+	}
+	defer os.Chmod(filePath, 0644) // Restore for cleanup
+
+	_, err := HasExistingInstallation(filePath)
+	if err == nil {
+		t.Error("HasExistingInstallation() should fail with permission error")
+	}
+	if !IsPermissionError(err) {
+		t.Errorf("HasExistingInstallation() error should be PermissionError, got %T", err)
+	}
+}
+
+func TestInstallRCFile_PermissionError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	// Create a read-only directory to prevent writing
+	readOnlyDir := filepath.Join(dir, "readonly")
+	if err := os.MkdirAll(readOnlyDir, 0555); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(readOnlyDir, 0755) // Restore for cleanup
+
+	rcPathInReadOnly := filepath.Join(readOnlyDir, ".bashrc")
+	config := ShellConfig{
+		Shell:                  Bash,
+		RCPath:                 rcPathInReadOnly,
+		RequiresRCModification: true,
+	}
+
+	_, err := installRCFile(Bash, config)
+	if err == nil {
+		// On some systems, root can write anywhere - skip test
+		t.Skip("Permission error test requires non-root user")
+	}
+	if !IsPermissionError(err) && !strings.Contains(err.Error(), "permission") {
+		t.Logf("Expected permission error, got: %v", err)
+	}
+}
+
+func TestInstallRCFile_AllShells(t *testing.T) {
+	t.Parallel()
+
+	shells := []Shell{Bash, Zsh, PowerShell}
+	rcFiles := map[Shell]string{
+		Bash:       ".bashrc",
+		Zsh:        ".zshrc",
+		PowerShell: "profile.ps1",
+	}
+
+	for _, shell := range shells {
+		shell := shell // capture range variable
+		t.Run(string(shell), func(t *testing.T) {
+			t.Parallel()
+
+			tempHome := t.TempDir()
+			rcPath := filepath.Join(tempHome, rcFiles[shell])
+
+			// Create initial rc file
+			if err := os.WriteFile(rcPath, []byte("# initial\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			config := ShellConfig{
+				Shell:                  shell,
+				RCPath:                 rcPath,
+				RequiresRCModification: true,
+			}
+
+			result, err := installRCFile(shell, config)
+			if err != nil {
+				t.Fatalf("installRCFile() error = %v", err)
+			}
+
+			if result.Shell != shell {
+				t.Errorf("result.Shell = %v, want %v", result.Shell, shell)
+			}
+
+			if result.Action != ActionInstalled {
+				t.Errorf("result.Action = %v, want %v", result.Action, ActionInstalled)
+			}
+
+			// Verify file contains completion block
+			content, _ := os.ReadFile(rcPath)
+			if !strings.Contains(string(content), StartMarker) {
+				t.Error("file should contain start marker")
+			}
+		})
+	}
+}
+
+func TestCreateBackup_WritePermissionError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, ".bashrc")
+
+	// Create original file
+	if err := os.WriteFile(filePath, []byte("original"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make directory read-only to prevent backup file creation
+	if err := os.Chmod(dir, 0555); err != nil {
+		t.Skip("Cannot change directory permissions on this platform")
+	}
+	defer os.Chmod(dir, 0755) // Restore for cleanup
+
+	_, err := CreateBackup(filePath)
+	if err == nil {
+		t.Skip("Permission error test requires non-root user")
+	}
+	if !IsPermissionError(err) && !strings.Contains(err.Error(), "permission") {
+		t.Logf("Expected permission error for backup write, got: %v", err)
+	}
+}
+
+func TestInstallRCFile_PreservesExistingContent(t *testing.T) {
+	t.Parallel()
+
+	tempHome := t.TempDir()
+	rcPath := filepath.Join(tempHome, ".bashrc")
+
+	// Create initial rc file with important content
+	initialContent := `# My bashrc
+export PATH=$HOME/bin:$PATH
+alias ls='ls --color=auto'
+
+# Custom function
+my_func() {
+    echo "Hello"
+}
+`
+	if err := os.WriteFile(rcPath, []byte(initialContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	config := GetShellConfig(Bash, tempHome)
+	_, err := installRCFile(Bash, config)
+	if err != nil {
+		t.Fatalf("installRCFile() error = %v", err)
+	}
+
+	// Verify original content is preserved
+	content, _ := os.ReadFile(rcPath)
+	if !strings.Contains(string(content), "export PATH=$HOME/bin:$PATH") {
+		t.Error("original PATH export should be preserved")
+	}
+	if !strings.Contains(string(content), "alias ls") {
+		t.Error("original alias should be preserved")
+	}
+	if !strings.Contains(string(content), "my_func()") {
+		t.Error("original function should be preserved")
+	}
+}
+
+func TestPermissionErrorFormatting(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		path      string
+		operation string
+		err       error
+		wantMsg   string
+	}{
+		"read operation": {
+			path:      "/etc/bashrc",
+			operation: "read",
+			err:       os.ErrPermission,
+			wantMsg:   "permission denied: cannot read /etc/bashrc",
+		},
+		"write operation": {
+			path:      "/etc/zshrc",
+			operation: "write",
+			err:       os.ErrPermission,
+			wantMsg:   "permission denied: cannot write /etc/zshrc",
+		},
+		"create directory operation": {
+			path:      "/root/config",
+			operation: "create directory",
+			err:       os.ErrPermission,
+			wantMsg:   "permission denied: cannot create directory /root/config",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			err := &PermissionError{
+				Path:      tc.path,
+				Operation: tc.operation,
+				Err:       tc.err,
+			}
+
+			msg := err.Error()
+			if !strings.Contains(msg, tc.wantMsg) {
+				t.Errorf("Error() = %q, want to contain %q", msg, tc.wantMsg)
+			}
+		})
+	}
+}

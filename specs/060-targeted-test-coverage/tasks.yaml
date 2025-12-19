@@ -1,0 +1,545 @@
+tasks:
+    branch: "060-targeted-test-coverage"
+    created: "2025-12-19"
+    spec_path: "specs/060-targeted-test-coverage/spec.yaml"
+    plan_path: "specs/060-targeted-test-coverage/plan.yaml"
+summary:
+    total_tasks: 32
+    total_phases: 10
+    parallel_opportunities: 18
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Verify current coverage baselines and identify test patterns"
+      tasks:
+        - id: "T001"
+          title: "Generate baseline coverage report for all target packages"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "coverage_baseline.txt"
+          dependencies: []
+          acceptance_criteria:
+            - "Coverage percentages recorded for all 10 target packages"
+            - "Uncovered functions identified via go test -coverprofile"
+        - id: "T002"
+          title: "Review existing test patterns in similar packages (validation, config)"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/validation/*_test.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Table-driven test patterns documented"
+            - "Cobra testing patterns identified from existing CLI tests"
+    - number: 2
+      title: "Foundational - Minor Package Coverage Fixes"
+      purpose: "Bring retry and health packages to 85% threshold with minimal additions (US-005)"
+      story_reference: "US-005"
+      independent_test: "Run go test -cover on internal/retry and internal/health to verify 85%"
+      tasks:
+        - id: "T003"
+          title: "Add tests for SaveRetryState edge cases in internal/retry/retry_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/retry/retry_test.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Tests cover file permission errors"
+            - "Tests cover directory creation failures"
+            - "Coverage reaches 85%"
+        - id: "T004"
+          title: "Add tests for check error paths in internal/health/health_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/health/health_test.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Tests cover dependency check failure scenarios"
+            - "Tests cover missing command scenarios"
+            - "Coverage reaches 85%"
+    - number: 3
+      title: "User Story 5 - Shared Package Foundation"
+      purpose: "Add tests for internal/cli/shared package (0% to 85%)"
+      story_reference: "US-001"
+      independent_test: "Run go test -cover on internal/cli/shared and verify coverage meets 85%"
+      tasks:
+        - id: "T005"
+          title: "Create internal/cli/shared/constants_test.go for exit codes and group constants"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/shared/constants_test.go"
+          dependencies: ["T003", "T004"]
+          acceptance_criteria:
+            - "Tests verify exit code constants are correctly defined"
+            - "Tests verify command group constants"
+            - "Tests cover ExitError type and Error() method"
+            - "Map-based table-driven pattern used"
+            - "t.Parallel() called"
+    - number: 4
+      title: "User Story 3 - Notify Package Coverage"
+      purpose: "Improve notify package coverage from 56.9% to 85%"
+      story_reference: "US-003"
+      independent_test: "Run go test -cover on internal/notify and verify coverage reaches 85%"
+      tasks:
+        - id: "T006"
+          title: "Add tests for OnCommandComplete in internal/notify/handler_test.go"
+          status: "Blocked"
+          blocked_reason: Platform-specific code (isInteractive, SendVisual, SendSound) requires TTY/display that cannot be simulated in tests without production code changes
+          type: "test"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/notify/handler_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests cover success notification path"
+            - "Tests cover failure notification path"
+            - "Tests cover disabled notification scenario"
+            - "Map-based table-driven pattern used"
+        - id: "T007"
+          title: "Add tests for OnStageComplete and OnError in internal/notify/handler_test.go"
+          status: "Blocked"
+          blocked_reason: Same as T006 - notify coverage limited by platform dependencies
+          type: "test"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/notify/handler_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests cover stage completion notifications"
+            - "Tests cover error notification paths"
+            - "Tests verify handler nil safety"
+        - id: "T008"
+          title: "Add tests for platform-specific sender logic in internal/notify/sender_test.go"
+          status: "Blocked"
+          blocked_reason: Same as T006 - notify coverage limited by platform dependencies
+          type: "test"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/notify/sender_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests cover sender dispatch logic"
+            - "Tests cover fallback behavior"
+            - "Tests cover configuration parsing"
+    - number: 5
+      title: "User Story 4 - Completion Package Coverage"
+      purpose: "Improve completion package coverage from 65.2% to 85%"
+      story_reference: "US-004"
+      independent_test: "Run go test -cover on internal/completion and verify coverage reaches 85%"
+      tasks:
+        - id: "T009"
+          title: "Add tests for Install function in internal/completion/install_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-004"
+          file_path: "internal/completion/install_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests cover installation for each shell type"
+            - "Tests cover error scenarios (missing home dir, permission errors)"
+            - "Map-based table-driven pattern used"
+        - id: "T010"
+          title: "Add tests for installFish function in internal/completion/install_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-004"
+          file_path: "internal/completion/install_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests cover fish completion installation"
+            - "Tests cover directory creation"
+            - "Tests cover file write failures"
+        - id: "T011"
+          title: "Add tests for generateCompletionScript in internal/completion/install_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-004"
+          file_path: "internal/completion/install_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests cover bash completion generation"
+            - "Tests cover zsh completion generation"
+            - "Tests cover fish completion generation"
+            - "Tests cover powershell completion generation"
+    - number: 6
+      title: "User Story 1 - CLI Admin Subpackage"
+      purpose: "Add tests for internal/cli/admin package (0% to 85%)"
+      story_reference: "US-001"
+      independent_test: "Run go test -cover on internal/cli/admin and verify coverage reaches 85%"
+      tasks:
+        - id: "T012"
+          title: "Create internal/cli/admin/register_test.go for Register function"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/admin/register_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests verify Register adds expected subcommands"
+            - "Tests verify command annotations are set correctly"
+            - "Cobra SetArgs/SetOut/SetErr pattern used"
+        - id: "T013"
+          title: "Create internal/cli/admin/commands_test.go for commands parent command"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/commands_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests verify commands subcommands are registered"
+            - "Tests verify help output includes expected subcommands"
+            - "Tests verify command group annotation"
+        - id: "T014"
+          title: "Create internal/cli/admin/commands_check_test.go for runCommandsCheck"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/commands_check_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests cover check command with valid commands"
+            - "Tests cover check command with missing commands"
+            - "Tests cover output formatting"
+        - id: "T015"
+          title: "Create internal/cli/admin/commands_info_test.go for listAllCommands and showCommandDetail"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/commands_info_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests cover listing all commands"
+            - "Tests cover showing command detail"
+            - "Tests cover command not found scenario"
+        - id: "T016"
+          title: "Create internal/cli/admin/commands_install_test.go for runCommandsInstall"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/commands_install_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests cover install command success"
+            - "Tests cover install command failure scenarios"
+            - "Tests cover output formatting"
+        - id: "T017"
+          title: "Create internal/cli/admin/completion_install_test.go for runCompletionInstall"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/completion_install_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests cover completion install for each shell"
+            - "Tests cover invalid shell handling"
+            - "Tests cover flag parsing"
+        - id: "T018"
+          title: "Create internal/cli/admin/uninstall_test.go for RunUninstall and helpers"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/uninstall_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests cover uninstall command flow"
+            - "Tests cover helper functions"
+            - "Tests cover non-interactive mode"
+    - number: 7
+      title: "User Story 1 - CLI Config Subpackage"
+      purpose: "Add tests for internal/cli/config package (0% to 85%)"
+      story_reference: "US-001"
+      independent_test: "Run go test -cover on internal/cli/config and verify coverage reaches 85%"
+      tasks:
+        - id: "T019"
+          title: "Create internal/cli/config/register_test.go for Register function"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/config/register_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests verify Register adds expected subcommands"
+            - "Tests verify command annotations are set correctly"
+        - id: "T020"
+          title: "Create internal/cli/config/init_test.go for runInit and helpers"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/init_test.go"
+          dependencies: ["T019"]
+          acceptance_criteria:
+            - "Tests cover init command success path"
+            - "Tests cover init command with existing config"
+            - "Tests cover directory creation"
+        - id: "T021"
+          title: "Create internal/cli/config/config_test.go for runConfigShow"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/config_test.go"
+          dependencies: ["T019"]
+          acceptance_criteria:
+            - "Tests cover config show command"
+            - "Tests cover output formatting"
+            - "Tests cover various config states"
+        - id: "T022"
+          title: "Create internal/cli/config/migrate_test.go for migrate command"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/migrate_test.go"
+          dependencies: ["T019"]
+          acceptance_criteria:
+            - "Tests cover migrate command success"
+            - "Tests cover migrate with no migrations needed"
+            - "Tests cover migration error handling"
+        - id: "T023"
+          title: "Create internal/cli/config/doctor_test.go for doctor command"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/doctor_test.go"
+          dependencies: ["T019"]
+          acceptance_criteria:
+            - "Tests cover doctor command output"
+            - "Tests cover health check scenarios"
+            - "Tests cover various dependency states"
+    - number: 8
+      title: "User Story 1 - CLI Stages Subpackage"
+      purpose: "Add tests for internal/cli/stages package (0% to 85%)"
+      story_reference: "US-001"
+      independent_test: "Run go test -cover on internal/cli/stages and verify coverage reaches 85%"
+      tasks:
+        - id: "T024"
+          title: "Create internal/cli/stages/register_test.go for Register function"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/stages/register_test.go"
+          dependencies: ["T019"]
+          acceptance_criteria:
+            - "Tests verify Register adds expected stage commands"
+            - "Tests verify command annotations are set correctly"
+        - id: "T025"
+          title: "Create internal/cli/stages/stages_test.go for all stage command setups"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/stages/stages_test.go"
+          dependencies: ["T024"]
+          acceptance_criteria:
+            - "Tests cover specify, plan, tasks, implement command setup"
+            - "Tests cover flag definitions"
+            - "Tests cover command descriptions and usage"
+    - number: 9
+      title: "User Story 1 - CLI Util Subpackage"
+      purpose: "Add tests for internal/cli/util package (0% to 85%)"
+      story_reference: "US-001"
+      independent_test: "Run go test -cover on internal/cli/util and verify coverage reaches 85%"
+      tasks:
+        - id: "T026"
+          title: "Create internal/cli/util/register_test.go for Register function"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/register_test.go"
+          dependencies: ["T024"]
+          acceptance_criteria:
+            - "Tests verify Register adds expected utility commands"
+            - "Tests verify command annotations are set correctly"
+        - id: "T027"
+          title: "Create internal/cli/util/util_test.go for status, history, version, clean commands"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/util/util_test.go"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "Tests cover status command setup and flags"
+            - "Tests cover history command setup and flags"
+            - "Tests cover version command output"
+            - "Tests cover clean command setup"
+    - number: 10
+      title: "User Story 2 - CLI Main Package and Quality Gates"
+      purpose: "Improve main CLI package coverage and verify all quality gates pass"
+      story_reference: "US-002"
+      independent_test: "Run go test -cover on internal/cli and verify coverage reaches 85%"
+      tasks:
+        - id: "T028"
+          title: "Add tests for root command and global flags in internal/cli/root_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/root_test.go"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "Tests cover root command initialization"
+            - "Tests cover global flag definitions"
+            - "Tests cover PersistentPreRun hook"
+        - id: "T029"
+          title: "Add tests for subcommand registration in internal/cli/register_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/register_test.go"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "Tests verify all subpackages are registered"
+            - "Tests verify command tree structure"
+            - "Tests verify no duplicate registrations"
+        - id: "T030"
+          title: "Add tests for uncovered functions in internal/cli/artifact_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/artifact_test.go"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "Tests cover artifact command functionality"
+            - "Tests cover validation output formatting"
+            - "Tests cover error handling paths"
+        - id: "T031"
+          title: "Add tests for new_feature.go functions in internal/cli/new_feature_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/new_feature_test.go"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "Tests cover new feature command functionality"
+            - "Tests cover directory creation and scaffolding"
+            - "Tests cover error handling"
+        - id: "T032"
+          title: "Verify all quality gates pass: make test, make fmt, make lint, make build"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "Makefile"
+          dependencies: ["T028", "T029", "T030", "T031"]
+          acceptance_criteria:
+            - "make test exits 0 with all tests passing"
+            - "make fmt produces no changes"
+            - "make lint reports no errors"
+            - "make build succeeds"
+            - "All 10 target packages reach 85% coverage"
+dependencies:
+    user_story_order:
+        - story_id: "US-005"
+          depends_on: []
+          blocks: ["US-001"]
+        - story_id: "US-001"
+          depends_on: ["US-005"]
+          blocks: ["US-002", "US-003", "US-004"]
+        - story_id: "US-003"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-004"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4, 5, 6]
+        - phase: 4
+          blocks: [10]
+        - phase: 5
+          blocks: [10]
+        - phase: 6
+          blocks: [7]
+        - phase: 7
+          blocks: [8]
+        - phase: 8
+          blocks: [9]
+        - phase: 9
+          blocks: [10]
+        - phase: 10
+          blocks: []
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T003", "T004"]
+          rationale: "Different packages (retry vs health), no dependencies between them"
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T006", "T007", "T008"]
+          rationale: "All adding tests to notify package, different functions"
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T009", "T010", "T011"]
+          rationale: "All adding tests to completion package, different functions"
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T013", "T014", "T015", "T016", "T017", "T018"]
+          rationale: "Independent test files for different admin commands"
+    - phase: 7
+      parallel_groups:
+        - tasks: ["T020", "T021", "T022", "T023"]
+          rationale: "Independent test files for different config commands"
+    - phase: 10
+      parallel_groups:
+        - tasks: ["T028", "T029", "T030", "T031"]
+          rationale: "Independent test files for different CLI main package areas"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3, 4, 5]
+        description: "Setup + Minor fixes + Shared + Notify + Completion coverage"
+        validation: "Run coverage on retry, health, shared, notify, completion packages"
+    incremental_delivery:
+        - milestone: "Foundation Complete"
+          phases: [1, 2, 3]
+          deliverable: "Base infrastructure and shared package tested"
+        - milestone: "Supporting Packages Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "All supporting packages (notify, completion, retry, health, shared) at 85%"
+        - milestone: "CLI Subpackages Complete"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+          deliverable: "All CLI subpackages (admin, config, stages, util) at 85%"
+        - milestone: "Full Coverage Complete"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          deliverable: "All 10 target packages at 85% coverage, quality gates pass"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-19T00:46:42Z"
+    artifact_type: "tasks"

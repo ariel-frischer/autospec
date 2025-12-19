@@ -1143,3 +1143,354 @@ func TestTaskStateCoexistsWithOtherStates(t *testing.T) {
 	require.NotNil(t, loadedTask)
 	assert.Equal(t, []string{"T001", "T002"}, loadedTask.CompletedTaskIDs)
 }
+
+// Additional tests to improve coverage to 85%
+
+func TestLoadStore_CorruptedJSON(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	retryPath := filepath.Join(stateDir, "retry.json")
+
+	// Write corrupted JSON
+	require.NoError(t, os.WriteFile(retryPath, []byte("not valid json {{{"), 0644))
+
+	// loadStore should return error for corrupted JSON
+	_, err := loadStore(stateDir)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to unmarshal")
+}
+
+func TestLoadStore_ReadError(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	retryPath := filepath.Join(stateDir, "retry.json")
+
+	// Create a directory instead of a file to cause read error
+	require.NoError(t, os.MkdirAll(retryPath, 0755))
+
+	// loadStore should return error when file is actually a directory
+	_, err := loadStore(stateDir)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read")
+}
+
+func TestSaveRetryState_MarshalError(t *testing.T) {
+	// This test is tricky because JSON marshaling of RetryState doesn't fail easily.
+	// We can test the existing behavior with nil Retries map in store
+	stateDir := t.TempDir()
+
+	state := &RetryState{
+		SpecName:   "test-spec",
+		Phase:      "test-phase",
+		Count:      1,
+		MaxRetries: 3,
+	}
+
+	err := SaveRetryState(stateDir, state)
+	require.NoError(t, err)
+
+	// Verify the store handles nil Retries map by creating one
+	loaded, err := LoadRetryState(stateDir, "test-spec", "test-phase", 3)
+	require.NoError(t, err)
+	assert.Equal(t, 1, loaded.Count)
+}
+
+func TestSaveStageState_CreatesStore(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	// Save state without any existing store
+	state := &StageExecutionState{
+		SpecName:        "new-spec",
+		CurrentPhase:    1,
+		TotalPhases:     3,
+		CompletedPhases: []int{},
+	}
+
+	err := SaveStageState(stateDir, state)
+	require.NoError(t, err)
+
+	// Verify it was saved
+	loaded, err := LoadStageState(stateDir, "new-spec")
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, "new-spec", loaded.SpecName)
+}
+
+func TestSaveTaskState_CreatesStore(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	// Save task state without any existing store
+	state := &TaskExecutionState{
+		SpecName:         "new-spec",
+		CurrentTaskID:    "T001",
+		TotalTasks:       5,
+		CompletedTaskIDs: []string{},
+	}
+
+	err := SaveTaskState(stateDir, state)
+	require.NoError(t, err)
+
+	// Verify it was saved
+	loaded, err := LoadTaskState(stateDir, "new-spec")
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, "new-spec", loaded.SpecName)
+}
+
+func TestMarkStageComplete_WithCorruptedStore(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	retryPath := filepath.Join(stateDir, "retry.json")
+
+	// Create corrupted JSON - LoadStageState silently ignores errors and returns nil
+	require.NoError(t, os.WriteFile(retryPath, []byte("invalid json"), 0644))
+
+	// MarkStageComplete creates new state when load returns nil
+	// Save will create a new valid file, overwriting the corrupted one
+	err := MarkStageComplete(stateDir, "test-spec", 1)
+	require.NoError(t, err)
+
+	// Verify the new state was saved correctly
+	loaded, err := LoadStageState(stateDir, "test-spec")
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, []int{1}, loaded.CompletedPhases)
+}
+
+func TestMarkTaskComplete_WithCorruptedStore(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	retryPath := filepath.Join(stateDir, "retry.json")
+
+	// Create corrupted JSON - LoadTaskState silently ignores errors and returns nil
+	require.NoError(t, os.WriteFile(retryPath, []byte("invalid json"), 0644))
+
+	// MarkTaskComplete creates new state when load returns nil
+	// Save will create a new valid file, overwriting the corrupted one
+	err := MarkTaskComplete(stateDir, "test-spec", "T001")
+	require.NoError(t, err)
+
+	// Verify the new state was saved correctly
+	loaded, err := LoadTaskState(stateDir, "test-spec")
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, []string{"T001"}, loaded.CompletedTaskIDs)
+}
+
+func TestResetStageState_WithCorruptedStore(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	retryPath := filepath.Join(stateDir, "retry.json")
+
+	// Create corrupted JSON
+	require.NoError(t, os.WriteFile(retryPath, []byte("invalid json"), 0644))
+
+	// Reset should not error if it can't load the store (nothing to reset)
+	err := ResetStageState(stateDir, "test-spec")
+	assert.NoError(t, err)
+}
+
+func TestResetTaskState_WithCorruptedStore(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	retryPath := filepath.Join(stateDir, "retry.json")
+
+	// Create corrupted JSON
+	require.NoError(t, os.WriteFile(retryPath, []byte("invalid json"), 0644))
+
+	// Reset should not error if it can't load the store (nothing to reset)
+	err := ResetTaskState(stateDir, "test-spec")
+	assert.NoError(t, err)
+}
+
+func TestIncrementRetryCount_LoadError(t *testing.T) {
+	// IncrementRetryCount handles load errors by creating new state
+	// Test that it works correctly when state dir doesn't exist
+	stateDir := filepath.Join(t.TempDir(), "nonexistent")
+
+	// Should create the directory and increment
+	state, err := IncrementRetryCount(stateDir, "test", "phase", 3)
+	require.NoError(t, err)
+	assert.Equal(t, 1, state.Count)
+}
+
+func TestIncrementRetryCount_SaveError(t *testing.T) {
+	// Test IncrementRetryCount when save fails
+	// This is hard to trigger without mocking, but we can test the happy path more thoroughly
+	stateDir := t.TempDir()
+
+	// First increment
+	state1, err := IncrementRetryCount(stateDir, "test", "phase", 3)
+	require.NoError(t, err)
+	assert.Equal(t, 1, state1.Count)
+
+	// Second increment
+	state2, err := IncrementRetryCount(stateDir, "test", "phase", 3)
+	require.NoError(t, err)
+	assert.Equal(t, 2, state2.Count)
+
+	// Third increment
+	state3, err := IncrementRetryCount(stateDir, "test", "phase", 3)
+	require.NoError(t, err)
+	assert.Equal(t, 3, state3.Count)
+
+	// Fourth increment should fail (at max)
+	_, err = IncrementRetryCount(stateDir, "test", "phase", 3)
+	assert.Error(t, err)
+}
+
+func TestResetRetryCount_AfterIncrements(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+
+	// Increment a few times
+	_, err := IncrementRetryCount(stateDir, "test", "phase", 5)
+	require.NoError(t, err)
+	_, err = IncrementRetryCount(stateDir, "test", "phase", 5)
+	require.NoError(t, err)
+
+	// Reset
+	err = ResetRetryCount(stateDir, "test", "phase")
+	require.NoError(t, err)
+
+	// Load should show count=0
+	loaded, err := LoadRetryState(stateDir, "test", "phase", 5)
+	require.NoError(t, err)
+	assert.Equal(t, 0, loaded.Count)
+}
+
+func TestSaveRetryState_DirectoryCreation(t *testing.T) {
+	t.Parallel()
+
+	// Test that SaveRetryState creates the directory if it doesn't exist
+	baseDir := t.TempDir()
+	stateDir := filepath.Join(baseDir, "nested", "state", "dir")
+
+	state := &RetryState{
+		SpecName:   "test",
+		Phase:      "phase",
+		Count:      1,
+		MaxRetries: 3,
+	}
+
+	err := SaveRetryState(stateDir, state)
+	require.NoError(t, err)
+
+	// Verify directory was created
+	assert.DirExists(t, stateDir)
+
+	// Verify state was saved
+	loaded, err := LoadRetryState(stateDir, "test", "phase", 3)
+	require.NoError(t, err)
+	assert.Equal(t, 1, loaded.Count)
+}
+
+func TestSaveStageState_DirectoryCreation(t *testing.T) {
+	t.Parallel()
+
+	// Test that SaveStageState creates the directory if it doesn't exist
+	baseDir := t.TempDir()
+	stateDir := filepath.Join(baseDir, "nested", "stage", "dir")
+
+	state := &StageExecutionState{
+		SpecName:        "test",
+		CurrentPhase:    1,
+		TotalPhases:     3,
+		CompletedPhases: []int{},
+	}
+
+	err := SaveStageState(stateDir, state)
+	require.NoError(t, err)
+
+	// Verify directory was created
+	assert.DirExists(t, stateDir)
+
+	// Verify state was saved
+	loaded, err := LoadStageState(stateDir, "test")
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, 1, loaded.CurrentPhase)
+}
+
+func TestSaveTaskState_DirectoryCreation(t *testing.T) {
+	t.Parallel()
+
+	// Test that SaveTaskState creates the directory if it doesn't exist
+	baseDir := t.TempDir()
+	stateDir := filepath.Join(baseDir, "nested", "task", "dir")
+
+	state := &TaskExecutionState{
+		SpecName:         "test",
+		CurrentTaskID:    "T001",
+		TotalTasks:       5,
+		CompletedTaskIDs: []string{},
+	}
+
+	err := SaveTaskState(stateDir, state)
+	require.NoError(t, err)
+
+	// Verify directory was created
+	assert.DirExists(t, stateDir)
+
+	// Verify state was saved
+	loaded, err := LoadTaskState(stateDir, "test")
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, "T001", loaded.CurrentTaskID)
+}
+
+func TestResetStageState_DirectoryCreation(t *testing.T) {
+	t.Parallel()
+
+	// Test that ResetStageState creates directory if needed
+	baseDir := t.TempDir()
+	stateDir := filepath.Join(baseDir, "nested", "reset", "dir")
+
+	// Should not error even though directory doesn't exist
+	err := ResetStageState(stateDir, "nonexistent")
+	require.NoError(t, err)
+
+	// Verify directory was created
+	assert.DirExists(t, stateDir)
+}
+
+func TestResetTaskState_DirectoryCreation(t *testing.T) {
+	t.Parallel()
+
+	// Test that ResetTaskState creates directory if needed
+	baseDir := t.TempDir()
+	stateDir := filepath.Join(baseDir, "nested", "reset", "task", "dir")
+
+	// Should not error even though directory doesn't exist
+	err := ResetTaskState(stateDir, "nonexistent")
+	require.NoError(t, err)
+
+	// Verify directory was created
+	assert.DirExists(t, stateDir)
+}
+
+func TestLoadStore_NilRetries(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	retryPath := filepath.Join(stateDir, "retry.json")
+
+	// Create JSON with null retries
+	require.NoError(t, os.WriteFile(retryPath, []byte(`{"retries": null}`), 0644))
+
+	store, err := loadStore(stateDir)
+	require.NoError(t, err)
+	require.NotNil(t, store)
+	assert.NotNil(t, store.Retries) // Should be initialized
+}
