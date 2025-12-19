@@ -1,0 +1,384 @@
+feature:
+  branch: "062-agent-abstraction"
+  created: "2025-12-19"
+  status: "Draft"
+  input: "Create specification for new agent-cli tool architecture to handle multiple cli tools - see .dev/tasks/agent-architecture.md"
+
+user_stories:
+  - id: "US-001"
+    title: "Switch between AI coding agents"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "to easily switch between different CLI AI coding agents (Claude, Cline, Gemini, Codex, OpenCode, Goose)"
+    so_that: "I can use my preferred agent or try alternatives without modifying my workflow"
+    why_this_priority: "Core functionality - enables the multi-agent capability this feature provides"
+    independent_test: "Configure autospec to use each supported agent and verify it correctly invokes that agent's CLI"
+    acceptance_scenarios:
+      - given: "autospec is configured with agent_preset: claude"
+        when: "I run an autospec workflow command"
+        then: "autospec invokes the Claude CLI with the correct arguments"
+      - given: "autospec is configured with agent_preset: gemini"
+        when: "I run an autospec workflow command"
+        then: "autospec invokes the Gemini CLI with the correct arguments"
+
+  - id: "US-002"
+    title: "Use custom agent via template"
+    priority: "P1"
+    as_a: "power user"
+    i_want: "to define custom agent commands using a template with {{PROMPT}} placeholder"
+    so_that: "I can integrate agents not built into autospec or customize how existing agents are invoked"
+    why_this_priority: "Essential for extensibility and supporting new/niche agents"
+    independent_test: "Configure a custom agent template and verify the prompt is correctly substituted and executed"
+    acceptance_scenarios:
+      - given: "config contains custom_agent_cmd: 'aider --model sonnet --yes-always --message {{PROMPT}}'"
+        when: "I run an autospec workflow with a prompt"
+        then: "autospec expands the template with the prompt and executes the resulting command"
+      - given: "config contains a custom_agent_cmd without {{PROMPT}}"
+        when: "I try to load the config"
+        then: "autospec returns a validation error explaining the missing placeholder"
+
+  - id: "US-003"
+    title: "Discover available agents"
+    priority: "P2"
+    as_a: "user setting up autospec"
+    i_want: "to see which agents are installed and properly configured on my system"
+    so_that: "I know which agents I can use and can troubleshoot configuration issues"
+    why_this_priority: "Important for usability but not blocking core functionality"
+    independent_test: "Run doctor command and verify it reports status for all registered agents"
+    acceptance_scenarios:
+      - given: "Claude CLI is installed and ANTHROPIC_API_KEY is set"
+        when: "I run autospec doctor"
+        then: "I see claude listed as available with version information"
+      - given: "Gemini CLI is installed but GEMINI_API_KEY is not set"
+        when: "I run autospec doctor"
+        then: "I see gemini listed as installed but invalid, with the missing env var noted"
+
+  - id: "US-004"
+    title: "Override agent at runtime"
+    priority: "P2"
+    as_a: "developer experimenting with agents"
+    i_want: "to override the configured agent for a single command using a CLI flag"
+    so_that: "I can quickly test different agents without modifying my config file"
+    why_this_priority: "Convenience feature that improves developer experience"
+    independent_test: "Run autospec with --agent flag and verify it uses the specified agent instead of configured default"
+    acceptance_scenarios:
+      - given: "config has agent_preset: claude"
+        when: "I run autospec run --agent gemini"
+        then: "autospec uses Gemini for this execution only"
+      - given: "I specify an unknown agent name"
+        when: "I run autospec run --agent unknown"
+        then: "autospec exits with an error listing available agents"
+
+  - id: "US-005"
+    title: "Maintain backward compatibility"
+    priority: "P1"
+    as_a: "existing autospec user"
+    i_want: "my existing claude_cmd and custom_claude_cmd configurations to continue working"
+    so_that: "I don't need to update my configuration when upgrading autospec"
+    why_this_priority: "Critical for smooth migration path - existing users must not be broken"
+    independent_test: "Use deprecated config fields and verify autospec still functions correctly"
+    acceptance_scenarios:
+      - given: "config uses deprecated claude_cmd field"
+        when: "I run an autospec workflow"
+        then: "autospec uses the specified command and logs a deprecation warning"
+      - given: "config uses deprecated custom_claude_cmd field"
+        when: "I run an autospec workflow"
+        then: "autospec expands the template correctly and logs a deprecation warning"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST implement an Agent interface with methods: Name(), Version(), Validate(), BuildCommand(), Execute(), Capabilities()"
+      testable: true
+      acceptance_criteria: "All six agents implement the interface and pass interface conformance tests"
+
+    - id: "FR-002"
+      description: "MUST provide a BaseAgent struct with shared implementation for common agent operations"
+      testable: true
+      acceptance_criteria: "BaseAgent correctly builds commands and executes them for agents using standard patterns"
+
+    - id: "FR-003"
+      description: "MUST implement CustomAgent supporting {{PROMPT}} template expansion for arbitrary CLI tools"
+      testable: true
+      acceptance_criteria: "CustomAgent correctly substitutes prompts, handles shell quoting, and executes expanded commands"
+
+    - id: "FR-004"
+      description: "MUST provide a thread-safe Registry for agent registration and discovery"
+      testable: true
+      acceptance_criteria: "Registry supports concurrent Register/Get/List operations without race conditions"
+
+    - id: "FR-005"
+      description: "MUST implement concrete agents for Tier 1 tools: Claude Code, Cline, Gemini CLI, Codex CLI, OpenCode, Goose"
+      testable: true
+      acceptance_criteria: "Each agent is registered with correct capabilities, flags, and prompt delivery method"
+
+    - id: "FR-006"
+      description: "MUST support autonomous/headless execution mode via agent-specific flags or environment variables"
+      testable: true
+      acceptance_criteria: "BuildCommand includes autonomous flags when ExecOptions.Autonomous is true"
+
+    - id: "FR-007"
+      description: "MUST validate agent availability by checking CLI presence in PATH and required environment variables"
+      testable: true
+      acceptance_criteria: "Validate() returns appropriate error when CLI not found or required env vars missing"
+
+    - id: "FR-008"
+      description: "MUST integrate with existing Config struct, supporting agent_preset and custom_agent_cmd fields"
+      testable: true
+      acceptance_criteria: "Config.GetAgent() returns correct agent based on configuration priority"
+
+    - id: "FR-009"
+      description: "MUST maintain backward compatibility with deprecated claude_cmd, claude_args, and custom_claude_cmd config fields"
+      testable: true
+      acceptance_criteria: "Legacy config fields are recognized and correctly mapped to new agent system"
+
+    - id: "FR-010"
+      description: "MUST add --agent CLI flag to workflow commands for runtime agent selection"
+      testable: true
+      acceptance_criteria: "Flag overrides configured agent_preset for single command execution"
+
+    - id: "FR-011"
+      description: "MUST update doctor command to report status of all registered agents"
+      testable: true
+      acceptance_criteria: "Doctor output shows installed status, version, validity, and errors for each agent"
+
+    - id: "FR-012"
+      description: "MUST refactor workflow/executor to use Agent interface instead of hardcoded Claude invocation"
+      testable: true
+      acceptance_criteria: "Executor calls agent.Execute() instead of directly invoking Claude CLI"
+
+    - id: "FR-013"
+      description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
+      testable: true
+      acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "code_quality"
+      description: "All functions must be under 40 lines; extract helpers for complex logic"
+      measurable_target: "No function exceeds 40 lines excluding comments"
+
+    - id: "NFR-002"
+      category: "code_quality"
+      description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
+      measurable_target: "Zero bare 'return err' statements in new code"
+
+    - id: "NFR-003"
+      category: "code_quality"
+      description: "Prefer tests use map-based table-driven pattern with t.Parallel()"
+      measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
+
+    - id: "NFR-004"
+      category: "code_quality"
+      description: "Accept interfaces, return concrete types"
+      measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
+
+    - id: "NFR-005"
+      category: "performance"
+      description: "Agent validation must complete quickly to not delay command startup"
+      measurable_target: "Validate() completes in under 100ms"
+
+    - id: "NFR-006"
+      category: "reliability"
+      description: "Registry must be thread-safe for concurrent access"
+      measurable_target: "No race conditions detected by go test -race"
+
+    - id: "NFR-007"
+      category: "maintainability"
+      description: "Adding a new agent implementation should require minimal code changes"
+      measurable_target: "New agent can be added by implementing interface and calling Register()"
+
+    - id: "NFR-008"
+      category: "usability"
+      description: "Error messages must clearly indicate which agent failed and why"
+      measurable_target: "All agent errors include agent name and actionable guidance"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Users can switch between agents without workflow changes"
+      metric: "Number of configuration fields needed to switch agents"
+      target: "Single field change (agent_preset)"
+
+    - id: "SC-002"
+      description: "All six Tier 1 agents function correctly when installed"
+      metric: "Agent command construction test pass rate"
+      target: "100% pass rate for all agent BuildCommand tests"
+
+    - id: "SC-003"
+      description: "Custom agent templates work for arbitrary CLI tools"
+      metric: "Custom agent prompt substitution correctness"
+      target: "100% of test cases with special characters handled correctly"
+
+    - id: "SC-004"
+      description: "Doctor command provides useful agent diagnostics"
+      metric: "Information completeness per agent"
+      target: "Shows installed status, version, validity, and any errors"
+
+    - id: "SC-005"
+      description: "Existing configurations continue to work after upgrade"
+      metric: "Backward compatibility test pass rate"
+      target: "100% of legacy config patterns recognized and functional"
+
+key_entities:
+  - name: "Agent"
+    description: "Interface representing a CLI AI coding agent with execution and discovery capabilities"
+    attributes:
+      - "name: unique identifier for the agent"
+      - "version: installed version string"
+      - "capabilities: self-describing feature flags"
+      - "validate: check installation and configuration"
+      - "execute: run prompt with options"
+
+  - name: "Capabilities"
+    description: "Self-describing feature flags for agent discovery and automation compatibility"
+    attributes:
+      - "automatable: can run fully headless"
+      - "prompt_delivery: how to pass prompts (arg, positional, subcommand)"
+      - "autonomous_flag: CLI flag to skip confirmations"
+      - "required_env: environment variables needed"
+
+  - name: "Registry"
+    description: "Thread-safe container for registered agents with discovery methods"
+    attributes:
+      - "agents: map of registered agents by name"
+      - "available: agents that pass validation"
+      - "automatable: agents supporting headless execution"
+
+  - name: "ExecOptions"
+    description: "Configuration for a single agent execution"
+    attributes:
+      - "autonomous: use headless mode"
+      - "timeout: maximum execution duration"
+      - "work_dir: working directory"
+      - "extra_args: additional CLI arguments"
+
+  - name: "Result"
+    description: "Outcome of an agent execution"
+    attributes:
+      - "exit_code: process exit status"
+      - "duration: execution time"
+      - "stdout/stderr: captured output"
+      - "parsed: structured output if available"
+
+folder_organization:
+  note: "internal/agent/ already exists for AGENTS.md file management - use internal/executor/ for CLI agent abstraction"
+  packages:
+    - path: "internal/executor/"
+      description: "New package for CLI agent abstraction and execution"
+      files:
+        - name: "agent.go"
+          purpose: "Agent interface definition and BaseAgent struct"
+        - name: "registry.go"
+          purpose: "Thread-safe Registry for agent registration and discovery"
+        - name: "capabilities.go"
+          purpose: "Capabilities struct and PromptDelivery enum"
+        - name: "options.go"
+          purpose: "ExecOptions and Result types"
+        - name: "custom.go"
+          purpose: "CustomAgent implementation with {{PROMPT}} template expansion"
+        - name: "claude.go"
+          purpose: "Claude Code agent implementation"
+        - name: "cline.go"
+          purpose: "Cline agent implementation"
+        - name: "gemini.go"
+          purpose: "Gemini CLI agent implementation"
+        - name: "codex.go"
+          purpose: "Codex CLI agent implementation"
+        - name: "opencode.go"
+          purpose: "OpenCode agent implementation"
+        - name: "goose.go"
+          purpose: "Goose agent implementation"
+        - name: "init.go"
+          purpose: "Package init() to register all built-in agents"
+
+    - path: "internal/config/"
+      description: "Extend existing config package"
+      modifications:
+        - "Add agent_preset field (string)"
+        - "Add custom_agent_cmd field (string)"
+        - "Deprecate claude_cmd, claude_args, custom_claude_cmd with migration"
+        - "Add GetAgent() method returning executor.Agent"
+
+    - path: "internal/workflow/"
+      description: "Refactor existing workflow package"
+      modifications:
+        - "Update claude.go to use executor.Agent interface"
+        - "Replace hardcoded Claude invocation with agent.Execute()"
+        - "Pass agent via dependency injection or config"
+
+    - path: "internal/cli/stages/"
+      description: "Update CLI commands"
+      modifications:
+        - "Add --agent flag to implement.go and other workflow commands"
+        - "Flag overrides config agent_preset for single execution"
+
+    - path: "internal/health/"
+      description: "Extend doctor command"
+      modifications:
+        - "Add agent status reporting using executor.Registry"
+        - "Show installed status, version, validity, errors for each agent"
+
+edge_cases:
+  - scenario: "Agent CLI exists but required API key is missing"
+    expected_behavior: "Validate() returns clear error naming the missing environment variable"
+
+  - scenario: "Custom agent template contains nested quotes in prompt"
+    expected_behavior: "Shell quoting correctly escapes the prompt to prevent injection"
+
+  - scenario: "Agent command times out during execution"
+    expected_behavior: "Context cancellation kills the process and Result includes partial output"
+
+  - scenario: "Two agents have the same name registered"
+    expected_behavior: "Second registration overwrites first (last-write-wins)"
+
+  - scenario: "Agent version command fails but agent is otherwise functional"
+    expected_behavior: "Version() returns 'unknown' error, Validate() may still pass"
+
+  - scenario: "Custom agent template is missing {{PROMPT}} placeholder"
+    expected_behavior: "NewCustomAgent returns validation error before any execution"
+
+  - scenario: "Agent command not found in PATH"
+    expected_behavior: "Validate() returns error with suggestion to install or check PATH"
+
+  - scenario: "Concurrent reads and writes to Registry"
+    expected_behavior: "No panics or data races; operations are serialized via mutex"
+
+assumptions:
+  - "All supported agents have stable CLI interfaces that won't change frequently"
+  - "Agents support passing prompts via command-line (not just interactive mode)"
+  - "Autonomous modes are safe to use in automated pipelines without data loss"
+  - "Agent version commands return quickly (under 1 second)"
+  - "Users have appropriate API keys and permissions for their chosen agents"
+  - "The shlex package correctly parses shell command strings on all platforms"
+
+constraints:
+  - "Must work on Linux, macOS, and Windows (where agents support those platforms)"
+  - "Cannot modify how external agent CLIs work; must adapt to their interfaces"
+  - "Must maintain backward compatibility with existing autospec configurations"
+  - "Cannot require changes to existing command template files in internal/commands/"
+  - "Registry must be initialized before any workflow commands execute"
+
+out_of_scope:
+  - "Implementing output parsing for individual agents' structured formats"
+  - "Supporting agents that require interactive/TTY input"
+  - "Automatic installation of agent CLIs"
+  - "Managing API keys or credentials on behalf of users"
+  - "Streaming output parsing during execution (Phase 2)"
+  - "Performance benchmarking between different agents"
+  - "Agent-specific error recovery strategies"
+  - "Multi-agent orchestration (running multiple agents on same task)"
+
+references:
+  - id: "REF-001"
+    title: "CLI Agent Integrations Research"
+    path: ".dev/tasks/cli-agent-integrations.md"
+    description: "Authoritative reference for CLI arguments, flags, and invocation patterns for all supported agents. Contains exact command syntax, autonomous mode flags, environment variables, and config examples for Tier 1 agents (Claude Code, Cline, Gemini CLI, Codex CLI, OpenCode, Goose)."
+    usage: "Implementation MUST use the CLI patterns documented in this file for each agent's BuildCommand() method"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-19T20:16:26Z"
+  artifact_type: "spec"
