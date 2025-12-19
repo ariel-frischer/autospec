@@ -47,3 +47,20 @@ dc297cec -home-ari-repos-autospec 2025-12-17 specify
 33bd4964 -home-ari-repos-autospec 2025-12-17 plan
 354122fa -home-ari-repos-autospec 2025-12-17 specify
 3a4e78f0 -home-ari-repos-autospec 2025-12-17 implement
+
+# December 18, 2025 session review (main worktree)
+55fb7dbc -home-ari-repos-autospec 2025-12-18 implement
+2d7f06fc -home-ari-repos-autospec 2025-12-18 specify
+5251088f -home-ari-repos-autospec 2025-12-18 specify
+52b0fb5a -home-ari-repos-autospec 2025-12-18 specify
+94491f86 -home-ari-repos-autospec 2025-12-18 specify
+a9ea3775 -home-ari-repos-autospec 2025-12-18 autospec
+c2881232 -home-ari-repos-autospec 2025-12-18 autospec
+c3549092 -home-ari-repos-autospec 2025-12-18 specify
+e677a8fe -home-ari-repos-autospec 2025-12-18 tasks
+
+# December 18, 2025 session review (architecture-1 worktree)
+3b8ef511 -home-ari-repos-autospec-architecture-1 2025-12-18 specify
+6013a842 -home-ari-repos-autospec-architecture-1 2025-12-18 specify
+82713cc0 -home-ari-repos-autospec-architecture-1 2025-12-18 specify
+ffa976ed -home-ari-repos-autospec-architecture-1 2025-12-18 plan
