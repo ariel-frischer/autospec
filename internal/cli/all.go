@@ -107,6 +107,6 @@ func init() {
 	allCmd.GroupID = GroupWorkflows
 	rootCmd.AddCommand(allCmd)
 
-	allCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (0 = use config)")
+	allCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (overrides config when set)")
 	allCmd.Flags().Bool("resume", false, "Resume implementation from where it left off")
 }

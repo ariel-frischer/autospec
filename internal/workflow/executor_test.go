@@ -1376,3 +1376,288 @@ func TestStartProgressDisplay_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+// TestExecuteStage_WithMockClaudeRunner tests ExecuteStage using the mock ClaudeRunner interface.
+// This verifies that the Executor properly delegates to the ClaudeRunner interface,
+// enabling unit testing without actual Claude CLI invocations.
+func TestExecuteStage_WithMockClaudeRunner(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		mockErr       error
+		validateErr   error
+		wantSuccess   bool
+		wantErr       bool
+		wantErrMsg    string
+		wantCallCount int
+	}{
+		"success case - mock returns nil, stage completes": {
+			mockErr:       nil,
+			validateErr:   nil,
+			wantSuccess:   true,
+			wantErr:       false,
+			wantCallCount: 1,
+		},
+		"failure case - mock returns error, error propagated": {
+			mockErr:       errors.New("claude execution failed"),
+			validateErr:   nil,
+			wantSuccess:   false,
+			wantErr:       true,
+			wantErrMsg:    "retry limit exhausted", // MaxRetries=0 means immediate exhaustion
+			wantCallCount: 1,
+		},
+		"validation failure - mock succeeds but validation fails": {
+			mockErr:       nil,
+			validateErr:   errors.New("schema validation failed"),
+			wantSuccess:   false,
+			wantErr:       true,
+			wantErrMsg:    "validation failed",
+			wantCallCount: 1, // MaxRetries=0, so only 1 call
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+			specsDir := t.TempDir()
+
+			// Create mock that implements ClaudeRunner interface
+			mock := &mockClaudeExecutor{
+				executeErr: tc.mockErr,
+			}
+
+			executor := &Executor{
+				Claude:     mock, // Using interface injection
+				StateDir:   stateDir,
+				SpecsDir:   specsDir,
+				MaxRetries: 0, // No retries for simple tests
+			}
+
+			validateFunc := func(dir string) error {
+				return tc.validateErr
+			}
+
+			result, err := executor.ExecuteStage("001-test", StageSpecify, "/test.command", validateFunc)
+
+			// Verify error expectation
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErrMsg)
+			} else {
+				require.NoError(t, err)
+			}
+
+			// Verify result
+			assert.Equal(t, tc.wantSuccess, result.Success)
+
+			// Verify mock was called correct number of times
+			assert.Len(t, mock.executeCalls, tc.wantCallCount,
+				"mock should be called %d time(s)", tc.wantCallCount)
+
+			// Verify the command was passed to mock
+			if tc.wantCallCount > 0 {
+				assert.Contains(t, mock.executeCalls[0], "/test.command")
+			}
+		})
+	}
+}
+
+// TestExecuteStage_MockRetryBehavior tests retry behavior with mock ClaudeRunner.
+// Verifies that retries work correctly when validation fails and then succeeds.
+func TestExecuteStage_MockRetryBehavior(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		failUntilAttempt int  // Validation fails until this attempt (1-based)
+		maxRetries       int  // Max retries allowed
+		wantSuccess      bool // Expected final result
+		wantCallCount    int  // Expected number of Execute calls
+	}{
+		"retry succeeds on second attempt": {
+			failUntilAttempt: 1, // Fail first, succeed second
+			maxRetries:       2,
+			wantSuccess:      true,
+			wantCallCount:    2,
+		},
+		"retry succeeds on third attempt": {
+			failUntilAttempt: 2, // Fail first two, succeed third
+			maxRetries:       3,
+			wantSuccess:      true,
+			wantCallCount:    3,
+		},
+		"all retries exhausted": {
+			failUntilAttempt: 10, // Always fail
+			maxRetries:       2,
+			wantSuccess:      false,
+			wantCallCount:    3, // 1 initial + 2 retries
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+			specsDir := t.TempDir()
+
+			// Create mock
+			mock := &mockClaudeExecutor{
+				executeErr: nil, // Execute always succeeds
+			}
+
+			executor := &Executor{
+				Claude:     mock,
+				StateDir:   stateDir,
+				SpecsDir:   specsDir,
+				MaxRetries: tc.maxRetries,
+			}
+
+			// Track validation attempts
+			validationAttempt := 0
+			validateFunc := func(dir string) error {
+				validationAttempt++
+				if validationAttempt <= tc.failUntilAttempt {
+					return errors.New("schema validation failed:\n- missing field")
+				}
+				return nil
+			}
+
+			result, _ := executor.ExecuteStage("001-test", StageSpecify, "/test.command", validateFunc)
+
+			// Verify success state
+			assert.Equal(t, tc.wantSuccess, result.Success)
+
+			// Verify Execute was called correct number of times
+			assert.Len(t, mock.executeCalls, tc.wantCallCount,
+				"mock should be called %d time(s)", tc.wantCallCount)
+		})
+	}
+}
+
+// TestExecuteWithRetry_MockClaudeRunner tests ExecuteWithRetry with mock ClaudeRunner.
+// This verifies simplified retry logic without stage tracking.
+func TestExecuteWithRetry_MockClaudeRunner(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		failUntilCall int  // Execute fails until this call (1-based)
+		maxAttempts   int  // Max attempts allowed
+		wantErr       bool // Expected error
+		wantCallCount int  // Expected Execute calls
+	}{
+		"succeeds first try": {
+			failUntilCall: 0, // Never fail
+			maxAttempts:   3,
+			wantErr:       false,
+			wantCallCount: 1,
+		},
+		"succeeds after one failure": {
+			failUntilCall: 1, // Fail first, succeed second
+			maxAttempts:   3,
+			wantErr:       false,
+			wantCallCount: 2,
+		},
+		"all attempts fail": {
+			failUntilCall: 10, // Always fail
+			maxAttempts:   2,
+			wantErr:       true,
+			wantCallCount: 2,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			callCount := 0
+			mock := &mockClaudeExecutor{}
+
+			// Override Execute behavior to track calls and conditionally fail
+			executor := &Executor{
+				Claude: &conditionalMockRunner{
+					failUntilCall: tc.failUntilCall,
+					callCount:     &callCount,
+				},
+			}
+
+			err := executor.ExecuteWithRetry("/test.command", tc.maxAttempts)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "all")
+			} else {
+				require.NoError(t, err)
+			}
+
+			assert.Equal(t, tc.wantCallCount, callCount,
+				"Execute should be called %d time(s)", tc.wantCallCount)
+
+			// Verify mock captures the pattern (not used here since we use conditionalMockRunner)
+			_ = mock
+		})
+	}
+}
+
+// conditionalMockRunner is a ClaudeRunner that fails conditionally based on call count.
+type conditionalMockRunner struct {
+	failUntilCall int
+	callCount     *int
+}
+
+func (c *conditionalMockRunner) Execute(prompt string) error {
+	*c.callCount++
+	if *c.callCount <= c.failUntilCall {
+		return errors.New("mock execution error")
+	}
+	return nil
+}
+
+func (c *conditionalMockRunner) FormatCommand(prompt string) string {
+	return "mock-claude " + prompt
+}
+
+// TestExecutor_ClaudeRunnerInterface verifies that Executor.Claude accepts ClaudeRunner interface.
+// This is a compile-time check that the interface is correctly typed.
+func TestExecutor_ClaudeRunnerInterface(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		runner      ClaudeRunner
+		description string
+	}{
+		"accepts mockClaudeExecutor": {
+			runner:      &mockClaudeExecutor{},
+			description: "mock implementation should satisfy ClaudeRunner",
+		},
+		"accepts conditionalMockRunner": {
+			runner:      &conditionalMockRunner{callCount: new(int)},
+			description: "conditional mock should satisfy ClaudeRunner",
+		},
+		"accepts real ClaudeExecutor": {
+			runner:      &ClaudeExecutor{ClaudeCmd: "echo"},
+			description: "real implementation should satisfy ClaudeRunner",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create executor with the runner - this verifies interface compatibility
+			executor := &Executor{
+				Claude:   tc.runner,
+				StateDir: t.TempDir(),
+				SpecsDir: t.TempDir(),
+			}
+
+			// Verify the runner is accessible
+			assert.NotNil(t, executor.Claude, tc.description)
+
+			// Verify FormatCommand works through the interface
+			cmd := executor.Claude.FormatCommand("test")
+			assert.NotEmpty(t, cmd, "FormatCommand should return non-empty string")
+		})
+	}
+}

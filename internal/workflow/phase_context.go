@@ -177,46 +177,64 @@ func BuildPhaseContext(specDir string, phaseNumber int, totalPhases int) (*Phase
 		SpecDir:     specDir,
 	}
 
-	// Read spec.yaml
+	if err := loadSpecIntoContext(specDir, ctx); err != nil {
+		return nil, err
+	}
+	if err := loadPlanIntoContext(specDir, ctx); err != nil {
+		return nil, err
+	}
+	if err := loadPhaseTasksIntoContext(specDir, phaseNumber, ctx); err != nil {
+		return nil, err
+	}
+
+	return ctx, nil
+}
+
+// loadSpecIntoContext reads spec.yaml and populates ctx.Spec
+func loadSpecIntoContext(specDir string, ctx *PhaseContext) error {
 	specPath := filepath.Join(specDir, "spec.yaml")
 	specData, err := os.ReadFile(specPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read spec.yaml: %w", err)
+		return fmt.Errorf("failed to read spec.yaml: %w", err)
 	}
 	if err := yaml.Unmarshal(specData, &ctx.Spec); err != nil {
-		return nil, fmt.Errorf("failed to parse spec.yaml: %w", err)
+		return fmt.Errorf("failed to parse spec.yaml: %w", err)
 	}
+	return nil
+}
 
-	// Read plan.yaml
+// loadPlanIntoContext reads plan.yaml and populates ctx.Plan
+func loadPlanIntoContext(specDir string, ctx *PhaseContext) error {
 	planPath := filepath.Join(specDir, "plan.yaml")
 	planData, err := os.ReadFile(planPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read plan.yaml: %w", err)
+		return fmt.Errorf("failed to read plan.yaml: %w", err)
 	}
 	if err := yaml.Unmarshal(planData, &ctx.Plan); err != nil {
-		return nil, fmt.Errorf("failed to parse plan.yaml: %w", err)
+		return fmt.Errorf("failed to parse plan.yaml: %w", err)
 	}
+	return nil
+}
 
-	// Read tasks.yaml and filter for phase
+// loadPhaseTasksIntoContext reads tasks.yaml and extracts tasks for the specified phase
+func loadPhaseTasksIntoContext(specDir string, phaseNumber int, ctx *PhaseContext) error {
 	tasksPath := filepath.Join(specDir, "tasks.yaml")
 	tasksData, err := os.ReadFile(tasksPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read tasks.yaml: %w", err)
+		return fmt.Errorf("failed to read tasks.yaml: %w", err)
 	}
 
 	var tasksFile map[string]interface{}
 	if err := yaml.Unmarshal(tasksData, &tasksFile); err != nil {
-		return nil, fmt.Errorf("failed to parse tasks.yaml: %w", err)
+		return fmt.Errorf("failed to parse tasks.yaml: %w", err)
 	}
 
-	// Extract tasks for the specified phase
 	phaseTasks, err := extractTasksForPhase(tasksFile, phaseNumber)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract tasks for phase %d: %w", phaseNumber, err)
+		return fmt.Errorf("failed to extract tasks for phase %d: %w", phaseNumber, err)
 	}
 	ctx.Tasks = phaseTasks
-
-	return ctx, nil
+	return nil
 }
 
 // extractTasksForPhase extracts tasks for a specific phase from parsed tasks.yaml

@@ -87,4 +87,7 @@ This command has no prerequisites - it can be run at any time.`,
 func init() {
 	constitutionCmd.GroupID = GroupCoreStages
 	rootCmd.AddCommand(constitutionCmd)
+
+	// Command-specific flags
+	constitutionCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (overrides config when set)")
 }

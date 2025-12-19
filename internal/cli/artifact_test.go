@@ -22,12 +22,8 @@ func TestArtifactCommand_InvalidType(t *testing.T) {
 		t.Error("expected error for invalid artifact type")
 	}
 
-	if exitErr, ok := err.(*exitError); ok {
-		if exitErr.code != ExitInvalidArguments {
-			t.Errorf("exit code = %d, want %d", exitErr.code, ExitInvalidArguments)
-		}
-	} else {
-		t.Error("expected exitError type")
+	if code := ExitCode(err); code != ExitInvalidArguments {
+		t.Errorf("exit code = %d, want %d", code, ExitInvalidArguments)
 	}
 
 	if !strings.Contains(stderr.String(), "invalid artifact type") {
@@ -43,10 +39,8 @@ func TestArtifactCommand_MissingFile(t *testing.T) {
 		t.Error("expected error for missing file")
 	}
 
-	if exitErr, ok := err.(*exitError); ok {
-		if exitErr.code != ExitInvalidArguments {
-			t.Errorf("exit code = %d, want %d", exitErr.code, ExitInvalidArguments)
-		}
+	if code := ExitCode(err); code != ExitInvalidArguments {
+		t.Errorf("exit code = %d, want %d", code, ExitInvalidArguments)
 	}
 
 	if !strings.Contains(stderr.String(), "not found") {
@@ -82,10 +76,8 @@ func TestArtifactCommand_InvalidSpec(t *testing.T) {
 		t.Error("expected error for invalid spec")
 	}
 
-	if exitErr, ok := err.(*exitError); ok {
-		if exitErr.code != ExitValidationFailed {
-			t.Errorf("exit code = %d, want %d", exitErr.code, ExitValidationFailed)
-		}
+	if code := ExitCode(err); code != ExitValidationFailed {
+		t.Errorf("exit code = %d, want %d", code, ExitValidationFailed)
 	}
 
 	if !strings.Contains(stderr.String(), "has") && !strings.Contains(stderr.String(), "error") {
@@ -270,8 +262,8 @@ func TestExitCode(t *testing.T) {
 		expected int
 	}{
 		"nil error":     {err: nil, expected: ExitSuccess},
-		"exit error 1":  {err: &exitError{code: 1}, expected: 1},
-		"exit error 3":  {err: &exitError{code: 3}, expected: 3},
+		"exit error 1":  {err: NewExitError(1), expected: 1},
+		"exit error 3":  {err: NewExitError(3), expected: 3},
 		"generic error": {err: fmt.Errorf("some error"), expected: ExitValidationFailed},
 	}
 
@@ -426,10 +418,8 @@ func TestArtifactCommand_UnrecognizedFilename(t *testing.T) {
 		t.Error("expected error for unrecognized filename")
 	}
 
-	if exitErr, ok := err.(*exitError); ok {
-		if exitErr.code != ExitInvalidArguments {
-			t.Errorf("exit code = %d, want %d", exitErr.code, ExitInvalidArguments)
-		}
+	if code := ExitCode(err); code != ExitInvalidArguments {
+		t.Errorf("exit code = %d, want %d", code, ExitInvalidArguments)
 	}
 
 	stderrStr := stderr.String()

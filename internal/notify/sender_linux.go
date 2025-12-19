@@ -32,6 +32,8 @@ func newWindowsSender() Sender {
 }
 
 // hasDisplay checks if a display environment is available
+//
+// TEST COVERAGE BLOCKED: Checks env vars set by display server; not available in CI.
 func hasDisplay() bool {
 	// Check for X11 display
 	if os.Getenv("DISPLAY") != "" {
@@ -45,6 +47,8 @@ func hasDisplay() bool {
 }
 
 // SendVisual sends a visual notification using notify-send
+//
+// TEST COVERAGE BLOCKED: Executes notify-send; requires DISPLAY/WAYLAND_DISPLAY env.
 func (s *linuxSender) SendVisual(n Notification) error {
 	if !s.visualAvailable {
 		return nil // graceful degradation
@@ -61,6 +65,8 @@ func (s *linuxSender) SendVisual(n Notification) error {
 }
 
 // SendSound plays a sound using paplay
+//
+// TEST COVERAGE BLOCKED: Executes paplay; requires audio subsystem.
 func (s *linuxSender) SendSound(soundFile string) error {
 	if !s.soundAvailable {
 		return nil // graceful degradation

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ariel-frischer/autospec/internal/cli/util"
 	"github.com/ariel-frischer/autospec/internal/git"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/spf13/cobra"
@@ -96,7 +97,7 @@ func runPrereqs(cmd *cobra.Command, args []string) error {
 
 	// If paths-only mode, output paths and exit
 	if prereqsPathsOnly {
-		autospecVersion := fmt.Sprintf("autospec %s", Version)
+		autospecVersion := fmt.Sprintf("autospec %s", util.Version)
 		createdDate := time.Now().UTC().Format(time.RFC3339)
 
 		if prereqsJSON {
@@ -175,7 +176,7 @@ func runPrereqs(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get version and timestamp
-	autospecVersion := fmt.Sprintf("autospec %s", Version)
+	autospecVersion := fmt.Sprintf("autospec %s", util.Version)
 	createdDate := time.Now().UTC().Format(time.RFC3339)
 
 	// Output results

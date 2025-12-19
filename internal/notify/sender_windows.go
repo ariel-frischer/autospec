@@ -32,6 +32,8 @@ func newLinuxSender() Sender {
 }
 
 // SendVisual sends a toast notification using PowerShell
+//
+// TEST COVERAGE BLOCKED: Executes PowerShell; requires Windows.
 func (s *windowsSender) SendVisual(n Notification) error {
 	if !s.visualAvailable {
 		return nil // graceful degradation
@@ -54,6 +56,8 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
 }
 
 // SendSound plays a sound using PowerShell
+//
+// TEST COVERAGE BLOCKED: Executes PowerShell; requires Windows audio.
 func (s *windowsSender) SendSound(soundFile string) error {
 	if !s.soundAvailable {
 		return nil // graceful degradation

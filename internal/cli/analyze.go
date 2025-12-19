@@ -49,7 +49,6 @@ Prerequisites:
 		// Get flags
 		configPath, _ := cmd.Flags().GetString("config")
 		skipPreflight, _ := cmd.Flags().GetBool("skip-preflight")
-		maxRetries, _ := cmd.Flags().GetInt("max-retries")
 
 		// Load configuration
 		cfg, err := config.Load(configPath)
@@ -62,11 +61,6 @@ Prerequisites:
 		// Override skip-preflight from flag if set
 		if cmd.Flags().Changed("skip-preflight") {
 			cfg.SkipPreflight = skipPreflight
-		}
-
-		// Override max-retries from flag if set
-		if cmd.Flags().Changed("max-retries") {
-			cfg.MaxRetries = maxRetries
 		}
 
 		// Check if constitution exists (required for analyze)
@@ -117,4 +111,5 @@ Prerequisites:
 func init() {
 	analyzeCmd.GroupID = GroupOptionalStages
 	rootCmd.AddCommand(analyzeCmd)
+	// Note: No --max-retries flag - analyze doesn't produce artifacts that need validation/retry
 }

@@ -1,0 +1,368 @@
+tasks:
+    branch: "054-split-workflow-orchestrator"
+    created: "2025-12-18"
+    spec_path: "specs/054-split-workflow-orchestrator/spec.yaml"
+    plan_path: "specs/054-split-workflow-orchestrator/plan.yaml"
+summary:
+    total_tasks: 21
+    total_phases: 6
+    parallel_opportunities: 6
+    estimated_complexity: "high"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create new files and define interface contracts"
+      tasks:
+        - id: "T001"
+          title: "Create interfaces.go with executor interface definitions"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/interfaces.go"
+          dependencies: []
+          acceptance_criteria:
+            - "StageExecutorInterface defined with ExecuteSpecify, ExecutePlan, ExecuteTasks methods"
+            - "PhaseExecutorInterface defined with ExecutePhaseLoop, ExecuteSinglePhase methods"
+            - "TaskExecutorInterface defined with ExecuteTaskLoop, ExecuteSingleTask methods"
+            - "File passes make fmt and make lint"
+    - number: 2
+      title: "Foundational"
+      purpose: "Update WorkflowOrchestrator struct to accept injected interfaces"
+      tasks:
+        - id: "T002"
+          title: "Update WorkflowOrchestrator struct with interface fields"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "WorkflowOrchestrator has stageExecutor, phaseExecutor, taskExecutor interface fields"
+            - "Existing public method signatures remain unchanged"
+            - "All existing tests pass"
+        - id: "T003"
+          title: "Create factory function NewWorkflowOrchestratorWithExecutors"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "NewWorkflowOrchestratorWithExecutors accepts executor interfaces"
+            - "NewWorkflowOrchestrator uses default implementations for backward compatibility"
+            - "Both constructors work correctly"
+    - number: 3
+      title: "User Story 1 - Maintainable Workflow Code (StageExecutor)"
+      purpose: "Extract stage execution logic into focused StageExecutor component"
+      story_reference: "US-001"
+      independent_test: "StageExecutor can be instantiated and tested in isolation"
+      tasks:
+        - id: "T004"
+          title: "Create stage_executor.go with StageExecutor struct"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/stage_executor.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "StageExecutor struct created with executor, specsDir, debug fields"
+            - "Constructor NewStageExecutor defined"
+            - "File is under 400 LOC"
+        - id: "T005"
+          title: "Move executeSpecify to StageExecutor"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/stage_executor.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "executeSpecify method moved to StageExecutor"
+            - "ExecuteSpecify public method delegates to StageExecutor"
+            - "Existing tests pass"
+        - id: "T006"
+          title: "Move executePlan to StageExecutor"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/stage_executor.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "executePlan method moved to StageExecutor"
+            - "ExecutePlan public method delegates to StageExecutor"
+            - "Existing tests pass"
+        - id: "T007"
+          title: "Move executeTasks to StageExecutor"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/stage_executor.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "executeTasks method moved to StageExecutor"
+            - "ExecuteTasks public method delegates to StageExecutor"
+            - "Existing tests pass"
+        - id: "T008"
+          title: "Create stage_executor_test.go with unit tests"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/stage_executor_test.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "Map-based table-driven tests for StageExecutor methods"
+            - "Tests use t.Parallel()"
+            - "Mock dependencies used for isolated testing"
+    - number: 4
+      title: "User Story 1 - Maintainable Workflow Code (PhaseExecutor)"
+      purpose: "Extract phase-based implementation logic into focused PhaseExecutor component"
+      story_reference: "US-001"
+      independent_test: "PhaseExecutor can be instantiated and tested in isolation"
+      tasks:
+        - id: "T009"
+          title: "Create phase_executor.go with PhaseExecutor struct"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/workflow/phase_executor.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "PhaseExecutor struct created with executor, specsDir, debug fields"
+            - "Constructor NewPhaseExecutor defined"
+            - "File is under 400 LOC"
+        - id: "T010"
+          title: "Move executePhaseLoop to PhaseExecutor"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/phase_executor.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "executePhaseLoop method moved to PhaseExecutor"
+            - "ExecuteImplementWithPhases delegates to PhaseExecutor"
+            - "Existing tests pass"
+        - id: "T011"
+          title: "Move phase-related helper functions to PhaseExecutor"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/phase_executor.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "executeAndVerifyPhase, executeSinglePhaseSession moved"
+            - "getTaskIDsForPhase, getUpdatedPhaseInfo moved or kept as helpers"
+            - "printPhaseCompletion, printPhasesSummary moved or kept as helpers"
+            - "Existing tests pass"
+        - id: "T012"
+          title: "Create phase_executor_test.go with unit tests"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/phase_executor_test.go"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "Map-based table-driven tests for PhaseExecutor methods"
+            - "Tests use t.Parallel()"
+            - "Mock dependencies used for isolated testing"
+    - number: 5
+      title: "User Story 1 - Maintainable Workflow Code (TaskExecutor)"
+      purpose: "Extract task-level execution logic into focused TaskExecutor component"
+      story_reference: "US-001"
+      independent_test: "TaskExecutor can be instantiated and tested in isolation"
+      tasks:
+        - id: "T013"
+          title: "Create task_executor.go with TaskExecutor struct"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/workflow/task_executor.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "TaskExecutor struct created with executor, specsDir, debug fields"
+            - "Constructor NewTaskExecutor defined"
+            - "File is under 400 LOC"
+        - id: "T014"
+          title: "Move executeTaskLoop to TaskExecutor"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/task_executor.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "executeTaskLoop method moved to TaskExecutor"
+            - "ExecuteImplementWithTasks delegates to TaskExecutor"
+            - "Existing tests pass"
+        - id: "T015"
+          title: "Move task-related helper functions to TaskExecutor"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/task_executor.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "executeAndVerifyTask, executeSingleTaskSession moved"
+            - "verifyTaskCompletion, getOrderedTasksForExecution moved"
+            - "findTaskStartIndex, shouldSkipTask moved"
+            - "printTasksSummary moved or kept as helper"
+            - "Existing tests pass"
+        - id: "T016"
+          title: "Create task_executor_test.go with unit tests"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/task_executor_test.go"
+          dependencies: ["T015"]
+          acceptance_criteria:
+            - "Map-based table-driven tests for TaskExecutor methods"
+            - "Tests use t.Parallel()"
+            - "Mock dependencies used for isolated testing"
+    - number: 6
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Final integration, orchestrator cleanup, and quality verification"
+      tasks:
+        - id: "T017"
+          title: "Refactor WorkflowOrchestrator to pure coordination logic"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/workflow.go"
+          dependencies: ["T008", "T012", "T016"]
+          acceptance_criteria:
+            - "WorkflowOrchestrator contains only coordination and delegation"
+            - "All execution logic delegated to injected executors"
+            - "File is under 400 LOC"
+            - "All existing tests pass"
+        - id: "T018"
+          title: "Rename workflow.go to orchestrator.go"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/orchestrator.go"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "File renamed from workflow.go to orchestrator.go"
+            - "All imports updated throughout codebase"
+            - "All tests pass"
+        - id: "T019"
+          title: "Create orchestrator_test.go with mock-based tests"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/workflow/orchestrator_test.go"
+          dependencies: ["T018"]
+          acceptance_criteria:
+            - "Tests verify orchestrator delegates to mock executors"
+            - "Tests verify mock StageExecutor receives correct calls"
+            - "Tests verify mock PhaseExecutor receives correct calls"
+            - "Tests verify mock TaskExecutor receives correct calls"
+            - "Map-based table-driven tests with t.Parallel()"
+        - id: "T020"
+          title: "Update docs/architecture.md with new component diagram"
+          status: "Completed"
+          type: "documentation"
+          parallel: true
+          story_id: "US-004"
+          file_path: "docs/architecture.md"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "Architecture diagram shows StageExecutor, PhaseExecutor, TaskExecutor"
+            - "Component relationships documented"
+            - "Dependency injection pattern explained"
+        - id: "T021"
+          title: "Run quality gates: make test, make fmt, make lint, make build"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: null
+          dependencies: ["T018", "T019", "T020"]
+          acceptance_criteria:
+            - "make test exits 0 with no failures"
+            - "make fmt exits 0 with no changes needed"
+            - "make lint exits 0 with no errors"
+            - "make build exits 0 with successful binary"
+            - "Code coverage percentage maintained or improved"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-003"
+          depends_on: []
+          blocks: []
+        - story_id: "US-004"
+          depends_on: ["US-001"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2, 3, 4, 5]
+        - phase: 2
+          blocks: [3, 4, 5]
+        - phase: 3
+          blocks: [6]
+        - phase: 4
+          blocks: [6]
+        - phase: 5
+          blocks: [6]
+        - phase: 6
+          blocks: []
+parallel_execution:
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T004", "T009", "T013"]
+          rationale: "StageExecutor, PhaseExecutor, TaskExecutor creation can happen in parallel since they have no interdependencies beyond interfaces"
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T019", "T020"]
+          rationale: "Orchestrator tests and documentation update have no dependencies on each other"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + StageExecutor extraction"
+        validation: "StageExecutor handles specify/plan/tasks stages; all existing tests pass"
+    incremental_delivery:
+        - milestone: "Interfaces Defined"
+          phases: [1]
+          deliverable: "Interface contracts established; no behavioral changes"
+        - milestone: "Orchestrator Updated"
+          phases: [1, 2]
+          deliverable: "WorkflowOrchestrator accepts interface injection"
+        - milestone: "StageExecutor Complete"
+          phases: [1, 2, 3]
+          deliverable: "Stage execution isolated; specify/plan/tasks work via StageExecutor"
+        - milestone: "PhaseExecutor Complete"
+          phases: [1, 2, 3, 4]
+          deliverable: "Phase-based implementation isolated; --phases flag works via PhaseExecutor"
+        - milestone: "TaskExecutor Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Task-level execution isolated; --tasks flag works via TaskExecutor"
+        - milestone: "Refactoring Complete"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "Full refactoring complete; all quality gates pass"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-18T21:07:18Z"
+    artifact_type: "tasks"

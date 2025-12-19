@@ -1,13 +1,26 @@
 // Package cli_test tests the implement command including execution modes (phases, tasks, single-session) and argument parsing.
-// Related: internal/cli/implement.go
+// Related: internal/cli/stages/implement.go
 // Tags: cli, implement, command, workflow, phases, tasks, execution, modes
 package cli
 
 import (
 	"testing"
+
+	"github.com/ariel-frischer/autospec/internal/cli/stages"
+	"github.com/spf13/cobra"
 )
 
-// TestParseImplementArgs tests the parseImplementArgs function.
+// getImplementCmd finds the implement command from rootCmd
+func getImplementCmd() *cobra.Command {
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Use == "implement [spec-name-or-prompt]" {
+			return cmd
+		}
+	}
+	return nil
+}
+
+// TestParseImplementArgs tests the ParseImplementArgs function.
 // This verifies that we correctly distinguish between spec-names and prompts.
 func TestParseImplementArgs(t *testing.T) {
 	t.Parallel()
@@ -68,7 +81,7 @@ func TestParseImplementArgs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			specName, prompt := parseImplementArgs(tc.args)
+			specName, prompt := stages.ParseImplementArgs(tc.args)
 
 			if specName != tc.wantSpecName {
 				t.Errorf("specName = %q, want %q", specName, tc.wantSpecName)
@@ -83,6 +96,11 @@ func TestParseImplementArgs(t *testing.T) {
 
 // TestImplementPhaseFlagsRegistered tests that phase execution flags are properly registered
 func TestImplementPhaseFlagsRegistered(t *testing.T) {
+	implementCmd := getImplementCmd()
+	if implementCmd == nil {
+		t.Fatal("implement command not found")
+	}
+
 	// Verify --phases flag exists
 	phasesFlag := implementCmd.Flags().Lookup("phases")
 	if phasesFlag == nil {
@@ -117,6 +135,11 @@ func TestImplementPhaseFlagsRegistered(t *testing.T) {
 // TestImplementPhaseFlagsMutualExclusivity tests that phase flags are mutually exclusive
 // Note: Cobra's MarkFlagsMutuallyExclusive handles this at runtime, so we verify the flags are set up
 func TestImplementPhaseFlagsMutualExclusivity(t *testing.T) {
+	implementCmd := getImplementCmd()
+	if implementCmd == nil {
+		t.Fatal("implement command not found")
+	}
+
 	// The mutual exclusivity is enforced by Cobra's MarkFlagsMutuallyExclusive
 	// We verify all three flags exist and can be looked up
 	flags := []string{"phases", "phase", "from-phase"}
@@ -130,6 +153,11 @@ func TestImplementPhaseFlagsMutualExclusivity(t *testing.T) {
 
 // TestTasksFlagParsing tests that the --tasks flag is properly registered and has correct defaults
 func TestTasksFlagParsing(t *testing.T) {
+	implementCmd := getImplementCmd()
+	if implementCmd == nil {
+		t.Fatal("implement command not found")
+	}
+
 	// Verify --tasks flag exists
 	tasksFlag := implementCmd.Flags().Lookup("tasks")
 	if tasksFlag == nil {
@@ -150,6 +178,11 @@ func TestTasksFlagParsing(t *testing.T) {
 
 // TestFromTaskFlagParsing tests that the --from-task flag is properly registered and handles task IDs
 func TestFromTaskFlagParsing(t *testing.T) {
+	implementCmd := getImplementCmd()
+	if implementCmd == nil {
+		t.Fatal("implement command not found")
+	}
+
 	// Verify --from-task flag exists
 	fromTaskFlag := implementCmd.Flags().Lookup("from-task")
 	if fromTaskFlag == nil {
@@ -170,6 +203,11 @@ func TestFromTaskFlagParsing(t *testing.T) {
 
 // TestTaskFlagsRegistered tests that all task execution flags are properly registered
 func TestTaskFlagsRegistered(t *testing.T) {
+	implementCmd := getImplementCmd()
+	if implementCmd == nil {
+		t.Fatal("implement command not found")
+	}
+
 	flags := map[string]string{
 		"tasks":     "false",
 		"from-task": "",
@@ -189,6 +227,11 @@ func TestTaskFlagsRegistered(t *testing.T) {
 
 // TestSingleSessionFlagRegistered tests that the --single-session flag is properly registered
 func TestSingleSessionFlagRegistered(t *testing.T) {
+	implementCmd := getImplementCmd()
+	if implementCmd == nil {
+		t.Fatal("implement command not found")
+	}
+
 	flag := implementCmd.Flags().Lookup("single-session")
 	if flag == nil {
 		t.Error("--single-session flag not registered")
@@ -206,6 +249,11 @@ func TestSingleSessionFlagRegistered(t *testing.T) {
 
 // TestTaskPhasesMutualExclusivity tests that --tasks flag is mutually exclusive with phase flags
 func TestTaskPhasesMutualExclusivity(t *testing.T) {
+	implementCmd := getImplementCmd()
+	if implementCmd == nil {
+		t.Fatal("implement command not found")
+	}
+
 	// The mutual exclusivity is enforced by Cobra's MarkFlagsMutuallyExclusive
 	// We verify all relevant flags exist and can be looked up
 	tests := map[string]struct {
@@ -234,7 +282,7 @@ func TestTaskPhasesMutualExclusivity(t *testing.T) {
 	}
 }
 
-// TestSpecNamePattern tests that the spec name regex correctly identifies spec names
+// TestSpecNamePattern tests that spec names are correctly identified via ParseImplementArgs
 func TestSpecNamePattern(t *testing.T) {
 	tests := map[string]struct {
 		input      string
@@ -286,7 +334,9 @@ func TestSpecNamePattern(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			matches := specNamePattern.MatchString(tc.input)
+			// Use ParseImplementArgs to test spec name recognition
+			specName, _ := stages.ParseImplementArgs([]string{tc.input})
+			matches := specName != ""
 			if matches != tc.isSpecName {
 				t.Errorf("pattern match for %q = %v, want %v", tc.input, matches, tc.isSpecName)
 			}
@@ -294,13 +344,13 @@ func TestSpecNamePattern(t *testing.T) {
 	}
 }
 
-// TestResolveExecutionMode tests the resolveExecutionMode function.
+// TestResolveExecutionMode tests the ResolveExecutionMode function.
 // This validates that CLI flags override config implement_method correctly.
 func TestResolveExecutionMode(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		flags            ExecutionModeFlags
+		flags            stages.ExecutionModeFlags
 		flagsChanged     bool
 		configMethod     string
 		wantRunAllPhases bool
@@ -310,63 +360,63 @@ func TestResolveExecutionMode(t *testing.T) {
 		wantFromTask     string
 	}{
 		"config phases + no flags = phases mode": {
-			flags:            ExecutionModeFlags{},
+			flags:            stages.ExecutionModeFlags{},
 			flagsChanged:     false,
 			configMethod:     "phases",
 			wantRunAllPhases: true,
 			wantTaskMode:     false,
 		},
 		"config tasks + no flags = tasks mode": {
-			flags:            ExecutionModeFlags{},
+			flags:            stages.ExecutionModeFlags{},
 			flagsChanged:     false,
 			configMethod:     "tasks",
 			wantRunAllPhases: false,
 			wantTaskMode:     true,
 		},
 		"config single-session + no flags = single-session mode": {
-			flags:            ExecutionModeFlags{},
+			flags:            stages.ExecutionModeFlags{},
 			flagsChanged:     false,
 			configMethod:     "single-session",
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
 		},
 		"empty config + no flags = default mode": {
-			flags:            ExecutionModeFlags{},
+			flags:            stages.ExecutionModeFlags{},
 			flagsChanged:     false,
 			configMethod:     "",
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
 		},
 		"config phases + --tasks flag = tasks mode (CLI override)": {
-			flags:            ExecutionModeFlags{TasksFlag: true},
+			flags:            stages.ExecutionModeFlags{TasksFlag: true},
 			flagsChanged:     true,
 			configMethod:     "phases",
 			wantRunAllPhases: false,
 			wantTaskMode:     true,
 		},
 		"config tasks + --phases flag = phases mode (CLI override)": {
-			flags:            ExecutionModeFlags{PhasesFlag: true},
+			flags:            stages.ExecutionModeFlags{PhasesFlag: true},
 			flagsChanged:     true,
 			configMethod:     "tasks",
 			wantRunAllPhases: true,
 			wantTaskMode:     false,
 		},
 		"config single-session + --phases flag = phases mode (CLI override)": {
-			flags:            ExecutionModeFlags{PhasesFlag: true},
+			flags:            stages.ExecutionModeFlags{PhasesFlag: true},
 			flagsChanged:     true,
 			configMethod:     "single-session",
 			wantRunAllPhases: true,
 			wantTaskMode:     false,
 		},
 		"config single-session + --tasks flag = tasks mode (CLI override)": {
-			flags:            ExecutionModeFlags{TasksFlag: true},
+			flags:            stages.ExecutionModeFlags{TasksFlag: true},
 			flagsChanged:     true,
 			configMethod:     "single-session",
 			wantRunAllPhases: false,
 			wantTaskMode:     true,
 		},
 		"config phases + --phase 3 = single phase mode (CLI override)": {
-			flags:            ExecutionModeFlags{PhaseFlag: 3},
+			flags:            stages.ExecutionModeFlags{PhaseFlag: 3},
 			flagsChanged:     true,
 			configMethod:     "phases",
 			wantRunAllPhases: false,
@@ -374,7 +424,7 @@ func TestResolveExecutionMode(t *testing.T) {
 			wantSinglePhase:  3,
 		},
 		"config tasks + --from-phase 2 = from-phase mode (CLI override)": {
-			flags:            ExecutionModeFlags{FromPhaseFlag: 2},
+			flags:            stages.ExecutionModeFlags{FromPhaseFlag: 2},
 			flagsChanged:     true,
 			configMethod:     "tasks",
 			wantRunAllPhases: false,
@@ -382,7 +432,7 @@ func TestResolveExecutionMode(t *testing.T) {
 			wantFromPhase:    2,
 		},
 		"config phases + --from-task T003 = task mode (CLI override)": {
-			flags:            ExecutionModeFlags{FromTaskFlag: "T003"},
+			flags:            stages.ExecutionModeFlags{FromTaskFlag: "T003"},
 			flagsChanged:     true,
 			configMethod:     "phases",
 			wantRunAllPhases: false,
@@ -390,21 +440,21 @@ func TestResolveExecutionMode(t *testing.T) {
 			wantFromTask:     "T003",
 		},
 		"config phases + --single-session flag = single-session mode (CLI override)": {
-			flags:            ExecutionModeFlags{SingleSessionFlag: true},
+			flags:            stages.ExecutionModeFlags{SingleSessionFlag: true},
 			flagsChanged:     true,
 			configMethod:     "phases",
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
 		},
 		"config tasks + --single-session flag = single-session mode (CLI override)": {
-			flags:            ExecutionModeFlags{SingleSessionFlag: true},
+			flags:            stages.ExecutionModeFlags{SingleSessionFlag: true},
 			flagsChanged:     true,
 			configMethod:     "tasks",
 			wantRunAllPhases: false,
 			wantTaskMode:     false,
 		},
 		"--single-session disables phases even if PhasesFlag is true": {
-			flags:            ExecutionModeFlags{PhasesFlag: true, SingleSessionFlag: true},
+			flags:            stages.ExecutionModeFlags{PhasesFlag: true, SingleSessionFlag: true},
 			flagsChanged:     true,
 			configMethod:     "",
 			wantRunAllPhases: false,
@@ -416,7 +466,7 @@ func TestResolveExecutionMode(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			result := resolveExecutionMode(tt.flags, tt.flagsChanged, tt.configMethod)
+			result := stages.ResolveExecutionMode(tt.flags, tt.flagsChanged, tt.configMethod)
 
 			if result.RunAllPhases != tt.wantRunAllPhases {
 				t.Errorf("RunAllPhases = %v, want %v", result.RunAllPhases, tt.wantRunAllPhases)
@@ -444,7 +494,7 @@ func TestResolveExecutionModeWithDefaultConfig(t *testing.T) {
 
 	// The default value is "phases" per internal/config/defaults.go
 	// When config.Load() returns ImplementMethod: "phases", we expect phases mode
-	result := resolveExecutionMode(ExecutionModeFlags{}, false, "phases")
+	result := stages.ResolveExecutionMode(stages.ExecutionModeFlags{}, false, "phases")
 
 	if !result.RunAllPhases {
 		t.Error("expected phases mode (RunAllPhases=true)")

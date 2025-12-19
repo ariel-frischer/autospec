@@ -1,0 +1,306 @@
+tasks:
+    branch: "055-extract-executor-concerns"
+    created: "2025-12-18"
+    spec_path: "specs/055-extract-executor-concerns/spec.yaml"
+    plan_path: "specs/055-extract-executor-concerns/plan.yaml"
+summary:
+    total_tasks: 14
+    total_phases: 5
+    parallel_opportunities: 4
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Define ClaudeRunner interface in interfaces.go"
+      tasks:
+        - id: "T001"
+          title: "Add ClaudeRunner interface to interfaces.go"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/interfaces.go"
+          dependencies: []
+          acceptance_criteria:
+            - "ClaudeRunner interface defined with Execute(prompt string) error method"
+            - "ClaudeRunner interface includes FormatCommand(prompt string) string method"
+            - "Compile-time check: var _ ClaudeRunner = (*ClaudeExecutor)(nil)"
+            - "Interface documented with clear purpose comments"
+    - number: 2
+      title: "Foundational - Extract Progress and Notification Components"
+      purpose: "Create ProgressController and NotifyDispatcher components that MUST be complete before user stories"
+      tasks:
+        - id: "T002"
+          title: "Create ProgressController struct in progress_controller.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/progress_controller.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "ProgressController struct with display *progress.ProgressDisplay field"
+            - "NewProgressController constructor accepting *progress.ProgressDisplay"
+            - "StartStage(info StageInfo) error method (nil-safe)"
+            - "CompleteStage(info StageInfo) error method (nil-safe)"
+            - "FailStage(info StageInfo, err error) method (nil-safe)"
+            - "All methods under 40 lines"
+            - "Errors wrapped with context"
+        - id: "T003"
+          title: "Create NotifyDispatcher struct in notify_dispatcher.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/notify_dispatcher.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "NotifyDispatcher struct with handler *notify.Handler field"
+            - "NewNotifyDispatcher constructor accepting *notify.Handler"
+            - "OnStageComplete(stage string) method (nil-safe)"
+            - "OnError(stage string, err error) method (nil-safe)"
+            - "All methods under 40 lines"
+            - "No panics when handler is nil"
+    - number: 3
+      title: "User Story 1 - Independently test Claude execution (US-001)"
+      purpose: "Enable developers to test Claude execution logic isolated behind ClaudeRunner interface"
+      story_reference: "US-001"
+      independent_test: "Create mock ClaudeRunner, inject into Executor, verify Execute calls forward correctly"
+      tasks:
+        - id: "T004"
+          title: "Create mock ClaudeRunner in executor_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor_test.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "mockClaudeRunner struct implementing ClaudeRunner interface"
+            - "Configurable Execute return error"
+            - "Captures called prompts for verification"
+            - "FormatCommand returns predictable string"
+        - id: "T005"
+          title: "Refactor Executor to use ClaudeRunner interface"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor.go"
+          dependencies: ["T002", "T003", "T004"]
+          acceptance_criteria:
+            - "Executor.claude field is type ClaudeRunner (interface)"
+            - "Executor.progress field is *ProgressController"
+            - "Executor.notify field is *NotifyDispatcher"
+            - "ExecuteStage delegates to claude.Execute()"
+            - "ExecuteStage delegates progress to ProgressController"
+            - "ExecuteStage delegates notifications to NotifyDispatcher"
+            - "All functions under 40 lines"
+            - "All errors wrapped with context"
+        - id: "T006"
+          title: "Add unit tests for Executor with mock ClaudeRunner"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "At least 3 tests using mock ClaudeRunner"
+            - "Test success case: mock returns nil, stage completes"
+            - "Test failure case: mock returns error, error propagated with context"
+            - "Test retry case: mock fails then succeeds on retry"
+            - "Map-based table-driven pattern"
+            - "t.Parallel() called"
+    - number: 4
+      title: "User Story 2 & 3 - Test progress display and notifications independently (US-002, US-003)"
+      purpose: "Enable isolated testing of ProgressController and NotifyDispatcher"
+      story_reference: "US-002, US-003"
+      independent_test: "Create components with mock/nil handlers, verify correct state transitions"
+      tasks:
+        - id: "T007"
+          title: "Create unit tests for ProgressController"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/workflow/progress_controller_test.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "At least 3 tests for ProgressController"
+            - "Test StartStage with valid display"
+            - "Test CompleteStage with valid display"
+            - "Test FailStage with valid display"
+            - "Test nil-safety: all methods with nil display"
+            - "Map-based table-driven pattern"
+            - "t.Parallel() called"
+        - id: "T008"
+          title: "Create unit tests for NotifyDispatcher"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/workflow/notify_dispatcher_test.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "At least 3 tests for NotifyDispatcher"
+            - "Test OnStageComplete with mock handler"
+            - "Test OnError with mock handler"
+            - "Test nil-safety: all methods with nil handler"
+            - "Map-based table-driven pattern"
+            - "t.Parallel() called"
+    - number: 5
+      title: "User Story 4 - Compose components in workflow layer (US-004)"
+      purpose: "Wire separated components in orchestrator and verify backwards compatibility"
+      story_reference: "US-004"
+      independent_test: "Run existing integration tests, verify all pass without modification"
+      tasks:
+        - id: "T009"
+          title: "Update NewWorkflowOrchestrator to compose components"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/workflow/orchestrator.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "NewWorkflowOrchestrator creates ClaudeExecutor as ClaudeRunner"
+            - "NewWorkflowOrchestrator creates ProgressController with display"
+            - "NewWorkflowOrchestrator creates NotifyDispatcher with handler"
+            - "Components wired into Executor correctly"
+            - "Backwards compatible: no API changes to NewWorkflowOrchestrator"
+        - id: "T010"
+          title: "Verify existing integration tests pass"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/workflow/"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "make test passes with no failures"
+            - "All existing workflow tests pass unmodified"
+            - "No regressions in retry behavior"
+        - id: "T011"
+          title: "Verify quality gates pass"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-004"
+          file_path: ""
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "make fmt shows no changes needed"
+            - "make lint passes with no errors"
+            - "make build succeeds"
+            - "All quality gates exit 0"
+    - number: 6
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Documentation and final cleanup"
+      tasks:
+        - id: "T012"
+          title: "Add interface documentation to interfaces.go"
+          status: "Completed"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/interfaces.go"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "ClaudeRunner interface has godoc comment explaining purpose"
+            - "Each method has godoc comment explaining parameters and return values"
+            - "Document that ClaudeExecutor is the primary implementation"
+        - id: "T013"
+          title: "Verify function length compliance"
+          status: "Completed"
+          type: "refactor"
+          parallel: true
+          story_id: null
+          file_path: "internal/workflow/"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "No function exceeds 40 lines excluding comments"
+            - "Extract helpers for any function exceeding limit"
+            - "All helpers have clear, descriptive names"
+        - id: "T014"
+          title: "Final regression test"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: ""
+          dependencies: ["T012", "T013"]
+          acceptance_criteria:
+            - "make test passes"
+            - "make fmt passes"
+            - "make lint passes"
+            - "make build passes"
+            - "All CLI commands work: specify, plan, tasks, implement, constitution, clarify, checklist, analyze, all, run, prep"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-004"]
+        - story_id: "US-002"
+          depends_on: []
+          blocks: []
+        - story_id: "US-003"
+          depends_on: []
+          blocks: []
+        - story_id: "US-004"
+          depends_on: ["US-001"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4]
+        - phase: 3
+          blocks: [5]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T002", "T003"]
+          rationale: "ProgressController and NotifyDispatcher are independent components"
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T007", "T008"]
+          rationale: "Test files for different components can be written in parallel"
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T012", "T013"]
+          rationale: "Documentation and refactoring can proceed in parallel"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + US-001 (ClaudeRunner interface and Executor refactoring)"
+        validation: "Unit tests pass with mock ClaudeRunner, Executor delegates correctly"
+    incremental_delivery:
+        - milestone: "Interface Defined"
+          phases: [1]
+          deliverable: "ClaudeRunner interface ready for implementation"
+        - milestone: "Components Extracted"
+          phases: [1, 2]
+          deliverable: "ProgressController and NotifyDispatcher ready for use"
+        - milestone: "Executor Refactored"
+          phases: [1, 2, 3]
+          deliverable: "Executor uses interfaces, testable with mocks"
+        - milestone: "Component Tests Complete"
+          phases: [1, 2, 3, 4]
+          deliverable: "All components independently tested"
+        - milestone: "Integration Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Full workflow working with separated concerns"
+        - milestone: "Release Ready"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "Documentation complete, all quality gates pass"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-18T22:41:20Z"
+    artifact_type: "tasks"

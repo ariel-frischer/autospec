@@ -1,5 +1,5 @@
 // Package cli_test tests the migrate-md-to-yaml command for converting legacy Markdown artifacts to YAML format.
-// Related: internal/cli/migrate.go
+// Related: internal/cli/config/migrate_mdtoyaml.go
 // Tags: cli, migrate, markdown, yaml, conversion, legacy
 package cli
 
@@ -9,9 +9,44 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// getMigrateCmd finds the migrate command from rootCmd
+func getMigrateCmd() *cobra.Command {
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Use == "migrate" {
+			return cmd
+		}
+	}
+	return nil
+}
+
+// getMigrateMdToYamlCmd finds the "migrate md-to-yaml" subcommand
+func getMigrateMdToYamlCmd() *cobra.Command {
+	migrateCmd := getMigrateCmd()
+	if migrateCmd == nil {
+		return nil
+	}
+	for _, cmd := range migrateCmd.Commands() {
+		if cmd.Use == "md-to-yaml <path>" {
+			return cmd
+		}
+	}
+	return nil
+}
+
+func TestMigrateCmdRegistration(t *testing.T) {
+	cmd := getMigrateCmd()
+	assert.NotNil(t, cmd, "migrate command should be registered")
+}
+
+func TestMigrateMdToYamlCmdRegistration(t *testing.T) {
+	cmd := getMigrateMdToYamlCmd()
+	assert.NotNil(t, cmd, "migrate md-to-yaml subcommand should be registered")
+}
 
 func TestMigrateMdToYaml_SingleFile(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -41,11 +76,14 @@ Test spec.
 	err := os.WriteFile(specPath, []byte(specMd), 0644)
 	require.NoError(t, err)
 
+	cmd := getMigrateMdToYamlCmd()
+	require.NotNil(t, cmd, "migrate md-to-yaml command must exist")
+
 	// Run migration
 	var buf bytes.Buffer
-	migrateMdToYamlCmd.SetOut(&buf)
+	cmd.SetOut(&buf)
 
-	err = runMigrateMdToYaml(migrateMdToYamlCmd, []string{specPath})
+	err = cmd.RunE(cmd, []string{specPath})
 	require.NoError(t, err)
 
 	output := buf.String()
@@ -95,11 +133,14 @@ Test plan.
 	err = os.WriteFile(filepath.Join(tmpDir, "plan.md"), []byte(planMd), 0644)
 	require.NoError(t, err)
 
+	cmd := getMigrateMdToYamlCmd()
+	require.NotNil(t, cmd, "migrate md-to-yaml command must exist")
+
 	// Run migration
 	var buf bytes.Buffer
-	migrateMdToYamlCmd.SetOut(&buf)
+	cmd.SetOut(&buf)
 
-	err = runMigrateMdToYaml(migrateMdToYamlCmd, []string{tmpDir})
+	err = cmd.RunE(cmd, []string{tmpDir})
 	require.NoError(t, err)
 
 	output := buf.String()
@@ -113,10 +154,14 @@ Test plan.
 }
 
 func TestMigrateMdToYaml_NonExistentPath(t *testing.T) {
-	var buf bytes.Buffer
-	migrateMdToYamlCmd.SetOut(&buf)
+	cmd := getMigrateMdToYamlCmd()
+	require.NotNil(t, cmd, "migrate md-to-yaml command must exist")
 
-	err := runMigrateMdToYaml(migrateMdToYamlCmd, []string{"/nonexistent/path"})
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	err := cmd.RunE(cmd, []string{"/nonexistent/path"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 }
@@ -127,10 +172,14 @@ func TestMigrateMdToYaml_NonMarkdownFile(t *testing.T) {
 	err := os.WriteFile(txtPath, []byte("content"), 0644)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	migrateMdToYamlCmd.SetOut(&buf)
+	cmd := getMigrateMdToYamlCmd()
+	require.NotNil(t, cmd, "migrate md-to-yaml command must exist")
 
-	err = runMigrateMdToYaml(migrateMdToYamlCmd, []string{txtPath})
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	err = cmd.RunE(cmd, []string{txtPath})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not a markdown file")
 }
@@ -141,10 +190,14 @@ func TestMigrateMdToYaml_UnknownArtifactType(t *testing.T) {
 	err := os.WriteFile(unknownPath, []byte("# README\n\nContent"), 0644)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	migrateMdToYamlCmd.SetOut(&buf)
+	cmd := getMigrateMdToYamlCmd()
+	require.NotNil(t, cmd, "migrate md-to-yaml command must exist")
 
-	err = runMigrateMdToYaml(migrateMdToYamlCmd, []string{unknownPath})
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	err = cmd.RunE(cmd, []string{unknownPath})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown artifact type")
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/cli/stages"
 	"github.com/ariel-frischer/autospec/internal/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,31 +104,31 @@ func TestImplementCommandPhaseExecutionOptions(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		flags ExecutionModeFlags
+		flags stages.ExecutionModeFlags
 		want  workflow.PhaseExecutionOptions
 	}{
 		"phases mode sets RunAllPhases": {
-			flags: ExecutionModeFlags{PhasesFlag: true},
+			flags: stages.ExecutionModeFlags{PhasesFlag: true},
 			want:  workflow.PhaseExecutionOptions{RunAllPhases: true},
 		},
 		"tasks mode sets TaskMode": {
-			flags: ExecutionModeFlags{TasksFlag: true},
+			flags: stages.ExecutionModeFlags{TasksFlag: true},
 			want:  workflow.PhaseExecutionOptions{TaskMode: true},
 		},
 		"single phase sets SinglePhase": {
-			flags: ExecutionModeFlags{PhaseFlag: 3},
+			flags: stages.ExecutionModeFlags{PhaseFlag: 3},
 			want:  workflow.PhaseExecutionOptions{SinglePhase: 3},
 		},
 		"from-phase sets FromPhase": {
-			flags: ExecutionModeFlags{FromPhaseFlag: 2},
+			flags: stages.ExecutionModeFlags{FromPhaseFlag: 2},
 			want:  workflow.PhaseExecutionOptions{FromPhase: 2},
 		},
 		"from-task sets FromTask": {
-			flags: ExecutionModeFlags{FromTaskFlag: "T005"},
+			flags: stages.ExecutionModeFlags{FromTaskFlag: "T005"},
 			want:  workflow.PhaseExecutionOptions{FromTask: "T005"},
 		},
 		"combined flags work together": {
-			flags: ExecutionModeFlags{TasksFlag: true, FromTaskFlag: "T003"},
+			flags: stages.ExecutionModeFlags{TasksFlag: true, FromTaskFlag: "T003"},
 			want:  workflow.PhaseExecutionOptions{TaskMode: true, FromTask: "T003"},
 		},
 	}
@@ -136,8 +137,8 @@ func TestImplementCommandPhaseExecutionOptions(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			// resolveExecutionMode returns ExecutionModeResult
-			result := resolveExecutionMode(tc.flags, true, "")
+			// ResolveExecutionMode returns ExecutionModeResult
+			result := stages.ResolveExecutionMode(tc.flags, true, "")
 
 			// Build PhaseExecutionOptions from result (same as implement.go does)
 			phaseOpts := workflow.PhaseExecutionOptions{
@@ -192,7 +193,7 @@ func TestImplementCommandSpecDetection(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			specName, prompt := parseImplementArgs(tc.args)
+			specName, prompt := stages.ParseImplementArgs(tc.args)
 			assert.Equal(t, tc.wantSpecName, specName)
 			assert.Equal(t, tc.wantPrompt, prompt)
 		})

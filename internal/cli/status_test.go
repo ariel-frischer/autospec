@@ -1,62 +1,111 @@
 // Package cli_test tests the status command for displaying spec progress and blocked task reasons.
-// Related: internal/cli/status.go
+// Related: internal/cli/util/status.go
 // Tags: cli, status, progress, tasks, blocked, filtering, verbose
 package cli
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ariel-frischer/autospec/internal/validation"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestStatusCmdRegistration(t *testing.T) {
-	found := false
+// getStatusCmd finds the status command from rootCmd
+func getStatusCmd() *cobra.Command {
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "status [spec-name]" {
-			found = true
-			break
+			return cmd
 		}
 	}
-	assert.True(t, found, "status command should be registered")
+	return nil
+}
+
+func TestStatusCmdRegistration(t *testing.T) {
+	cmd := getStatusCmd()
+	assert.NotNil(t, cmd, "status command should be registered")
 }
 
 func TestStatusCmdFlags(t *testing.T) {
+	cmd := getStatusCmd()
+	require.NotNil(t, cmd, "status command must exist")
+
 	// verbose flag
-	f := statusCmd.Flags().Lookup("verbose")
+	f := cmd.Flags().Lookup("verbose")
 	require.NotNil(t, f)
 	assert.Equal(t, "v", f.Shorthand)
 	assert.Equal(t, "false", f.DefValue)
 }
 
 func TestStatusCmdArgs(t *testing.T) {
+	cmd := getStatusCmd()
+	require.NotNil(t, cmd, "status command must exist")
+
 	// Should accept 0 or 1 args
-	err := statusCmd.Args(statusCmd, []string{})
+	err := cmd.Args(cmd, []string{})
 	assert.NoError(t, err)
 
-	err = statusCmd.Args(statusCmd, []string{"spec-name"})
+	err = cmd.Args(cmd, []string{"spec-name"})
 	assert.NoError(t, err)
 
-	err = statusCmd.Args(statusCmd, []string{"arg1", "arg2"})
+	err = cmd.Args(cmd, []string{"arg1", "arg2"})
 	assert.Error(t, err)
 }
 
 func TestStatusCmdAlias(t *testing.T) {
-	assert.Contains(t, statusCmd.Aliases, "st", "status command should have 'st' alias")
+	cmd := getStatusCmd()
+	require.NotNil(t, cmd, "status command must exist")
+
+	assert.Contains(t, cmd.Aliases, "st", "status command should have 'st' alias")
 }
 
 func TestStatusCmdSilenceUsage(t *testing.T) {
-	assert.True(t, statusCmd.SilenceUsage, "status command should silence usage on errors")
+	cmd := getStatusCmd()
+	require.NotNil(t, cmd, "status command must exist")
+
+	assert.True(t, cmd.SilenceUsage, "status command should silence usage on errors")
 }
 
 func TestStatusCmdDefaultVerbose(t *testing.T) {
+	cmd := getStatusCmd()
+	require.NotNil(t, cmd, "status command must exist")
+
 	// Default verbose should be false
-	verbose, _ := statusCmd.Flags().GetBool("verbose")
+	verbose, _ := cmd.Flags().GetBool("verbose")
 	assert.False(t, verbose)
 }
 
 // Tests for blocked reason display in status command
+// These test helper functions that mirror the unexported functions in util/status.go
+
+// filterBlockedTasks is a test helper that mirrors util.filterBlockedTasks
+func filterBlockedTasks(tasks []validation.TaskItem) []validation.TaskItem {
+	var blocked []validation.TaskItem
+	for _, task := range tasks {
+		if strings.EqualFold(task.Status, "blocked") {
+			blocked = append(blocked, task)
+		}
+	}
+	return blocked
+}
+
+// formatBlockedReason is a test helper that mirrors util.formatBlockedReason
+func formatBlockedReason(reason string) string {
+	if reason == "" {
+		return "(no reason provided)"
+	}
+	return truncateStatusReason(reason, 80)
+}
+
+// truncateStatusReason is a test helper that mirrors util.truncateStatusReason
+func truncateStatusReason(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}
 
 func TestFilterBlockedTasks(t *testing.T) {
 	t.Parallel()

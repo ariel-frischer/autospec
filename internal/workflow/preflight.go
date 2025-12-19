@@ -335,33 +335,43 @@ func validateArtifactSchema(artifact, specDir string) error {
 func GeneratePrerequisiteError(stageConfig *StageConfig, missingArtifacts []string, invalidArtifacts map[string]string) string {
 	var sb strings.Builder
 
-	// Report missing artifacts
-	if len(missingArtifacts) > 0 {
-		sb.WriteString("\nError: Missing required prerequisite artifacts:\n")
-		for _, artifact := range missingArtifacts {
-			sb.WriteString(fmt.Sprintf("  - %s\n", artifact))
-		}
-	}
+	formatMissingArtifacts(&sb, missingArtifacts)
+	formatInvalidArtifacts(&sb, invalidArtifacts)
+	formatStageArtifactMapping(&sb, stageConfig, missingArtifacts, invalidArtifacts)
+	formatMissingRemediation(&sb, missingArtifacts)
+	formatInvalidRemediation(&sb, invalidArtifacts)
 
-	// Report invalid artifacts (exist but fail schema validation)
-	if len(invalidArtifacts) > 0 {
-		sb.WriteString("\nError: Invalid artifact schemas:\n")
-		for artifact, errMsg := range invalidArtifacts {
-			sb.WriteString(fmt.Sprintf("  - %s: %s\n", artifact, errMsg))
-		}
-	}
+	return sb.String()
+}
 
-	// Show which stages require which artifacts
-	allProblematic := make([]string, 0, len(missingArtifacts)+len(invalidArtifacts))
-	allProblematic = append(allProblematic, missingArtifacts...)
-	for artifact := range invalidArtifacts {
-		allProblematic = append(allProblematic, artifact)
+// formatMissingArtifacts writes the missing artifacts section
+func formatMissingArtifacts(sb *strings.Builder, missingArtifacts []string) {
+	if len(missingArtifacts) == 0 {
+		return
 	}
+	sb.WriteString("\nError: Missing required prerequisite artifacts:\n")
+	for _, artifact := range missingArtifacts {
+		sb.WriteString(fmt.Sprintf("  - %s\n", artifact))
+	}
+}
 
+// formatInvalidArtifacts writes the invalid artifacts section
+func formatInvalidArtifacts(sb *strings.Builder, invalidArtifacts map[string]string) {
+	if len(invalidArtifacts) == 0 {
+		return
+	}
+	sb.WriteString("\nError: Invalid artifact schemas:\n")
+	for artifact, errMsg := range invalidArtifacts {
+		sb.WriteString(fmt.Sprintf("  - %s: %s\n", artifact, errMsg))
+	}
+}
+
+// formatStageArtifactMapping writes which stages require which artifacts
+func formatStageArtifactMapping(sb *strings.Builder, stageConfig *StageConfig, missingArtifacts []string, invalidArtifacts map[string]string) {
+	allProblematic := collectProblematicArtifacts(missingArtifacts, invalidArtifacts)
 	sb.WriteString("\nThe following stages require these artifacts:\n")
 	for _, stage := range stageConfig.GetSelectedStages() {
-		requires := GetRequiredArtifacts(stage)
-		for _, req := range requires {
+		for _, req := range GetRequiredArtifacts(stage) {
 			for _, problematic := range allProblematic {
 				if req == problematic {
 					sb.WriteString(fmt.Sprintf("  - %s requires %s\n", stage, req))
@@ -369,36 +379,51 @@ func GeneratePrerequisiteError(stageConfig *StageConfig, missingArtifacts []stri
 			}
 		}
 	}
+}
 
-	// Suggest remediation
-	if len(missingArtifacts) > 0 {
-		sb.WriteString("\nRun earlier stages first to generate the required artifacts:\n")
-		if containsArtifact(missingArtifacts, "spec.yaml") {
-			sb.WriteString("  autospec run -s \"feature description\"  # Generate spec.yaml\n")
-		}
-		if containsArtifact(missingArtifacts, "plan.yaml") {
-			sb.WriteString("  autospec run -p                         # Generate plan.yaml\n")
-		}
-		if containsArtifact(missingArtifacts, "tasks.yaml") {
-			sb.WriteString("  autospec run -t                         # Generate tasks.yaml\n")
+// collectProblematicArtifacts combines missing and invalid artifact names
+func collectProblematicArtifacts(missingArtifacts []string, invalidArtifacts map[string]string) []string {
+	result := make([]string, 0, len(missingArtifacts)+len(invalidArtifacts))
+	result = append(result, missingArtifacts...)
+	for artifact := range invalidArtifacts {
+		result = append(result, artifact)
+	}
+	return result
+}
+
+// formatMissingRemediation writes suggestions for generating missing artifacts
+func formatMissingRemediation(sb *strings.Builder, missingArtifacts []string) {
+	if len(missingArtifacts) == 0 {
+		return
+	}
+	sb.WriteString("\nRun earlier stages first to generate the required artifacts:\n")
+	if containsArtifact(missingArtifacts, "spec.yaml") {
+		sb.WriteString("  autospec run -s \"feature description\"  # Generate spec.yaml\n")
+	}
+	if containsArtifact(missingArtifacts, "plan.yaml") {
+		sb.WriteString("  autospec run -p                         # Generate plan.yaml\n")
+	}
+	if containsArtifact(missingArtifacts, "tasks.yaml") {
+		sb.WriteString("  autospec run -t                         # Generate tasks.yaml\n")
+	}
+}
+
+// formatInvalidRemediation writes suggestions for fixing invalid artifacts
+func formatInvalidRemediation(sb *strings.Builder, invalidArtifacts map[string]string) {
+	if len(invalidArtifacts) == 0 {
+		return
+	}
+	sb.WriteString("\nFix the schema errors by re-running the stage that produces each artifact:\n")
+	for artifact := range invalidArtifacts {
+		switch artifact {
+		case "spec.yaml":
+			sb.WriteString("  autospec run -s \"feature description\"  # Regenerate spec.yaml\n")
+		case "plan.yaml":
+			sb.WriteString("  autospec run -p                         # Regenerate plan.yaml\n")
+		case "tasks.yaml":
+			sb.WriteString("  autospec run -t                         # Regenerate tasks.yaml\n")
 		}
 	}
-
-	if len(invalidArtifacts) > 0 {
-		sb.WriteString("\nFix the schema errors by re-running the stage that produces each artifact:\n")
-		for artifact := range invalidArtifacts {
-			switch artifact {
-			case "spec.yaml":
-				sb.WriteString("  autospec run -s \"feature description\"  # Regenerate spec.yaml\n")
-			case "plan.yaml":
-				sb.WriteString("  autospec run -p                         # Regenerate plan.yaml\n")
-			case "tasks.yaml":
-				sb.WriteString("  autospec run -t                         # Regenerate tasks.yaml\n")
-			}
-		}
-	}
-
-	return sb.String()
 }
 
 // GeneratePrerequisiteWarning is an alias for GeneratePrerequisiteError for backward compatibility.

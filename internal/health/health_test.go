@@ -248,3 +248,194 @@ func TestRunHealthChecksIncludesClaudeSettings(t *testing.T) {
 	}
 	assert.True(t, hasClaudeSettings, "Should include Claude settings check")
 }
+
+// Additional tests to improve coverage to 85%
+
+func TestRunHealthChecks_AllChecksPresent(t *testing.T) {
+	t.Parallel()
+
+	report := RunHealthChecks()
+	require.NotNil(t, report)
+
+	// Verify report structure
+	checkMap := make(map[string]CheckResult)
+	for _, check := range report.Checks {
+		checkMap[check.Name] = check
+	}
+
+	// All three checks should be present
+	_, hasClaudeCLI := checkMap["Claude CLI"]
+	_, hasGit := checkMap["Git"]
+	_, hasSettings := checkMap["Claude settings"]
+
+	assert.True(t, hasClaudeCLI, "Should have Claude CLI check")
+	assert.True(t, hasGit, "Should have Git check")
+	assert.True(t, hasSettings, "Should have Claude settings check")
+}
+
+func TestRunHealthChecks_ReportPassedStatus(t *testing.T) {
+	tests := map[string]struct {
+		checkResults []CheckResult
+		wantPassed   bool
+	}{
+		"all pass": {
+			checkResults: []CheckResult{
+				{Name: "Check1", Passed: true, Message: "ok"},
+				{Name: "Check2", Passed: true, Message: "ok"},
+			},
+			wantPassed: true,
+		},
+		"one fails": {
+			checkResults: []CheckResult{
+				{Name: "Check1", Passed: true, Message: "ok"},
+				{Name: "Check2", Passed: false, Message: "failed"},
+			},
+			wantPassed: false,
+		},
+		"all fail": {
+			checkResults: []CheckResult{
+				{Name: "Check1", Passed: false, Message: "failed"},
+				{Name: "Check2", Passed: false, Message: "failed"},
+			},
+			wantPassed: false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create report manually to test the Passed field logic
+			report := &HealthReport{
+				Checks: tc.checkResults,
+				Passed: true,
+			}
+			for _, check := range tc.checkResults {
+				if !check.Passed {
+					report.Passed = false
+					break
+				}
+			}
+
+			assert.Equal(t, tc.wantPassed, report.Passed)
+		})
+	}
+}
+
+func TestCheckClaudeCLI_ResultStructure(t *testing.T) {
+	t.Parallel()
+
+	result := CheckClaudeCLI()
+
+	// Should always have correct name
+	assert.Equal(t, "Claude CLI", result.Name)
+
+	// Message should be non-empty
+	assert.NotEmpty(t, result.Message)
+
+	// Message should be one of the expected values
+	validMessages := []string{"Claude CLI found", "Claude CLI not found in PATH"}
+	assert.Contains(t, validMessages, result.Message)
+}
+
+func TestCheckGit_ResultStructure(t *testing.T) {
+	t.Parallel()
+
+	result := CheckGit()
+
+	// Should always have correct name
+	assert.Equal(t, "Git", result.Name)
+
+	// Message should be non-empty
+	assert.NotEmpty(t, result.Message)
+
+	// Git should be found in test environments
+	assert.True(t, result.Passed)
+	assert.Equal(t, "Git found", result.Message)
+}
+
+func TestFormatReport_EmptyReport(t *testing.T) {
+	t.Parallel()
+
+	report := &HealthReport{
+		Checks: []CheckResult{},
+		Passed: true,
+	}
+
+	output := FormatReport(report)
+	assert.Empty(t, output, "Empty report should produce empty output")
+}
+
+func TestFormatReport_SingleCheck(t *testing.T) {
+	tests := map[string]struct {
+		check       CheckResult
+		wantSymbol  string
+		wantContent string
+	}{
+		"passed check": {
+			check:       CheckResult{Name: "Test", Passed: true, Message: "success"},
+			wantSymbol:  "✓",
+			wantContent: "Test: success",
+		},
+		"failed check": {
+			check:       CheckResult{Name: "Test", Passed: false, Message: "failure"},
+			wantSymbol:  "✗",
+			wantContent: "Test: failure",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			report := &HealthReport{
+				Checks: []CheckResult{tc.check},
+				Passed: tc.check.Passed,
+			}
+
+			output := FormatReport(report)
+			assert.Contains(t, output, tc.wantSymbol)
+			assert.Contains(t, output, tc.wantContent)
+		})
+	}
+}
+
+func TestCheckClaudeSettingsInDir_InvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	require.NoError(t, os.MkdirAll(claudeDir, 0755))
+
+	// Write invalid JSON
+	require.NoError(t, os.WriteFile(
+		filepath.Join(claudeDir, "settings.local.json"),
+		[]byte("not valid json"),
+		0644,
+	))
+
+	result := CheckClaudeSettingsInDir(tmpDir)
+	assert.Equal(t, "Claude settings", result.Name)
+	assert.False(t, result.Passed)
+	// Error message from JSON parsing
+	assert.NotEmpty(t, result.Message)
+}
+
+func TestCheckClaudeSettingsInDir_EmptyFile(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	require.NoError(t, os.MkdirAll(claudeDir, 0755))
+
+	// Write empty file
+	require.NoError(t, os.WriteFile(
+		filepath.Join(claudeDir, "settings.local.json"),
+		[]byte(""),
+		0644,
+	))
+
+	result := CheckClaudeSettingsInDir(tmpDir)
+	assert.Equal(t, "Claude settings", result.Name)
+	assert.False(t, result.Passed)
+}

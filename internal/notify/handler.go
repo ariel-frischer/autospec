@@ -101,6 +101,9 @@ func isCI() bool {
 // isInteractive checks if the session is interactive (has TTY).
 // Checks stdout rather than stdin because CLI tools often have stdin piped
 // while stdout remains connected to the terminal.
+//
+// TEST COVERAGE BLOCKED: Requires real TTY; term.IsTerminal cannot be mocked
+// without adding interfaces to production code.
 func isInteractive() bool {
 	// Check stdout first (most reliable for CLI tools)
 	if term.IsTerminal(int(os.Stdout.Fd())) {
@@ -159,6 +162,8 @@ func (h *Handler) sendNotification(n Notification) {
 //
 // Threshold of 0 or negative means "always notify" (no duration filter).
 // This allows users to only be notified for long operations.
+//
+// TEST COVERAGE BLOCKED: isEnabled() requires TTY; dispatch() calls OS notification APIs.
 func (h *Handler) OnCommandComplete(commandName string, success bool, duration time.Duration) {
 	if !h.isEnabled() {
 		return
@@ -195,6 +200,8 @@ func (h *Handler) OnCommandComplete(commandName string, success bool, duration t
 
 // OnStageComplete is called when a workflow stage finishes.
 // It sends a notification if the on_stage_complete hook is enabled.
+//
+// TEST COVERAGE BLOCKED: isEnabled() requires TTY; dispatch() calls OS notification APIs.
 func (h *Handler) OnStageComplete(stageName string, success bool) {
 	if !h.isEnabled() {
 		return
@@ -223,6 +230,8 @@ func (h *Handler) OnStageComplete(stageName string, success bool) {
 // It sends a notification if the on_error hook is enabled.
 // This is separate from OnCommandComplete/OnStageComplete to allow
 // error-only notifications without command/stage completion notifications.
+//
+// TEST COVERAGE BLOCKED: isEnabled() requires TTY; dispatch() calls OS notification APIs.
 func (h *Handler) OnError(commandName string, err error) {
 	if !h.isEnabled() {
 		return

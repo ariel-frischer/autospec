@@ -1,5 +1,5 @@
 // Package cli_test tests the commands install subcommand for installing Claude command templates.
-// Related: internal/cli/commands_install.go
+// Related: internal/cli/admin/commands_install.go
 // Tags: cli, commands, install, templates, setup
 package cli
 
@@ -9,24 +9,40 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// getCommandsInstallCmd finds the "commands install" command from rootCmd
+func getCommandsInstallCmd() *cobra.Command {
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Use == "commands" {
+			for _, sub := range cmd.Commands() {
+				if sub.Use == "install" {
+					return sub
+				}
+			}
+		}
+	}
+	return nil
+}
 
 func TestCommandsInstallCmd_Execute(t *testing.T) {
 	tmpDir := t.TempDir()
 	targetDir := filepath.Join(tmpDir, ".claude", "commands")
 
-	// Set up the command
-	old := installTargetDir
-	installTargetDir = targetDir
-	defer func() { installTargetDir = old }()
+	cmd := getCommandsInstallCmd()
+	require.NotNil(t, cmd, "commands install subcommand must exist")
 
 	// Capture output
 	var buf bytes.Buffer
-	commandsInstallCmd.SetOut(&buf)
+	cmd.SetOut(&buf)
 
-	err := runCommandsInstall(commandsInstallCmd, []string{})
+	// Set flag directly
+	cmd.Flags().Set("target", targetDir)
+
+	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
 
 	// Check output
@@ -46,14 +62,16 @@ func TestCommandsInstallCmd_CreatesDirectory(t *testing.T) {
 	// Use a nested directory that doesn't exist
 	targetDir := filepath.Join(tmpDir, "deep", "nested", ".claude", "commands")
 
-	old := installTargetDir
-	installTargetDir = targetDir
-	defer func() { installTargetDir = old }()
+	cmd := getCommandsInstallCmd()
+	require.NotNil(t, cmd, "commands install subcommand must exist")
 
 	var buf bytes.Buffer
-	commandsInstallCmd.SetOut(&buf)
+	cmd.SetOut(&buf)
 
-	err := runCommandsInstall(commandsInstallCmd, []string{})
+	// Set flag directly
+	cmd.Flags().Set("target", targetDir)
+
+	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
 
 	// Directory should be created

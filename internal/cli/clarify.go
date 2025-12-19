@@ -47,7 +47,6 @@ Prerequisites:
 		// Get flags
 		configPath, _ := cmd.Flags().GetString("config")
 		skipPreflight, _ := cmd.Flags().GetBool("skip-preflight")
-		maxRetries, _ := cmd.Flags().GetInt("max-retries")
 
 		// Load configuration
 		cfg, err := config.Load(configPath)
@@ -60,11 +59,6 @@ Prerequisites:
 		// Override skip-preflight from flag if set
 		if cmd.Flags().Changed("skip-preflight") {
 			cfg.SkipPreflight = skipPreflight
-		}
-
-		// Override max-retries from flag if set
-		if cmd.Flags().Changed("max-retries") {
-			cfg.MaxRetries = maxRetries
 		}
 
 		// Check if constitution exists (required for clarify)
@@ -115,4 +109,5 @@ Prerequisites:
 func init() {
 	clarifyCmd.GroupID = GroupOptionalStages
 	rootCmd.AddCommand(clarifyCmd)
+	// Note: No --max-retries flag - clarify doesn't produce artifacts that need validation/retry
 }

@@ -1,0 +1,293 @@
+plan:
+  branch: "055-extract-executor-concerns"
+  created: "2025-12-18"
+  spec_path: "specs/055-extract-executor-concerns/spec.yaml"
+
+summary: |
+  This plan refactors the Executor struct in internal/workflow/executor.go to separate
+  concerns for execution, progress display, and notifications. The current Executor mixes
+  Claude command execution with progress display calls and notification dispatch, making
+  unit testing difficult. By extracting a ClaudeRunner interface, ProgressController, and
+  NotifyDispatcher, each concern becomes independently testable. The refactoring preserves
+  backwards compatibility by composing these components within the existing workflow layer.
+
+technical_context:
+  language: "Go"
+  framework: "None"
+  primary_dependencies:
+    - name: "github.com/ariel-frischer/autospec/internal/progress"
+      version: "internal"
+      purpose: "Progress display management for stage transitions"
+    - name: "github.com/ariel-frischer/autospec/internal/notify"
+      version: "internal"
+      purpose: "Notification handling for stage completion"
+    - name: "github.com/ariel-frischer/autospec/internal/retry"
+      version: "internal"
+      purpose: "Retry state management (unchanged)"
+    - name: "github.com/ariel-frischer/autospec/internal/lifecycle"
+      version: "internal"
+      purpose: "Stage lifecycle wrapper (unchanged)"
+  storage: "None"
+  testing:
+    framework: "testing (Go standard library)"
+    approach: "Map-based table-driven unit tests with mocks; existing integration tests for regression"
+  target_platform: "Linux, macOS, Windows (cross-platform CLI)"
+  project_type: "cli"
+  performance_goals: "Validation functions <10ms; no performance regression in existing operations"
+  constraints:
+    - "Must maintain backwards compatibility with all existing CLI commands"
+    - "Cannot change ClaudeExecutor public API"
+    - "Must use existing interfaces.go file for new interfaces"
+    - "All existing tests must pass without modification"
+    - "Functions must be under 40 lines"
+  scale_scope: "Single-user CLI tool; no concurrency requirements"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "New test files (progress_controller_test.go, notify_dispatcher_test.go) will be written before implementation"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "N/A"
+      notes: "No new workflow transitions; existing validation unchanged"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "Refactoring adds no new operations; delegation overhead negligible"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "PASS"
+      notes: "Retry logic remains in Executor; retry package unchanged"
+    - name: "Standardized Exit Codes (PRIN-005)"
+      status: "N/A"
+      notes: "No new exit codes; existing codes unchanged"
+    - name: "YAML-First Artifacts (PRIN-006)"
+      status: "N/A"
+      notes: "No artifact changes"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "All new code will pass go fmt and go vet"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Functions <40 lines; wrapped errors; table-driven tests; interface-in/concrete-out"
+    - name: "Command Template Independence (PRIN-012)"
+      status: "N/A"
+      notes: "No command template changes"
+
+research_findings:
+  decisions:
+    - topic: "ClaudeRunner interface method signature"
+      decision: "Use Execute(prompt string) error and FormatCommand(prompt string) string"
+      rationale: "Matches existing ClaudeExecutor methods; minimal interface surface for mocking"
+      alternatives_considered:
+        - "Context-aware Execute(ctx context.Context, prompt string) error - rejected as context already handled internally"
+        - "Combined ExecuteCommand(config CommandConfig) - rejected as overly complex for current needs"
+    - topic: "ProgressController dependency on progress.ProgressDisplay"
+      decision: "Wrap progress.ProgressDisplay directly; accept *progress.ProgressDisplay as constructor parameter"
+      rationale: "ProgressDisplay already has well-defined methods; wrapping provides delegation without abstraction overhead"
+      alternatives_considered:
+        - "Define ProgressDisplay interface - adds unnecessary indirection for tested internal package"
+        - "Embedded struct - loses nil-safety convenience methods"
+    - topic: "NotifyDispatcher nil-safety approach"
+      decision: "NotifyDispatcher wraps *notify.Handler with nil-safe method calls"
+      rationale: "Notifications are optional; all methods become no-ops when handler is nil"
+      alternatives_considered:
+        - "NullObject pattern with separate NullNotifyDispatcher - adds type complexity without benefit"
+        - "Interface abstraction - notify.Handler is already well-defined"
+    - topic: "Executor field restructuring"
+      decision: "Replace ProgressDisplay and NotificationHandler fields with ProgressController and NotifyDispatcher"
+      rationale: "Maintains same functionality through composition; enables isolated testing"
+      alternatives_considered:
+        - "Keep both old and new fields - breaks single-responsibility goal"
+        - "Full interface replacement - too invasive for this refactoring scope"
+
+data_model:
+  entities:
+    - name: "ClaudeRunner"
+      description: "Interface abstracting Claude command execution"
+      fields:
+        - name: "Execute"
+          type: "method(prompt string) error"
+          description: "Executes a Claude command with the given prompt"
+          constraints: "Must handle timeout and error wrapping internally"
+        - name: "FormatCommand"
+          type: "method(prompt string) string"
+          description: "Returns human-readable command string for display"
+          constraints: "Must match actual command that Execute would run"
+      relationships:
+        - target: "ClaudeExecutor"
+          type: "implements"
+          description: "ClaudeExecutor is the concrete implementation of ClaudeRunner"
+    - name: "ProgressController"
+      description: "Component managing stage progress display"
+      fields:
+        - name: "display"
+          type: "*progress.ProgressDisplay"
+          description: "Wrapped progress display instance"
+          constraints: "May be nil for nil-safe no-op behavior"
+        - name: "StartStage"
+          type: "method(info StageInfo) error"
+          description: "Starts progress display for a stage"
+          constraints: "No-op if display is nil"
+        - name: "CompleteStage"
+          type: "method(info StageInfo) error"
+          description: "Marks stage as completed in display"
+          constraints: "No-op if display is nil"
+        - name: "FailStage"
+          type: "method(info StageInfo, err error)"
+          description: "Marks stage as failed with error in display"
+          constraints: "No-op if display is nil"
+      relationships:
+        - target: "Executor"
+          type: "composed-by"
+          description: "Executor holds a ProgressController instance"
+    - name: "NotifyDispatcher"
+      description: "Component routing notifications to optional handler"
+      fields:
+        - name: "handler"
+          type: "*notify.Handler"
+          description: "Wrapped notification handler"
+          constraints: "May be nil for nil-safe no-op behavior"
+        - name: "OnStageComplete"
+          type: "method(stage string)"
+          description: "Dispatches stage completion notification"
+          constraints: "No-op if handler is nil"
+        - name: "OnError"
+          type: "method(stage string, err error)"
+          description: "Dispatches error notification"
+          constraints: "No-op if handler is nil"
+      relationships:
+        - target: "Executor"
+          type: "composed-by"
+          description: "Executor holds a NotifyDispatcher instance"
+    - name: "Executor"
+      description: "Refactored executor composing separated concerns"
+      fields:
+        - name: "claude"
+          type: "ClaudeRunner"
+          description: "Interface for Claude command execution"
+          constraints: "Must implement ClaudeRunner interface"
+        - name: "progress"
+          type: "*ProgressController"
+          description: "Handles all progress display operations"
+          constraints: "May be nil for no-op progress"
+        - name: "notify"
+          type: "*NotifyDispatcher"
+          description: "Handles notification routing"
+          constraints: "May be nil for no-op notifications"
+        - name: "StateDir"
+          type: "string"
+          description: "Directory for retry state storage (unchanged)"
+          constraints: "Must be valid directory path"
+        - name: "SpecsDir"
+          type: "string"
+          description: "Directory for spec files (unchanged)"
+          constraints: "Must be valid directory path"
+        - name: "MaxRetries"
+          type: "int"
+          description: "Maximum retry attempts (unchanged)"
+          constraints: "1-10 range"
+        - name: "TotalStages"
+          type: "int"
+          description: "Total stages in workflow (unchanged)"
+          constraints: "Positive integer"
+        - name: "Debug"
+          type: "bool"
+          description: "Enable debug logging (unchanged)"
+          constraints: "None"
+      relationships:
+        - target: "ClaudeRunner"
+          type: "uses"
+          description: "Executor delegates command execution to ClaudeRunner"
+        - target: "ProgressController"
+          type: "uses"
+          description: "Executor delegates progress display to ProgressController"
+        - target: "NotifyDispatcher"
+          type: "uses"
+          description: "Executor delegates notifications to NotifyDispatcher"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation: []
+  source_code:
+    - path: "internal/workflow/interfaces.go"
+      description: "Add ClaudeRunner interface and compile-time check"
+    - path: "internal/workflow/progress_controller.go"
+      description: "New file containing ProgressController struct and methods"
+    - path: "internal/workflow/notify_dispatcher.go"
+      description: "New file containing NotifyDispatcher struct and methods"
+    - path: "internal/workflow/executor.go"
+      description: "Refactor Executor to use ClaudeRunner, ProgressController, NotifyDispatcher"
+    - path: "internal/workflow/orchestrator.go"
+      description: "Update NewWorkflowOrchestrator to compose new components"
+  tests:
+    - path: "internal/workflow/progress_controller_test.go"
+      description: "Unit tests for ProgressController in isolation"
+    - path: "internal/workflow/notify_dispatcher_test.go"
+      description: "Unit tests for NotifyDispatcher in isolation"
+    - path: "internal/workflow/executor_test.go"
+      description: "Updated tests using mock ClaudeRunner"
+
+implementation_phases:
+  - phase: 1
+    name: "Define Interfaces and Extract Components"
+    goal: "Create ClaudeRunner interface, ProgressController, and NotifyDispatcher with tests"
+    deliverables:
+      - "ClaudeRunner interface in interfaces.go with compile-time check"
+      - "ProgressController struct with StartStage, CompleteStage, FailStage methods"
+      - "NotifyDispatcher struct with OnStageComplete, OnError methods"
+      - "progress_controller_test.go with table-driven tests"
+      - "notify_dispatcher_test.go with table-driven tests"
+  - phase: 2
+    name: "Refactor Executor"
+    goal: "Update Executor to use new interfaces and components"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Executor struct updated with ClaudeRunner, ProgressController, NotifyDispatcher fields"
+      - "ExecuteStage method refactored to delegate to components"
+      - "Helper methods updated or removed as appropriate"
+      - "executor_test.go updated with mock ClaudeRunner tests"
+  - phase: 3
+    name: "Update Orchestrator and Integration"
+    goal: "Compose components in orchestrator and verify all existing tests pass"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "NewWorkflowOrchestrator updated to create and wire components"
+      - "All existing integration tests passing"
+      - "make test, make fmt, make lint, make build all pass"
+
+risks:
+  - risk: "Breaking changes to Executor constructor in dependent code"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Maintain backwards-compatible constructor signature; new fields have zero-value defaults"
+  - risk: "Nil pointer panics in ProgressController or NotifyDispatcher"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "All methods are nil-safe; test nil-handler cases explicitly"
+  - risk: "Regression in retry behavior due to incorrect delegation"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Retry logic remains in Executor; preserve existing retry tests unchanged"
+  - risk: "Performance regression from additional function call overhead"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Delegation adds nanoseconds; measure with existing benchmarks"
+
+open_questions:
+  - question: "Should ProgressController accept a ProgressDisplay interface instead of concrete type?"
+    context: "Progress display testing could benefit from interface abstraction"
+    proposed_resolution: "Use concrete type for now; progress package is internal and well-tested. Can add interface later if needed."
+  - question: "Should ClaudeRunner include StreamCommand method?"
+    context: "ClaudeExecutor has StreamCommand for output capture"
+    proposed_resolution: "Start with minimal interface (Execute, FormatCommand); add StreamCommand to interface only if tests require it"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-18T22:39:35Z"
+  artifact_type: "plan"

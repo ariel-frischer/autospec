@@ -488,7 +488,7 @@ func init() {
 	runCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompts")
 
 	// Other flags (NOTE: max-retries is now long-only, -r is used for clarify)
-	runCmd.Flags().Int("max-retries", 0, "Override max retry attempts (0 = use config)")
+	runCmd.Flags().Int("max-retries", 0, "Override max retry attempts (overrides config when set)")
 	runCmd.Flags().Bool("resume", false, "Resume implementation from where it left off")
 	runCmd.Flags().Bool("dry-run", false, "Preview what stages would run without executing")
 }

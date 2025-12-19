@@ -51,7 +51,12 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
 ### Package Structure
 
 - `cmd/autospec/main.go`: Entry point
-- `internal/cli/`: Cobra commands
+- `internal/cli/`: Cobra commands (root + orchestration)
+  - `internal/cli/stages/`: Stage commands (specify, plan, tasks, implement)
+  - `internal/cli/config/`: Configuration commands (init, config, migrate, doctor)
+  - `internal/cli/util/`: Utility commands (status, history, version, clean)
+  - `internal/cli/admin/`: Admin commands (commands, completion, uninstall)
+  - `internal/cli/shared/`: Shared types and constants
 - `internal/workflow/`: Workflow orchestration and Claude execution
 - `internal/config/`: Hierarchical config (env > project > user > defaults)
 - `internal/validation/`: Artifact validation (<10ms performance contract)

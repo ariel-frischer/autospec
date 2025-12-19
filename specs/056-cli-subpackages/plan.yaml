@@ -1,0 +1,262 @@
+plan:
+  branch: "056-cli-subpackages"
+  created: "2025-12-18"
+  spec_path: "specs/056-cli-subpackages/spec.yaml"
+
+summary: |
+  This plan reorganizes the monolithic internal/cli package (47+ files) into logical
+  subpackages to improve navigation and maintainability. The refactoring is purely
+  structural with zero behavioral changes.
+
+  The approach leverages Go's package system by creating four subpackages (stages/,
+  config/, util/, admin/) that each export a registration function. Shared types
+  (rootCmd, group constants, exit codes) remain in the root cli package to avoid
+  circular imports. Each subcommand file and its tests move together to preserve
+  test locality. The root.go init() function will import subpackages and call their
+  registration functions to maintain the existing command structure.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8+"
+      purpose: "CLI command framework with subcommand support"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0+"
+      purpose: "YAML parsing for configuration and artifacts"
+  storage: "None"
+  testing:
+    framework: "testing (stdlib)"
+    approach: "Unit tests co-located with command files; integration tests in root package"
+  target_platform: "linux/darwin/windows (amd64/arm64)"
+  project_type: "cli"
+  performance_goals: "No performance impact - pure code reorganization"
+  constraints:
+    - "No behavioral changes - pure refactoring"
+    - "All existing tests must pass without modification"
+    - "Must avoid circular imports between subpackages"
+    - "Atomic refactoring - all changes in one coherent commit"
+  scale_scope: "47 CLI files reorganized into 4 subpackages"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "N/A"
+      notes: "Reorganization only; no new functionality requiring new tests"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "N/A"
+      notes: "No workflow changes; CLI structure is internal"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "No runtime changes; package structure doesn't affect performance"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "N/A"
+      notes: "No changes to retry or state management"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Moved files retain existing code quality; no new code written"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "make fmt will be run after reorganization to fix imports"
+
+research_findings:
+  decisions:
+    - topic: "Subpackage registration pattern"
+      decision: "Each subpackage exports a Register(rootCmd *cobra.Command) function"
+      rationale: "Avoids init() import side effects and makes registration explicit"
+      alternatives_considered:
+        - "Keep init() pattern with blank imports - rejected due to implicit behavior"
+        - "Use single registerAll() function - rejected due to tight coupling"
+    - topic: "Shared types location"
+      decision: "Keep rootCmd, group constants, and exit codes in root cli package"
+      rationale: "Prevents circular imports; subpackages import root, not vice versa"
+      alternatives_considered:
+        - "Create internal/cli/shared subpackage - adds unnecessary indirection"
+        - "Duplicate constants in each subpackage - violates DRY"
+    - topic: "Command categorization"
+      decision: "Follow spec categorization: stages/, config/, util/, admin/"
+      rationale: "Matches mental model from spec; groups by functional purpose"
+      alternatives_considered:
+        - "Group by command frequency - harder to discover"
+        - "Alphabetical subpackages - no semantic benefit"
+    - topic: "Auxiliary workflow commands placement"
+      decision: "Keep analyze.go, checklist.go, clarify.go, constitution.go in root cli package"
+      rationale: "These are optional workflow stages that work closely with orchestration commands"
+      alternatives_considered:
+        - "Create stages/optional/ - too deep nesting"
+        - "Add to stages/ - muddies core stage commands"
+    - topic: "Test file handling"
+      decision: "Move test files alongside their command files to subpackages"
+      rationale: "Maintains test locality; Go convention is *_test.go in same package"
+      alternatives_considered:
+        - "Keep all tests in root - breaks test locality"
+        - "Create separate test packages - unnecessary complexity"
+
+data_model:
+  entities:
+    - name: "Subpackage"
+      description: "A Go package nested under internal/cli/ containing related commands"
+      fields:
+        - name: "package name"
+          type: "string"
+          description: "Go package identifier matching directory name"
+          constraints: "Lowercase, valid Go identifier"
+        - name: "Register function"
+          type: "func(*cobra.Command)"
+          description: "Exported function to register subpackage commands with root"
+          constraints: "Must accept rootCmd, add all subpackage commands"
+      relationships:
+        - target: "Root CLI Package"
+          type: "one-to-many"
+          description: "Root package imports and calls Register for each subpackage"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Update Package Structure section to reflect new subpackages"
+  source_code:
+    - path: "internal/cli/root.go"
+      description: "Root command with imports of subpackages and Register calls"
+    - path: "internal/cli/exit_codes.go"
+      description: "Shared exit codes used by all commands (stays in root)"
+    - path: "internal/cli/stages/"
+      description: "Stage commands: specify, plan, tasks, implement"
+    - path: "internal/cli/config/"
+      description: "Configuration commands: init, config, migrate, doctor"
+    - path: "internal/cli/util/"
+      description: "Utility commands: status, history, version, clean"
+    - path: "internal/cli/admin/"
+      description: "Admin commands: commands.go, commands_*, completion_install, uninstall"
+  tests:
+    - path: "internal/cli/stages/*_test.go"
+      description: "Tests for stage commands"
+    - path: "internal/cli/config/*_test.go"
+      description: "Tests for config commands"
+    - path: "internal/cli/util/*_test.go"
+      description: "Tests for utility commands"
+    - path: "internal/cli/admin/*_test.go"
+      description: "Tests for admin commands"
+    - path: "internal/cli/*_test.go"
+      description: "Integration tests and tests for orchestration/auxiliary commands"
+
+implementation_phases:
+  - phase: 1
+    name: "Create subpackage structure"
+    goal: "Establish subpackage directories with registration infrastructure"
+    deliverables:
+      - "Create internal/cli/stages/ directory with register.go"
+      - "Create internal/cli/config/ directory with register.go"
+      - "Create internal/cli/util/ directory with register.go"
+      - "Create internal/cli/admin/ directory with register.go"
+      - "Export group constants and rootCmd accessor from cli package"
+  - phase: 2
+    name: "Move stage commands"
+    goal: "Relocate specify, plan, tasks, implement to stages/ subpackage"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Move specify.go and specify_test.go to stages/"
+      - "Move plan.go to stages/"
+      - "Move tasks.go to stages/"
+      - "Move implement.go, implement_test.go, implement_integration_test.go to stages/"
+      - "Update package declarations and imports"
+      - "Register commands in stages/register.go"
+  - phase: 3
+    name: "Move config commands"
+    goal: "Relocate init, config, migrate, doctor to config/ subpackage"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Move init.go and init_test.go to config/"
+      - "Move config.go and config_test.go to config/"
+      - "Move migrate.go, migrate_mdtoyaml.go, migrate_test.go to config/"
+      - "Move doctor.go to config/"
+      - "Update package declarations and imports"
+      - "Register commands in config/register.go"
+  - phase: 4
+    name: "Move utility commands"
+    goal: "Relocate status, history, version, clean to util/ subpackage"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Move status.go and status_test.go to util/"
+      - "Move history.go and history_test.go to util/"
+      - "Move version.go and version_test.go to util/"
+      - "Move clean.go and clean_test.go to util/"
+      - "Update package declarations and imports"
+      - "Register commands in util/register.go"
+  - phase: 5
+    name: "Move admin commands"
+    goal: "Relocate commands, completion, uninstall to admin/ subpackage"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Move commands.go, commands_install.go, commands_check.go, commands_info.go and tests to admin/"
+      - "Move completion_install.go and completion_install_test.go to admin/"
+      - "Move uninstall.go and uninstall_test.go to admin/"
+      - "Update package declarations and imports"
+      - "Register commands in admin/register.go"
+  - phase: 6
+    name: "Update root and documentation"
+    goal: "Wire up subpackages in root.go and update documentation"
+    dependencies:
+      - "Phase 2"
+      - "Phase 3"
+      - "Phase 4"
+      - "Phase 5"
+    deliverables:
+      - "Update root.go to import subpackages and call Register functions"
+      - "Remove individual command registrations from root init()"
+      - "Update CLAUDE.md Package Structure section"
+      - "Run make fmt to fix import formatting"
+  - phase: 7
+    name: "Validation and quality gates"
+    goal: "Verify all tests pass and build succeeds"
+    dependencies:
+      - "Phase 6"
+    deliverables:
+      - "Run make test and fix any failures"
+      - "Run make lint and fix any issues"
+      - "Run make build and verify binary works"
+      - "Verify autospec --help shows correct command structure"
+
+risks:
+  - risk: "Circular import between subpackages and root"
+    likelihood: "medium"
+    impact: "high"
+    mitigation: "Keep shared types (rootCmd, constants) in root; subpackages only import root, never each other"
+  - risk: "Test files fail due to package-internal dependencies"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Tests move with their commands; internal dependencies become exported or use test helpers"
+  - risk: "Integration tests break due to changed import paths"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Integration tests remain in root cli package where they can import subpackages"
+  - risk: "init() order issues after reorganization"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Use explicit Register() calls instead of init() for command registration"
+
+open_questions:
+  - question: "Should update_agent_context.go and update_task.go go to util/ or stay in root?"
+    context: "These are internal commands that could fit util/ but are less user-facing"
+    proposed_resolution: "Keep in root - they are internal workflow helpers, not user utilities"
+  - question: "What about task.go, task_block.go, task_unblock.go, task_list.go?"
+    context: "These form a subcommand tree (task block, task unblock, task list)"
+    proposed_resolution: "Keep in root - they're already well-organized as a subcommand group"
+  - question: "Should artifact.go and yaml.go move to util/?"
+    context: "These are diagnostic/utility commands"
+    proposed_resolution: "Keep in root - they're development/debugging tools, not standard user utilities"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-18T23:05:38Z"
+  artifact_type: "plan"

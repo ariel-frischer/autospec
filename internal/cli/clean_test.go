@@ -1,5 +1,5 @@
 // Package cli_test tests the clean command for removing autospec files and directories with dry-run support.
-// Related: internal/cli/clean.go
+// Related: internal/cli/util/clean.go
 // Tags: cli, clean, removal, cleanup, dry-run, specs
 package cli
 
@@ -14,18 +14,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCleanCmdRegistration(t *testing.T) {
-	found := false
+// getCleanCmd finds the clean command from rootCmd
+func getCleanCmd() *cobra.Command {
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "clean" {
-			found = true
-			break
+			return cmd
 		}
 	}
-	assert.True(t, found, "clean command should be registered")
+	return nil
+}
+
+func TestCleanCmdRegistration(t *testing.T) {
+	cmd := getCleanCmd()
+	assert.NotNil(t, cmd, "clean command should be registered")
 }
 
 func TestCleanCmdFlags(t *testing.T) {
+	cleanCmd := getCleanCmd()
+	require.NotNil(t, cleanCmd, "clean command must exist")
+
 	flags := []struct {
 		name      string
 		shorthand string
@@ -46,11 +53,16 @@ func TestCleanCmdFlags(t *testing.T) {
 }
 
 func TestCleanCmdShortDescription(t *testing.T) {
+	cleanCmd := getCleanCmd()
+	require.NotNil(t, cleanCmd, "clean command must exist")
 	assert.Contains(t, cleanCmd.Short, "Remove")
 	assert.Contains(t, cleanCmd.Short, "autospec")
 }
 
 func TestCleanCmdLongDescription(t *testing.T) {
+	cleanCmd := getCleanCmd()
+	require.NotNil(t, cleanCmd, "clean command must exist")
+
 	keywords := []string{
 		".autospec/",
 		".claude/commands/autospec",
@@ -68,6 +80,8 @@ func TestCleanCmdLongDescription(t *testing.T) {
 }
 
 func TestCleanCmdExamples(t *testing.T) {
+	cleanCmd := getCleanCmd()
+	require.NotNil(t, cleanCmd, "clean command must exist")
 	assert.Contains(t, cleanCmd.Example, "--dry-run")
 	assert.Contains(t, cleanCmd.Example, "--yes")
 	assert.Contains(t, cleanCmd.Example, "--keep-specs")
@@ -80,15 +94,10 @@ func TestRunClean_NoFiles(t *testing.T) {
 	defer os.Chdir(origWd)
 	os.Chdir(tmpDir)
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
+	// Use RunE directly for testing, as Execute() goes through rootCmd
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 
@@ -109,19 +118,14 @@ func TestRunClean_DryRun(t *testing.T) {
 	require.NoError(t, os.MkdirAll(".autospec", 0755))
 	require.NoError(t, os.MkdirAll("specs", 0755))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("dry-run", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Set flags directly instead of using SetArgs
+	cmd.Flags().Set("dry-run", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -149,20 +153,15 @@ func TestRunClean_KeepSpecs_DryRun(t *testing.T) {
 	require.NoError(t, os.MkdirAll(".autospec", 0755))
 	require.NoError(t, os.MkdirAll("specs", 0755))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("dry-run", "true"))
-	require.NoError(t, cmd.Flags().Set("keep-specs", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Set flags directly
+	cmd.Flags().Set("dry-run", "true")
+	cmd.Flags().Set("keep-specs", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -192,19 +191,17 @@ func TestRunClean_YesFlag(t *testing.T) {
 	require.NoError(t, os.WriteFile(".autospec/test.txt", []byte("test"), 0644))
 	require.NoError(t, os.MkdirAll("specs", 0755))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("yes", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Reset flags and set the one we want
+	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("yes", "true")
+	cmd.Flags().Set("keep-specs", "false")
+	cmd.Flags().Set("remove-specs", "false")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -234,19 +231,17 @@ func TestRunClean_WithCommandFiles(t *testing.T) {
 	require.NoError(t, os.WriteFile(".claude/commands/autospec.tasks.md", []byte("tasks"), 0644))
 	require.NoError(t, os.WriteFile(".claude/commands/custom.md", []byte("custom"), 0644))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("yes", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Reset flags and set the one we want
+	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("yes", "true")
+	cmd.Flags().Set("keep-specs", "false")
+	cmd.Flags().Set("remove-specs", "false")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -274,19 +269,14 @@ func TestRunClean_OutputFormat(t *testing.T) {
 	// Create directory
 	require.NoError(t, os.MkdirAll(".autospec", 0755))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("dry-run", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Set flags directly
+	cmd.Flags().Set("dry-run", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -308,19 +298,14 @@ func TestRunClean_FileTypeIndicator(t *testing.T) {
 	require.NoError(t, os.MkdirAll(".claude/commands", 0755))
 	require.NoError(t, os.WriteFile(".claude/commands/autospec.plan.md", []byte("test"), 0644))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("dry-run", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Set flags directly
+	cmd.Flags().Set("dry-run", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -342,19 +327,17 @@ func TestRunClean_Summary(t *testing.T) {
 	require.NoError(t, os.MkdirAll(".claude/commands", 0755))
 	require.NoError(t, os.WriteFile(".claude/commands/autospec.plan.md", []byte("test"), 0644))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("yes", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Reset flags and set the one we want
+	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("yes", "true")
+	cmd.Flags().Set("keep-specs", "false")
+	cmd.Flags().Set("remove-specs", "false")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -374,20 +357,17 @@ func TestRunClean_RemoveSpecsFlag(t *testing.T) {
 	require.NoError(t, os.MkdirAll(".autospec", 0755))
 	require.NoError(t, os.MkdirAll("specs", 0755))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("yes", "true"))
-	require.NoError(t, cmd.Flags().Set("remove-specs", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Reset flags and set the ones we want
+	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("yes", "true")
+	cmd.Flags().Set("keep-specs", "false")
+	cmd.Flags().Set("remove-specs", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -413,20 +393,15 @@ func TestRunClean_RemoveSpecsFlag_DryRun(t *testing.T) {
 	require.NoError(t, os.MkdirAll(".autospec", 0755))
 	require.NoError(t, os.MkdirAll("specs", 0755))
 
-	cmd := &cobra.Command{
-		Use:  "clean",
-		RunE: runClean,
-	}
-	cmd.Flags().BoolP("dry-run", "n", false, "")
-	cmd.Flags().BoolP("yes", "y", false, "")
-	cmd.Flags().BoolP("keep-specs", "k", false, "")
-	cmd.Flags().BoolP("remove-specs", "r", false, "")
-
-	require.NoError(t, cmd.Flags().Set("dry-run", "true"))
-	require.NoError(t, cmd.Flags().Set("remove-specs", "true"))
+	cmd := getCleanCmd()
+	require.NotNil(t, cmd, "clean command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Set flags directly
+	cmd.Flags().Set("dry-run", "true")
+	cmd.Flags().Set("remove-specs", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)

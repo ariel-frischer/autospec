@@ -1,50 +1,37 @@
 package cli
 
-import "fmt"
+import (
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
+)
 
-// Exit codes for the autospec CLI
+// Exit codes for the autospec CLI (re-exported from shared)
 // These codes support programmatic composition and CI/CD integration
 const (
 	// ExitSuccess indicates successful command execution
-	ExitSuccess = 0
+	ExitSuccess = shared.ExitSuccess
 
 	// ExitValidationFailed indicates validation failed (retryable)
-	ExitValidationFailed = 1
+	ExitValidationFailed = shared.ExitValidationFailed
 
 	// ExitRetryExhausted indicates retry limit was exhausted
-	ExitRetryExhausted = 2
+	ExitRetryExhausted = shared.ExitRetryLimitReached
 
 	// ExitInvalidArguments indicates invalid command arguments
-	ExitInvalidArguments = 3
+	ExitInvalidArguments = shared.ExitInvalidArguments
 
 	// ExitMissingDependencies indicates required dependencies are missing
-	ExitMissingDependencies = 4
+	ExitMissingDependencies = shared.ExitMissingDependency
 
 	// ExitTimeout indicates command execution timed out
-	ExitTimeout = 5
+	ExitTimeout = shared.ExitTimeout
 )
 
-// exitError is a custom error type that carries an exit code.
-type exitError struct {
-	code int
-}
-
-func (e *exitError) Error() string {
-	return fmt.Sprintf("exit code %d", e.code)
-}
-
-// NewExitError creates a new exit error with the given code.
+// NewExitError creates a new exit error with the given code (re-exported from shared).
 func NewExitError(code int) error {
-	return &exitError{code: code}
+	return shared.NewExitError(code)
 }
 
-// ExitCode returns the exit code from an error.
+// ExitCode returns the exit code from an error (re-exported from shared).
 func ExitCode(err error) int {
-	if err == nil {
-		return ExitSuccess
-	}
-	if e, ok := err.(*exitError); ok {
-		return e.code
-	}
-	return ExitValidationFailed
+	return shared.ExitCode(err)
 }

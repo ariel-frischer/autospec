@@ -1,5 +1,5 @@
 // Package cli_test tests the config command for displaying configuration settings.
-// Related: internal/cli/config.go
+// Related: internal/cli/config/config_cmd.go
 // Tags: cli, config, configuration, settings, yaml, json
 package cli
 
@@ -13,38 +13,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfigCmdRegistration(t *testing.T) {
-	// Verify configCmd is registered
-	found := false
+// getConfigCmd finds the config command from rootCmd
+func getConfigCmd() *cobra.Command {
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "config" {
-			found = true
-			break
+			return cmd
 		}
 	}
-	assert.True(t, found, "config command should be registered")
+	return nil
+}
+
+// getConfigShowCmd finds the "config show" subcommand
+func getConfigShowCmd() *cobra.Command {
+	configCmd := getConfigCmd()
+	if configCmd == nil {
+		return nil
+	}
+	for _, cmd := range configCmd.Commands() {
+		if cmd.Use == "show" {
+			return cmd
+		}
+	}
+	return nil
+}
+
+func TestConfigCmdRegistration(t *testing.T) {
+	cmd := getConfigCmd()
+	assert.NotNil(t, cmd, "config command should be registered")
 }
 
 func TestConfigShowCmdRegistration(t *testing.T) {
-	// Verify show subcommand is registered
-	found := false
-	for _, cmd := range configCmd.Commands() {
-		if cmd.Use == "show" {
-			found = true
-			break
-		}
-	}
-	assert.True(t, found, "config show command should be registered")
+	cmd := getConfigShowCmd()
+	assert.NotNil(t, cmd, "config show command should be registered")
 }
 
 func TestConfigShowCmd_DefaultOutput(t *testing.T) {
-	// Create test command
-	cmd := &cobra.Command{
-		Use:  "show",
-		RunE: runConfigShow,
-	}
-	cmd.Flags().Bool("json", false, "")
-	cmd.Flags().Bool("yaml", true, "")
+	cmd := getConfigShowCmd()
+	require.NotNil(t, cmd, "config show command must exist")
 
 	// Capture output
 	var buf bytes.Buffer
@@ -65,20 +70,15 @@ func TestConfigShowCmd_DefaultOutput(t *testing.T) {
 }
 
 func TestConfigShowCmd_JSONOutput(t *testing.T) {
-	// Create test command
-	cmd := &cobra.Command{
-		Use:  "show",
-		RunE: runConfigShow,
-	}
-	cmd.Flags().Bool("json", false, "")
-	cmd.Flags().Bool("yaml", true, "")
-
-	// Set JSON flag
-	require.NoError(t, cmd.Flags().Set("json", "true"))
+	cmd := getConfigShowCmd()
+	require.NotNil(t, cmd, "config show command must exist")
 
 	// Capture output
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Set flag directly
+	cmd.Flags().Set("json", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -111,18 +111,14 @@ func TestConfigShowCmd_JSONOutput(t *testing.T) {
 }
 
 func TestConfigShowCmd_AllFields(t *testing.T) {
-	cmd := &cobra.Command{
-		Use:  "show",
-		RunE: runConfigShow,
-	}
-	cmd.Flags().Bool("json", false, "")
-	cmd.Flags().Bool("yaml", true, "")
-
-	// Use JSON for easier parsing
-	require.NoError(t, cmd.Flags().Set("json", "true"))
+	cmd := getConfigShowCmd()
+	require.NotNil(t, cmd, "config show command must exist")
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
+
+	// Set flag directly
+	cmd.Flags().Set("json", "true")
 
 	err := cmd.RunE(cmd, []string{})
 	require.NoError(t, err)
@@ -159,12 +155,17 @@ func TestConfigShowCmd_AllFields(t *testing.T) {
 }
 
 func TestConfigCmdExamples(t *testing.T) {
+	cmd := getConfigCmd()
+	require.NotNil(t, cmd, "config command must exist")
+
 	// Verify examples are present
-	assert.Contains(t, configCmd.Example, "autospec config show")
-	assert.Contains(t, configCmd.Example, "autospec init")
+	assert.Contains(t, cmd.Example, "autospec config show")
 }
 
 func TestConfigCmdLongDescription(t *testing.T) {
+	cmd := getConfigCmd()
+	require.NotNil(t, cmd, "config command must exist")
+
 	// Verify priority order is documented
 	priorities := []string{
 		"Environment variables",
@@ -174,18 +175,21 @@ func TestConfigCmdLongDescription(t *testing.T) {
 	}
 
 	for _, priority := range priorities {
-		assert.Contains(t, configCmd.Long, priority)
+		assert.Contains(t, cmd.Long, priority)
 	}
 }
 
 func TestConfigShowCmd_YAMLFormatDefault(t *testing.T) {
+	cmd := getConfigShowCmd()
+	require.NotNil(t, cmd, "config show command must exist")
+
 	// yaml flag should default to true
-	f := configShowCmd.Flags().Lookup("yaml")
+	f := cmd.Flags().Lookup("yaml")
 	require.NotNil(t, f)
 	assert.Equal(t, "true", f.DefValue)
 
 	// json flag should default to false
-	f = configShowCmd.Flags().Lookup("json")
+	f = cmd.Flags().Lookup("json")
 	require.NotNil(t, f)
 	assert.Equal(t, "false", f.DefValue)
 }

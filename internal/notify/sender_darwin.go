@@ -37,6 +37,8 @@ func newWindowsSender() Sender {
 }
 
 // SendVisual sends a visual notification using osascript
+//
+// TEST COVERAGE BLOCKED: Executes osascript; requires macOS.
 func (s *darwinSender) SendVisual(n Notification) error {
 	if !s.visualAvailable {
 		return nil // graceful degradation
@@ -50,6 +52,8 @@ func (s *darwinSender) SendVisual(n Notification) error {
 }
 
 // SendSound plays a sound using afplay
+//
+// TEST COVERAGE BLOCKED: Executes afplay; requires macOS audio subsystem.
 func (s *darwinSender) SendSound(soundFile string) error {
 	if !s.soundAvailable {
 		return nil // graceful degradation

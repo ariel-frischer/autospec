@@ -1,55 +1,73 @@
 // Package cli_test tests the specify command for generating spec.yaml from feature descriptions with notification support.
-// Related: internal/cli/specify.go
+// Related: internal/cli/stages/specify.go
 // Tags: cli, specify, command, workflow, specification, lifecycle, notifications
 package cli
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSpecifyCmdRegistration(t *testing.T) {
-	found := false
+// getSpecifyCmd finds the specify command from rootCmd
+func getSpecifyCmd() *cobra.Command {
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "specify <feature-description>" {
-			found = true
-			break
+			return cmd
 		}
 	}
-	assert.True(t, found, "specify command should be registered")
+	return nil
+}
+
+func TestSpecifyCmdRegistration(t *testing.T) {
+	cmd := getSpecifyCmd()
+	assert.NotNil(t, cmd, "specify command should be registered")
 }
 
 func TestSpecifyCmdAliases(t *testing.T) {
+	cmd := getSpecifyCmd()
+	require.NotNil(t, cmd, "specify command must exist")
 	expectedAliases := []string{"spec", "s"}
-	assert.Equal(t, expectedAliases, specifyCmd.Aliases)
+	assert.Equal(t, expectedAliases, cmd.Aliases)
 }
 
 func TestSpecifyCmdRequiresAtLeastOneArg(t *testing.T) {
+	cmd := getSpecifyCmd()
+	require.NotNil(t, cmd, "specify command must exist")
+
 	// Should require at least 1 arg
-	err := specifyCmd.Args(specifyCmd, []string{})
+	err := cmd.Args(cmd, []string{})
 	assert.Error(t, err)
 
-	err = specifyCmd.Args(specifyCmd, []string{"feature description"})
+	err = cmd.Args(cmd, []string{"feature description"})
 	assert.NoError(t, err)
 
 	// Multiple args should work (they get joined)
-	err = specifyCmd.Args(specifyCmd, []string{"feature", "description", "here"})
+	err = cmd.Args(cmd, []string{"feature", "description", "here"})
 	assert.NoError(t, err)
 }
 
 func TestSpecifyCmdFlags(t *testing.T) {
+	cmd := getSpecifyCmd()
+	require.NotNil(t, cmd, "specify command must exist")
+
 	// max-retries flag should exist
-	f := specifyCmd.Flags().Lookup("max-retries")
+	f := cmd.Flags().Lookup("max-retries")
 	require.NotNil(t, f)
 	assert.Equal(t, "r", f.Shorthand)
 	assert.Equal(t, "0", f.DefValue)
 }
 
 func TestSpecifyCmdExamples(t *testing.T) {
+	cmd := getSpecifyCmd()
+	require.NotNil(t, cmd, "specify command must exist")
+
 	examples := []string{
 		"autospec specify",
 		"authentication",
@@ -57,11 +75,14 @@ func TestSpecifyCmdExamples(t *testing.T) {
 	}
 
 	for _, example := range examples {
-		assert.Contains(t, specifyCmd.Example, example)
+		assert.Contains(t, cmd.Example, example)
 	}
 }
 
 func TestSpecifyCmdLongDescription(t *testing.T) {
+	cmd := getSpecifyCmd()
+	require.NotNil(t, cmd, "specify command must exist")
+
 	keywords := []string{
 		"specification",
 		"spec.yaml",
@@ -69,7 +90,7 @@ func TestSpecifyCmdLongDescription(t *testing.T) {
 	}
 
 	for _, keyword := range keywords {
-		assert.Contains(t, specifyCmd.Long, keyword)
+		assert.Contains(t, cmd.Long, keyword)
 	}
 }
 
@@ -84,8 +105,11 @@ func TestSpecifyCmd_InheritedFlags(t *testing.T) {
 }
 
 func TestSpecifyCmd_MaxRetriesDefault(t *testing.T) {
+	cmd := getSpecifyCmd()
+	require.NotNil(t, cmd, "specify command must exist")
+
 	// Default should be 0 (use config)
-	f := specifyCmd.Flags().Lookup("max-retries")
+	f := cmd.Flags().Lookup("max-retries")
 	require.NotNil(t, f)
 	assert.Equal(t, "0", f.DefValue)
 }
@@ -97,10 +121,15 @@ func TestSpecifyCmd_MaxRetriesDefault(t *testing.T) {
 // Background: The specify command was refactored to use lifecycle.Run() wrapper
 // which handles timing and notification dispatch automatically.
 func TestSpecifyCmd_NotificationIntegration(t *testing.T) {
-	// Read the specify.go source file
-	sourceFile := "specify.go"
+	// Get the directory containing this test file
+	_, thisFile, _, ok := runtime.Caller(0)
+	require.True(t, ok, "failed to get test file path")
+	baseDir := filepath.Dir(thisFile)
+
+	// Read the specify.go source file (now in stages subpackage)
+	sourceFile := filepath.Join(baseDir, "stages/specify.go")
 	content, err := os.ReadFile(sourceFile)
-	require.NoError(t, err, "failed to read specify.go source file")
+	require.NoError(t, err, "failed to read stages/specify.go source file")
 
 	source := string(content)
 
@@ -150,17 +179,25 @@ func TestSpecifyCmd_NotificationIntegration(t *testing.T) {
 func TestAllCommandsHaveNotificationSupport(t *testing.T) {
 	t.Parallel()
 
+	// Get the directory containing this test file
+	_, thisFile, _, ok := runtime.Caller(0)
+	require.True(t, ok, "failed to get test file path")
+	baseDir := filepath.Dir(thisFile)
+
 	// Commands that should have notification support via lifecycle.Run()
+	// Key is command name, value is relative path from internal/cli/
+	// Note: Only specify, plan, tasks, implement were moved to stages/
+	// Others remain in the main cli package
 	commandFiles := map[string]string{
-		"specify":      "specify.go",
+		"specify":      "stages/specify.go",
 		"prep":         "prep.go",
 		"run":          "run.go",
-		"implement":    "implement.go",
+		"implement":    "stages/implement.go",
 		"all":          "all.go",
 		"clarify":      "clarify.go",
 		"analyze":      "analyze.go",
-		"plan":         "plan.go",
-		"tasks":        "tasks.go",
+		"plan":         "stages/plan.go",
+		"tasks":        "stages/tasks.go",
 		"checklist":    "checklist.go",
 		"constitution": "constitution.go",
 	}
@@ -168,7 +205,8 @@ func TestAllCommandsHaveNotificationSupport(t *testing.T) {
 	for cmdName, fileName := range commandFiles {
 		t.Run(cmdName, func(t *testing.T) {
 			t.Parallel()
-			content, err := os.ReadFile(fileName)
+			fullPath := filepath.Join(baseDir, fileName)
+			content, err := os.ReadFile(fullPath)
 			require.NoError(t, err, "failed to read %s", fileName)
 			source := string(content)
 

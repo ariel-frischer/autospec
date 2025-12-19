@@ -9,17 +9,22 @@
 package cli
 
 import (
+	"github.com/ariel-frischer/autospec/internal/cli/admin"
+	"github.com/ariel-frischer/autospec/internal/cli/config"
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
+	"github.com/ariel-frischer/autospec/internal/cli/stages"
+	"github.com/ariel-frischer/autospec/internal/cli/util"
 	"github.com/spf13/cobra"
 )
 
-// Command group IDs for organizing help output
+// Command group IDs for organizing help output (re-exported from shared)
 const (
-	GroupGettingStarted = "getting-started"
-	GroupWorkflows      = "workflows"
-	GroupCoreStages     = "core-stages"
-	GroupOptionalStages = "optional-stages"
-	GroupConfiguration  = "configuration"
-	GroupInternal       = "internal"
+	GroupGettingStarted = shared.GroupGettingStarted
+	GroupWorkflows      = shared.GroupWorkflows
+	GroupCoreStages     = shared.GroupCoreStages
+	GroupOptionalStages = shared.GroupOptionalStages
+	GroupConfiguration  = shared.GroupConfiguration
+	GroupInternal       = shared.GroupInternal
 )
 
 var rootCmd = &cobra.Command{
@@ -75,4 +80,10 @@ func init() {
 	rootCmd.PersistentFlags().Bool("skip-preflight", false, "Skip pre-flight validation checks")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
+
+	// Register commands from subpackages
+	stages.Register(rootCmd)
+	config.Register(rootCmd)
+	util.Register(rootCmd)
+	admin.Register(rootCmd)
 }

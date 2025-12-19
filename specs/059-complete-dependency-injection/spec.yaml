@@ -1,0 +1,282 @@
+feature:
+  branch: "059-complete-dependency-injection"
+  created: "2025-12-18"
+  status: "Skipped"
+  skipped_at: "2025-12-18"
+  skip_reason: |
+    Superseded by arch-10 (targeted-test-coverage). After analysis, arch-1/2 already solved
+    the core testability problem via executor interfaces. Adding ConfigProvider, ArtifactValidator,
+    and RetryStateStore interfaces would be abstraction for abstraction's sake - config is already
+    a simple struct, validation should be tested in its own package, and retry can use temp files.
+    The 7-field OrchestratorDeps was a code smell suggesting over-engineering.
+  input: |
+    # Arch 4: Complete Dependency Injection (REVISED)
+
+    **Location:** Multiple packages (workflow, config, validation, retry)
+    **Impact:** MEDIUM - Completes testability improvements started in arch-1/2
+    **Effort:** LOW-MEDIUM (reduced scope due to prior work)
+    **Dependencies:**
+    - arch-1 and arch-2 COMPLETED (interfaces already exist)
+    - arch-3 IN PROGRESS (CLI subpackages - coordinate deps wiring)
+
+    **Current situation:** Most executor interfaces already exist. This task now focuses on:
+    1. Remaining gaps (Configuration, Validator, RetryStore interfaces)
+    2. Consolidating the deps pattern in WorkflowOrchestrator
+    3. Coordinating with arch-3's CLI subpackages for dependency wiring
+
+user_stories:
+  - id: "US-001"
+    title: "Mock configuration in unit tests"
+    priority: "P1"
+    as_a: "developer writing unit tests"
+    i_want: "to inject mock configuration into workflow components"
+    so_that: "I can test orchestrator behavior without loading real config files"
+    why_this_priority: "Configuration mocking is essential for isolated testing - currently requires real files"
+    independent_test: "Create unit test that instantiates WorkflowOrchestrator with mock config and verifies behavior"
+    acceptance_scenarios:
+      - given: "a mock ConfigProvider implementation"
+        when: "creating a WorkflowOrchestrator"
+        then: "the orchestrator uses the mock config values without file system access"
+      - given: "a test requiring specific config values (e.g., max_retries=1)"
+        when: "running the test with mock ConfigProvider"
+        then: "the test completes in isolation without environment dependencies"
+
+  - id: "US-002"
+    title: "Mock validation in workflow tests"
+    priority: "P1"
+    as_a: "developer testing workflow execution"
+    i_want: "to inject mock validators into workflow components"
+    so_that: "I can control validation outcomes without creating real YAML artifacts"
+    why_this_priority: "Direct validation calls make tests brittle and slow due to file system dependencies"
+    independent_test: "Create unit test with mock validator that returns controlled validation results"
+    acceptance_scenarios:
+      - given: "a mock ArtifactValidator that always returns success"
+        when: "testing phase execution flow"
+        then: "the test proceeds without creating actual spec/plan/tasks files"
+      - given: "a mock ArtifactValidator configured to return specific errors"
+        when: "testing error handling paths"
+        then: "error branches execute without requiring malformed files"
+
+  - id: "US-003"
+    title: "Mock retry state persistence"
+    priority: "P1"
+    as_a: "developer testing retry logic"
+    i_want: "to inject mock retry store into workflow components"
+    so_that: "I can test retry behavior without state file creation/cleanup"
+    why_this_priority: "Retry state file operations cause test pollution and cleanup complexity"
+    independent_test: "Create unit test with in-memory mock RetryStateStore verifying retry count tracking"
+    acceptance_scenarios:
+      - given: "a mock RetryStateStore with pre-populated state"
+        when: "testing retry continuation logic"
+        then: "the test resumes from the mocked state without file operations"
+      - given: "a mock RetryStateStore tracking all method calls"
+        when: "testing that state is properly saved after execution"
+        then: "mock records verify SaveState was called with expected values"
+
+  - id: "US-004"
+    title: "Wire dependencies at CLI layer"
+    priority: "P2"
+    as_a: "developer adding new CLI commands"
+    i_want: "a centralized factory for creating workflow components"
+    so_that: "I can consistently wire dependencies across all command implementations"
+    why_this_priority: "Reduces duplication and ensures consistent dependency injection across CLI"
+    independent_test: "Verify factory creates orchestrator with all dependencies correctly wired"
+    acceptance_scenarios:
+      - given: "a loaded Configuration"
+        when: "calling the CLI dependency factory"
+        then: "returns a fully-wired WorkflowOrchestrator with all dependencies"
+      - given: "CLI subpackages (stages, config, util, admin)"
+        when: "registering commands"
+        then: "all commands receive shared dependencies via factory"
+
+  - id: "US-005"
+    title: "Maintain backward compatibility"
+    priority: "P1"
+    as_a: "user running autospec commands"
+    i_want: "all existing commands to work exactly as before"
+    so_that: "the refactoring does not break my workflows"
+    why_this_priority: "Breaking changes would disrupt existing users - refactoring must be transparent"
+    independent_test: "Run full CLI test suite before and after changes with identical results"
+    acceptance_scenarios:
+      - given: "existing autospec commands (specify, plan, tasks, implement, etc.)"
+        when: "running after dependency injection refactoring"
+        then: "all commands produce identical behavior to before refactoring"
+      - given: "an existing project using autospec"
+        when: "upgrading to the new version"
+        then: "no changes required to config files or workflows"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST define ConfigProvider interface in internal/workflow/interfaces.go exposing config access methods"
+      testable: true
+      acceptance_criteria: "Interface exists with methods for all config fields used by workflow package"
+    - id: "FR-002"
+      description: "MUST implement ConfigProvider on config.Configuration via adapter methods"
+      testable: true
+      acceptance_criteria: "config.Configuration satisfies ConfigProvider interface"
+    - id: "FR-003"
+      description: "MUST define ArtifactValidator interface for spec/plan/tasks validation"
+      testable: true
+      acceptance_criteria: "Interface covers ValidateSpec, ValidatePlan, ValidateTasks, ExtractPhaseInfo, ExtractOrderedTasks"
+    - id: "FR-004"
+      description: "MUST create defaultValidator implementation wrapping existing validation functions"
+      testable: true
+      acceptance_criteria: "DefaultValidator delegates to validation package functions"
+    - id: "FR-005"
+      description: "MUST define RetryStateStore interface for retry state persistence"
+      testable: true
+      acceptance_criteria: "Interface covers Load/Save for phase state, stage state, and task state"
+    - id: "FR-006"
+      description: "MUST create FileStore implementation in retry package"
+      testable: true
+      acceptance_criteria: "FileStore wraps existing LoadRetryState/SaveRetryState functions"
+    - id: "FR-007"
+      description: "MUST update WorkflowOrchestrator to accept OrchestratorDeps struct"
+      testable: true
+      acceptance_criteria: "NewWorkflowOrchestrator accepts deps struct with all interface dependencies"
+    - id: "FR-008"
+      description: "MUST provide mock implementations for all new interfaces"
+      testable: true
+      acceptance_criteria: "MockConfigProvider, MockValidator, MockRetryStore exist in mocks_test.go"
+    - id: "FR-009"
+      description: "MUST create CLI factory for dependency wiring"
+      testable: true
+      acceptance_criteria: "Factory creates fully-wired orchestrator from Configuration"
+    - id: "FR-010"
+      description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
+      testable: true
+      acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "code_quality"
+      description: "All functions must be under 40 lines; extract helpers for complex logic"
+      measurable_target: "No function exceeds 40 lines excluding comments"
+    - id: "NFR-002"
+      category: "code_quality"
+      description: 'All errors must be wrapped with context using fmt.Errorf("doing X: %w", err)'
+      measurable_target: "Zero bare 'return err' statements in new code"
+    - id: "NFR-003"
+      category: "code_quality"
+      description: "Tests must use map-based table-driven pattern with t.Parallel()"
+      measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
+    - id: "NFR-004"
+      category: "code_quality"
+      description: "Accept interfaces, return concrete types"
+      measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
+    - id: "NFR-005"
+      category: "maintainability"
+      description: "Interfaces defined in dedicated interfaces.go files"
+      measurable_target: "No interface definitions in implementation files"
+    - id: "NFR-006"
+      category: "maintainability"
+      description: "Mocks defined in mocks_test.go files"
+      measurable_target: "No mock definitions in production code"
+    - id: "NFR-007"
+      category: "reliability"
+      description: "No breaking changes to CLI commands"
+      measurable_target: "All existing CLI tests pass without modification"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Unit tests can instantiate workflow components without file system dependencies"
+      metric: "Number of tests requiring actual config/validation/retry files"
+      target: "Zero new tests require file system fixtures for core workflow logic"
+    - id: "SC-002"
+      description: "Test isolation improves - tests run independently without shared state"
+      metric: "Test suite can run with -shuffle=on without failures"
+      target: "All tests pass with random execution order"
+    - id: "SC-003"
+      description: "Existing CLI commands continue working unchanged"
+      metric: "CLI integration test pass rate"
+      target: "100% of existing CLI tests pass"
+    - id: "SC-004"
+      description: "New interfaces provide complete coverage of dependency injection needs"
+      metric: "Direct calls to config/validation/retry in workflow package"
+      target: "All external dependencies accessed through interfaces"
+
+key_entities:
+  - name: "ConfigProvider"
+    description: "Interface for accessing configuration values without concrete config dependency"
+    attributes:
+      - "GetClaudeCmd() string"
+      - "GetMaxRetries() int"
+      - "GetSpecsDir() string"
+      - "GetStateDir() string"
+      - "GetNotifications() NotificationConfig"
+  - name: "ArtifactValidator"
+    description: "Interface for validating spec/plan/tasks YAML artifacts"
+    attributes:
+      - "ValidateSpec(path) Result"
+      - "ValidatePlan(path) Result"
+      - "ValidateTasks(path) Result"
+      - "ExtractPhaseInfo(path) []PhaseInfo"
+      - "ExtractOrderedTasks(path) []TaskItem"
+  - name: "RetryStateStore"
+    description: "Interface for persisting and retrieving retry state"
+    attributes:
+      - "LoadState(specName, phase, maxRetries) RetryState"
+      - "SaveState(state) error"
+      - "LoadStageState(specName) StageExecutionState"
+      - "LoadTaskState(specName) TaskExecutionState"
+      - "ClearAll(specName) error"
+  - name: "OrchestratorDeps"
+    description: "Struct collecting all dependencies for WorkflowOrchestrator"
+    attributes:
+      - "Config ConfigProvider"
+      - "StageExecutor StageExecutorInterface"
+      - "PhaseExecutor PhaseExecutorInterface"
+      - "TaskExecutor TaskExecutorInterface"
+      - "Validator ArtifactValidator"
+      - "RetryStore RetryStateStore"
+      - "Preflight PreflightChecker"
+  - name: "CLIDeps"
+    description: "CLI-layer dependency container for command wiring"
+    attributes:
+      - "Config *config.Configuration"
+      - "Validator ArtifactValidator"
+      - "RetryStore RetryStateStore"
+      - "Notifier *notify.Handler"
+
+edge_cases:
+  - scenario: "Nil dependencies passed to constructor"
+    expected_behavior: "Constructor validates required dependencies and returns descriptive error"
+  - scenario: "Mock returns unexpected error type"
+    expected_behavior: "Error propagates correctly through interfaces with original type preserved"
+  - scenario: "Interface method panics in mock"
+    expected_behavior: "Panic propagates; test framework captures and reports"
+  - scenario: "Concurrent access to mock state"
+    expected_behavior: "Mocks are not concurrency-safe by default; tests use separate instances"
+
+assumptions:
+  - "arch-1 and arch-2 interfaces (ClaudeRunner, StageExecutorInterface, etc.) are stable and complete"
+  - "arch-3 CLI subpackage structure is in progress and may evolve; coordinate but don't block on it"
+  - "Existing tests provide adequate coverage to catch behavioral regressions"
+  - "Config.Configuration fields are stable; new adapter methods map directly to existing fields"
+  - "validation package functions have stable signatures that can be wrapped"
+  - "retry package state types are exported and can be used in interface definitions"
+
+constraints:
+  - "Must not change public CLI command signatures or behavior"
+  - "Must not introduce import cycles between packages"
+  - "Interfaces must be defined in workflow package to avoid dependency on config/validation/retry"
+  - "Must coordinate with arch-3 branch for CLI factory placement"
+  - "Cannot modify existing test infrastructure significantly"
+
+out_of_scope:
+  - "Refactoring stage/phase/task executor interfaces (already done in arch-1/2)"
+  - "Creating integration test framework"
+  - "Adding new CLI commands"
+  - "Modifying config file format or loading logic"
+  - "Changing validation rules or error messages"
+  - "Optimizing retry state file format"
+  - "Adding dependency injection container/framework (manual wiring only)"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-19T00:07:13Z"
+  artifact_type: "spec"

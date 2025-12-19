@@ -1,0 +1,323 @@
+feature:
+    branch: "056-cli-subpackages"
+    created: "2025-12-18"
+    status: "Completed"
+    completed_at: 2025-12-19T00:05:24Z
+    input: |
+        # Arch 3: CLI Subpackage Structure (MEDIUM PRIORITY)
+
+        **Location:** `internal/cli/` (6,463 LOC, 47 files)
+        **Impact:** MEDIUM - Reduces cognitive load, improves navigation
+        **Effort:** LOW
+        **Dependencies:** None, can be done independently
+
+        ## Problem Statement
+
+        CLI package is monolithic despite being split into 47 files. Commands are loosely organized, making navigation difficult for contributors.
+
+        ## Current Structure
+
+        ```
+        internal/cli/
+        ├── all.go
+        ├── analyze.go
+        ├── checklist.go
+        ├── clarify.go
+        ├── clean.go
+        ├── commands_install.go
+        ├── commands_list.go
+        ├── config.go
+        ├── constitution.go
+        ├── doctor.go
+        ├── execute.go
+        ├── history.go
+        ├── implement.go
+        ├── init.go
+        ├── migrate.go
+        ├── plan.go
+        ├── prep.go
+        ├── root.go
+        ├── run.go
+        ├── specify.go
+        ├── status.go
+        ├── tasks.go
+        ├── uninstall.go
+        ├── update_agent_context.go
+        ├── update_task.go
+        ├── version.go
+        └── ... (test files)
+        ```
+
+        ## Target Structure
+
+        ```
+        internal/cli/
+        ├── root.go              # Root command and common flags
+        ├── execute.go           # Shared execution helpers
+        ├── all.go, prep.go, run.go  # Orchestration commands
+        ├── stages/              # Stage commands
+        │   ├── specify.go
+        │   ├── plan.go
+        │   ├── tasks.go
+        │   └── implement.go
+        ├── config/              # Configuration commands
+        │   ├── init.go
+        │   ├── config.go
+        │   ├── migrate.go
+        │   └── doctor.go
+        ├── util/                # Utility commands
+        │   ├── status.go
+        │   ├── history.go
+        │   ├── version.go
+        │   └── clean.go
+        └── admin/               # Admin commands
+            ├── commands_install.go
+            ├── commands_list.go
+            ├── completion.go
+            └── uninstall.go
+        ```
+
+        ## Implementation Approach
+
+        1. Create subpackage directories
+        2. Move stage commands to stages/
+        3. Move config commands to config/
+        4. Move utility commands to util/
+        5. Move admin commands to admin/
+        6. Update root.go to import subpackages
+        7. Update all imports throughout codebase
+        8. Run tests to verify no breakage
+
+        ## Acceptance Criteria
+
+        - [ ] stages/ contains specify, plan, tasks, implement
+        - [ ] config/ contains init, config, migrate, doctor
+        - [ ] util/ contains status, history, version, clean
+        - [ ] admin/ contains commands_*, completion, uninstall
+        - [ ] Root command imports and registers subpackages
+        - [ ] All tests pass
+        - [ ] Build succeeds
+
+        ## Non-Functional Requirements
+
+        - No behavioral changes, only organizational
+        - Maintain CLI lifecycle wrapper pattern
+        - Keep test files with their commands
+        - Update CLAUDE.md package structure docs
+user_stories:
+    - id: "US-001"
+      title: "Navigate CLI Commands by Category"
+      priority: "P1"
+      as_a: "contributor exploring the codebase"
+      i_want: "CLI commands organized into logical subpackages by function"
+      so_that: "I can quickly locate and understand related commands without searching through 47 files"
+      why_this_priority: "Core purpose of this refactoring - without logical organization, the 47-file structure provides no benefit"
+      independent_test: "New contributor can find the implement command's source file in under 30 seconds"
+      acceptance_scenarios:
+        - given: "a new contributor wants to modify the implement command"
+          when: "they navigate to internal/cli/"
+          then: "they find stages/ directory and locate implement.go within it"
+        - given: "a developer needs to add a new utility command"
+          when: "they look for where utility commands live"
+          then: "they find the util/ subpackage with status, history, version, clean as examples"
+    - id: "US-002"
+      title: "Maintain Existing CLI Behavior"
+      priority: "P1"
+      as_a: "user of the autospec CLI"
+      i_want: "all existing commands to work exactly as before"
+      so_that: "the reorganization is transparent and doesn't break my workflows"
+      why_this_priority: "Zero behavioral change is a hard requirement - this is pure refactoring"
+      independent_test: "Full test suite passes after reorganization"
+      acceptance_scenarios:
+        - given: "the CLI reorganization is complete"
+          when: "I run any existing autospec command"
+          then: "it behaves identically to before the reorganization"
+        - given: "the reorganization is complete"
+          when: "the full test suite is executed"
+          then: "all tests pass without modification to test assertions"
+    - id: "US-003"
+      title: "Find Stage Commands Together"
+      priority: "P2"
+      as_a: "developer working on the workflow pipeline"
+      i_want: "all stage commands (specify, plan, tasks, implement) in one location"
+      so_that: "I can understand and modify the workflow stages as a cohesive unit"
+      why_this_priority: "Important for workflow development but not blocking basic navigation"
+      independent_test: "All four stage commands exist in stages/ directory"
+      acceptance_scenarios:
+        - given: "I need to understand the specify stage implementation"
+          when: "I navigate to internal/cli/stages/"
+          then: "I find specify.go, plan.go, tasks.go, and implement.go"
+        - given: "I want to add consistent behavior across all stages"
+          when: "I modify files in stages/"
+          then: "I can see all stage implementations in one directory listing"
+    - id: "US-004"
+      title: "Locate Configuration Commands"
+      priority: "P2"
+      as_a: "developer maintaining configuration features"
+      i_want: "all configuration-related commands grouped together"
+      so_that: "I can manage init, config, migrate, and doctor as related functionality"
+      why_this_priority: "Clear grouping improves maintainability but existing structure works"
+      independent_test: "Config commands are co-located in config/ directory"
+      acceptance_scenarios:
+        - given: "I need to update how configuration is initialized"
+          when: "I look for the init command"
+          then: "I find it alongside config, migrate, and doctor in config/"
+requirements:
+    functional:
+        - id: "FR-001"
+          description: "MUST create stages/ subpackage containing specify.go, plan.go, tasks.go, and implement.go with their associated test files"
+          testable: true
+          acceptance_criteria: "ls internal/cli/stages/ shows all four command files and their _test.go counterparts"
+        - id: "FR-002"
+          description: "MUST create config/ subpackage containing init.go, config.go, migrate.go, and doctor.go with their associated test files"
+          testable: true
+          acceptance_criteria: "ls internal/cli/config/ shows all four command files and their _test.go counterparts"
+        - id: "FR-003"
+          description: "MUST create util/ subpackage containing status.go, history.go, version.go, and clean.go with their associated test files"
+          testable: true
+          acceptance_criteria: "ls internal/cli/util/ shows all four command files and their _test.go counterparts"
+        - id: "FR-004"
+          description: "MUST create admin/ subpackage containing commands_install.go, commands_list.go, completion.go, and uninstall.go with their associated test files"
+          testable: true
+          acceptance_criteria: "ls internal/cli/admin/ shows all four command files and their _test.go counterparts"
+        - id: "FR-005"
+          description: "MUST update root.go to import and register all subpackage commands"
+          testable: true
+          acceptance_criteria: "root.go imports stages, config, util, and admin packages and registers their commands"
+        - id: "FR-006"
+          description: "MUST keep orchestration commands (all.go, prep.go, run.go) in the root cli package"
+          testable: true
+          acceptance_criteria: "These files remain in internal/cli/ not in subpackages"
+        - id: "FR-007"
+          description: "MUST keep shared execution helpers (execute.go) in the root cli package"
+          testable: true
+          acceptance_criteria: "execute.go remains in internal/cli/"
+        - id: "FR-008"
+          description: "MUST update CLAUDE.md to reflect new package structure"
+          testable: true
+          acceptance_criteria: "CLAUDE.md Package Structure section includes stages/, config/, util/, admin/ subpackages"
+        - id: "FR-009"
+          description: "MUST update all import statements throughout the codebase to reference new package locations"
+          testable: true
+          acceptance_criteria: "Build succeeds with no import errors"
+        - id: "FR-010"
+          description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
+          testable: true
+          acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
+    non_functional:
+        - id: "NFR-001"
+          category: "code_quality"
+          description: "All functions must be under 40 lines; extract helpers for complex logic"
+          measurable_target: "No function exceeds 40 lines excluding comments"
+        - id: "NFR-002"
+          category: "code_quality"
+          description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
+          measurable_target: "Zero bare 'return err' statements in new code"
+        - id: "NFR-003"
+          category: "code_quality"
+          description: "Tests must use map-based table-driven pattern with t.Parallel()"
+          measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
+        - id: "NFR-004"
+          category: "code_quality"
+          description: "Accept interfaces, return concrete types"
+          measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
+        - id: "NFR-005"
+          category: "maintainability"
+          description: "No behavioral changes - pure code reorganization"
+          measurable_target: "All existing tests pass without modification to test assertions"
+        - id: "NFR-006"
+          category: "maintainability"
+          description: "CLI lifecycle wrapper pattern must be preserved in all moved commands"
+          measurable_target: "All workflow commands continue to use lifecycle.RunWithHistory()"
+        - id: "NFR-007"
+          category: "maintainability"
+          description: "Test files must stay with their corresponding command files"
+          measurable_target: "Each .go file has its _test.go in the same directory"
+success_criteria:
+    measurable_outcomes:
+        - id: "SC-001"
+          description: "New contributors can locate a specific command's source file"
+          metric: "Time to find implement command source"
+          target: "Under 30 seconds with directory structure knowledge"
+        - id: "SC-002"
+          description: "All existing CLI functionality works identically"
+          metric: "Test pass rate"
+          target: "100% of existing tests pass"
+        - id: "SC-003"
+          description: "Codebase compiles without errors"
+          metric: "Build success"
+          target: "make build exits with code 0"
+        - id: "SC-004"
+          description: "Code quality gates pass"
+          metric: "Linter and formatter results"
+          target: "make lint and make fmt produce no changes or errors"
+        - id: "SC-005"
+          description: "CLI package file count per directory is manageable"
+          metric: "Files per directory"
+          target: "No single directory contains more than 15 command files"
+key_entities:
+    - name: "Subpackage"
+      description: "A Go package nested under internal/cli/ containing related command files"
+      attributes:
+        - "Package name matching directory name"
+        - "Exported command registration function"
+        - "Associated test files"
+    - name: "Stage Command"
+      description: "Commands that execute workflow stages (specify, plan, tasks, implement)"
+      attributes:
+        - "Lifecycle wrapper integration"
+        - "Validation integration"
+        - "Progress reporting"
+    - name: "Config Command"
+      description: "Commands that manage configuration (init, config, migrate, doctor)"
+      attributes:
+        - "Configuration file handling"
+        - "User/project config awareness"
+    - name: "Utility Command"
+      description: "Commands that provide information or cleanup (status, history, version, clean)"
+      attributes:
+        - "Read-only or cleanup operations"
+        - "No workflow state changes"
+    - name: "Admin Command"
+      description: "Commands for CLI administration (commands_install, commands_list, completion, uninstall)"
+      attributes:
+        - "CLI setup and management"
+        - "Integration with shell environments"
+edge_cases:
+    - scenario: "Circular import between subpackages"
+      expected_behavior: "Shared types/interfaces remain in root cli package or separate internal package to avoid cycles"
+    - scenario: "Test files that test multiple commands"
+      expected_behavior: "Integration tests remain in root cli package; unit tests move with their commands"
+    - scenario: "Commands that don't fit neatly into categories"
+      expected_behavior: "analyze.go, checklist.go, clarify.go, constitution.go stay in root or go to most logical category"
+    - scenario: "Shared test utilities or fixtures"
+      expected_behavior: "Test helpers move to internal/cli/testutil/ or remain in root cli package"
+assumptions:
+    - "Go module system handles subpackage imports automatically"
+    - "No external tools depend on specific file paths within internal/cli/"
+    - "All commands use Cobra and follow the existing registration pattern"
+    - "Test files can be moved alongside their command files without test breakage"
+    - "The lifecycle wrapper pattern is consistent across all workflow commands"
+    - "analyze.go, checklist.go, clarify.go, constitution.go are auxiliary workflow commands that can stay in root"
+    - "update_agent_context.go and update_task.go are utility commands for util/"
+constraints:
+    - "Must use Go's package system - cannot use filesystem-only organization"
+    - "Must maintain backwards compatibility with existing CLI behavior"
+    - "Must preserve existing command names and flags"
+    - "Must not introduce new dependencies"
+    - "Reorganization must be atomic - all changes in one coherent refactor"
+out_of_scope:
+    - "Renaming any CLI commands"
+    - "Changing command flags or behavior"
+    - "Refactoring command implementation logic"
+    - "Adding new commands"
+    - "Modifying the workflow engine"
+    - "Changes to validation or retry systems"
+    - "Performance optimization"
+    - "Adding new test coverage beyond what exists"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-18T23:04:19Z"
+    artifact_type: "spec"

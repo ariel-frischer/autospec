@@ -1,0 +1,322 @@
+plan:
+  branch: "054-split-workflow-orchestrator"
+  created: "2025-12-18"
+  spec_path: "specs/054-split-workflow-orchestrator/spec.yaml"
+
+summary: |
+  This refactoring splits the monolithic WorkflowOrchestrator (1,285 LOC, 38 methods) into focused,
+  single-responsibility components following the Strategy pattern. The approach extracts three
+  specialized executor types—StageExecutor (specify/plan/tasks), PhaseExecutor (phase-based
+  implementation), and TaskExecutor (task-level implementation)—while preserving all existing
+  public method signatures for backward compatibility.
+
+  Key technical decisions: (1) Use interfaces for dependency injection to enable isolated testing,
+  (2) Create separate files for each executor to improve code navigation, (3) Implement a factory
+  function that provides default implementations for backward compatibility, (4) Keep preflight
+  checking in the orchestrator as a cross-cutting concern. The refactoring is purely structural—no
+  behavioral changes.
+
+technical_context:
+  language: "Go"
+  framework: "None"
+  primary_dependencies:
+    - name: "cobra"
+      version: "v1.8+"
+      purpose: "CLI framework (existing)"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0+"
+      purpose: "YAML parsing for artifacts (existing)"
+  storage: "None"
+  testing:
+    framework: "go test"
+    approach: "Map-based table-driven tests with t.Parallel(); mock interfaces for isolated unit testing"
+  target_platform: "linux/darwin/windows (amd64/arm64)"
+  project_type: "cli"
+  performance_goals: "Validation functions <10ms; CLI startup <50ms; no performance regression"
+  constraints:
+    - "Must maintain backward compatibility with all existing CLI commands"
+    - "Cannot change public method signatures on WorkflowOrchestrator"
+    - "All code stays in internal/workflow package (no new packages)"
+    - "Functions <40 lines; errors wrapped with context"
+  scale_scope: "Refactoring of single package; ~1,285 LOC to split across 4+ files"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Plan requires tests for each executor interface before implementation; NFR-004 mandates map-based table tests"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "N/A"
+      notes: "This is a structural refactoring; does not change validation logic"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "No performance-critical changes; existing validation functions remain <10ms"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "N/A"
+      notes: "Retry logic remains unchanged in Executor; not modified by this refactoring"
+    - name: "Standardized Exit Codes (PRIN-005)"
+      status: "PASS"
+      notes: "Exit codes flow through unchanged; no modifications to exit code handling"
+    - name: "YAML-First Artifacts (PRIN-006)"
+      status: "N/A"
+      notes: "Artifact handling unchanged; this is Go code refactoring"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "FR-008 requires make fmt and make lint pass; enforced in acceptance criteria"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "NFR-002 through NFR-005 directly encode Go standards: <40 line functions, error wrapping, table tests, interface-in/concrete-out"
+    - name: "Command Template Independence (PRIN-012)"
+      status: "N/A"
+      notes: "No command template changes; refactoring is in internal/workflow only"
+
+research_findings:
+  decisions:
+    - topic: "Executor interface design"
+      decision: "Define narrow interfaces (1-2 methods each) rather than broad interfaces"
+      rationale: "Follows Go idiom 'accept interfaces, return concrete types'; enables focused mocking"
+      alternatives_considered:
+        - "Single ExecutorInterface with all methods - rejected due to interface bloat"
+        - "No interfaces, just concrete types - rejected due to testability requirements"
+    - topic: "File organization"
+      decision: "Separate files: orchestrator.go, stage_executor.go, phase_executor.go, task_executor.go"
+      rationale: "Matches Single Responsibility Principle; enables parallel work; improves navigation"
+      alternatives_considered:
+        - "Keep all code in workflow.go - rejected; defeats the purpose"
+        - "Create subpackages - rejected per constraint (internal/workflow only)"
+    - topic: "Backward compatibility approach"
+      decision: "Factory function provides default implementations; existing constructor unchanged"
+      rationale: "Zero breaking changes for CLI commands; gradual migration possible"
+      alternatives_considered:
+        - "Modify all CLI commands at once - risky, higher blast radius"
+        - "Deprecate old methods - unnecessary complexity"
+    - topic: "Preflight checker location"
+      decision: "Keep PreflightChecker in WorkflowOrchestrator"
+      rationale: "Cross-cutting concern; applies before any executor runs; already has injectable interface"
+      alternatives_considered:
+        - "Move to StageExecutor - wrong abstraction level"
+        - "Create PreflightExecutor - over-engineering"
+
+data_model:
+  entities:
+    - name: "StageExecutor"
+      description: "Executes specify, plan, and tasks stages with validation and retry"
+      fields:
+        - name: "executor"
+          type: "*Executor"
+          description: "Reference to underlying executor for Claude command execution"
+          constraints: "Required; must not be nil"
+        - name: "specsDir"
+          type: "string"
+          description: "Base directory for spec storage"
+          constraints: "Required; must be valid path"
+        - name: "debug"
+          type: "bool"
+          description: "Enable debug logging"
+          constraints: "Optional; defaults to false"
+      relationships:
+        - target: "Executor"
+          type: "composition"
+          description: "Uses Executor for underlying Claude execution"
+    - name: "PhaseExecutor"
+      description: "Executes phase-based implementation with context generation"
+      fields:
+        - name: "executor"
+          type: "*Executor"
+          description: "Reference to underlying executor for Claude command execution"
+          constraints: "Required; must not be nil"
+        - name: "specsDir"
+          type: "string"
+          description: "Base directory for spec storage"
+          constraints: "Required; must be valid path"
+        - name: "debug"
+          type: "bool"
+          description: "Enable debug logging"
+          constraints: "Optional; defaults to false"
+      relationships:
+        - target: "Executor"
+          type: "composition"
+          description: "Uses Executor for underlying Claude execution"
+    - name: "TaskExecutor"
+      description: "Executes individual tasks with dependency validation"
+      fields:
+        - name: "executor"
+          type: "*Executor"
+          description: "Reference to underlying executor for Claude command execution"
+          constraints: "Required; must not be nil"
+        - name: "specsDir"
+          type: "string"
+          description: "Base directory for spec storage"
+          constraints: "Required; must be valid path"
+        - name: "debug"
+          type: "bool"
+          description: "Enable debug logging"
+          constraints: "Optional; defaults to false"
+      relationships:
+        - target: "Executor"
+          type: "composition"
+          description: "Uses Executor for underlying Claude execution"
+    - name: "StageExecutorInterface"
+      description: "Contract for stage execution enabling dependency injection"
+      fields:
+        - name: "ExecuteSpecify"
+          type: "method"
+          description: "func(featureDescription string) (string, error)"
+          constraints: "Returns spec name on success"
+        - name: "ExecutePlan"
+          type: "method"
+          description: "func(specName, prompt string) error"
+          constraints: "Spec must exist"
+        - name: "ExecuteTasks"
+          type: "method"
+          description: "func(specName, prompt string) error"
+          constraints: "Plan must exist"
+      relationships:
+        - target: "StageExecutor"
+          type: "implementation"
+          description: "StageExecutor implements this interface"
+    - name: "PhaseExecutorInterface"
+      description: "Contract for phase-based execution"
+      fields:
+        - name: "ExecutePhaseLoop"
+          type: "method"
+          description: "func(specName string, startPhase, totalPhases int, prompt string) error"
+          constraints: "Phases must be sequential"
+        - name: "ExecuteSinglePhase"
+          type: "method"
+          description: "func(specName string, phaseNumber int, prompt string) error"
+          constraints: "Phase number must be valid"
+      relationships:
+        - target: "PhaseExecutor"
+          type: "implementation"
+          description: "PhaseExecutor implements this interface"
+    - name: "TaskExecutorInterface"
+      description: "Contract for task-level execution"
+      fields:
+        - name: "ExecuteTaskLoop"
+          type: "method"
+          description: "func(specName string, orderedTasks []TaskItem, startIdx int, prompt string) error"
+          constraints: "Tasks must be dependency-ordered"
+        - name: "ExecuteSingleTask"
+          type: "method"
+          description: "func(specName, taskID, taskTitle, prompt string) error"
+          constraints: "Task must exist"
+      relationships:
+        - target: "TaskExecutor"
+          type: "implementation"
+          description: "TaskExecutor implements this interface"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/architecture.md"
+      description: "Update architecture section with new executor components diagram"
+  source_code:
+    - path: "internal/workflow/orchestrator.go"
+      description: "Refactored WorkflowOrchestrator with injected executor interfaces"
+    - path: "internal/workflow/stage_executor.go"
+      description: "StageExecutor handling specify/plan/tasks stages"
+    - path: "internal/workflow/phase_executor.go"
+      description: "PhaseExecutor handling phase-based implementation"
+    - path: "internal/workflow/task_executor.go"
+      description: "TaskExecutor handling task-level implementation"
+    - path: "internal/workflow/interfaces.go"
+      description: "Interface definitions for all executor types"
+  tests:
+    - path: "internal/workflow/stage_executor_test.go"
+      description: "Unit tests for StageExecutor with mocked dependencies"
+    - path: "internal/workflow/phase_executor_test.go"
+      description: "Unit tests for PhaseExecutor with mocked dependencies"
+    - path: "internal/workflow/task_executor_test.go"
+      description: "Unit tests for TaskExecutor with mocked dependencies"
+    - path: "internal/workflow/orchestrator_test.go"
+      description: "Unit tests for refactored orchestrator with mocked executors"
+
+implementation_phases:
+  - phase: 1
+    name: "Interface Extraction"
+    goal: "Define executor interfaces and establish dependency injection points"
+    deliverables:
+      - "interfaces.go with StageExecutorInterface, PhaseExecutorInterface, TaskExecutorInterface"
+      - "Updated WorkflowOrchestrator struct with interface fields"
+      - "Factory function providing default implementations"
+      - "All existing tests pass (no behavioral change)"
+  - phase: 2
+    name: "StageExecutor Extraction"
+    goal: "Extract specify/plan/tasks execution into dedicated StageExecutor"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "stage_executor.go with StageExecutor struct implementing StageExecutorInterface"
+      - "Moved methods: executeSpecify, executePlan, executeTasks, ExecuteSpecify, ExecutePlan, ExecuteTasks"
+      - "stage_executor_test.go with mock-based unit tests"
+      - "Orchestrator delegates to StageExecutor for stage operations"
+  - phase: 3
+    name: "PhaseExecutor Extraction"
+    goal: "Extract phase-based implementation into dedicated PhaseExecutor"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "phase_executor.go with PhaseExecutor struct implementing PhaseExecutorInterface"
+      - "Moved methods: executePhaseLoop, executeAndVerifyPhase, executeSinglePhaseSession, related helpers"
+      - "phase_executor_test.go with mock-based unit tests"
+      - "Orchestrator delegates to PhaseExecutor for phase operations"
+  - phase: 4
+    name: "TaskExecutor Extraction"
+    goal: "Extract task-level execution into dedicated TaskExecutor"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "task_executor.go with TaskExecutor struct implementing TaskExecutorInterface"
+      - "Moved methods: executeTaskLoop, executeAndVerifyTask, executeSingleTaskSession, related helpers"
+      - "task_executor_test.go with mock-based unit tests"
+      - "Orchestrator delegates to TaskExecutor for task operations"
+  - phase: 5
+    name: "Integration and Cleanup"
+    goal: "Verify integration, clean up old code, ensure all quality gates pass"
+    dependencies:
+      - "Phase 2"
+      - "Phase 3"
+      - "Phase 4"
+    deliverables:
+      - "Orchestrator refactored to pure coordination (<400 LOC)"
+      - "workflow.go renamed to orchestrator.go"
+      - "All existing integration tests pass"
+      - "make test, make fmt, make lint, make build all pass"
+      - "Code coverage maintained or improved"
+
+risks:
+  - risk: "Breaking existing CLI commands during refactoring"
+    likelihood: "medium"
+    impact: "high"
+    mitigation: "Run full test suite after each phase; keep public method signatures unchanged; use factory function for backward compatibility"
+  - risk: "Circular imports when splitting files"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "All code stays in internal/workflow package; interfaces defined in single file"
+  - risk: "Test coverage decrease during refactoring"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Write tests for new executor types before moving code; monitor coverage metrics"
+  - risk: "Method move causes subtle behavioral changes"
+    likelihood: "medium"
+    impact: "high"
+    mitigation: "Use existing integration tests as regression safety net; test each method move individually"
+
+open_questions:
+  - question: "Should helper functions like getTaskIDsForPhase remain in the executor files or move to a helpers file?"
+    context: "Some helpers are used by multiple executors; moving them may improve organization but adds another file"
+    proposed_resolution: "Keep helpers in the executor file that primarily uses them; only extract if >2 executors need the same helper"
+  - question: "Should the debug logging pattern be centralized in a shared method?"
+    context: "Currently debugLog is on WorkflowOrchestrator; executors need similar logging"
+    proposed_resolution: "Add debugLog method to each executor type; keep pattern simple and consistent"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-18T21:05:38Z"
+  artifact_type: "plan"

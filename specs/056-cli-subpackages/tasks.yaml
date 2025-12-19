@@ -1,0 +1,530 @@
+tasks:
+    branch: "056-cli-subpackages"
+    created: "2025-12-18"
+    spec_path: "specs/056-cli-subpackages/spec.yaml"
+    plan_path: "specs/056-cli-subpackages/plan.yaml"
+summary:
+    total_tasks: 32
+    total_phases: 7
+    parallel_opportunities: 12
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create subpackage directories and registration infrastructure"
+      tasks:
+        - id: "T001"
+          title: "Create stages/ subpackage with register.go"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/stages/register.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/cli/stages/ exists"
+            - "register.go exports Register(rootCmd *cobra.Command) function"
+            - "Package declaration is 'package stages'"
+        - id: "T002"
+          title: "Create config/ subpackage with register.go"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/config/register.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/cli/config/ exists"
+            - "register.go exports Register(rootCmd *cobra.Command) function"
+            - "Package declaration is 'package config'"
+        - id: "T003"
+          title: "Create util/ subpackage with register.go"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/util/register.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/cli/util/ exists"
+            - "register.go exports Register(rootCmd *cobra.Command) function"
+            - "Package declaration is 'package util'"
+        - id: "T004"
+          title: "Create admin/ subpackage with register.go"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/admin/register.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/cli/admin/ exists"
+            - "register.go exports Register(rootCmd *cobra.Command) function"
+            - "Package declaration is 'package admin'"
+        - id: "T005"
+          title: "Export shared types from root cli package"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/exports.go"
+          dependencies: ["T001", "T002", "T003", "T004"]
+          acceptance_criteria:
+            - "RootCmd() accessor function exported for subpackages"
+            - "Group constants (WorkflowGroup, ConfigGroup, etc.) exported"
+            - "Exit codes remain accessible to subpackages"
+    - number: 2
+      title: "Foundational"
+      purpose: "Establish build verification before moving files"
+      tasks:
+        - id: "T006"
+          title: "Verify initial build passes before reorganization"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "make build succeeds with new subpackage structure"
+            - "make test passes (tests not yet moved)"
+            - "Empty register.go files don't break compilation"
+    - number: 3
+      title: "User Story 1 - Navigate CLI Commands by Category (US-001)"
+      purpose: "Organize commands into logical subpackages for easy navigation"
+      story_reference: "US-001"
+      independent_test: "New contributor can find implement command source in stages/ within 30 seconds"
+      tasks:
+        - id: "T007"
+          title: "Move specify.go and specify_test.go to stages/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/stages/specify.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "specify.go moved to internal/cli/stages/"
+            - "specify_test.go moved to internal/cli/stages/"
+            - "Package declaration updated to 'package stages'"
+            - "Imports updated to reference cli package for shared types"
+            - "Command added to stages/register.go Register function"
+        - id: "T008"
+          title: "Move plan.go to stages/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/stages/plan.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "plan.go moved to internal/cli/stages/"
+            - "Package declaration updated to 'package stages'"
+            - "Imports updated to reference cli package for shared types"
+            - "Command added to stages/register.go Register function"
+        - id: "T009"
+          title: "Move tasks.go to stages/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/stages/tasks.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "tasks.go moved to internal/cli/stages/"
+            - "Package declaration updated to 'package stages'"
+            - "Imports updated to reference cli package for shared types"
+            - "Command added to stages/register.go Register function"
+        - id: "T010"
+          title: "Move implement.go, implement_test.go, implement_integration_test.go to stages/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/stages/implement.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "implement.go moved to internal/cli/stages/"
+            - "implement_test.go moved to internal/cli/stages/"
+            - "implement_integration_test.go moved to internal/cli/stages/"
+            - "Package declaration updated to 'package stages'"
+            - "Command added to stages/register.go Register function"
+        - id: "T011"
+          title: "Move init.go and init_test.go to config/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/init.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "init.go moved to internal/cli/config/"
+            - "init_test.go moved to internal/cli/config/"
+            - "Package declaration updated to 'package config'"
+            - "Command added to config/register.go Register function"
+        - id: "T012"
+          title: "Move config.go and config_test.go to config/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/config.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "config.go moved to internal/cli/config/"
+            - "config_test.go moved to internal/cli/config/"
+            - "Package declaration updated to 'package config'"
+            - "Command added to config/register.go Register function"
+        - id: "T013"
+          title: "Move migrate.go, migrate_mdtoyaml.go, migrate_test.go to config/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/migrate.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "migrate.go moved to internal/cli/config/"
+            - "migrate_mdtoyaml.go moved to internal/cli/config/"
+            - "migrate_test.go moved to internal/cli/config/"
+            - "Package declaration updated to 'package config'"
+            - "Command added to config/register.go Register function"
+        - id: "T014"
+          title: "Move doctor.go to config/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/config/doctor.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "doctor.go moved to internal/cli/config/"
+            - "Package declaration updated to 'package config'"
+            - "Command added to config/register.go Register function"
+        - id: "T015"
+          title: "Move status.go and status_test.go to util/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/util/status.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "status.go moved to internal/cli/util/"
+            - "status_test.go moved to internal/cli/util/"
+            - "Package declaration updated to 'package util'"
+            - "Command added to util/register.go Register function"
+        - id: "T016"
+          title: "Move history.go and history_test.go to util/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/util/history.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "history.go moved to internal/cli/util/"
+            - "history_test.go moved to internal/cli/util/"
+            - "Package declaration updated to 'package util'"
+            - "Command added to util/register.go Register function"
+        - id: "T017"
+          title: "Move version.go and version_test.go to util/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/util/version.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "version.go moved to internal/cli/util/"
+            - "version_test.go moved to internal/cli/util/"
+            - "Package declaration updated to 'package util'"
+            - "Command added to util/register.go Register function"
+        - id: "T018"
+          title: "Move clean.go and clean_test.go to util/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/util/clean.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "clean.go moved to internal/cli/util/"
+            - "clean_test.go moved to internal/cli/util/"
+            - "Package declaration updated to 'package util'"
+            - "Command added to util/register.go Register function"
+        - id: "T019"
+          title: "Move commands.go and commands_*.go files to admin/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/commands.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "commands.go moved to internal/cli/admin/"
+            - "commands_install.go and commands_install_test.go moved to admin/"
+            - "commands_check.go and commands_check_test.go moved to admin/"
+            - "commands_info.go and commands_info_test.go moved to admin/"
+            - "Package declaration updated to 'package admin'"
+            - "Command added to admin/register.go Register function"
+        - id: "T020"
+          title: "Move completion_install.go and completion_install_test.go to admin/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/completion_install.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "completion_install.go moved to internal/cli/admin/"
+            - "completion_install_test.go moved to internal/cli/admin/"
+            - "Package declaration updated to 'package admin'"
+            - "Command added to admin/register.go Register function"
+        - id: "T021"
+          title: "Move uninstall.go and uninstall_test.go to admin/"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/cli/admin/uninstall.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "uninstall.go moved to internal/cli/admin/"
+            - "uninstall_test.go moved to internal/cli/admin/"
+            - "Package declaration updated to 'package admin'"
+            - "Command added to admin/register.go Register function"
+    - number: 4
+      title: "User Story 2 - Maintain Existing CLI Behavior (US-002)"
+      purpose: "Wire up subpackages in root.go and verify all commands work"
+      story_reference: "US-002"
+      independent_test: "Full test suite passes after reorganization"
+      tasks:
+        - id: "T022"
+          title: "Update root.go to import and call subpackage Register functions"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/root.go"
+          dependencies: ["T007", "T008", "T009", "T010", "T011", "T012", "T013", "T014", "T015", "T016", "T017", "T018", "T019", "T020", "T021"]
+          acceptance_criteria:
+            - "root.go imports stages, config, util, and admin subpackages"
+            - "init() calls stages.Register(rootCmd)"
+            - "init() calls config.Register(rootCmd)"
+            - "init() calls util.Register(rootCmd)"
+            - "init() calls admin.Register(rootCmd)"
+            - "Remove individual command registrations that were moved"
+        - id: "T023"
+          title: "Verify all commands are registered and accessible"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/root.go"
+          dependencies: ["T022"]
+          acceptance_criteria:
+            - "autospec --help shows all commands"
+            - "autospec specify --help works"
+            - "autospec plan --help works"
+            - "autospec tasks --help works"
+            - "autospec implement --help works"
+            - "autospec config --help works"
+            - "autospec init --help works"
+            - "autospec status --help works"
+            - "autospec version --help works"
+    - number: 5
+      title: "User Story 3 - Find Stage Commands Together (US-003)"
+      purpose: "Verify stage commands are correctly grouped in stages/"
+      story_reference: "US-003"
+      independent_test: "All four stage commands exist in stages/ directory"
+      tasks:
+        - id: "T024"
+          title: "Verify stages/ directory contains all stage commands"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/stages/"
+          dependencies: ["T022"]
+          acceptance_criteria:
+            - "ls internal/cli/stages/ shows specify.go, plan.go, tasks.go, implement.go"
+            - "ls internal/cli/stages/ shows corresponding test files"
+            - "register.go registers all four commands"
+    - number: 6
+      title: "User Story 4 - Locate Configuration Commands (US-004)"
+      purpose: "Verify configuration commands are grouped in config/"
+      story_reference: "US-004"
+      independent_test: "Config commands are co-located in config/ directory"
+      tasks:
+        - id: "T025"
+          title: "Verify config/ directory contains all config commands"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/config/"
+          dependencies: ["T022"]
+          acceptance_criteria:
+            - "ls internal/cli/config/ shows init.go, config.go, migrate.go, doctor.go"
+            - "ls internal/cli/config/ shows corresponding test files"
+            - "register.go registers all four commands"
+    - number: 7
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Documentation updates and final quality verification"
+      tasks:
+        - id: "T026"
+          title: "Update CLAUDE.md Package Structure section"
+          status: "Completed"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "CLAUDE.md"
+          dependencies: ["T024", "T025"]
+          acceptance_criteria:
+            - "Package Structure section lists stages/, config/, util/, admin/ subpackages"
+            - "Describes which commands live in each subpackage"
+            - "No references to old flat structure"
+        - id: "T027"
+          title: "Run make fmt to fix import formatting"
+          status: "Completed"
+          type: "refactor"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/"
+          dependencies: ["T024", "T025"]
+          acceptance_criteria:
+            - "make fmt exits with code 0"
+            - "No formatting changes remain uncommitted"
+        - id: "T028"
+          title: "Run make test and verify all tests pass"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/"
+          dependencies: ["T026", "T027"]
+          acceptance_criteria:
+            - "make test exits with code 0"
+            - "All existing tests pass without modification to assertions"
+            - "No test failures related to reorganization"
+        - id: "T029"
+          title: "Run make lint and fix any issues"
+          status: "Completed"
+          type: "refactor"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/"
+          dependencies: ["T028"]
+          acceptance_criteria:
+            - "make lint exits with code 0"
+            - "No lint errors in new subpackages"
+            - "No circular import warnings"
+        - id: "T030"
+          title: "Run make build and verify binary works"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "bin/autospec"
+          dependencies: ["T029"]
+          acceptance_criteria:
+            - "make build exits with code 0"
+            - "bin/autospec --help shows correct command structure"
+            - "All commands accessible via CLI"
+        - id: "T031"
+          title: "Verify no circular imports between subpackages"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/"
+          dependencies: ["T030"]
+          acceptance_criteria:
+            - "go build ./... succeeds without import cycle errors"
+            - "Subpackages only import root cli package, not each other"
+            - "Shared types accessible via cli.RootCmd() or exported constants"
+        - id: "T032"
+          title: "Final validation: all quality gates pass"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/"
+          dependencies: ["T031"]
+          acceptance_criteria:
+            - "make test exits with code 0"
+            - "make fmt produces no changes"
+            - "make lint exits with code 0"
+            - "make build exits with code 0"
+            - "autospec doctor passes"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: ["US-003", "US-004"]
+        - story_id: "US-003"
+          depends_on: ["US-002"]
+          blocks: []
+        - story_id: "US-004"
+          depends_on: ["US-002"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5, 6]
+        - phase: 5
+          blocks: [7]
+        - phase: 6
+          blocks: [7]
+parallel_execution:
+    - phase: 1
+      parallel_groups:
+        - tasks: ["T001", "T002", "T003", "T004"]
+          rationale: "Different subpackage directories, no dependencies between them"
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T007", "T008", "T009", "T010"]
+          rationale: "Stage commands are independent files with no cross-dependencies"
+        - tasks: ["T011", "T012", "T013", "T014"]
+          rationale: "Config commands are independent files with no cross-dependencies"
+        - tasks: ["T015", "T016", "T017", "T018"]
+          rationale: "Utility commands are independent files with no cross-dependencies"
+        - tasks: ["T019", "T020", "T021"]
+          rationale: "Admin commands are independent files with no cross-dependencies"
+    - phase: 7
+      parallel_groups:
+        - tasks: ["T026", "T027"]
+          rationale: "Documentation and formatting are independent tasks"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3, 4]
+        description: "Setup + Foundational + File Moves + Root Wiring"
+        validation: "autospec --help shows all commands; make build succeeds"
+    incremental_delivery:
+        - milestone: "Subpackage Infrastructure Ready"
+          phases: [1, 2]
+          deliverable: "Empty subpackages with registration stubs; build passes"
+        - milestone: "Commands Reorganized"
+          phases: [1, 2, 3]
+          deliverable: "All commands in new locations; compilation may have warnings"
+        - milestone: "MVP Complete"
+          phases: [1, 2, 3, 4]
+          deliverable: "Full CLI working with new structure; all commands accessible"
+        - milestone: "Quality Verified"
+          phases: [1, 2, 3, 4, 5, 6, 7]
+          deliverable: "All tests pass, lint clean, documentation updated"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-18T23:08:00Z"
+    artifact_type: "tasks"

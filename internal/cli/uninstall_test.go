@@ -1,5 +1,5 @@
 // Package cli_test tests the uninstall command for removing autospec command templates from Claude CLI.
-// Related: internal/cli/uninstall.go
+// Related: internal/cli/admin/uninstall.go
 // Tags: cli, uninstall, commands, templates, removal, cleanup
 package cli
 
@@ -9,23 +9,31 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/cli/admin"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestUninstallCmdRegistration(t *testing.T) {
-	found := false
+// getUninstallCmd finds the uninstall command from rootCmd
+func getUninstallCmd() *cobra.Command {
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "uninstall" {
-			found = true
-			break
+			return cmd
 		}
 	}
-	assert.True(t, found, "uninstall command should be registered")
+	return nil
+}
+
+func TestUninstallCmdRegistration(t *testing.T) {
+	cmd := getUninstallCmd()
+	assert.NotNil(t, cmd, "uninstall command should be registered")
 }
 
 func TestUninstallCmdFlags(t *testing.T) {
+	cmd := getUninstallCmd()
+	require.NotNil(t, cmd, "uninstall command must exist")
+
 	flags := []struct {
 		name      string
 		shorthand string
@@ -36,7 +44,7 @@ func TestUninstallCmdFlags(t *testing.T) {
 
 	for _, flag := range flags {
 		t.Run("flag "+flag.name, func(t *testing.T) {
-			f := uninstallCmd.Flags().Lookup(flag.name)
+			f := cmd.Flags().Lookup(flag.name)
 			require.NotNil(t, f, "flag %s should exist", flag.name)
 			assert.Equal(t, flag.shorthand, f.Shorthand)
 		})
@@ -44,11 +52,17 @@ func TestUninstallCmdFlags(t *testing.T) {
 }
 
 func TestUninstallCmdShortDescription(t *testing.T) {
-	assert.Contains(t, uninstallCmd.Short, "remove")
-	assert.Contains(t, uninstallCmd.Short, "autospec")
+	cmd := getUninstallCmd()
+	require.NotNil(t, cmd, "uninstall command must exist")
+
+	assert.Contains(t, cmd.Short, "remove")
+	assert.Contains(t, cmd.Short, "autospec")
 }
 
 func TestUninstallCmdLongDescription(t *testing.T) {
+	cmd := getUninstallCmd()
+	require.NotNil(t, cmd, "uninstall command must exist")
+
 	keywords := []string{
 		"binary",
 		"~/.config/autospec/",
@@ -61,14 +75,17 @@ func TestUninstallCmdLongDescription(t *testing.T) {
 	}
 
 	for _, keyword := range keywords {
-		assert.Contains(t, uninstallCmd.Long, keyword, "Long description should contain %q", keyword)
+		assert.Contains(t, cmd.Long, keyword, "Long description should contain %q", keyword)
 	}
 }
 
 func TestUninstallCmdExamples(t *testing.T) {
-	assert.Contains(t, uninstallCmd.Example, "--dry-run")
-	assert.Contains(t, uninstallCmd.Example, "--yes")
-	assert.Contains(t, uninstallCmd.Example, "sudo")
+	cmd := getUninstallCmd()
+	require.NotNil(t, cmd, "uninstall command must exist")
+
+	assert.Contains(t, cmd.Example, "--dry-run")
+	assert.Contains(t, cmd.Example, "--yes")
+	assert.Contains(t, cmd.Example, "sudo")
 }
 
 // Note: We can't easily test the actual uninstall operation since it would
@@ -78,7 +95,7 @@ func TestRunUninstall_DryRun_ShowsTargets(t *testing.T) {
 	// Create a test command with the same flags
 	cmd := &cobra.Command{
 		Use:  "uninstall",
-		RunE: runUninstall,
+		RunE: admin.RunUninstall,
 	}
 	cmd.Flags().BoolP("dry-run", "n", false, "")
 	cmd.Flags().BoolP("yes", "y", false, "")
@@ -123,7 +140,7 @@ func TestRunUninstall_DryRun_DoesNotRemoveFiles(t *testing.T) {
 	// Create a test command
 	cmd := &cobra.Command{
 		Use:  "uninstall",
-		RunE: runUninstall,
+		RunE: admin.RunUninstall,
 	}
 	cmd.Flags().BoolP("dry-run", "n", false, "")
 	cmd.Flags().BoolP("yes", "y", false, "")
@@ -153,7 +170,7 @@ func TestRunUninstall_CancellationMessage(t *testing.T) {
 	// Create a test command with mock stdin that provides 'n'
 	cmd := &cobra.Command{
 		Use:  "uninstall",
-		RunE: runUninstall,
+		RunE: admin.RunUninstall,
 	}
 	cmd.Flags().BoolP("dry-run", "n", false, "")
 	cmd.Flags().BoolP("yes", "y", false, "")
@@ -175,7 +192,7 @@ func TestRunUninstall_DefaultCancelsOnEnter(t *testing.T) {
 	// Create a test command with mock stdin that provides empty input (just Enter)
 	cmd := &cobra.Command{
 		Use:  "uninstall",
-		RunE: runUninstall,
+		RunE: admin.RunUninstall,
 	}
 	cmd.Flags().BoolP("dry-run", "n", false, "")
 	cmd.Flags().BoolP("yes", "y", false, "")
@@ -196,7 +213,7 @@ func TestRunUninstall_DefaultCancelsOnEnter(t *testing.T) {
 func TestRunUninstall_ShowsProjectCleanupHint(t *testing.T) {
 	cmd := &cobra.Command{
 		Use:  "uninstall",
-		RunE: runUninstall,
+		RunE: admin.RunUninstall,
 	}
 	cmd.Flags().BoolP("dry-run", "n", false, "")
 	cmd.Flags().BoolP("yes", "y", false, "")
@@ -218,7 +235,7 @@ func TestRunUninstall_ShowsProjectCleanupHint(t *testing.T) {
 func TestRunUninstall_OutputShowsTargetTypes(t *testing.T) {
 	cmd := &cobra.Command{
 		Use:  "uninstall",
-		RunE: runUninstall,
+		RunE: admin.RunUninstall,
 	}
 	cmd.Flags().BoolP("dry-run", "n", false, "")
 	cmd.Flags().BoolP("yes", "y", false, "")
