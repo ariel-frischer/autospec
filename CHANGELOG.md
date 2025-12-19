@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `config set/get/toggle/keys` subcommands for CLI-based configuration management with `--user` and `--project` scope flags
+- `--max-retries, -r` flag for `plan`, `tasks`, `constitution`, and `checklist` commands to override config retry limit
 
 ### Fixed
 - Description propagation in `run -a` now matches `autospec all` behavior (only specify stage receives description)
