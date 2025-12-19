@@ -12,17 +12,6 @@ feature:
     - arch-1 and arch-2 COMPLETED (interfaces already exist)
     - arch-3 IN PROGRESS (CLI subpackages - coordinate deps wiring)
 
-    ## Revision Context
-
-    **Original advice was:** Do arch-4 BEFORE arch-1 and arch-2.
-
-    **What actually happened:** arch-1 and arch-2 were completed first, creating interfaces organically as needed.
-
-    **Why original order was recommended:**
-    - Define all interfaces upfront → subsequent refactoring uses them naturally
-    - Avoids interface discovery during refactoring
-    - Creates consistent abstraction layer from the start
-
     **Current situation:** Most executor interfaces already exist. This task now focuses on:
     1. Remaining gaps (Configuration, Validator, RetryStore interfaces)
     2. Consolidating the deps pattern in WorkflowOrchestrator
@@ -159,7 +148,7 @@ requirements:
       measurable_target: "No function exceeds 40 lines excluding comments"
     - id: "NFR-002"
       category: "code_quality"
-      description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
+      description: 'All errors must be wrapped with context using fmt.Errorf("doing X: %w", err)'
       measurable_target: "Zero bare 'return err' statements in new code"
     - id: "NFR-003"
       category: "code_quality"

@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `notes` field in tasks.yaml for additional task context (max 1000 chars)
 
 ### Changed
+- CLI commands reorganized into subpackages (`stages/`, `config/`, `util/`, `admin/`, `shared/`) for improved maintainability
 - Documentation restructured into feature cards for better presentation
 - Custom sidebar styles for improved layout and usability
 - Pre-flight validation now distinguishes between missing and invalid artifacts with specific error messages
