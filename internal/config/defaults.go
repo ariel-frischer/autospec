@@ -8,7 +8,11 @@ func GetDefaultConfigTemplate() string {
 	return `# Autospec Configuration
 # See 'autospec --help' for command reference
 
-# Claude CLI settings
+# Agent settings (NEW - recommended)
+agent_preset: ""                      # Built-in agent: claude | gemini | cline | codex | opencode | goose
+custom_agent_cmd: ""                  # Custom agent template with {{PROMPT}} placeholder
+
+# Legacy Claude CLI settings (DEPRECATED - use agent_preset instead)
 claude_cmd: claude                    # Claude CLI command
 claude_args:                          # Arguments passed to Claude CLI
   - -p
@@ -45,6 +49,10 @@ notifications:
 // GetDefaults returns the default configuration values
 func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
+		// New agent configuration (recommended)
+		"agent_preset":     "",
+		"custom_agent_cmd": "",
+		// Legacy Claude configuration (deprecated, maintained for backward compatibility)
 		"claude_cmd": "claude",
 		"claude_args": []string{
 			"-p",
@@ -52,7 +60,7 @@ func GetDefaults() map[string]interface{} {
 			"--output-format",
 			"stream-json",
 		},
-		"custom_claude_cmd":  "",
+		"custom_claude_cmd": "",
 		"max_retries":        0,
 		"specs_dir":          "./specs",
 		"state_dir":          "~/.autospec/state",

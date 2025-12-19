@@ -13,7 +13,6 @@ module github.com/ariel-frischer/autospec
 go 1.25.1
 
 require (
-
 	// Koanf configuration management library (224K total for all koanf packages)
 	// Provides flexible config loading from multiple sources with priority ordering
 	github.com/knadh/koanf/parsers/json v1.0.0 // JSON parser for config files
@@ -70,6 +69,8 @@ require (
 )
 
 require github.com/knadh/koanf/parsers/yaml v0.1.0
+
+require github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 
 require (
 	// Terminal colors with auto-detection (used in errors package)

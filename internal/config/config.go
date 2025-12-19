@@ -35,9 +35,24 @@ const (
 
 // Configuration represents the autospec CLI tool configuration
 type Configuration struct {
-	ClaudeCmd         string   `koanf:"claude_cmd"`
-	ClaudeArgs        []string `koanf:"claude_args"`
-	CustomClaudeCmd   string   `koanf:"custom_claude_cmd"`
+	// AgentPreset selects a built-in agent by name (e.g., "claude", "gemini", "cline").
+	// Takes precedence over legacy claude_cmd/claude_args fields.
+	// Can be set via AUTOSPEC_AGENT_PRESET env var.
+	AgentPreset string `koanf:"agent_preset"`
+
+	// CustomAgentCmd defines a custom agent command with {{PROMPT}} placeholder.
+	// Takes precedence over agent_preset and all other agent configuration.
+	// Example: "aider --model sonnet --yes-always --message {{PROMPT}}"
+	// Can be set via AUTOSPEC_CUSTOM_AGENT_CMD env var.
+	CustomAgentCmd string `koanf:"custom_agent_cmd"`
+
+	// DEPRECATED: Use agent_preset instead. ClaudeCmd specifies the CLI command to invoke.
+	ClaudeCmd string `koanf:"claude_cmd"`
+	// DEPRECATED: Use agent_preset instead. ClaudeArgs specifies additional CLI arguments.
+	ClaudeArgs []string `koanf:"claude_args"`
+	// DEPRECATED: Use custom_agent_cmd instead. CustomClaudeCmd specifies a custom command template.
+	CustomClaudeCmd string `koanf:"custom_claude_cmd"`
+
 	MaxRetries        int      `koanf:"max_retries"`
 	SpecsDir          string   `koanf:"specs_dir"`
 	StateDir          string   `koanf:"state_dir"`
