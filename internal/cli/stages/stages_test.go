@@ -38,22 +38,32 @@ func TestSpecifyCmd_Flags(t *testing.T) {
 	}
 }
 
-func TestPlanCmd_InheritsFlags(t *testing.T) {
+func TestPlanCmd_Flags(t *testing.T) {
 	// Cannot run in parallel - accesses global command state
 
-	// planCmd inherits flags from root, doesn't define its own
 	// Verify the command has a valid GroupID
 	assert.NotEmpty(t, planCmd.GroupID)
 	assert.NotEmpty(t, planCmd.Use)
+
+	// Test max-retries flag
+	flag := planCmd.Flags().Lookup("max-retries")
+	assert.NotNil(t, flag, "max-retries flag should exist")
+	assert.Equal(t, "r", flag.Shorthand, "max-retries should have shorthand 'r'")
+	assert.Equal(t, "0", flag.DefValue, "max-retries should default to 0")
 }
 
-func TestTasksCmd_InheritsFlags(t *testing.T) {
+func TestTasksCmd_Flags(t *testing.T) {
 	// Cannot run in parallel - accesses global command state
 
-	// tasksCmd inherits flags from root, doesn't define its own
 	// Verify the command has a valid GroupID
 	assert.NotEmpty(t, tasksCmd.GroupID)
 	assert.NotEmpty(t, tasksCmd.Use)
+
+	// Test max-retries flag
+	flag := tasksCmd.Flags().Lookup("max-retries")
+	assert.NotNil(t, flag, "max-retries flag should exist")
+	assert.Equal(t, "r", flag.Shorthand, "max-retries should have shorthand 'r'")
+	assert.Equal(t, "0", flag.DefValue, "max-retries should default to 0")
 }
 
 func TestImplementCmd_Flags(t *testing.T) {
@@ -257,19 +267,17 @@ func TestSpecifyCmd_HasMaxRetriesFlag(t *testing.T) {
 	assert.Equal(t, "0", flag.DefValue, "max-retries should default to 0")
 }
 
-func TestPlanCmd_InheritsRootFlags(t *testing.T) {
+func TestPlanCmd_HasRunE(t *testing.T) {
 	// Cannot run in parallel - accesses global command state
 
-	// Plan command doesn't define its own flags (inherits from root)
-	// Verify the command can be executed with inherited flags
+	// Verify the command can be executed
 	assert.NotNil(t, planCmd.RunE, "Plan command should have RunE")
 }
 
-func TestTasksCmd_InheritsRootFlags(t *testing.T) {
+func TestTasksCmd_HasRunE(t *testing.T) {
 	// Cannot run in parallel - accesses global command state
 
-	// Tasks command doesn't define its own flags (inherits from root)
-	// Verify the command can be executed with inherited flags
+	// Verify the command can be executed
 	assert.NotNil(t, tasksCmd.RunE, "Tasks command should have RunE")
 }
 

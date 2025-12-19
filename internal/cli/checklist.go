@@ -114,4 +114,7 @@ Prerequisites:
 func init() {
 	checklistCmd.GroupID = GroupOptionalStages
 	rootCmd.AddCommand(checklistCmd)
+
+	// Command-specific flags
+	checklistCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (0 = use config)")
 }

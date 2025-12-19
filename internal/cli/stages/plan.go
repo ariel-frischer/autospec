@@ -113,4 +113,7 @@ You can optionally provide a prompt to guide the planning process.`,
 
 func init() {
 	planCmd.GroupID = shared.GroupCoreStages
+
+	// Command-specific flags
+	planCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (0 = use config)")
 }
