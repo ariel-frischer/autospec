@@ -187,13 +187,14 @@ func runInteractiveSelect(f *os.File, w io.Writer, agents []AgentOption) []strin
 }
 
 // renderInteractiveMenu draws the menu with cursor highlight.
+// Uses \r\n for line endings because raw mode doesn't auto-convert \n.
 func renderInteractiveMenu(w io.Writer, agents []AgentOption, cursor int) {
-	// Move cursor to start and clear
-	fmt.Fprint(w, "\r\x1b[J") // Clear from cursor to end of screen
+	// Move cursor to start and clear from cursor to end of screen
+	fmt.Fprint(w, "\r\x1b[J")
 
-	fmt.Fprintln(w, "Select AI coding agents to configure:")
-	fmt.Fprintln(w, "(↑/↓ move, Space select, Enter confirm)")
-	fmt.Fprintln(w)
+	fmt.Fprint(w, "Select AI coding agents to configure:\r\n")
+	fmt.Fprint(w, "(↑/↓ move, Space select, Enter confirm)\r\n")
+	fmt.Fprint(w, "\r\n")
 
 	for i, agent := range agents {
 		checkbox := "[ ]"
@@ -208,9 +209,9 @@ func renderInteractiveMenu(w io.Writer, agents []AgentOption, cursor int) {
 
 		// Highlight current cursor position
 		if i == cursor {
-			fmt.Fprintf(w, "  \x1b[7m %s %s \x1b[0m\n", checkbox, label)
+			fmt.Fprintf(w, "  \x1b[7m %s %s \x1b[0m\r\n", checkbox, label)
 		} else {
-			fmt.Fprintf(w, "   %s %s\n", checkbox, label)
+			fmt.Fprintf(w, "   %s %s\r\n", checkbox, label)
 		}
 	}
 }

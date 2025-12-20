@@ -14,17 +14,80 @@ import (
 
 const promptPlaceholder = "{{PROMPT}}"
 
+// shellMetacharacters are characters that require shell interpretation.
+// If any of these are present in the command template, we wrap it in sh -c.
+var shellMetacharacters = []string{
+	"|",  // pipe
+	"&&", // and
+	"||", // or
+	";",  // command separator
+	">",  // redirect
+	"<",  // redirect
+	"$(",  // command substitution
+	"`",  // backtick substitution
+	"$(", // arithmetic expansion
+}
+
+// needsShell returns true if the command template contains shell metacharacters
+// or uses environment variable prefix syntax (VAR=value command).
+func needsShell(template string) bool {
+	// Check for shell metacharacters
+	for _, meta := range shellMetacharacters {
+		if strings.Contains(template, meta) {
+			return true
+		}
+	}
+	// Check for env var prefix pattern: WORD= at the start (e.g., "FOO=bar cmd")
+	// This pattern: starts with letter/underscore, continues with word chars, then =
+	parts := strings.Fields(template)
+	if len(parts) > 0 {
+		first := parts[0]
+		if idx := strings.Index(first, "="); idx > 0 {
+			// Check if everything before = looks like a valid env var name
+			prefix := first[:idx]
+			if isValidEnvVarName(prefix) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isValidEnvVarName checks if s is a valid environment variable name.
+func isValidEnvVarName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || r == '_') {
+				return false
+			}
+		} else {
+			if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // CustomAgent implements the Agent interface using a command template with {{PROMPT}} placeholder.
 // This enables integration of arbitrary CLI tools not built into autospec.
+// If the template contains shell metacharacters (pipes, redirects, etc.) or
+// environment variable prefixes, the command is wrapped in sh -c for execution.
 type CustomAgent struct {
-	name     string
-	template string
-	caps     Caps
+	name      string
+	template  string
+	caps      Caps
+	useShell  bool
 }
 
 // NewCustomAgent creates a new CustomAgent from a command template.
 // The template must contain the {{PROMPT}} placeholder.
 // Returns an error if the placeholder is missing.
+// If the template contains shell metacharacters or environment variable prefixes,
+// the command will be executed via sh -c.
 func NewCustomAgent(template string) (*CustomAgent, error) {
 	if !strings.Contains(template, promptPlaceholder) {
 		return nil, fmt.Errorf("custom agent template must contain %s placeholder", promptPlaceholder)
@@ -32,6 +95,7 @@ func NewCustomAgent(template string) (*CustomAgent, error) {
 	return &CustomAgent{
 		name:     "custom",
 		template: template,
+		useShell: needsShell(template),
 		caps: Caps{
 			Automatable: true,
 			PromptDelivery: PromptDelivery{
@@ -53,7 +117,14 @@ func (c *CustomAgent) Version() (string, error) {
 
 // Validate checks that the template is parseable and the command exists.
 func (c *CustomAgent) Validate() error {
-	// Expand with a dummy prompt to parse the template
+	if c.useShell {
+		// For shell commands, just verify sh exists
+		if _, err := exec.LookPath("sh"); err != nil {
+			return fmt.Errorf("custom agent: shell (sh) not found in PATH")
+		}
+		return nil
+	}
+	// For non-shell commands, parse and validate the command
 	expanded := strings.ReplaceAll(c.template, promptPlaceholder, "test")
 	parts, err := shlex.Split(expanded)
 	if err != nil {
@@ -75,7 +146,36 @@ func (c *CustomAgent) Capabilities() Caps {
 }
 
 // BuildCommand constructs an exec.Cmd by expanding the template with the prompt.
+// For shell commands (containing pipes, redirects, env vars), it wraps in sh -c.
 func (c *CustomAgent) BuildCommand(prompt string, opts ExecOptions) (*exec.Cmd, error) {
+	if c.useShell {
+		return c.buildShellCommand(prompt, opts)
+	}
+	return c.buildDirectCommand(prompt, opts)
+}
+
+// buildShellCommand wraps the expanded template in sh -c for shell interpretation.
+func (c *CustomAgent) buildShellCommand(prompt string, opts ExecOptions) (*exec.Cmd, error) {
+	// For shell commands, we escape the prompt for safe embedding in shell string
+	escapedPrompt := escapeForShell(prompt)
+	expanded := strings.ReplaceAll(c.template, promptPlaceholder, escapedPrompt)
+
+	cmd := exec.Command("sh", "-c", expanded)
+	c.configureCmd(cmd, opts)
+	return cmd, nil
+}
+
+// escapeForShell escapes a string for safe embedding in a shell command.
+// Uses single quotes with proper escaping of embedded single quotes.
+func escapeForShell(s string) string {
+	// Wrap in single quotes, escaping any embedded single quotes
+	// 'don't' becomes 'don'\''t'
+	escaped := strings.ReplaceAll(s, "'", `'\''`)
+	return "'" + escaped + "'"
+}
+
+// buildDirectCommand parses the template and executes directly without shell.
+func (c *CustomAgent) buildDirectCommand(prompt string, opts ExecOptions) (*exec.Cmd, error) {
 	args, err := c.expandTemplate(prompt)
 	if err != nil {
 		return nil, fmt.Errorf("expanding template: %w", err)
