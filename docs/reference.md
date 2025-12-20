@@ -594,6 +594,25 @@ agent_preset: gemini
 
 See [CLI Agent Configuration](./agents.md) for detailed agent documentation.
 
+### use_subscription
+
+**Type**: boolean
+**Default**: `true`
+**Description**: Force Claude to use subscription (Pro/Max) instead of API credits. When enabled, `ANTHROPIC_API_KEY` is set to empty at execution time, preventing accidental API charges.
+
+**Example**:
+```yaml
+# Default: use subscription mode (recommended)
+use_subscription: true
+
+# Disable to use API credits instead
+use_subscription: false
+```
+
+**Environment**: `AUTOSPEC_USE_SUBSCRIPTION`
+
+**Note**: This setting protects users from accidentally burning API credits when they have `ANTHROPIC_API_KEY` set in their shell for other purposes. Set to `false` only if you specifically want to use API billing.
+
 ### custom_agent_cmd
 
 **Type**: string
