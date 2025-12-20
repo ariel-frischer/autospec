@@ -132,8 +132,13 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 			if cfg, err := config.Load(configPath); err == nil && cfg.SpecsDir != "" {
 				specsDir = cfg.SpecsDir
 			}
-			if _, err := cliagent.Configure(agent, ".", specsDir); err != nil {
+
+			// Configure permissions and display result
+			result, err := cliagent.Configure(agent, ".", specsDir)
+			if err != nil {
 				fmt.Fprintf(out, "⚠ Claude configuration: %v\n", err)
+			} else {
+				displayAgentConfigResult(out, "claude", result)
 			}
 
 			// Check and handle sandbox configuration

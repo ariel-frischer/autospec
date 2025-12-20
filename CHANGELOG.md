@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `init` command now prompts to create constitution if none exists (Y/n default yes)
 - `init` command now prompts to generate worktree setup script if not already present (y/N default no)
 - Dark mode support for GitHub Pages documentation site
-- `init` command now prompts to enable Claude sandbox with required write paths for improved security
+- `init` command now displays permissions/sandbox configuration status and prompts to configure sandbox if not set up
 - `init` command shows recommended full automation setup with cclean post_processor and --dangerously-skip-permissions disclaimer on first run
 - Native cclean (claude-clean) library integration as internal dependency for beautiful Claude JSONL output parsing with `--output-style` flag and `output_style` config option
 

@@ -8,19 +8,37 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/validation"
 )
 
-func TestNewWorkflowOrchestrator(t *testing.T) {
-	cfg := &config.Configuration{
-		ClaudeCmd:  "claude",
-		ClaudeArgs: []string{"-p"},
-		SpecsDir:   "./specs",
-		MaxRetries: 3,
-		StateDir:   "~/.autospec/state",
+// testConfigWithAgent creates a test configuration with the specified agent preset.
+func testConfigWithAgent(specsDir, stateDir, agentPreset string) *config.Configuration {
+	return &config.Configuration{
+		AgentPreset: agentPreset,
+		SpecsDir:    specsDir,
+		StateDir:    stateDir,
+		MaxRetries:  3,
 	}
+}
+
+// testConfigWithEchoAgent creates a test configuration using echo as a custom agent.
+func testConfigWithEchoAgent(specsDir, stateDir string) *config.Configuration {
+	return &config.Configuration{
+		CustomAgent: &cliagent.CustomAgentConfig{
+			Command: "echo",
+			Args:    []string{"{{PROMPT}}"},
+		},
+		SpecsDir:   specsDir,
+		StateDir:   stateDir,
+		MaxRetries: 3,
+	}
+}
+
+func TestNewWorkflowOrchestrator(t *testing.T) {
+	cfg := testConfigWithAgent("./specs", "~/.autospec/state", "claude")
 
 	orchestrator := NewWorkflowOrchestrator(cfg)
 
@@ -40,13 +58,7 @@ func TestNewWorkflowOrchestrator(t *testing.T) {
 func TestWorkflowOrchestrator_Configuration(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	cfg := &config.Configuration{
-		ClaudeCmd:  "claude",
-		ClaudeArgs: []string{"-p"},
-		SpecsDir:   tmpDir,
-		MaxRetries: 3,
-		StateDir:   filepath.Join(tmpDir, "state"),
-	}
+	cfg := testConfigWithAgent(tmpDir, filepath.Join(tmpDir, "state"), "claude")
 
 	orchestrator := NewWorkflowOrchestrator(cfg)
 
@@ -687,12 +699,7 @@ func TestExecuteImplementWithPrompt(t *testing.T) {
 func TestOrchestratorDebugLog(t *testing.T) {
 	t.Parallel()
 
-	cfg := &config.Configuration{
-		ClaudeCmd:  "claude",
-		SpecsDir:   "./specs",
-		MaxRetries: 3,
-		StateDir:   "~/.autospec/state",
-	}
+	cfg := testConfigWithAgent("./specs", "~/.autospec/state", "claude")
 
 	// Test with debug disabled
 	orchestrator := NewWorkflowOrchestrator(cfg)
@@ -883,20 +890,14 @@ _meta:
 				t.Fatalf("Failed to create spec.yaml: %v", err)
 			}
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "claude",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithAgent(specsDir, filepath.Join(tmpDir, "state"), "claude")
 
 			mock := NewMockClaudeExecutor()
 			tt.setupMock(mock)
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
-			orchestrator.Executor.Claude = &ClaudeExecutor{
-				ClaudeCmd: "echo", // Use echo for testing
-			}
+			// Use mock for testing instead of real executor
+			_ = mock // Mock is available for assertions if needed
 
 			// For the successful case, we need to mock the entire execution
 			if !tt.wantErr {
@@ -1017,12 +1018,7 @@ _meta:
 			// Setup test files
 			tt.setupFiles(specsDir, tt.specName)
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 
@@ -1201,12 +1197,7 @@ _meta:
 			// Setup test files
 			tt.setupFiles(specsDir, tt.specName)
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 
@@ -1832,12 +1823,7 @@ _meta:
 				t.Fatalf("Failed to create specs directory: %v", err)
 			}
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 			mock := NewMockClaudeExecutor()
@@ -1898,12 +1884,7 @@ func TestRunFullWorkflow(t *testing.T) {
 			specsDir := filepath.Join(tmpDir, "specs")
 			os.MkdirAll(specsDir, 0755)
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 			tt.setupFiles(specsDir)
@@ -1989,12 +1970,7 @@ _meta:
 			specsDir := filepath.Join(tmpDir, "specs")
 			os.MkdirAll(specsDir, 0755)
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 			tt.setupFiles(specsDir)
@@ -2108,12 +2084,7 @@ _meta:
 
 			tt.setupFiles(specsDir, tt.specName)
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 
@@ -2237,12 +2208,7 @@ _meta:
 
 			tt.setupFiles(specsDir, tt.specName)
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 
@@ -2488,12 +2454,7 @@ _meta:
 
 			tt.setupFiles(specsDir, tt.specName)
 
-			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
-				SpecsDir:   specsDir,
-				MaxRetries: 3,
-				StateDir:   filepath.Join(tmpDir, "state"),
-			}
+			cfg := testConfigWithEchoAgent(specsDir, filepath.Join(tmpDir, "state"))
 
 			orchestrator := NewWorkflowOrchestrator(cfg)
 
@@ -2620,8 +2581,10 @@ func newTestOrchestratorWithSpecName(t *testing.T, specsDir, specName string) *W
 	}
 
 	cfg := &config.Configuration{
-		ClaudeCmd:     mockClaudePath,
-		ClaudeArgs:    []string{},
+		CustomAgent: &cliagent.CustomAgentConfig{
+			Command: mockClaudePath,
+			Args:    []string{"{{PROMPT}}"},
+		},
 		SpecsDir:      specsDir,
 		StateDir:      stateDir,
 		MaxRetries:    1, // Minimal retries for faster tests

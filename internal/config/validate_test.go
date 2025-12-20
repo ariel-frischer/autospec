@@ -15,7 +15,7 @@ func TestValidateYAMLSyntax_ValidFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yml")
 
-	validYAML := `claude_cmd: "claude"
+	validYAML := `agent_preset: "claude"
 max_retries: 3
 specs_dir: "./specs"
 `
@@ -34,7 +34,7 @@ func TestValidateYAMLSyntax_InvalidFile(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yml")
 
 	// Invalid YAML - missing colon
-	invalidYAML := `claude_cmd "claude"
+	invalidYAML := `agent_preset "claude"
 max_retries: 3
 `
 	if err := os.WriteFile(configPath, []byte(invalidYAML), 0644); err != nil {
@@ -62,7 +62,7 @@ func TestValidateYAMLSyntax_InvalidWithLineNumber(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yml")
 
 	// Invalid YAML with error on line 3
-	invalidYAML := `claude_cmd: "claude"
+	invalidYAML := `agent_preset: "claude"
 max_retries: 3
 specs_dir: [invalid yaml here
 `
@@ -130,7 +130,7 @@ func TestValidateYAMLSyntax_WhitespaceOnly(t *testing.T) {
 }
 
 func TestValidateYAMLSyntaxFromBytes_Valid(t *testing.T) {
-	validYAML := []byte(`claude_cmd: "claude"
+	validYAML := []byte(`agent_preset: "claude"
 max_retries: 3
 `)
 	err := ValidateYAMLSyntaxFromBytes(validYAML, "test.yml")
@@ -140,7 +140,7 @@ max_retries: 3
 }
 
 func TestValidateYAMLSyntaxFromBytes_Invalid(t *testing.T) {
-	invalidYAML := []byte(`claude_cmd: [unclosed bracket
+	invalidYAML := []byte(`agent_preset: [unclosed bracket
 `)
 	err := ValidateYAMLSyntaxFromBytes(invalidYAML, "test.yml")
 	if err == nil {
@@ -165,10 +165,10 @@ func TestValidateYAMLSyntaxFromBytes_Empty(t *testing.T) {
 
 func TestValidateConfigValues_Valid(t *testing.T) {
 	cfg := &Configuration{
-		ClaudeCmd:  "claude",
-		MaxRetries: 3,
-		SpecsDir:   "./specs",
-		StateDir:   "~/.autospec/state",
+		AgentPreset: "claude",
+		MaxRetries:  3,
+		SpecsDir:    "./specs",
+		StateDir:    "~/.autospec/state",
 	}
 
 	err := ValidateConfigValues(cfg, "test.yml")
@@ -177,32 +177,6 @@ func TestValidateConfigValues_Valid(t *testing.T) {
 	}
 }
 
-func TestValidateConfigValues_MissingRequired(t *testing.T) {
-	cfg := &Configuration{
-		ClaudeCmd:  "", // Missing required field
-		MaxRetries: 3,
-		SpecsDir:   "./specs",
-		StateDir:   "~/.autospec/state",
-	}
-
-	err := ValidateConfigValues(cfg, "test.yml")
-	if err == nil {
-		t.Error("ValidateConfigValues() returned nil for config with missing required field")
-	}
-
-	validationErr, ok := err.(*ValidationError)
-	if !ok {
-		t.Fatalf("Expected ValidationError, got %T", err)
-	}
-
-	if validationErr.Field != "claude_cmd" {
-		t.Errorf("ValidationError.Field = %q, want %q", validationErr.Field, "claude_cmd")
-	}
-
-	if !strings.Contains(validationErr.Message, "required") {
-		t.Errorf("ValidationError.Message = %q, should contain 'required'", validationErr.Message)
-	}
-}
 
 func TestValidateConfigValues_InvalidMaxRetries(t *testing.T) {
 	tests := map[string]struct {
@@ -219,10 +193,10 @@ func TestValidateConfigValues_InvalidMaxRetries(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			cfg := &Configuration{
-				ClaudeCmd:  "claude",
-				MaxRetries: tt.maxRetries,
-				SpecsDir:   "./specs",
-				StateDir:   "~/.autospec/state",
+				AgentPreset: "claude",
+				MaxRetries:  tt.maxRetries,
+				SpecsDir:    "./specs",
+				StateDir:    "~/.autospec/state",
 			}
 
 			err := ValidateConfigValues(cfg, "test.yml")
@@ -233,48 +207,6 @@ func TestValidateConfigValues_InvalidMaxRetries(t *testing.T) {
 	}
 }
 
-func TestValidateConfigValues_InvalidCustomClaudeCmd(t *testing.T) {
-	cfg := &Configuration{
-		ClaudeCmd:       "claude",
-		MaxRetries:      3,
-		SpecsDir:        "./specs",
-		StateDir:        "~/.autospec/state",
-		CustomClaudeCmd: "my-claude-wrapper", // Missing {{PROMPT}}
-	}
-
-	err := ValidateConfigValues(cfg, "test.yml")
-	if err == nil {
-		t.Error("ValidateConfigValues() returned nil for custom_claude_cmd without {{PROMPT}}")
-	}
-
-	validationErr, ok := err.(*ValidationError)
-	if !ok {
-		t.Fatalf("Expected ValidationError, got %T", err)
-	}
-
-	if validationErr.Field != "custom_claude_cmd" {
-		t.Errorf("ValidationError.Field = %q, want %q", validationErr.Field, "custom_claude_cmd")
-	}
-
-	if !strings.Contains(validationErr.Message, "{{PROMPT}}") {
-		t.Errorf("ValidationError.Message = %q, should mention {{PROMPT}}", validationErr.Message)
-	}
-}
-
-func TestValidateConfigValues_ValidCustomClaudeCmd(t *testing.T) {
-	cfg := &Configuration{
-		ClaudeCmd:       "claude",
-		MaxRetries:      3,
-		SpecsDir:        "./specs",
-		StateDir:        "~/.autospec/state",
-		CustomClaudeCmd: "my-claude-wrapper {{PROMPT}} --verbose",
-	}
-
-	err := ValidateConfigValues(cfg, "test.yml")
-	if err != nil {
-		t.Errorf("ValidateConfigValues() returned error for valid custom_claude_cmd: %v", err)
-	}
-}
 
 func TestValidateConfigValues_ImplementMethod(t *testing.T) {
 	tests := map[string]struct {
@@ -318,7 +250,7 @@ func TestValidateConfigValues_ImplementMethod(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			cfg := &Configuration{
-				ClaudeCmd:       "claude",
+				AgentPreset:     "claude",
 				MaxRetries:      3,
 				SpecsDir:        "./specs",
 				StateDir:        "~/.autospec/state",
@@ -396,10 +328,10 @@ func TestValidateNotificationConfig_InvalidType(t *testing.T) {
 	t.Parallel()
 
 	cfg := &Configuration{
-		ClaudeCmd:  "claude",
-		MaxRetries: 3,
-		SpecsDir:   "./specs",
-		StateDir:   "~/.autospec/state",
+		AgentPreset: "claude",
+		MaxRetries:  3,
+		SpecsDir:    "./specs",
+		StateDir:    "~/.autospec/state",
 	}
 	cfg.Notifications.Type = "invalid-type"
 
@@ -422,10 +354,10 @@ func TestValidateNotificationConfig_NonExistentSoundFile(t *testing.T) {
 	t.Parallel()
 
 	cfg := &Configuration{
-		ClaudeCmd:  "claude",
-		MaxRetries: 3,
-		SpecsDir:   "./specs",
-		StateDir:   "~/.autospec/state",
+		AgentPreset: "claude",
+		MaxRetries:  3,
+		SpecsDir:    "./specs",
+		StateDir:    "~/.autospec/state",
 	}
 	cfg.Notifications.SoundFile = "/nonexistent/path/to/sound.wav"
 
@@ -458,10 +390,10 @@ func TestValidateNotificationConfig_ValidSoundFile(t *testing.T) {
 	}
 
 	cfg := &Configuration{
-		ClaudeCmd:  "claude",
-		MaxRetries: 3,
-		SpecsDir:   "./specs",
-		StateDir:   "~/.autospec/state",
+		AgentPreset: "claude",
+		MaxRetries:  3,
+		SpecsDir:    "./specs",
+		StateDir:    "~/.autospec/state",
 	}
 	cfg.Notifications.SoundFile = soundPath
 
@@ -588,10 +520,10 @@ func TestValidateConfigValues_MissingSpecsDir(t *testing.T) {
 	t.Parallel()
 
 	cfg := &Configuration{
-		ClaudeCmd:  "claude",
-		MaxRetries: 3,
-		SpecsDir:   "", // Missing
-		StateDir:   "~/.autospec/state",
+		AgentPreset: "claude",
+		MaxRetries:  3,
+		SpecsDir:    "", // Missing
+		StateDir:    "~/.autospec/state",
 	}
 
 	err := ValidateConfigValues(cfg, "test.yml")
@@ -613,10 +545,10 @@ func TestValidateConfigValues_MissingStateDir(t *testing.T) {
 	t.Parallel()
 
 	cfg := &Configuration{
-		ClaudeCmd:  "claude",
-		MaxRetries: 3,
-		SpecsDir:   "./specs",
-		StateDir:   "", // Missing
+		AgentPreset: "claude",
+		MaxRetries:  3,
+		SpecsDir:    "./specs",
+		StateDir:    "", // Missing
 	}
 
 	err := ValidateConfigValues(cfg, "test.yml")

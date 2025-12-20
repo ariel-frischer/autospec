@@ -6,14 +6,23 @@ package workflow
 import (
 	"bytes"
 	"testing"
+
+	"github.com/ariel-frischer/autospec/internal/cliagent"
 )
 
 // BenchmarkExecute_NoTimeout benchmarks command execution without timeout
 func BenchmarkExecute_NoTimeout(b *testing.B) {
+	customAgent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Command: "echo",
+		Args:    []string{"{{PROMPT}}"},
+	})
+	if err != nil {
+		b.Fatalf("failed to create agent: %v", err)
+	}
+
 	executor := &ClaudeExecutor{
-		ClaudeCmd:  "echo",
-		ClaudeArgs: []string{},
-		Timeout:    0, // No timeout
+		Agent:   customAgent,
+		Timeout: 0, // No timeout
 	}
 
 	b.ResetTimer()
@@ -24,10 +33,17 @@ func BenchmarkExecute_NoTimeout(b *testing.B) {
 
 // BenchmarkExecute_WithTimeout benchmarks command execution with timeout
 func BenchmarkExecute_WithTimeout(b *testing.B) {
+	customAgent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Command: "echo",
+		Args:    []string{"{{PROMPT}}"},
+	})
+	if err != nil {
+		b.Fatalf("failed to create agent: %v", err)
+	}
+
 	executor := &ClaudeExecutor{
-		ClaudeCmd:  "echo",
-		ClaudeArgs: []string{},
-		Timeout:    300, // 5 minutes timeout (will not be hit)
+		Agent:   customAgent,
+		Timeout: 300, // 5 minutes timeout (will not be hit)
 	}
 
 	b.ResetTimer()
@@ -38,10 +54,17 @@ func BenchmarkExecute_WithTimeout(b *testing.B) {
 
 // BenchmarkStreamCommand_NoTimeout benchmarks streaming without timeout
 func BenchmarkStreamCommand_NoTimeout(b *testing.B) {
+	customAgent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Command: "echo",
+		Args:    []string{"{{PROMPT}}"},
+	})
+	if err != nil {
+		b.Fatalf("failed to create agent: %v", err)
+	}
+
 	executor := &ClaudeExecutor{
-		ClaudeCmd:  "echo",
-		ClaudeArgs: []string{},
-		Timeout:    0,
+		Agent:   customAgent,
+		Timeout: 0,
 	}
 
 	b.ResetTimer()
@@ -53,10 +76,17 @@ func BenchmarkStreamCommand_NoTimeout(b *testing.B) {
 
 // BenchmarkStreamCommand_WithTimeout benchmarks streaming with timeout
 func BenchmarkStreamCommand_WithTimeout(b *testing.B) {
+	customAgent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Command: "echo",
+		Args:    []string{"{{PROMPT}}"},
+	})
+	if err != nil {
+		b.Fatalf("failed to create agent: %v", err)
+	}
+
 	executor := &ClaudeExecutor{
-		ClaudeCmd:  "echo",
-		ClaudeArgs: []string{},
-		Timeout:    300,
+		Agent:   customAgent,
+		Timeout: 300,
 	}
 
 	b.ResetTimer()

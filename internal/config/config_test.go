@@ -922,13 +922,19 @@ state_dir: "~/.autospec/state"
 	assert.Equal(t, "gemini", agent.Name())
 }
 
-func TestLoad_CustomAgentCmdFromYAML(t *testing.T) {
+func TestLoad_CustomAgentFromYAML(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yml")
 
-	configContent := `custom_agent_cmd: "aider --model sonnet --message {{PROMPT}}"
+	configContent := `custom_agent:
+  command: aider
+  args:
+    - "--model"
+    - "sonnet"
+    - "--message"
+    - "{{PROMPT}}"
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
 `
@@ -940,7 +946,8 @@ state_dir: "~/.autospec/state"
 		SkipWarnings:      true,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "aider --model sonnet --message {{PROMPT}}", cfg.CustomAgentCmd)
+	require.NotNil(t, cfg.CustomAgent)
+	assert.Equal(t, "aider", cfg.CustomAgent.Command)
 
 	agent, err := cfg.GetAgent()
 	require.NoError(t, err)
@@ -956,15 +963,4 @@ func TestLoad_AgentPresetFromEnv(t *testing.T) {
 	cfg, err := LoadWithOptions(LoadOptions{SkipWarnings: true})
 	require.NoError(t, err)
 	assert.Equal(t, "cline", cfg.AgentPreset)
-}
-
-func TestLoad_CustomAgentCmdFromEnv(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("HOME", tmpDir)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
-	t.Setenv("AUTOSPEC_CUSTOM_AGENT_CMD", "my-agent {{PROMPT}}")
-
-	cfg, err := LoadWithOptions(LoadOptions{SkipWarnings: true})
-	require.NoError(t, err)
-	assert.Equal(t, "my-agent {{PROMPT}}", cfg.CustomAgentCmd)
 }

@@ -7,11 +7,38 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/progress"
 	"github.com/ariel-frischer/autospec/internal/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// testClaudeExecutor creates a ClaudeExecutor for testing using an echo command agent.
+func testClaudeExecutor(t *testing.T, args ...string) *ClaudeExecutor {
+	t.Helper()
+	agentArgs := []string{"{{PROMPT}}"}
+	if len(args) > 0 {
+		agentArgs = append(args, "{{PROMPT}}")
+	}
+	agent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Command: "echo",
+		Args:    agentArgs,
+	})
+	require.NoError(t, err)
+	return &ClaudeExecutor{Agent: agent}
+}
+
+// testClaudeExecutorWithCmd creates a ClaudeExecutor with a specific command for testing.
+func testClaudeExecutorWithCmd(t *testing.T, cmd string) *ClaudeExecutor {
+	t.Helper()
+	agent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Command: cmd,
+		Args:    []string{"{{PROMPT}}"},
+	})
+	require.NoError(t, err)
+	return &ClaudeExecutor{Agent: agent}
+}
 
 // mockClaudeExecutor implements a mock for testing
 type mockClaudeExecutor struct {
@@ -119,10 +146,7 @@ func TestExecuteStage_Success(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# Test Spec"), 0644))
 
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{},
-		},
+		Claude:     testClaudeExecutor(t),
 		StateDir:   stateDir,
 		SpecsDir:   specsDir,
 		MaxRetries: 3,
@@ -152,10 +176,7 @@ func TestExecuteStage_ValidationFailure(t *testing.T) {
 	specsDir := t.TempDir()
 
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{},
-		},
+		Claude:     testClaudeExecutor(t),
 		StateDir:   stateDir,
 		SpecsDir:   specsDir,
 		MaxRetries: 3,
@@ -195,10 +216,7 @@ func TestExecuteStage_RetryExhausted(t *testing.T) {
 	require.NoError(t, retry.SaveRetryState(stateDir, state))
 
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{},
-		},
+		Claude:     testClaudeExecutor(t),
 		StateDir:   stateDir,
 		SpecsDir:   specsDir,
 		MaxRetries: 3,
@@ -235,10 +253,7 @@ func TestExecuteStage_ResetsRetryOnSuccess(t *testing.T) {
 	require.NoError(t, retry.SaveRetryState(stateDir, state))
 
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{},
-		},
+		Claude:     testClaudeExecutor(t),
 		StateDir:   stateDir,
 		SpecsDir:   specsDir,
 		MaxRetries: 3,
@@ -263,10 +278,7 @@ func TestExecuteStage_ResetsRetryOnSuccess(t *testing.T) {
 
 func TestExecuteWithRetry_Success(t *testing.T) {
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{"success"},
-		},
+		Claude: testClaudeExecutor(t, "success"),
 	}
 
 	err := executor.ExecuteWithRetry("/test.command", 3)
@@ -275,10 +287,7 @@ func TestExecuteWithRetry_Success(t *testing.T) {
 
 func TestExecuteWithRetry_AllAttemptsFail(t *testing.T) {
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "false", // Command that always fails
-			ClaudeArgs: []string{},
-		},
+		Claude: testClaudeExecutorWithCmd(t, "false"), // Command that always fails
 	}
 
 	err := executor.ExecuteWithRetry("/test.command", 2)
@@ -730,15 +739,10 @@ func TestExtractValidationErrors(t *testing.T) {
 }
 
 func TestHandleValidationFailure_StoresValidationErrors(t *testing.T) {
-	t.Parallel()
-
 	stateDir := t.TempDir()
 
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{},
-		},
+		Claude:     testClaudeExecutor(t),
 		StateDir:   stateDir,
 		MaxRetries: 3,
 	}
@@ -783,10 +787,7 @@ func TestExecuteStage_RetryLoopActuallyRetries(t *testing.T) {
 	validationCallCount := 0
 
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{"success"},
-		},
+		Claude:     testClaudeExecutor(t, "success"),
 		StateDir:   stateDir,
 		SpecsDir:   specsDir,
 		MaxRetries: 2, // Allow 2 retries (3 total attempts)
@@ -819,10 +820,7 @@ func TestExecuteStage_ValidationSuccessOnRetry(t *testing.T) {
 
 	callCount := 0
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{"success"},
-		},
+		Claude:     testClaudeExecutor(t, "success"),
 		StateDir:   stateDir,
 		SpecsDir:   specsDir,
 		MaxRetries: 2,
@@ -855,10 +853,7 @@ func TestExecuteStage_MaxRetriesZeroNoRetries(t *testing.T) {
 
 	validationCallCount := 0
 	executor := &Executor{
-		Claude: &ClaudeExecutor{
-			ClaudeCmd:  "echo",
-			ClaudeArgs: []string{"success"},
-		},
+		Claude:     testClaudeExecutor(t, "success"),
 		StateDir:   stateDir,
 		SpecsDir:   specsDir,
 		MaxRetries: 0, // No retries allowed
@@ -901,10 +896,7 @@ func TestExecuteStage_RetryCountMatchesConfig(t *testing.T) {
 			validationCallCount := 0
 
 			executor := &Executor{
-				Claude: &ClaudeExecutor{
-					ClaudeCmd:  "echo",
-					ClaudeArgs: []string{"success"},
-				},
+				Claude:     testClaudeExecutor(t, "success"),
 				StateDir:   stateDir,
 				SpecsDir:   specsDir,
 				MaxRetries: tc.maxRetries,
@@ -1636,7 +1628,7 @@ func TestExecutor_ClaudeRunnerInterface(t *testing.T) {
 			description: "conditional mock should satisfy ClaudeRunner",
 		},
 		"accepts real ClaudeExecutor": {
-			runner:      &ClaudeExecutor{ClaudeCmd: "echo"},
+			runner:      &ClaudeExecutor{Agent: nil}, // Agent-based, nil is ok for interface check
 			description: "real implementation should satisfy ClaudeRunner",
 		},
 	}
