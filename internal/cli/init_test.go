@@ -205,6 +205,9 @@ func TestRunInit_CreateUserConfig(t *testing.T) {
 	cmd := getInitCmd()
 	require.NotNil(t, cmd, "init command must exist")
 
+	// Skip agent selection prompt in non-interactive environment
+	cmd.Flags().Set("no-agents", "true")
+
 	// Capture output
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -233,8 +236,9 @@ func TestRunInit_ProjectConfig(t *testing.T) {
 	cmd := getInitCmd()
 	require.NotNil(t, cmd, "init command must exist")
 
-	// Set flag directly
+	// Set flags directly
 	cmd.Flags().Set("project", "true")
+	cmd.Flags().Set("no-agents", "true") // Skip agent selection in non-interactive environment
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -273,6 +277,7 @@ func TestRunInit_ForceOverwrite(t *testing.T) {
 	// Set flags directly
 	cmd.Flags().Set("project", "true")
 	cmd.Flags().Set("force", "true")
+	cmd.Flags().Set("no-agents", "true") // Skip agent selection in non-interactive environment
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)

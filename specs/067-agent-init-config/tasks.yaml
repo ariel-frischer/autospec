@@ -134,7 +134,7 @@ phases:
             - "Returns ConfigResult with permissions added or already configured"
         - id: "T009"
           title: "Write tests for Claude ConfigureProject"
-          status: "InProgress"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -154,7 +154,7 @@ phases:
       tasks:
         - id: "T010"
           title: "Add --no-agents flag to init command"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-004"
@@ -166,7 +166,7 @@ phases:
             - "When set, agent selection prompt is skipped"
         - id: "T011"
           title: "Integrate agent selection into runInit"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -179,7 +179,7 @@ phases:
             - "Existing unconditional Claude config removed"
         - id: "T012"
           title: "Persist agent selections to config"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-003"
@@ -191,7 +191,7 @@ phases:
             - "Changing selections updates persisted preferences"
         - id: "T013"
           title: "Display configuration feedback"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-005"
@@ -204,7 +204,7 @@ phases:
             - "No agents selected shows warning about manual config"
         - id: "T014"
           title: "Handle non-interactive terminals"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-004"
@@ -216,7 +216,7 @@ phases:
             - "Message suggests using --no-agents or running interactively"
         - id: "T015"
           title: "Write integration tests for init with agents"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-001"
@@ -234,7 +234,7 @@ phases:
       tasks:
         - id: "T016"
           title: "Handle edge cases from spec"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -248,7 +248,7 @@ phases:
             - "Special characters in specs_dir: correctly escaped in permissions"
         - id: "T017"
           title: "Verify idempotency across all operations"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null
@@ -260,7 +260,7 @@ phases:
             - "Test: DefaultAgents not corrupted on repeated saves"
         - id: "T018"
           title: "Verify quality gates pass"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null

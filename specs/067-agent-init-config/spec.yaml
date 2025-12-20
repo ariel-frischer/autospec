@@ -1,301 +1,255 @@
 feature:
-  branch: "067-agent-init-config"
-  created: "2025-12-20"
-  status: "Draft"
-  input: "Agent-aware init configuration for autospec init that prompts users to select which agents (Claude, Gemini, Cline, Codex, Goose, OpenCode) to configure, implements a Configurator interface for agent-specific setup, adds proper Claude Code permissions (Write/Edit for .autospec/** and specs/**), and persists agent preferences in config for future init runs."
-
+    branch: "067-agent-init-config"
+    created: "2025-12-20"
+    status: "Completed"
+    completed_at: 2025-12-20T03:22:02Z
+    input: "Agent-aware init configuration for autospec init that prompts users to select which agents (Claude, Gemini, Cline, Codex, Goose, OpenCode) to configure, implements a Configurator interface for agent-specific setup, adds proper Claude Code permissions (Write/Edit for .autospec/** and specs/**), and persists agent preferences in config for future init runs."
 user_stories:
-  - id: "US-001"
-    title: "Select agents during initialization"
-    priority: "P1"
-    as_a: "developer using autospec"
-    i_want: "to be prompted to select which AI coding agents I use when running autospec init"
-    so_that: "only relevant agents get configured with the necessary permissions, rather than assuming everyone uses Claude Code"
-    why_this_priority: "Core feature - without agent selection, the init command cannot properly configure the right agents"
-    independent_test: "Run autospec init in a fresh project and verify multi-select prompt appears with all supported agents listed"
-    acceptance_scenarios:
-      - given: "I run autospec init in a new project"
-        when: "the init process starts"
-        then: "I see a multi-select prompt listing all supported agents (claude, cline, codex, gemini, goose, opencode) with claude recommended and pre-selected"
-      - given: "I am presented with the agent selection prompt"
-        when: "I toggle agents on/off using space and confirm with enter"
-        then: "only the agents I selected proceed to configuration"
-
-  - id: "US-002"
-    title: "Configure Claude Code with complete permissions"
-    priority: "P1"
-    as_a: "developer using Claude Code with autospec"
-    i_want: "Claude Code to be configured with all necessary permissions for autospec workflows"
-    so_that: "Claude can create and modify spec files, config, and run autospec commands without permission errors"
-    why_this_priority: "Critical for Claude Code users - incomplete permissions break the workflow"
-    independent_test: "Select Claude during init and verify .claude/settings.local.json contains all required permissions"
-    acceptance_scenarios:
-      - given: "I select claude in the agent selection prompt"
-        when: "the init process configures Claude"
-        then: "the .claude/settings.local.json file contains permissions for Bash(autospec:*), Write(.autospec/**), Edit(.autospec/**), Write(specs/**), and Edit(specs/**)"
-      - given: "I have a custom specs_dir configured (e.g., 'features')"
-        when: "Claude is configured during init"
-        then: "the Write and Edit permissions use my configured specs directory instead of 'specs'"
-
-  - id: "US-003"
-    title: "Remember agent preferences"
-    priority: "P2"
-    as_a: "developer who has previously run autospec init"
-    i_want: "my agent selections to be remembered for future init runs"
-    so_that: "I don't have to re-select the same agents every time I run init"
-    why_this_priority: "Improves UX for repeat usage but not blocking for initial functionality"
-    independent_test: "Run init twice, selecting agents the first time, and verify they are pre-selected the second time"
-    acceptance_scenarios:
-      - given: "I have previously run autospec init and selected claude and cline"
-        when: "I run autospec init again"
-        then: "the agent selection prompt shows claude and cline pre-selected"
-      - given: "I change my agent selection on a subsequent init"
-        when: "the init completes"
-        then: "my new selections are saved and used for future init runs"
-
-  - id: "US-004"
-    title: "Skip agent configuration"
-    priority: "P2"
-    as_a: "developer using an unsupported agent or no agent"
-    i_want: "to be able to skip agent configuration entirely"
-    so_that: "I can still use autospec without configuring any agents"
-    why_this_priority: "Important for flexibility but not core workflow"
-    independent_test: "Run init, select no agents or skip option, verify init completes with warning"
-    acceptance_scenarios:
-      - given: "I am presented with the agent selection prompt"
-        when: "I deselect all agents or select 'skip agent configuration'"
-        then: "init completes successfully with a warning that no agents were configured"
-      - given: "I run autospec init with --no-agents flag"
-        when: "the init process runs"
-        then: "the agent selection prompt is skipped entirely and no agents are configured"
-
-  - id: "US-005"
-    title: "See clear configuration feedback"
-    priority: "P2"
-    as_a: "developer running autospec init"
-    i_want: "to see exactly what was configured for each selected agent"
-    so_that: "I know what permissions and settings were applied"
-    why_this_priority: "Transparency improves trust and debugging"
-    independent_test: "Run init with Claude selected and verify output shows each permission added"
-    acceptance_scenarios:
-      - given: "I selected claude during init"
-        when: "Claude configuration completes"
-        then: "I see a list of all permissions that were added to Claude's settings"
-      - given: "Claude is already configured with all required permissions"
-        when: "I run init again with Claude selected"
-        then: "I see a message indicating Claude is already configured"
-
+    - id: "US-001"
+      title: "Select agents during initialization"
+      priority: "P1"
+      as_a: "developer using autospec"
+      i_want: "to be prompted to select which AI coding agents I use when running autospec init"
+      so_that: "only relevant agents get configured with the necessary permissions, rather than assuming everyone uses Claude Code"
+      why_this_priority: "Core feature - without agent selection, the init command cannot properly configure the right agents"
+      independent_test: "Run autospec init in a fresh project and verify multi-select prompt appears with all supported agents listed"
+      acceptance_scenarios:
+        - given: "I run autospec init in a new project"
+          when: "the init process starts"
+          then: "I see a multi-select prompt listing all supported agents (claude, cline, codex, gemini, goose, opencode) with claude recommended and pre-selected"
+        - given: "I am presented with the agent selection prompt"
+          when: "I toggle agents on/off using space and confirm with enter"
+          then: "only the agents I selected proceed to configuration"
+    - id: "US-002"
+      title: "Configure Claude Code with complete permissions"
+      priority: "P1"
+      as_a: "developer using Claude Code with autospec"
+      i_want: "Claude Code to be configured with all necessary permissions for autospec workflows"
+      so_that: "Claude can create and modify spec files, config, and run autospec commands without permission errors"
+      why_this_priority: "Critical for Claude Code users - incomplete permissions break the workflow"
+      independent_test: "Select Claude during init and verify .claude/settings.local.json contains all required permissions"
+      acceptance_scenarios:
+        - given: "I select claude in the agent selection prompt"
+          when: "the init process configures Claude"
+          then: "the .claude/settings.local.json file contains permissions for Bash(autospec:*), Write(.autospec/**), Edit(.autospec/**), Write(specs/**), and Edit(specs/**)"
+        - given: "I have a custom specs_dir configured (e.g., 'features')"
+          when: "Claude is configured during init"
+          then: "the Write and Edit permissions use my configured specs directory instead of 'specs'"
+    - id: "US-003"
+      title: "Remember agent preferences"
+      priority: "P2"
+      as_a: "developer who has previously run autospec init"
+      i_want: "my agent selections to be remembered for future init runs"
+      so_that: "I don't have to re-select the same agents every time I run init"
+      why_this_priority: "Improves UX for repeat usage but not blocking for initial functionality"
+      independent_test: "Run init twice, selecting agents the first time, and verify they are pre-selected the second time"
+      acceptance_scenarios:
+        - given: "I have previously run autospec init and selected claude and cline"
+          when: "I run autospec init again"
+          then: "the agent selection prompt shows claude and cline pre-selected"
+        - given: "I change my agent selection on a subsequent init"
+          when: "the init completes"
+          then: "my new selections are saved and used for future init runs"
+    - id: "US-004"
+      title: "Skip agent configuration"
+      priority: "P2"
+      as_a: "developer using an unsupported agent or no agent"
+      i_want: "to be able to skip agent configuration entirely"
+      so_that: "I can still use autospec without configuring any agents"
+      why_this_priority: "Important for flexibility but not core workflow"
+      independent_test: "Run init, select no agents or skip option, verify init completes with warning"
+      acceptance_scenarios:
+        - given: "I am presented with the agent selection prompt"
+          when: "I deselect all agents or select 'skip agent configuration'"
+          then: "init completes successfully with a warning that no agents were configured"
+        - given: "I run autospec init with --no-agents flag"
+          when: "the init process runs"
+          then: "the agent selection prompt is skipped entirely and no agents are configured"
+    - id: "US-005"
+      title: "See clear configuration feedback"
+      priority: "P2"
+      as_a: "developer running autospec init"
+      i_want: "to see exactly what was configured for each selected agent"
+      so_that: "I know what permissions and settings were applied"
+      why_this_priority: "Transparency improves trust and debugging"
+      independent_test: "Run init with Claude selected and verify output shows each permission added"
+      acceptance_scenarios:
+        - given: "I selected claude during init"
+          when: "Claude configuration completes"
+          then: "I see a list of all permissions that were added to Claude's settings"
+        - given: "Claude is already configured with all required permissions"
+          when: "I run init again with Claude selected"
+          then: "I see a message indicating Claude is already configured"
 requirements:
-  functional:
-    - id: "FR-001"
-      description: "MUST display an interactive multi-select prompt during autospec init allowing users to select one or more agents to configure"
-      testable: true
-      acceptance_criteria: "Running autospec init shows a multi-select prompt with all supported agents; user can toggle selections with space and confirm with enter"
-
-    - id: "FR-002"
-      description: "MUST support these agents in the selection prompt: claude, cline, codex, gemini, goose, opencode"
-      testable: true
-      acceptance_criteria: "All six agent names appear as options in the multi-select prompt"
-
-    - id: "FR-003"
-      description: "MUST pre-select 'claude' as the recommended default when no previous preferences exist"
-      testable: true
-      acceptance_criteria: "First-time init shows claude checked with '(Recommended)' label"
-
-    - id: "FR-004"
-      description: "MUST implement a Configurator interface in internal/cliagent that agents can optionally implement for project-level setup"
-      testable: true
-      acceptance_criteria: "Configurator interface exists with ConfigureProject(projectDir, specsDir string) error method; helper function Configure() checks if agent implements interface"
-
-    - id: "FR-005"
-      description: "MUST have Claude agent implement Configurator to add permissions to .claude/settings.local.json"
-      testable: true
-      acceptance_criteria: "Claude agent has ConfigureProject method that modifies .claude/settings.local.json with required permissions"
-
-    - id: "FR-006"
-      description: "MUST add these permissions for Claude: Bash(autospec:*), Write(.autospec/**), Edit(.autospec/**), Write({specsDir}/**), Edit({specsDir}/**)"
-      testable: true
-      acceptance_criteria: "After init with Claude selected, .claude/settings.local.json contains all five permission patterns"
-
-    - id: "FR-007"
-      description: "MUST use the configured specs_dir value (not hardcoded 'specs') when generating Claude permissions"
-      testable: true
-      acceptance_criteria: "With specs_dir='features', permissions include Write(features/**) and Edit(features/**)"
-
-    - id: "FR-008"
-      description: "MUST store selected agents in config.yml as default_agents for persistence"
-      testable: true
-      acceptance_criteria: "After init, config file contains default_agents field with list of selected agent names"
-
-    - id: "FR-009"
-      description: "MUST pre-select agents from default_agents config on subsequent init runs"
-      testable: true
-      acceptance_criteria: "When default_agents exists in config, those agents appear checked in the selection prompt"
-
-    - id: "FR-010"
-      description: "MUST provide a --no-agents flag to skip agent configuration entirely"
-      testable: true
-      acceptance_criteria: "Running autospec init --no-agents skips the agent prompt and proceeds without configuring any agents"
-
-    - id: "FR-011"
-      description: "MUST display clear feedback showing which permissions were added or that agent is already configured"
-      testable: true
-      acceptance_criteria: "Output includes checkmark with agent name and either list of permissions added or 'already configured' message"
-
-    - id: "FR-012"
-      description: "MUST show a warning when no agents are selected"
-      testable: true
-      acceptance_criteria: "When user selects no agents, output includes warning about manual agent configuration"
-
-    - id: "FR-013"
-      description: "MUST remove the unconditional Claude auto-configuration that currently runs in init"
-      testable: true
-      acceptance_criteria: "Init no longer automatically configures Claude settings without user selection"
-
-    - id: "FR-014"
-      description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
-      testable: true
-      acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
-
-  non_functional:
-    - id: "NFR-001"
-      category: "usability"
-      description: "Agent selection prompt MUST be navigable with keyboard only (arrow keys, space, enter)"
-      measurable_target: "All selection operations achievable without mouse"
-
-    - id: "NFR-002"
-      category: "usability"
-      description: "Agent selection prompt MUST complete in under 5 seconds for typical use"
-      measurable_target: "User can view options, toggle selections, and confirm in under 5 seconds"
-
-    - id: "NFR-003"
-      category: "reliability"
-      description: "Configuration MUST be idempotent - running init multiple times with same selections produces same result"
-      measurable_target: "Permissions not duplicated; config not corrupted on repeated runs"
-
-    - id: "NFR-004"
-      category: "reliability"
-      description: "MUST handle non-interactive terminals gracefully with --no-agents or fallback behavior"
-      measurable_target: "CI/scripted environments can run init without hanging on prompts"
-
-    - id: "NFR-005"
-      category: "code_quality"
-      description: "All functions must be under 40 lines; extract helpers for complex logic"
-      measurable_target: "No function exceeds 40 lines excluding comments"
-
-    - id: "NFR-006"
-      category: "code_quality"
-      description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
-      measurable_target: "Zero bare 'return err' statements in new code"
-
-    - id: "NFR-007"
-      category: "code_quality"
-      description: "Tests must use map-based table-driven pattern with t.Parallel()"
-      measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
-
-    - id: "NFR-008"
-      category: "code_quality"
-      description: "Accept interfaces, return concrete types"
-      measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
-
+    functional:
+        - id: "FR-001"
+          description: "MUST display an interactive multi-select prompt during autospec init allowing users to select one or more agents to configure"
+          testable: true
+          acceptance_criteria: "Running autospec init shows a multi-select prompt with all supported agents; user can toggle selections with space and confirm with enter"
+        - id: "FR-002"
+          description: "MUST support these agents in the selection prompt: claude, cline, codex, gemini, goose, opencode"
+          testable: true
+          acceptance_criteria: "All six agent names appear as options in the multi-select prompt"
+        - id: "FR-003"
+          description: "MUST pre-select 'claude' as the recommended default when no previous preferences exist"
+          testable: true
+          acceptance_criteria: "First-time init shows claude checked with '(Recommended)' label"
+        - id: "FR-004"
+          description: "MUST implement a Configurator interface in internal/cliagent that agents can optionally implement for project-level setup"
+          testable: true
+          acceptance_criteria: "Configurator interface exists with ConfigureProject(projectDir, specsDir string) error method; helper function Configure() checks if agent implements interface"
+        - id: "FR-005"
+          description: "MUST have Claude agent implement Configurator to add permissions to .claude/settings.local.json"
+          testable: true
+          acceptance_criteria: "Claude agent has ConfigureProject method that modifies .claude/settings.local.json with required permissions"
+        - id: "FR-006"
+          description: "MUST add these permissions for Claude: Bash(autospec:*), Write(.autospec/**), Edit(.autospec/**), Write({specsDir}/**), Edit({specsDir}/**)"
+          testable: true
+          acceptance_criteria: "After init with Claude selected, .claude/settings.local.json contains all five permission patterns"
+        - id: "FR-007"
+          description: "MUST use the configured specs_dir value (not hardcoded 'specs') when generating Claude permissions"
+          testable: true
+          acceptance_criteria: "With specs_dir='features', permissions include Write(features/**) and Edit(features/**)"
+        - id: "FR-008"
+          description: "MUST store selected agents in config.yml as default_agents for persistence"
+          testable: true
+          acceptance_criteria: "After init, config file contains default_agents field with list of selected agent names"
+        - id: "FR-009"
+          description: "MUST pre-select agents from default_agents config on subsequent init runs"
+          testable: true
+          acceptance_criteria: "When default_agents exists in config, those agents appear checked in the selection prompt"
+        - id: "FR-010"
+          description: "MUST provide a --no-agents flag to skip agent configuration entirely"
+          testable: true
+          acceptance_criteria: "Running autospec init --no-agents skips the agent prompt and proceeds without configuring any agents"
+        - id: "FR-011"
+          description: "MUST display clear feedback showing which permissions were added or that agent is already configured"
+          testable: true
+          acceptance_criteria: "Output includes checkmark with agent name and either list of permissions added or 'already configured' message"
+        - id: "FR-012"
+          description: "MUST show a warning when no agents are selected"
+          testable: true
+          acceptance_criteria: "When user selects no agents, output includes warning about manual agent configuration"
+        - id: "FR-013"
+          description: "MUST remove the unconditional Claude auto-configuration that currently runs in init"
+          testable: true
+          acceptance_criteria: "Init no longer automatically configures Claude settings without user selection"
+        - id: "FR-014"
+          description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
+          testable: true
+          acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
+    non_functional:
+        - id: "NFR-001"
+          category: "usability"
+          description: "Agent selection prompt MUST be navigable with keyboard only (arrow keys, space, enter)"
+          measurable_target: "All selection operations achievable without mouse"
+        - id: "NFR-002"
+          category: "usability"
+          description: "Agent selection prompt MUST complete in under 5 seconds for typical use"
+          measurable_target: "User can view options, toggle selections, and confirm in under 5 seconds"
+        - id: "NFR-003"
+          category: "reliability"
+          description: "Configuration MUST be idempotent - running init multiple times with same selections produces same result"
+          measurable_target: "Permissions not duplicated; config not corrupted on repeated runs"
+        - id: "NFR-004"
+          category: "reliability"
+          description: "MUST handle non-interactive terminals gracefully with --no-agents or fallback behavior"
+          measurable_target: "CI/scripted environments can run init without hanging on prompts"
+        - id: "NFR-005"
+          category: "code_quality"
+          description: "All functions must be under 40 lines; extract helpers for complex logic"
+          measurable_target: "No function exceeds 40 lines excluding comments"
+        - id: "NFR-006"
+          category: "code_quality"
+          description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
+          measurable_target: "Zero bare 'return err' statements in new code"
+        - id: "NFR-007"
+          category: "code_quality"
+          description: "Tests must use map-based table-driven pattern with t.Parallel()"
+          measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
+        - id: "NFR-008"
+          category: "code_quality"
+          description: "Accept interfaces, return concrete types"
+          measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
 success_criteria:
-  measurable_outcomes:
-    - id: "SC-001"
-      description: "Users can select which agents to configure during initialization"
-      metric: "Successful completion of init with agent selection"
-      target: "100% of interactive init runs present agent selection prompt"
-
-    - id: "SC-002"
-      description: "Claude Code users have all required permissions configured automatically"
-      metric: "Permission completeness after selecting Claude"
-      target: "100% of required permissions present in settings file after init"
-
-    - id: "SC-003"
-      description: "Agent preferences persist across init runs"
-      metric: "Pre-selection accuracy on repeat init"
-      target: "Previously selected agents are pre-checked on subsequent init runs"
-
-    - id: "SC-004"
-      description: "Non-interactive environments can complete init without hanging"
-      metric: "Init completion with --no-agents flag"
-      target: "Exit code 0 when running autospec init --no-agents in non-TTY environment"
-
+    measurable_outcomes:
+        - id: "SC-001"
+          description: "Users can select which agents to configure during initialization"
+          metric: "Successful completion of init with agent selection"
+          target: "100% of interactive init runs present agent selection prompt"
+        - id: "SC-002"
+          description: "Claude Code users have all required permissions configured automatically"
+          metric: "Permission completeness after selecting Claude"
+          target: "100% of required permissions present in settings file after init"
+        - id: "SC-003"
+          description: "Agent preferences persist across init runs"
+          metric: "Pre-selection accuracy on repeat init"
+          target: "Previously selected agents are pre-checked on subsequent init runs"
+        - id: "SC-004"
+          description: "Non-interactive environments can complete init without hanging"
+          metric: "Init completion with --no-agents flag"
+          target: "Exit code 0 when running autospec init --no-agents in non-TTY environment"
 key_entities:
-  - name: "Agent"
-    description: "An AI coding assistant that can be configured to work with autospec"
-    attributes:
-      - "name (string): unique identifier like 'claude', 'cline', 'gemini'"
-      - "displayName (string): human-readable name shown in prompts"
-      - "recommended (bool): whether this agent is pre-selected by default"
-
-  - name: "Configurator"
-    description: "Interface for agents that need project-level setup (settings files, permissions)"
-    attributes:
-      - "ConfigureProject(projectDir, specsDir string) error"
-
-  - name: "AgentSelection"
-    description: "User's choices from the multi-select prompt"
-    attributes:
-      - "selectedAgents ([]string): list of agent names user selected"
-      - "skipConfiguration (bool): whether user chose to skip all agent config"
-
-  - name: "DefaultAgents"
-    description: "Persisted agent preferences from previous init runs"
-    attributes:
-      - "agents ([]string): list of agent names to pre-select in future prompts"
-
+    - name: "Agent"
+      description: "An AI coding assistant that can be configured to work with autospec"
+      attributes:
+        - "name (string): unique identifier like 'claude', 'cline', 'gemini'"
+        - "displayName (string): human-readable name shown in prompts"
+        - "recommended (bool): whether this agent is pre-selected by default"
+    - name: "Configurator"
+      description: "Interface for agents that need project-level setup (settings files, permissions)"
+      attributes:
+        - "ConfigureProject(projectDir, specsDir string) error"
+    - name: "AgentSelection"
+      description: "User's choices from the multi-select prompt"
+      attributes:
+        - "selectedAgents ([]string): list of agent names user selected"
+        - "skipConfiguration (bool): whether user chose to skip all agent config"
+    - name: "DefaultAgents"
+      description: "Persisted agent preferences from previous init runs"
+      attributes:
+        - "agents ([]string): list of agent names to pre-select in future prompts"
 edge_cases:
-  - scenario: "User has an existing .claude/settings.local.json with partial permissions"
-    expected_behavior: "Only missing permissions are added; existing permissions preserved; no duplicates"
-
-  - scenario: "User has deny list entries that conflict with required permissions"
-    expected_behavior: "Error message explaining which permission is denied and cannot be configured"
-
-  - scenario: "Non-interactive terminal (CI, pipe, no TTY)"
-    expected_behavior: "Without --no-agents flag, init should either fail fast with helpful message or use default agents"
-
-  - scenario: "User's config.yml is malformed or corrupted"
-    expected_behavior: "Default to showing all agents unchecked (except recommended); proceed with init"
-
-  - scenario: "Unknown agent name in default_agents config"
-    expected_behavior: "Ignore unknown agent names; only pre-select known agents"
-
-  - scenario: "User selects an agent that doesn't implement Configurator"
-    expected_behavior: "Skip configuration for that agent silently or show 'no configuration needed' message"
-
-  - scenario: "File system permission error writing to .claude/settings.local.json"
-    expected_behavior: "Clear error message identifying the permission issue; init continues for other agents"
-
-  - scenario: "specs_dir contains special characters or spaces"
-    expected_behavior: "Permissions correctly escape or handle the path; configuration works correctly"
-
+    - scenario: "User has an existing .claude/settings.local.json with partial permissions"
+      expected_behavior: "Only missing permissions are added; existing permissions preserved; no duplicates"
+    - scenario: "User has deny list entries that conflict with required permissions"
+      expected_behavior: "Error message explaining which permission is denied and cannot be configured"
+    - scenario: "Non-interactive terminal (CI, pipe, no TTY)"
+      expected_behavior: "Without --no-agents flag, init should either fail fast with helpful message or use default agents"
+    - scenario: "User's config.yml is malformed or corrupted"
+      expected_behavior: "Default to showing all agents unchecked (except recommended); proceed with init"
+    - scenario: "Unknown agent name in default_agents config"
+      expected_behavior: "Ignore unknown agent names; only pre-select known agents"
+    - scenario: "User selects an agent that doesn't implement Configurator"
+      expected_behavior: "Skip configuration for that agent silently or show 'no configuration needed' message"
+    - scenario: "File system permission error writing to .claude/settings.local.json"
+      expected_behavior: "Clear error message identifying the permission issue; init continues for other agents"
+    - scenario: "specs_dir contains special characters or spaces"
+      expected_behavior: "Permissions correctly escape or handle the path; configuration works correctly"
 assumptions:
-  - "The internal/cliagent package with Agent interface already exists (from 062-agent-abstraction)"
-  - "The internal/claude package with settings reading/writing capabilities exists"
-  - "A survey/prompt library (survey or huh) will be added as a dependency for multi-select prompts"
-  - "Users understand what AI coding agents are and which ones they use"
-  - "The six listed agents (claude, cline, codex, gemini, goose, opencode) represent the primary agents autospec users are likely to use"
-  - "Claude Code is the most common agent among autospec users, justifying it as the recommended default"
-
+    - "The internal/cliagent package with Agent interface already exists (from 062-agent-abstraction)"
+    - "The internal/claude package with settings reading/writing capabilities exists"
+    - "A survey/prompt library (survey or huh) will be added as a dependency for multi-select prompts"
+    - "Users understand what AI coding agents are and which ones they use"
+    - "The six listed agents (claude, cline, codex, gemini, goose, opencode) represent the primary agents autospec users are likely to use"
+    - "Claude Code is the most common agent among autospec users, justifying it as the recommended default"
 constraints:
-  - "Must maintain backward compatibility with existing autospec installations"
-  - "Cannot require additional user authentication or external API calls"
-  - "Must work offline after initial setup"
-  - "Agent configuration must be non-destructive (additive only for permissions)"
-  - "Must support the existing config hierarchy (env > project > user > defaults)"
-
+    - "Must maintain backward compatibility with existing autospec installations"
+    - "Cannot require additional user authentication or external API calls"
+    - "Must work offline after initial setup"
+    - "Agent configuration must be non-destructive (additive only for permissions)"
+    - "Must support the existing config hierarchy (env > project > user > defaults)"
 out_of_scope:
-  - "Automatic agent detection (checking if claude, cline, etc. are installed)"
-  - "Agent-specific configuration beyond Claude (Gemini, Cline, etc. settings files)"
-  - "Web-based or GUI configuration interface"
-  - "Agent-specific command execution (only Claude Code is currently integrated)"
-  - "Migration tool for existing autospec installations to add missing permissions"
-  - "Agent version detection or compatibility checking"
-  - "Multi-project agent configuration (per-project agent preferences)"
-
+    - "Automatic agent detection (checking if claude, cline, etc. are installed)"
+    - "Agent-specific configuration beyond Claude (Gemini, Cline, etc. settings files)"
+    - "Web-based or GUI configuration interface"
+    - "Agent-specific command execution (only Claude Code is currently integrated)"
+    - "Migration tool for existing autospec installations to add missing permissions"
+    - "Agent version detection or compatibility checking"
+    - "Multi-project agent configuration (per-project agent preferences)"
 _meta:
-  version: "1.0.0"
-  generator: "autospec"
-  generator_version: "autospec dev"
-  created: "2025-12-20T02:47:21Z"
-  artifact_type: "spec"
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-20T02:47:21Z"
+    artifact_type: "spec"

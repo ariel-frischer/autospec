@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ariel-frischer/autospec/internal/claude"
 	"github.com/ariel-frischer/autospec/internal/cli/shared"
+	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/commands"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/history"
@@ -17,6 +17,7 @@ import (
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/workflow"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 var initCmd = &cobra.Command{
@@ -53,6 +54,7 @@ func init() {
 	initCmd.GroupID = shared.GroupGettingStarted
 	initCmd.Flags().BoolP("project", "p", false, "Create project-level config (.autospec/config.yml)")
 	initCmd.Flags().BoolP("force", "f", false, "Overwrite existing config with defaults")
+	initCmd.Flags().Bool("no-agents", false, "Skip agent configuration prompt")
 	// Keep --global as hidden alias for backward compatibility
 	initCmd.Flags().BoolP("global", "g", false, "Deprecated: use default behavior instead (creates user-level config)")
 	initCmd.Flags().MarkHidden("global")
@@ -61,6 +63,7 @@ func init() {
 func runInit(cmd *cobra.Command, args []string) error {
 	project, _ := cmd.Flags().GetBool("project")
 	force, _ := cmd.Flags().GetBool("force")
+	noAgents, _ := cmd.Flags().GetBool("no-agents")
 	out := cmd.OutOrStdout()
 
 	if err := installCommandTemplates(out); err != nil {
@@ -71,8 +74,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("initializing config: %w", err)
 	}
 
-	// Configure Claude Code permissions (errors are warnings, don't block init)
-	configureClaudeSettings(out, ".")
+	// Handle agent selection and configuration
+	if err := handleAgentConfiguration(cmd, out, project, noAgents); err != nil {
+		return fmt.Errorf("configuring agents: %w", err)
+	}
 
 	constitutionExists := handleConstitution(out)
 	checkGitignore(out)
@@ -100,6 +105,168 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	printSummary(out, constitutionExists)
 	return nil
+}
+
+// handleAgentConfiguration handles the agent selection and configuration flow.
+// If noAgents is true, the prompt is skipped. In non-interactive mode without
+// --no-agents, it returns an error with a helpful message.
+func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgents bool) error {
+	if noAgents {
+		fmt.Fprintln(out, "⏭ Agent configuration: skipped (--no-agents)")
+		return nil
+	}
+
+	// Check if stdin is a terminal
+	if !isTerminal() {
+		return fmt.Errorf("agent selection requires an interactive terminal; " +
+			"use --no-agents for non-interactive environments")
+	}
+
+	// Load config to get DefaultAgents for pre-selection
+	configPath, err := getConfigPath(project)
+	if err != nil {
+		return fmt.Errorf("getting config path: %w", err)
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		// Continue with empty defaults if config load fails
+		cfg = &config.Configuration{}
+	}
+
+	// Get agents with defaults pre-selected
+	agents := GetSupportedAgentsWithDefaults(cfg.DefaultAgents)
+
+	// Run agent selection prompt
+	selected := promptAgentSelection(cmd.InOrStdin(), out, agents)
+
+	// Configure selected agents and save preferences
+	return configureSelectedAgents(out, selected, cfg, configPath)
+}
+
+// configureSelectedAgents configures each selected agent and persists preferences.
+func configureSelectedAgents(out io.Writer, selected []string, cfg *config.Configuration, configPath string) error {
+	if len(selected) == 0 {
+		fmt.Fprintln(out, "⚠ Warning: No agents selected. You may need to configure agent permissions manually.")
+		return nil
+	}
+
+	specsDir := cfg.SpecsDir
+	if specsDir == "" {
+		specsDir = "specs"
+	}
+
+	// Configure each selected agent
+	for _, agentName := range selected {
+		agent := cliagent.Get(agentName)
+		if agent == nil {
+			continue
+		}
+
+		result, err := cliagent.Configure(agent, ".", specsDir)
+		if err != nil {
+			fmt.Fprintf(out, "⚠ %s: configuration failed: %v\n", agentDisplayNames[agentName], err)
+			continue
+		}
+
+		displayAgentConfigResult(out, agentName, result)
+	}
+
+	// Persist selected agents to config
+	return persistAgentPreferences(out, selected, cfg, configPath)
+}
+
+// displayAgentConfigResult displays the configuration result for an agent.
+func displayAgentConfigResult(out io.Writer, agentName string, result *cliagent.ConfigResult) {
+	displayName := agentDisplayNames[agentName]
+	if displayName == "" {
+		displayName = agentName
+	}
+
+	if result == nil {
+		fmt.Fprintf(out, "✓ %s: no configuration needed\n", displayName)
+		return
+	}
+
+	if result.Warning != "" {
+		fmt.Fprintf(out, "⚠ %s: %s\n", displayName, result.Warning)
+	}
+
+	if result.AlreadyConfigured {
+		fmt.Fprintf(out, "✓ %s: already configured\n", displayName)
+		return
+	}
+
+	if len(result.PermissionsAdded) > 0 {
+		fmt.Fprintf(out, "✓ %s: configured with permissions:\n", displayName)
+		for _, perm := range result.PermissionsAdded {
+			fmt.Fprintf(out, "    - %s\n", perm)
+		}
+	}
+}
+
+// persistAgentPreferences saves the selected agents to config for future init runs.
+func persistAgentPreferences(out io.Writer, selected []string, cfg *config.Configuration, configPath string) error {
+	// Update config with new agent preferences
+	cfg.DefaultAgents = selected
+
+	// Read existing config file to preserve formatting and comments
+	existingContent, err := os.ReadFile(configPath)
+	if err != nil {
+		// Config doesn't exist yet, nothing to update
+		return nil
+	}
+
+	// Update the default_agents line in the config file
+	newContent := updateDefaultAgentsInConfig(string(existingContent), selected)
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		return fmt.Errorf("saving agent preferences: %w", err)
+	}
+
+	fmt.Fprintf(out, "✓ Agent preferences saved to %s\n", configPath)
+	return nil
+}
+
+// updateDefaultAgentsInConfig updates the default_agents line in the config content.
+func updateDefaultAgentsInConfig(content string, agents []string) string {
+	lines := strings.Split(content, "\n")
+	found := false
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "default_agents:") {
+			// Replace the line with new agent list
+			if len(agents) == 0 {
+				lines[i] = "default_agents: []"
+			} else {
+				lines[i] = fmt.Sprintf("default_agents: [%s]", formatAgentList(agents))
+			}
+			found = true
+			break
+		}
+	}
+
+	if !found && len(agents) > 0 {
+		// Append default_agents at the end if not found
+		lines = append(lines, fmt.Sprintf("default_agents: [%s]", formatAgentList(agents)))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// formatAgentList formats a list of agent names for YAML output.
+func formatAgentList(agents []string) string {
+	quoted := make([]string, len(agents))
+	for i, agent := range agents {
+		quoted[i] = fmt.Sprintf("%q", agent)
+	}
+	return strings.Join(quoted, ", ")
+}
+
+// isTerminal returns true if stdin is connected to a terminal.
+func isTerminal() bool {
+	return term.IsTerminal(int(os.Stdin.Fd()))
 }
 
 // installCommandTemplates installs command templates and prints status
@@ -168,56 +335,6 @@ func writeDefaultConfig(configPath string) error {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 	return nil
-}
-
-// configureClaudeSettings configures Claude Code permissions for autospec.
-// It loads existing settings, checks for deny list conflicts, and adds the
-// required permission if not already present. Outputs status messages for
-// all scenarios: created, added, already configured, or deny conflict warning.
-func configureClaudeSettings(out io.Writer, projectDir string) {
-	settings, err := claude.Load(projectDir)
-	if err != nil {
-		fmt.Fprintf(out, "⚠ Claude settings: %v\n", err)
-		return
-	}
-
-	if settings.CheckDenyList(claude.RequiredPermission) {
-		printDenyWarning(out, settings.FilePath())
-		return
-	}
-
-	if settings.HasPermission(claude.RequiredPermission) {
-		fmt.Fprintf(out, "✓ Claude settings: permissions already configured\n")
-		return
-	}
-
-	saveClaudeSettings(out, settings)
-}
-
-// printDenyWarning outputs a warning when the required permission is in the deny list.
-func printDenyWarning(out io.Writer, filePath string) {
-	fmt.Fprintf(out, "⚠ Warning: %s is in your deny list in %s. "+
-		"Remove it from permissions.deny to allow autospec commands.\n",
-		claude.RequiredPermission, filePath)
-}
-
-// saveClaudeSettings adds the required permission and saves the settings file.
-func saveClaudeSettings(out io.Writer, settings *claude.Settings) {
-	existed := settings.Exists()
-	settings.AddPermission(claude.RequiredPermission)
-
-	if err := settings.Save(); err != nil {
-		fmt.Fprintf(out, "⚠ Claude settings: failed to save: %v\n", err)
-		return
-	}
-
-	if existed {
-		fmt.Fprintf(out, "✓ Claude settings: added %s permission to %s\n",
-			claude.RequiredPermission, settings.FilePath())
-	} else {
-		fmt.Fprintf(out, "✓ Claude settings: created %s with permissions for autospec\n",
-			settings.FilePath())
-	}
 }
 
 func countResults(results []commands.InstallResult) (installed, updated int) {
