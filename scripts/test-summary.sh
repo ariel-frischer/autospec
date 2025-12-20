@@ -16,10 +16,12 @@ trap 'rm -f "$TMPFILE"' EXIT
 go test ./... -v -cover >"$TMPFILE" 2>&1 || true
 
 # Count test results (grep -c exits 1 if no matches, so ignore exit code)
+# Note: subtests have indented "--- PASS" lines, so we match with optional whitespace
+# Use -- to prevent pattern being interpreted as option
 TOTAL=$(grep -c "^=== RUN" "$TMPFILE") || TOTAL=0
-PASSED=$(grep -c "^--- PASS" "$TMPFILE") || PASSED=0
-FAILED=$(grep -c "^--- FAIL" "$TMPFILE") || FAILED=0
-SKIPPED=$(grep -c "^--- SKIP" "$TMPFILE") || SKIPPED=0
+PASSED=$(grep -c -- "--- PASS" "$TMPFILE") || PASSED=0
+FAILED=$(grep -c -- "--- FAIL" "$TMPFILE") || FAILED=0
+SKIPPED=$(grep -c -- "--- SKIP" "$TMPFILE") || SKIPPED=0
 PKGS=$(go list ./... 2>/dev/null | wc -l | tr -d ' ')
 
 # Count top-level vs subtests (subtests contain "/")
