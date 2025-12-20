@@ -45,12 +45,15 @@ func TestRunInit_InstallsCommands(t *testing.T) {
 	}
 	cmd.Flags().BoolP("project", "p", false, "")
 	cmd.Flags().BoolP("force", "f", false, "")
+	cmd.Flags().Bool("no-agents", false, "")
 	rootCmd.AddCommand(cmd)
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{})
+	// Provide "n" responses to all prompts to avoid running real Claude
+	cmd.SetIn(bytes.NewBufferString("n\nn\nn\n"))
+	cmd.SetArgs([]string{"--no-agents"})
 
 	// This will fail because we're in a temp directory without full setup,
 	// but we can test that the function runs without panic
