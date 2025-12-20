@@ -162,7 +162,7 @@ When adding new fixtures:
 
 ### Mock not being used
 
-Ensure `AUTOSPEC_CLAUDE_CMD` environment variable is set to the mock script path before running tests.
+Ensure `AUTOSPEC_CUSTOM_AGENT_CMD` environment variable is set to the mock script path with `{{PROMPT}}` placeholder before running tests.
 
 ### Git isolation not working
 

@@ -401,13 +401,13 @@ func TestCommandCompleteness(t *testing.T) {
 // Test that all configuration options are documented in reference.md
 func TestConfigCompleteness(t *testing.T) {
 	requiredConfigOptions := []string{
-		"claude_cmd",
+		"agent_preset",
 		"max_retries",
 		"specs_dir",
 		"state_dir",
 		"timeout",
 		"skip_preflight",
-		"custom_claude_cmd",
+		"custom_agent",
 	}
 
 	repoRoot, err := findRepoRoot()

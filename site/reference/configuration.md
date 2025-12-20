@@ -37,18 +37,18 @@ Higher priority sources override lower priority sources.
 
 ## Core Options
 
-### claude_cmd
+### agent_preset
 
-Command to invoke Claude CLI.
+Preset agent to use for execution.
 
 | Property | Value |
 |:---------|:------|
 | Type | string |
-| Default | `"claude"` |
-| Environment | `AUTOSPEC_CLAUDE_CMD` |
+| Default | `""` |
+| Environment | `AUTOSPEC_AGENT_PRESET` |
 
 ```yaml
-claude_cmd: /usr/local/bin/claude
+agent_preset: claude
 ```
 
 ---
@@ -167,18 +167,21 @@ CLI flags (`--phases`, `--tasks`, `--single-session`) override this setting.
 
 ---
 
-### custom_claude_cmd
+### custom_agent
 
-Custom command template with placeholder.
+Custom agent configuration with command and args.
 
 | Property | Value |
 |:---------|:------|
-| Type | string |
-| Default | `""` (not set) |
-| Environment | `AUTOSPEC_CUSTOM_CLAUDE_CMD` |
+| Type | object |
+| Default | `null` |
 
 ```yaml
-custom_claude_cmd: "claude -p {{PROMPT}} | tee logs/$(date +%s).log"
+custom_agent:
+  command: sh
+  args:
+    - -c
+    - "claude -p {{PROMPT}} | tee logs/$(date +%s).log"
 ```
 
 The `{{PROMPT}}` placeholder is replaced with the actual prompt.
@@ -445,14 +448,14 @@ All configuration options can be set via environment variables with the `AUTOSPE
 
 | Variable | Config Key |
 |:---------|:-----------|
-| `AUTOSPEC_CLAUDE_CMD` | `claude_cmd` |
+| `AUTOSPEC_AGENT_PRESET` | `agent_preset` |
 | `AUTOSPEC_MAX_RETRIES` | `max_retries` |
 | `AUTOSPEC_SPECS_DIR` | `specs_dir` |
 | `AUTOSPEC_STATE_DIR` | `state_dir` |
 | `AUTOSPEC_TIMEOUT` | `timeout` |
 | `AUTOSPEC_SKIP_PREFLIGHT` | `skip_preflight` |
 | `AUTOSPEC_IMPLEMENT_METHOD` | `implement_method` |
-| `AUTOSPEC_CUSTOM_CLAUDE_CMD` | `custom_claude_cmd` |
+| `AUTOSPEC_CUSTOM_AGENT_CMD` | `custom_agent_cmd` |
 | `AUTOSPEC_MAX_HISTORY_ENTRIES` | `max_history_entries` |
 | `AUTOSPEC_NOTIFICATIONS_ENABLED` | `notifications.enabled` |
 | `AUTOSPEC_NOTIFICATIONS_TYPE` | `notifications.type` |

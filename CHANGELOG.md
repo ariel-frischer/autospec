@@ -31,12 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `init` command now displays permissions/sandbox configuration status and prompts to configure sandbox if not set up
 - `init` command shows recommended full automation setup with cclean post_processor and --dangerously-skip-permissions disclaimer on first run
 - Native cclean (claude-clean) library integration as internal dependency for beautiful Claude JSONL output parsing with `--output-style` flag and `output_style` config option
+- One-time security notice on first workflow run explaining `--dangerously-skip-permissions` usage with sandbox status; suppress via `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
 
 ### Changed
 - `init` agent selection now uses interactive arrow-key navigation with space to toggle (replaces number input)
 
-### Deprecated
-- `claude_cmd`, `claude_args`, `custom_claude_cmd`, `custom_agent_cmd` config fields (use `agent_preset` or structured `custom_agent` instead)
+### Removed
+- **BREAKING**: Removed legacy config fields `claude_cmd`, `claude_args`, `custom_claude_cmd` (use `agent_preset` or structured `custom_agent` instead)
 
 ## [0.5.0] - 2025-12-18
 
