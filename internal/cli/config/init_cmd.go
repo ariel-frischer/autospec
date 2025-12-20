@@ -106,18 +106,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	pending := collectPendingActions(cmd, out, constitutionExists, worktreeScriptExists)
 
 	// ═══════════════════════════════════════════════════════════════════════
-	// Phase 3: Show summary and confirm (if any Claude sessions will run)
-	// ═══════════════════════════════════════════════════════════════════════
-	if pending.createConstitution || pending.createWorktree {
-		if !confirmPendingActions(cmd, out, pending) {
-			fmt.Fprintf(out, "\n⏭ Skipped: Claude sessions cancelled\n")
-			pending.createConstitution = false
-			pending.createWorktree = false
-		}
-	}
-
-	// ═══════════════════════════════════════════════════════════════════════
-	// Phase 4: Apply all pending changes atomically
+	// Phase 3: Apply all pending changes
 	// ═══════════════════════════════════════════════════════════════════════
 	configPath, _ := getConfigPath(project)
 	constitutionExists = applyPendingActions(cmd, out, pending, configPath, constitutionExists)
@@ -884,33 +873,6 @@ func collectPendingActions(cmd *cobra.Command, out io.Writer, constitutionExists
 	}
 
 	return pending
-}
-
-// confirmPendingActions shows a summary of Claude sessions that will run and asks for confirmation.
-// Returns true if user confirms, false to skip Claude sessions.
-func confirmPendingActions(cmd *cobra.Command, out io.Writer, pending pendingActions) bool {
-	fmt.Fprintf(out, "\n")
-	fmt.Fprintf(out, "═══════════════════════════════════════════════════════════════════════\n")
-	fmt.Fprintf(out, "                      PENDING CLAUDE SESSIONS\n")
-	fmt.Fprintf(out, "═══════════════════════════════════════════════════════════════════════\n")
-	fmt.Fprintf(out, "\n")
-	fmt.Fprintf(out, "The following Claude sessions will run:\n\n")
-
-	if pending.createConstitution {
-		fmt.Fprintf(out, "  1. Constitution generation\n")
-		fmt.Fprintf(out, "     → Analyzes your project and creates coding standards\n")
-	}
-	if pending.createWorktree {
-		num := 1
-		if pending.createConstitution {
-			num = 2
-		}
-		fmt.Fprintf(out, "  %d. Worktree setup script generation\n", num)
-		fmt.Fprintf(out, "     → Creates project-specific workspace bootstrap script\n")
-	}
-
-	fmt.Fprintf(out, "\n")
-	return promptYesNoDefaultYes(cmd, "Proceed with Claude sessions?")
 }
 
 // applyPendingActions applies all collected user choices.
