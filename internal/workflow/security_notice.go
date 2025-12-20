@@ -86,7 +86,8 @@ func showSecurityNotice(out io.Writer, sandboxEnabled bool) {
 
 	fmt.Fprintf(out, "│                                                                             │\n")
 	fmt.Fprintf(out, "│ See docs/claude-settings.md for security details.                          │\n")
-	fmt.Fprintf(out, "│ Suppress this notice: AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1                   │\n")
+	fmt.Fprintf(out, "│ Suppress: autospec config set skip_permissions_notice_shown true           │\n")
+	fmt.Fprintf(out, "│      or:  AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1                               │\n")
 	fmt.Fprintf(out, "└─────────────────────────────────────────────────────────────────────────────┘\n")
 	fmt.Fprintf(out, "\n")
 }

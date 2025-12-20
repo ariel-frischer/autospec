@@ -155,7 +155,7 @@ On your first workflow run, you'll see a one-time notice about `--dangerously-sk
 > **Caution**: This flag gives Claude full access within your project directory without prompts. Sandbox (configured during `autospec init`) limits access to your project only, but Claude can still modify any file in the project. This tradeoff is necessary for practical automation—manually approving every file edit and command would be impractical. See [Configuration - Security](/autospec/reference/configuration#security-sandbox--permissions) for details.
 
 {: .note }
-> Suppress this notice: `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
+> Suppress this notice: `autospec config set skip_permissions_notice_shown true` or `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
 
 `autospec init` also installs slash commands to `.claude/commands/autospec.*.md`:
 

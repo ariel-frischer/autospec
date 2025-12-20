@@ -387,10 +387,14 @@ This provides **sandboxed automation**: unattended execution with OS-level files
 On your first workflow command, autospec displays a one-time notice explaining the security model and showing your sandbox status. Suppress with:
 
 ```bash
-export AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1
+autospec config set skip_permissions_notice_shown true
 ```
 
-Or set `skip_permissions_notice_shown: true` in your user config.
+Or via environment variable:
+
+```bash
+export AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1
+```
 
 ### Custom Agent Configuration
 
