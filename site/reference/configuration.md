@@ -370,9 +370,8 @@ During `autospec init`, you're prompted to enable sandbox. This configures `.cla
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
     "additionalAllowWritePaths": [
-      "~/.autospec/state",
-      "~/.config/autospec",
-      ".autospec"
+      ".autospec",
+      "specs"
     ]
   }
 }

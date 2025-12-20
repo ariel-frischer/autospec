@@ -103,13 +103,12 @@ func checkDenyConflicts(settings *claude.Settings, permissions []string) string 
 	return fmt.Sprintf("permissions %v are explicitly denied in settings", denied)
 }
 
-// GetSandboxPaths returns the paths required for autospec sandbox write access.
-// These paths are needed when Claude's sandbox is enabled to allow autospec
-// to write state and configuration files.
+// GetSandboxPaths returns the paths required for Claude sandbox write access.
+// These are paths Claude needs to write to during workflow execution.
+// Note: autospec's own state/config (~/.autospec/, ~/.config/autospec/) are NOT
+// included - those are written by autospec itself, not by Claude.
 func (c *Claude) GetSandboxPaths(specsDir string) []string {
 	return []string{
-		"~/.autospec/state",
-		"~/.config/autospec",
 		".autospec",
 		specsDir,
 	}
