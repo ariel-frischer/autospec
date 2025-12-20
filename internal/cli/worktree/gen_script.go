@@ -14,6 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// GenScriptRunner is a mockable function for running Claude worktree-setup generation.
+// Tests can replace this to prevent real API calls.
+var GenScriptRunner = runClaudeGenerationImpl
+
 var genScriptCmd = &cobra.Command{
 	Use:   "gen-script",
 	Short: "Generate a project-specific worktree setup script",
@@ -95,8 +99,13 @@ func ensureScriptsDir() error {
 	return nil
 }
 
-// runClaudeGeneration invokes Claude with the worktree-setup template.
+// runClaudeGeneration invokes Claude via the mockable GenScriptRunner.
 func runClaudeGeneration(cfg *config.Configuration, includeEnv bool) error {
+	return GenScriptRunner(cfg, includeEnv)
+}
+
+// runClaudeGenerationImpl is the real implementation that invokes Claude.
+func runClaudeGenerationImpl(cfg *config.Configuration, includeEnv bool) error {
 	orch := workflow.NewWorkflowOrchestrator(cfg)
 
 	command := buildWorktreeSetupCommand(includeEnv)

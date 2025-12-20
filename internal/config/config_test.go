@@ -1067,17 +1067,23 @@ func TestLoad_AgentPresetFromYAML(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yml")
+	projectConfigPath := filepath.Join(tmpDir, "project-config.yml")
+	userConfigPath := filepath.Join(tmpDir, "user-config.yml")
+
+	// Create empty mock user config to isolate from real user config
+	err := os.WriteFile(userConfigPath, []byte(""), 0644)
+	require.NoError(t, err)
 
 	configContent := `agent_preset: gemini
 specs_dir: "./specs"
 state_dir: "~/.autospec/state"
 `
-	err := os.WriteFile(configPath, []byte(configContent), 0644)
+	err = os.WriteFile(projectConfigPath, []byte(configContent), 0644)
 	require.NoError(t, err)
 
 	cfg, err := LoadWithOptions(LoadOptions{
-		ProjectConfigPath: configPath,
+		ProjectConfigPath: projectConfigPath,
+		UserConfigPath:    userConfigPath,
 		SkipWarnings:      true,
 	})
 	require.NoError(t, err)

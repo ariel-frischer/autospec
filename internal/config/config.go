@@ -94,6 +94,9 @@ type Configuration struct {
 type LoadOptions struct {
 	// ProjectConfigPath overrides the project config path (default: .autospec/config.yml)
 	ProjectConfigPath string
+	// UserConfigPath overrides the user config path (default: ~/.config/autospec/config.yml)
+	// Useful for testing to provide a mock user config
+	UserConfigPath string
 	// WarningWriter receives deprecation warnings (default: os.Stderr)
 	WarningWriter io.Writer
 	// SkipWarnings suppresses deprecation warnings
@@ -121,7 +124,7 @@ func LoadWithOptions(opts LoadOptions) (*Configuration, error) {
 
 	loadDefaults(k)
 
-	if err := loadUserConfig(k, warningWriter, opts.SkipWarnings); err != nil {
+	if err := loadUserConfig(k, opts.UserConfigPath, warningWriter, opts.SkipWarnings); err != nil {
 		return nil, err
 	}
 
@@ -153,9 +156,20 @@ func loadDefaults(k *koanf.Koanf) {
 }
 
 // loadUserConfig loads user-level config (YAML preferred, legacy JSON supported).
-// Priority: YAML (~/.config/autospec/config.yml) > JSON (~/.autospec/config.json).
+// If customPath is provided, it uses that path exclusively (for testing).
+// Otherwise: Priority: YAML (~/.config/autospec/config.yml) > JSON (~/.autospec/config.json).
 // Warns if both exist (YAML used, JSON ignored) or if only legacy JSON exists.
-func loadUserConfig(k *koanf.Koanf, warningWriter io.Writer, skipWarnings bool) error {
+func loadUserConfig(k *koanf.Koanf, customPath string, warningWriter io.Writer, skipWarnings bool) error {
+	// If custom path provided, use it exclusively (for testing)
+	if customPath != "" {
+		if fileExists(customPath) {
+			if err := loadYAMLConfig(k, customPath, "user"); err != nil {
+				return fmt.Errorf("loading user YAML config: %w", err)
+			}
+		}
+		return nil
+	}
+
 	userYAMLPath, _ := UserConfigPath()
 	legacyUserPath, _ := LegacyUserConfigPath()
 

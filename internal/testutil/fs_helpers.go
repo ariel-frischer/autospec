@@ -349,3 +349,45 @@ func ReadFile(t *testing.T, path string) string {
 
 	return string(content)
 }
+
+// apiKeyEnvVars lists all environment variables that could enable API calls.
+// Clearing these makes it impossible for tests to accidentally make real API requests.
+var apiKeyEnvVars = []string{
+	// Anthropic/Claude
+	"ANTHROPIC_API_KEY",
+	"CLAUDE_API_KEY",
+	// OpenAI
+	"OPENAI_API_KEY",
+	// Google/Gemini
+	"GEMINI_API_KEY",
+	"GOOGLE_API_KEY",
+	// Generic
+	"API_KEY",
+}
+
+// ClearAPIKeys clears all API key environment variables to prevent accidental
+// real API calls during tests. Returns a cleanup function to restore original values.
+// Usage: defer testutil.ClearAPIKeys(t)()
+func ClearAPIKeys(t *testing.T) func() {
+	t.Helper()
+
+	// Save original values
+	originals := make(map[string]string)
+	for _, key := range apiKeyEnvVars {
+		if val, exists := os.LookupEnv(key); exists {
+			originals[key] = val
+		}
+	}
+
+	// Clear all API keys
+	for _, key := range apiKeyEnvVars {
+		t.Setenv(key, "")
+	}
+
+	// Return cleanup function
+	return func() {
+		for key, val := range originals {
+			os.Setenv(key, val)
+		}
+	}
+}

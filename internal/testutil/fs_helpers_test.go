@@ -212,3 +212,29 @@ func TestFileExists(t *testing.T) {
 		})
 	}
 }
+
+// TestClearAPIKeys verifies that API keys are cleared during tests.
+// Note: Cannot use t.Parallel() as it modifies environment variables.
+func TestClearAPIKeys(t *testing.T) {
+	// Set a test API key before clearing
+	testKey := "test-api-key-12345"
+	os.Setenv("ANTHROPIC_API_KEY", testKey)
+
+	// Clear API keys
+	cleanup := ClearAPIKeys(t)
+
+	// Verify the key is now empty
+	if val := os.Getenv("ANTHROPIC_API_KEY"); val != "" {
+		t.Errorf("ANTHROPIC_API_KEY should be empty after ClearAPIKeys, got %q", val)
+	}
+
+	// Verify all API keys are cleared
+	for _, key := range apiKeyEnvVars {
+		if val := os.Getenv(key); val != "" {
+			t.Errorf("%s should be empty after ClearAPIKeys, got %q", key, val)
+		}
+	}
+
+	// Call cleanup to restore original value
+	cleanup()
+}

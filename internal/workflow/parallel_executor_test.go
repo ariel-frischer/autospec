@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -481,6 +482,7 @@ func TestParallelExecutor_UseWorktrees(t *testing.T) {
 
 // mockWorktreeManager implements worktree.Manager for testing.
 type mockWorktreeManager struct {
+	mu          sync.Mutex
 	createCalls []string
 	removeCalls []string
 	statusCalls []string
@@ -490,8 +492,11 @@ type mockWorktreeManager struct {
 }
 
 func (m *mockWorktreeManager) Create(name, branch, customPath string) (*worktree.Worktree, error) {
+	m.mu.Lock()
 	m.createCalls = append(m.createCalls, name)
-	if m.failCreate {
+	failCreate := m.failCreate
+	m.mu.Unlock()
+	if failCreate {
 		return nil, errors.New("mock create error")
 	}
 	return &worktree.Worktree{Name: name, Path: customPath, Branch: branch}, nil
@@ -506,8 +511,11 @@ func (m *mockWorktreeManager) Get(name string) (*worktree.Worktree, error) {
 }
 
 func (m *mockWorktreeManager) Remove(name string, force bool) error {
+	m.mu.Lock()
 	m.removeCalls = append(m.removeCalls, name)
-	if m.failRemove {
+	failRemove := m.failRemove
+	m.mu.Unlock()
+	if failRemove {
 		return errors.New("mock remove error")
 	}
 	return nil
@@ -522,8 +530,11 @@ func (m *mockWorktreeManager) Prune() (int, error) {
 }
 
 func (m *mockWorktreeManager) UpdateStatus(name string, status worktree.WorktreeStatus) error {
+	m.mu.Lock()
 	m.statusCalls = append(m.statusCalls, name)
-	if m.failStatus {
+	failStatus := m.failStatus
+	m.mu.Unlock()
+	if failStatus {
 		return errors.New("mock status error")
 	}
 	return nil
