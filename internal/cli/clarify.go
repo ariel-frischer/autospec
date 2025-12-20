@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
 	"github.com/ariel-frischer/autospec/internal/history"
@@ -95,6 +96,9 @@ Prerequisites:
 			// Create workflow orchestrator
 			orch := workflow.NewWorkflowOrchestrator(cfg)
 			orch.Executor.NotificationHandler = notifHandler
+
+			// Apply output style from CLI flag (overrides config)
+			shared.ApplyOutputStyle(cmd, orch)
 
 			// Execute clarify stage
 			if err := orch.ExecuteClarify(specName, prompt); err != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
 	"github.com/ariel-frischer/autospec/internal/history"
@@ -73,6 +74,9 @@ This command has no prerequisites - it can be run at any time.`,
 			// Create workflow orchestrator
 			orch := workflow.NewWorkflowOrchestrator(cfg)
 			orch.Executor.NotificationHandler = notifHandler
+
+			// Apply output style from CLI flag (overrides config)
+			shared.ApplyOutputStyle(cmd, orch)
 
 			// Execute constitution stage
 			if err := orch.ExecuteConstitution(prompt); err != nil {
