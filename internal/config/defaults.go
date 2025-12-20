@@ -83,9 +83,9 @@ notifications:
 func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
 		// Agent configuration
-		"agent_preset":      "",
-		"use_subscription":  true, // Protect users from accidental API charges
-		"max_retries":       0,
+		"agent_preset":       "",
+		"use_subscription":   true, // Protect users from accidental API charges
+		"max_retries":        0,
 		"specs_dir":          "./specs",
 		"state_dir":          "~/.autospec/state",
 		"skip_preflight":     false,
