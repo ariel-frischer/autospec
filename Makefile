@@ -145,33 +145,7 @@ test-all: test-go test-integration ## Run all tests including integration
 test: test-go ## Run all tests
 
 test-summary: ## Show test statistics summary
-	@echo "📊 Test Summary"
-	@echo "═══════════════════════════════════════════════════════════════"
-	@echo ""
-	@echo "Running tests and collecting stats..."
-	@echo ""
-	@OUTPUT=$$(go test ./... -v -cover 2>&1); \
-	TOTAL=$$(echo "$$OUTPUT" | grep -c "^=== RUN" || echo 0); \
-	PASSED=$$(echo "$$OUTPUT" | grep -c "^--- PASS" || echo 0); \
-	FAILED=$$(echo "$$OUTPUT" | grep -c "^--- FAIL" || echo 0); \
-	SKIPPED=$$(echo "$$OUTPUT" | grep -c "^--- SKIP" || echo 0); \
-	PKGS=$$(go list ./... | wc -l); \
-	TOP_LEVEL=$$(echo "$$OUTPUT" | grep "^=== RUN" | grep -cv "/" || echo 0); \
-	SUBTESTS=$$((TOTAL - TOP_LEVEL)); \
-	echo "  Total test runs:     $$TOTAL"; \
-	echo "  ├─ Top-level tests:  $$TOP_LEVEL"; \
-	echo "  └─ Subtests:         $$SUBTESTS"; \
-	echo ""; \
-	echo "  ✅ Passed:           $$PASSED"; \
-	echo "  ❌ Failed:           $$FAILED"; \
-	echo "  ⏭️  Skipped:          $$SKIPPED"; \
-	echo ""; \
-	echo "  📦 Packages:         $$PKGS"; \
-	echo ""; \
-	echo "Coverage by package:"; \
-	echo "$$OUTPUT" | grep -E "^ok.*coverage" | head -15; \
-	echo ""; \
-	echo "(Run 'make test-cover' for detailed coverage report)"
+	@./scripts/test-summary.sh
 
 test-cover: ## Show detailed coverage by package
 	@go test ./... -cover -coverprofile=coverage.out 2>&1
