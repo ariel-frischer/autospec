@@ -91,6 +91,12 @@ type Configuration struct {
 	// Default: "default" (box-drawing characters with colors)
 	// Can be set via AUTOSPEC_OUTPUT_STYLE env var or --output-style CLI flag.
 	OutputStyle string `koanf:"output_style"`
+
+	// SkipPermissionsNoticeShown tracks whether the user has seen the security notice
+	// about --dangerously-skip-permissions. Set to true after first workflow run.
+	// This is a user-level config field only (not shown in project config).
+	// Can be set via AUTOSPEC_SKIP_PERMISSIONS_NOTICE_SHOWN env var.
+	SkipPermissionsNoticeShown bool `koanf:"skip_permissions_notice_shown"`
 }
 
 // LoadOptions configures how configuration is loaded

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/testutil"
 	"github.com/ariel-frischer/autospec/internal/workflow"
@@ -174,7 +175,10 @@ func TestWorkflowOrchestrator_Integration(t *testing.T) {
 				SpecsDir:   specsDir,
 				StateDir:   t.TempDir(),
 				MaxRetries: 3,
-				ClaudeCmd:  "mock-claude",
+				CustomAgent: &cliagent.CustomAgentConfig{
+					Command: "echo",
+					Args:    []string{"{{PROMPT}}"},
+				},
 			}
 			orch := workflow.NewWorkflowOrchestrator(cfg)
 

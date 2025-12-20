@@ -895,7 +895,7 @@ _meta:
 			mock := NewMockClaudeExecutor()
 			tt.setupMock(mock)
 
-			orchestrator := NewWorkflowOrchestrator(cfg)
+			_ = NewWorkflowOrchestrator(cfg)
 			// Use mock for testing instead of real executor
 			_ = mock // Mock is available for assertions if needed
 
@@ -4876,7 +4876,10 @@ func TestOrchestratorDelegation_StageExecutor(t *testing.T) {
 			tt.setup(mockStage)
 
 			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
+				CustomAgent: &cliagent.CustomAgentConfig{
+					Command: "echo",
+					Args:    []string{"{{PROMPT}}"},
+				},
 				SpecsDir:   t.TempDir(),
 				MaxRetries: 3,
 				StateDir:   filepath.Join(t.TempDir(), "state"),
@@ -4952,7 +4955,10 @@ func TestOrchestratorDelegation_PhaseExecutor(t *testing.T) {
 			tt.setup(mockPhase)
 
 			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
+				CustomAgent: &cliagent.CustomAgentConfig{
+					Command: "echo",
+					Args:    []string{"{{PROMPT}}"},
+				},
 				SpecsDir:   specsDir,
 				MaxRetries: 3,
 				StateDir:   filepath.Join(tmpDir, "state"),
@@ -5057,7 +5063,10 @@ func TestOrchestratorDelegation_TaskExecutor(t *testing.T) {
 			tt.setup(mockTask)
 
 			cfg := &config.Configuration{
-				ClaudeCmd:  "echo",
+				CustomAgent: &cliagent.CustomAgentConfig{
+					Command: "echo",
+					Args:    []string{"{{PROMPT}}"},
+				},
 				SpecsDir:   specsDir,
 				MaxRetries: 3,
 				StateDir:   filepath.Join(tmpDir, "state"),

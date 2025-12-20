@@ -146,6 +146,12 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description:   "Output formatting style for Claude stream-json display",
 		Default:       "default",
 	},
+	"skip_permissions_notice_shown": {
+		Path:        "skip_permissions_notice_shown",
+		Type:        TypeBool,
+		Description: "Whether the --dangerously-skip-permissions security notice has been shown",
+		Default:     false,
+	},
 }
 
 // ErrUnknownKey is returned when trying to access an unknown configuration key.

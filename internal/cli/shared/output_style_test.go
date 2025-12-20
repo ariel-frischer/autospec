@@ -59,7 +59,7 @@ func TestApplyOutputStyle(t *testing.T) {
 			// Create config with test style
 			cfg := &config.Configuration{
 				OutputStyle: tt.configStyle,
-				ClaudeCmd:   "claude",
+				AgentPreset: "claude",
 				SpecsDir:    "./specs",
 				StateDir:    "~/.autospec/state",
 			}
@@ -82,7 +82,7 @@ func TestApplyOutputStyle_InvalidFlagIgnored(t *testing.T) {
 
 	cfg := &config.Configuration{
 		OutputStyle: "minimal",
-		ClaudeCmd:   "claude",
+		AgentPreset: "claude",
 		SpecsDir:    "./specs",
 		StateDir:    "~/.autospec/state",
 	}
