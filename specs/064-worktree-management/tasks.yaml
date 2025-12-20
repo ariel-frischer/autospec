@@ -1,0 +1,574 @@
+tasks:
+    branch: "064-worktree-management"
+    created: "2025-12-20"
+    spec_path: "specs/064-worktree-management/spec.yaml"
+    plan_path: "specs/064-worktree-management/plan.yaml"
+summary:
+    total_tasks: 32
+    total_phases: 9
+    parallel_opportunities: 8
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Project initialization and new package structure"
+      tasks:
+        - id: "T001"
+          title: "Create internal/worktree/ package directory structure"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/worktree/"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/worktree/ exists"
+            - "Package can be imported without errors"
+        - id: "T002"
+          title: "Create internal/cli/worktree/ package directory structure"
+          status: "Completed"
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/worktree/"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/cli/worktree/ exists"
+            - "Package can be imported without errors"
+    - number: 2
+      title: "Foundational"
+      purpose: "Core infrastructure that MUST be complete before user stories"
+      tasks:
+        - id: "T003"
+          title: "Implement Worktree, WorktreeState, WorktreeConfig, and WorktreeStatus types in internal/worktree/worktree.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/worktree/worktree.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Worktree struct with Name, Path, Branch, Status, CreatedAt, SetupCompleted, LastAccessed, MergedAt fields"
+            - "WorktreeState struct with Version and Worktrees slice"
+            - "WorktreeConfig struct with BaseDir, Prefix, SetupScript, AutoSetup, TrackStatus, CopyDirs fields"
+            - "WorktreeStatus type with Active, Merged, Abandoned, Stale constants"
+            - "YAML struct tags on all fields"
+        - id: "T004"
+          title: "Implement state persistence (load/save) with atomic writes in internal/worktree/state.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/worktree/state.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "LoadState function reads from .autospec/state/worktrees.yaml"
+            - "SaveState function writes atomically via temp file + rename"
+            - "Returns empty state if file doesn't exist"
+            - "Errors wrapped with context"
+            - "State file path is configurable via StateDir parameter"
+        - id: "T005"
+          title: "Implement git worktree command wrappers in internal/worktree/git.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/git.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "GitWorktreeAdd function wraps 'git worktree add'"
+            - "GitWorktreeRemove function wraps 'git worktree remove'"
+            - "GitWorktreeList function parses 'git worktree list' output"
+            - "HasUncommittedChanges function checks for dirty worktree"
+            - "HasUnpushedCommits function checks for unpushed commits"
+            - "All errors wrapped with context"
+        - id: "T006"
+          title: "Implement directory copy utilities in internal/worktree/copy.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/copy.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "CopyDir function recursively copies a directory"
+            - "Uses filepath.WalkDir with os.MkdirAll and io.Copy"
+            - "Handles nested directories correctly"
+            - "Returns error on permission issues"
+            - "Errors wrapped with context"
+        - id: "T007"
+          title: "Implement setup script execution in internal/worktree/setup.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/setup.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "RunSetupScript function executes setup script with path, name, branch args"
+            - "Passes environment variables WORKTREE_NAME, WORKTREE_BRANCH, SOURCE_REPO"
+            - "Returns nil if script doesn't exist"
+            - "Captures and logs script output"
+            - "Errors wrapped with context"
+        - id: "T008"
+          title: "Define Manager interface and implement DefaultManager in internal/worktree/manager.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/worktree/manager.go"
+          dependencies: ["T004", "T005", "T006", "T007"]
+          acceptance_criteria:
+            - "Manager interface with Create, List, Get, Remove, Setup, Prune, UpdateStatus methods"
+            - "DefaultManager struct implementing Manager interface"
+            - "Constructor NewManager accepting WorktreeConfig and StateDir"
+            - "Methods delegate to git, copy, setup, and state packages"
+            - "All errors wrapped with context"
+        - id: "T009"
+          title: "Add WorktreeConfig fields to Configuration struct in internal/config/config.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/config/config.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "Worktree field of type *WorktreeConfig added to Configuration"
+            - "Default values: BaseDir=parent of repo, Prefix='', AutoSetup=true, TrackStatus=true, CopyDirs=['.autospec', '.claude']"
+            - "Environment variable support AUTOSPEC_WORKTREE_*"
+            - "YAML config support under worktree: section"
+    - number: 3
+      title: "User Story 1 - Create worktree with automatic setup"
+      purpose: "Core functionality for creating worktrees with automatic configuration"
+      story_reference: "US-001"
+      independent_test: "Create a worktree and verify all expected files exist and setup completed"
+      tasks:
+        - id: "T010"
+          title: "Implement Manager.Create method with directory copy and setup execution"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/worktree/manager.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "Create method accepts name, branch, and optional custom path"
+            - "Calls GitWorktreeAdd to create worktree"
+            - "Copies configured directories (.autospec/, .claude/) to new worktree"
+            - "Runs setup script if configured and AutoSetup is true"
+            - "Persists worktree entry to state file"
+            - "Returns error if worktree name already exists"
+            - "SetupCompleted reflects actual script outcome"
+        - id: "T011"
+          title: "Implement worktree parent command in internal/cli/worktree/worktree.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/worktree/worktree.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "WorktreeCmd as parent Cobra command"
+            - "Short and long descriptions for help"
+            - "Registered in CLI root command"
+        - id: "T012"
+          title: "Implement create subcommand in internal/cli/worktree/create.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/worktree/create.go"
+          dependencies: ["T010", "T011"]
+          acceptance_criteria:
+            - "create subcommand with positional name argument"
+            - "--branch flag for specifying branch (required)"
+            - "--path flag for custom worktree path (optional)"
+            - "Calls Manager.Create with validated inputs"
+            - "Outputs success message with worktree path"
+            - "Outputs error message with guidance on failure"
+            - "Uses lifecycle wrapper for notifications"
+        - id: "T013"
+          title: "Register worktree command in internal/cli/register.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/register.go"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "WorktreeCmd registered as subcommand of root"
+            - "Appears in help output"
+            - "Proper alphabetical ordering with other commands"
+    - number: 4
+      title: "User Story 2 - List tracked worktrees"
+      purpose: "Enable visibility into all managed worktrees"
+      story_reference: "US-002"
+      independent_test: "Create multiple worktrees and verify list shows all with correct information"
+      tasks:
+        - id: "T014"
+          title: "Implement Manager.List method returning all tracked worktrees"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/worktree/manager.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "List method returns []Worktree from state"
+            - "Updates stale status for worktrees where path doesn't exist"
+            - "Handles empty state file gracefully"
+        - id: "T015"
+          title: "Implement list subcommand with tabular output in internal/cli/worktree/list.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/worktree/list.go"
+          dependencies: ["T011", "T014"]
+          acceptance_criteria:
+            - "list subcommand with no required arguments"
+            - "Tabular output with columns: Name, Path, Branch, Status, Created"
+            - "Relative time format for Created column (e.g., '2 hours ago')"
+            - "Message when no worktrees are tracked"
+            - "Colored status indicators using fatih/color"
+    - number: 5
+      title: "User Story 3 - Remove worktree safely"
+      purpose: "Enable safe cleanup with protection against data loss"
+      story_reference: "US-003"
+      independent_test: "Attempt removal with uncommitted changes and verify warning; force removal and verify cleanup"
+      tasks:
+        - id: "T016"
+          title: "Implement Manager.Remove method with safety checks"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/worktree/manager.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "Remove method accepts name and force flag"
+            - "Checks for uncommitted changes unless force=true"
+            - "Checks for unpushed commits unless force=true"
+            - "Calls GitWorktreeRemove to delete worktree"
+            - "Removes entry from state file"
+            - "Returns descriptive error for safety violations"
+        - id: "T017"
+          title: "Implement remove subcommand with --force flag in internal/cli/worktree/remove.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/worktree/remove.go"
+          dependencies: ["T011", "T016"]
+          acceptance_criteria:
+            - "remove subcommand with positional name argument"
+            - "--force flag to bypass safety checks"
+            - "Calls Manager.Remove with validated inputs"
+            - "Outputs safety violation errors with guidance to use --force"
+            - "Outputs success message on removal"
+            - "Uses lifecycle wrapper for notifications"
+    - number: 6
+      title: "User Story 4 - Run setup on existing worktree"
+      purpose: "Support adoption of manually created worktrees"
+      story_reference: "US-004"
+      independent_test: "Manually create a git worktree, run setup command, verify configuration applied"
+      tasks:
+        - id: "T018"
+          title: "Implement Manager.Setup method for existing worktrees"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/worktree/manager.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "Setup method accepts worktree path"
+            - "Validates path exists and is a git worktree"
+            - "Copies configured directories to worktree"
+            - "Runs setup script"
+            - "Optionally adds worktree to tracking state"
+            - "Returns error if path doesn't exist"
+        - id: "T019"
+          title: "Implement setup subcommand in internal/cli/worktree/setup.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/worktree/setup.go"
+          dependencies: ["T011", "T018"]
+          acceptance_criteria:
+            - "setup subcommand with positional path argument"
+            - "Calls Manager.Setup with validated path"
+            - "Outputs success message with setup details"
+            - "Outputs error if path doesn't exist"
+    - number: 7
+      title: "User Story 5 - Prune stale worktree entries"
+      purpose: "Maintain accurate worktree tracking state"
+      story_reference: "US-005"
+      independent_test: "Delete a worktree directory manually, run prune, verify entry removed from tracking"
+      tasks:
+        - id: "T020"
+          title: "Implement Manager.Prune method for stale entries"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/worktree/manager.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "Prune method removes entries where path doesn't exist on disk"
+            - "Returns count of removed entries"
+            - "Saves updated state to file"
+            - "Idempotent - safe to run multiple times"
+        - id: "T021"
+          title: "Implement prune subcommand in internal/cli/worktree/prune.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-005"
+          file_path: "internal/cli/worktree/prune.go"
+          dependencies: ["T011", "T020"]
+          acceptance_criteria:
+            - "prune subcommand with no required arguments"
+            - "Calls Manager.Prune"
+            - "Outputs count of removed entries"
+            - "Message when no stale entries found"
+    - number: 8
+      title: "User Story 6 - Custom worktree path"
+      purpose: "Enable flexible directory organization"
+      story_reference: "US-006"
+      independent_test: "Create worktree with custom path flag and verify it's created at specified location"
+      tasks:
+        - id: "T022"
+          title: "Ensure Manager.Create supports custom path parameter"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-006"
+          file_path: "internal/worktree/manager.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "Create method uses custom path when provided"
+            - "Falls back to BaseDir + Prefix + name when path not provided"
+            - "Validates custom path is absolute or relative to current dir"
+        - id: "T023"
+          title: "Ensure create subcommand --path flag is implemented"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-006"
+          file_path: "internal/cli/worktree/create.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "--path flag passes custom path to Manager.Create"
+            - "Help text explains path flag usage"
+            - "Works with both absolute and relative paths"
+    - number: 9
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Documentation, testing, and quality gates"
+      tasks:
+        - id: "T024"
+          title: "Write unit tests for internal/worktree/worktree.go types"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/worktree_test.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "Table-driven tests with map[string]struct pattern"
+            - "Tests for WorktreeStatus string conversion"
+            - "Tests for YAML marshaling/unmarshaling"
+            - "t.Parallel() called in all tests"
+        - id: "T025"
+          title: "Write unit tests for internal/worktree/state.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/state_test.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Tests for LoadState with existing file"
+            - "Tests for LoadState with missing file"
+            - "Tests for LoadState with corrupted YAML"
+            - "Tests for SaveState atomic write behavior"
+            - "Table-driven with map[string]struct pattern"
+        - id: "T026"
+          title: "Write unit tests for internal/worktree/git.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/git_test.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Tests with mocked exec.Command"
+            - "Tests for GitWorktreeAdd success and failure"
+            - "Tests for HasUncommittedChanges"
+            - "Tests for HasUnpushedCommits"
+            - "Table-driven with map[string]struct pattern"
+        - id: "T027"
+          title: "Write unit tests for internal/worktree/copy.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/copy_test.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Tests for CopyDir with nested directories"
+            - "Tests for CopyDir with files"
+            - "Tests for CopyDir with missing source"
+            - "Uses t.TempDir() for test isolation"
+            - "Table-driven with map[string]struct pattern"
+        - id: "T028"
+          title: "Write unit tests for internal/worktree/manager.go"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/worktree/manager_test.go"
+          dependencies: ["T022"]
+          acceptance_criteria:
+            - "Tests for Create, List, Get, Remove, Setup, Prune methods"
+            - "Uses interfaces for mocking git, copy, state operations"
+            - "Tests edge cases (duplicate name, missing path, etc.)"
+            - "Table-driven with map[string]struct pattern"
+        - id: "T029"
+          title: "Write CLI tests for worktree commands"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/worktree/worktree_test.go"
+          dependencies: ["T021", "T023"]
+          acceptance_criteria:
+            - "Tests for create, list, remove, setup, prune subcommands"
+            - "Tests for flag parsing"
+            - "Tests for error output formatting"
+            - "Uses testify/assert"
+            - "Table-driven with map[string]struct pattern"
+        - id: "T030"
+          title: "Write user documentation in docs/worktree.md"
+          status: "Completed"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/worktree.md"
+          dependencies: ["T021"]
+          acceptance_criteria:
+            - "Command reference with all subcommands"
+            - "Examples for common workflows"
+            - "Configuration options documented"
+            - "Setup script format documented"
+            - "Troubleshooting section for common issues"
+        - id: "T031"
+          title: "Update docs/reference.md with worktree command"
+          status: "Completed"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/reference.md"
+          dependencies: ["T021"]
+          acceptance_criteria:
+            - "worktree command section added"
+            - "All subcommands documented"
+            - "All flags documented"
+            - "Follows existing reference.md format"
+        - id: "T032"
+          title: "Run quality gates: make test, make fmt, make lint, make build"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: null
+          dependencies: ["T029", "T030", "T031"]
+          acceptance_criteria:
+            - "make test exits 0 with all tests passing"
+            - "make fmt shows no changes needed"
+            - "make lint exits 0 with no errors"
+            - "make build exits 0 successfully"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002", "US-003", "US-004", "US-005", "US-006"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-003"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-004"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-005"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-006"
+          depends_on: ["US-001"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4, 5, 6, 7, 8]
+        - phase: 3
+          blocks: [4, 5, 6, 7, 8, 9]
+        - phase: 4
+          blocks: [9]
+        - phase: 5
+          blocks: [9]
+        - phase: 6
+          blocks: [9]
+        - phase: 7
+          blocks: [9]
+        - phase: 8
+          blocks: [9]
+parallel_execution:
+    - phase: 1
+      parallel_groups:
+        - tasks: ["T001", "T002"]
+          rationale: "Different package directories, no dependencies"
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T005", "T006", "T007"]
+          rationale: "Independent utility modules with no interdependencies"
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T014", "T015"]
+          rationale: "Manager method and CLI can be developed together"
+    - phase: 9
+      parallel_groups:
+        - tasks: ["T024", "T025", "T026", "T027", "T028"]
+          rationale: "Unit tests for different modules are independent"
+        - tasks: ["T030", "T031"]
+          rationale: "Documentation files can be written in parallel"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + Create worktree with automatic setup"
+        validation: "User can run 'autospec worktree create NAME --branch BRANCH' and get a fully configured worktree"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "Core types, state management, git operations, and Manager interface available"
+        - milestone: "Create Working"
+          phases: [1, 2, 3]
+          deliverable: "Users can create worktrees with autospec worktree create"
+        - milestone: "Full CRUD"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Create, list, and remove operations functional"
+        - milestone: "Feature Complete"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8]
+          deliverable: "All user stories implemented including setup and prune"
+        - milestone: "Production Ready"
+          phases: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+          deliverable: "Full test coverage, documentation, all quality gates passing"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-20T00:50:47Z"
+    artifact_type: "tasks"

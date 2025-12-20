@@ -1,0 +1,262 @@
+plan:
+  branch: "063-view-dashboard"
+  created: "2025-12-19"
+  spec_path: "specs/063-view-dashboard/spec.yaml"
+
+summary: |
+  This plan implements a new 'autospec view' command that provides a dashboard overview
+  of all specs in a project. The dashboard displays project-wide statistics including
+  total spec count, categorization by status (in progress, completed, skipped/rejected),
+  and detailed progress for the most recent specs with configurable limits.
+
+  The implementation leverages existing validation and spec packages for task statistics
+  and spec metadata. The command will be added to the util command group alongside
+  status, history, version, and clean commands. A new DashboardData struct will aggregate
+  spec information, reusing GetTaskStats for task progress and parsing spec.yaml for
+  status information. The output format follows existing CLI patterns with plain text
+  suitable for terminal display at 80 columns.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8+"
+      purpose: "CLI command framework"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0+"
+      purpose: "YAML parsing for spec.yaml files"
+  storage: "None"
+  testing:
+    framework: "testing (stdlib)"
+    approach: "Unit tests with table-driven patterns; filesystem mocking via temp directories"
+  target_platform: "linux/darwin/windows (amd64/arm64)"
+  project_type: "cli"
+  performance_goals: "Dashboard renders within 2 seconds for projects with up to 100 specs"
+  constraints:
+    - "Must integrate with existing CLI command structure under internal/cli/util"
+    - "Must use existing configuration loading via internal/config"
+    - "Must follow established error handling patterns with clierrors package"
+    - "Output format must be plain text suitable for terminal display at 80 columns"
+    - "Must not add new external dependencies"
+  scale_scope: "Single new command with ~300-400 lines of new code"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Tests will be written before implementation using map-based table-driven patterns"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "N/A"
+      notes: "View command is read-only; no workflow state changes"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "Dashboard targets <2s for 100 specs; file I/O is sequential per spec directory"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "N/A"
+      notes: "Read-only command; no state modifications"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Functions <40 lines; errors wrapped with context; table-driven tests"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "make fmt will be run before commit"
+
+research_findings:
+  decisions:
+    - topic: "Command location in CLI structure"
+      decision: "Add view.go to internal/cli/util alongside status.go"
+      rationale: "View is a utility command showing project state; matches existing util grouping"
+      alternatives_considered:
+        - "Add as subcommand of status (autospec status --view) - complicates status semantics"
+        - "Add to root CLI package - violates subpackage organization pattern"
+    - topic: "Spec status determination"
+      decision: "Parse spec.yaml feature.status field; infer completed from task stats if no status"
+      rationale: "spec.yaml status is authoritative; task completion is secondary indicator"
+      alternatives_considered:
+        - "Only use spec.yaml status - misses implicit completion from tasks"
+        - "Only use task completion - loses explicit status information"
+    - topic: "Recent specs sorting"
+      decision: "Sort by directory modification time, matching existing DetectCurrentSpec behavior"
+      rationale: "Consistent with existing spec detection; modification time reflects recent work"
+      alternatives_considered:
+        - "Sort by spec.yaml created date - requires parsing all specs first"
+        - "Sort alphabetically - doesn't reflect recent activity"
+    - topic: "Output format"
+      decision: "Plain text with aligned columns; no progress bars"
+      rationale: "Matches out_of_scope constraint; simple text works in all terminals"
+      alternatives_considered:
+        - "ASCII progress bars - explicitly out of scope"
+        - "JSON output - can be added later per out_of_scope"
+    - topic: "Configuration option naming"
+      decision: "Use view_limit for config file; --limit for CLI flag"
+      rationale: "Follows existing config naming patterns (e.g., max_retries, specs_dir)"
+      alternatives_considered:
+        - "view_recent_count - longer but more descriptive"
+        - "dashboard_limit - inconsistent with command name 'view'"
+
+data_model:
+  entities:
+    - name: "SpecSummary"
+      description: "Aggregated information about a single spec for dashboard display"
+      fields:
+        - name: "Name"
+          type: "string"
+          description: "Spec directory name (e.g., '063-view-dashboard')"
+          constraints: "Must match NNN-name pattern"
+        - name: "Status"
+          type: "string"
+          description: "Spec status from spec.yaml (Draft, In Progress, Completed, Rejected)"
+          constraints: "Enum: Draft, In Progress, Completed, Rejected, Review, Approved, Unknown"
+        - name: "TaskProgress"
+          type: "string"
+          description: "Task completion formatted as 'X/Y tasks' or 'no tasks'"
+          constraints: "Empty if no tasks.yaml exists"
+        - name: "CompletedTasks"
+          type: "int"
+          description: "Number of completed tasks"
+          constraints: "Non-negative integer"
+        - name: "TotalTasks"
+          type: "int"
+          description: "Total number of tasks"
+          constraints: "Non-negative integer"
+        - name: "LastModified"
+          type: "time.Time"
+          description: "Most recent modification time of files in spec directory"
+          constraints: "Valid timestamp"
+        - name: "ArtifactsPresent"
+          type: "[]string"
+          description: "List of existing artifacts (spec.yaml, plan.yaml, tasks.yaml)"
+          constraints: "Subset of [spec.yaml, plan.yaml, tasks.yaml]"
+      relationships:
+        - target: "DashboardStats"
+          type: "many-to-one"
+          description: "Multiple specs contribute to aggregate dashboard statistics"
+    - name: "DashboardStats"
+      description: "Project-wide statistics for the dashboard header"
+      fields:
+        - name: "TotalSpecs"
+          type: "int"
+          description: "Total count of spec directories"
+          constraints: "Non-negative integer"
+        - name: "InProgressCount"
+          type: "int"
+          description: "Specs with status Draft, In Progress, or Review"
+          constraints: "Non-negative integer"
+        - name: "CompletedCount"
+          type: "int"
+          description: "Specs with status Completed or 100% task completion"
+          constraints: "Non-negative integer"
+        - name: "SkippedCount"
+          type: "int"
+          description: "Specs with status Rejected or Skipped"
+          constraints: "Non-negative integer"
+      relationships:
+        - target: "SpecSummary"
+          type: "one-to-many"
+          description: "Stats computed from all spec summaries"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/reference.md"
+      description: "Add view command documentation to CLI reference"
+  source_code:
+    - path: "internal/cli/util/view.go"
+      description: "View command implementation with dashboard rendering"
+    - path: "internal/cli/util/register.go"
+      description: "Update to register viewCmd"
+    - path: "internal/config/config.go"
+      description: "Add ViewLimit field to Configuration struct"
+  tests:
+    - path: "internal/cli/util/view_test.go"
+      description: "Unit tests for view command with table-driven patterns"
+
+implementation_phases:
+  - phase: 1
+    name: "Data model and core logic"
+    goal: "Implement SpecSummary, DashboardStats structs and aggregation functions"
+    deliverables:
+      - "Define SpecSummary struct with all fields from data model"
+      - "Define DashboardStats struct for aggregate statistics"
+      - "Implement GetSpecSummary(specDir string) function to gather single spec data"
+      - "Implement GetDashboardStats(specsDir string) function for aggregate stats"
+      - "Write unit tests for aggregation logic with map-based table patterns"
+  - phase: 2
+    name: "Command implementation"
+    goal: "Create view.go with Cobra command and output formatting"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Create view.go with viewCmd Cobra command"
+      - "Implement --limit flag with default value of 5"
+      - "Implement dashboard header output (total specs, categorized counts)"
+      - "Implement recent specs section with progress display"
+      - "Implement completed specs section"
+      - "Register viewCmd in util/register.go"
+  - phase: 3
+    name: "Configuration integration"
+    goal: "Add view_limit configuration option and integrate with config loading"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Add ViewLimit field to config.Configuration struct"
+      - "Add default value (5) to loadDefaults function"
+      - "Add environment variable support (AUTOSPEC_VIEW_LIMIT)"
+      - "Update view command to read from config when --limit not specified"
+  - phase: 4
+    name: "Edge cases and error handling"
+    goal: "Handle all edge cases from spec with graceful error messages"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Handle empty specs directory with friendly message"
+      - "Handle spec directory without spec.yaml (skip, don't count)"
+      - "Handle malformed spec.yaml/tasks.yaml (log warning, continue)"
+      - "Handle spec with tasks.yaml but 0 tasks"
+      - "Handle invalid view_limit config value (use default with warning)"
+  - phase: 5
+    name: "Testing and documentation"
+    goal: "Complete test coverage and update documentation"
+    dependencies:
+      - "Phase 4"
+    deliverables:
+      - "Write comprehensive view_test.go with all edge cases"
+      - "Add view command to docs/reference.md"
+      - "Run make test, make fmt, make lint, make build"
+      - "Verify 80-column output formatting"
+
+risks:
+  - risk: "Performance degradation with many specs (100+)"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Use goroutines for parallel spec parsing if needed; early exit for --limit"
+  - risk: "spec.yaml status field values vary across projects"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Case-insensitive status matching; Unknown status for unrecognized values"
+  - risk: "Directory modification time doesn't reflect actual spec activity"
+    likelihood: "low"
+    impact: "low"
+    mitigation: "Consider max file modification time within directory instead of directory mtime"
+
+open_questions:
+  - question: "Should view command show specs from nested directories?"
+    context: "Current spec detection only checks immediate children of specs_dir"
+    proposed_resolution: "Keep flat structure; nested specs not currently supported in codebase"
+  - question: "Should completed specs section be collapsible/hideable?"
+    context: "Projects with many completed specs may have long output"
+    proposed_resolution: "Add --no-completed flag in future enhancement; not in initial scope"
+  - question: "How to handle specs with only spec.yaml (no plan or tasks)?"
+    context: "These are early-stage specs that may clutter the dashboard"
+    proposed_resolution: "Include them with 'no tasks' indicator; they represent real project state"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-19T21:13:53Z"
+  artifact_type: "plan"

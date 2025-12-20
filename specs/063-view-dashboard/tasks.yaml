@@ -1,0 +1,343 @@
+tasks:
+    branch: "063-view-dashboard"
+    created: "2025-12-19"
+    spec_path: "specs/063-view-dashboard/spec.yaml"
+    plan_path: "specs/063-view-dashboard/plan.yaml"
+summary:
+    total_tasks: 18
+    total_phases: 6
+    parallel_opportunities: 3
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create new view command file and register with CLI"
+      tasks:
+        - id: "T001"
+          title: "Create view.go skeleton in internal/cli/util"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/util/view.go"
+          dependencies: []
+          acceptance_criteria:
+            - "File internal/cli/util/view.go exists"
+            - "Contains package declaration and imports"
+            - "Contains viewCmd Cobra command variable with Use, Short, Long, RunE"
+            - "Compiles without errors"
+        - id: "T002"
+          title: "Register viewCmd in internal/cli/util/register.go"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/util/register.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "viewCmd is added to RegisterCommands function"
+            - "autospec view appears in autospec --help output"
+            - "autospec view can be executed (even if output is placeholder)"
+    - number: 2
+      title: "Foundational"
+      purpose: "Implement data model structs and config integration"
+      tasks:
+        - id: "T003"
+          title: "Define SpecSummary and DashboardStats structs in view.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "SpecSummary struct has Name, Status, TaskProgress, CompletedTasks, TotalTasks, LastModified, ArtifactsPresent fields"
+            - "DashboardStats struct has TotalSpecs, InProgressCount, CompletedCount, SkippedCount fields"
+            - "Field types match plan.yaml data_model specification"
+        - id: "T004"
+          title: "Add ViewLimit field to Configuration in internal/config/config.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/config/config.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "ViewLimit int field added to Configuration struct"
+            - "Default value of 5 set in loadDefaults function"
+            - "AUTOSPEC_VIEW_LIMIT environment variable supported"
+            - "view_limit key in config file is parsed correctly"
+        - id: "T005"
+          title: "Add --limit flag to viewCmd"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T003", "T004"]
+          acceptance_criteria:
+            - "--limit flag accepts positive integer"
+            - "Flag defaults to config.ViewLimit when not specified"
+            - "autospec view --help shows --limit flag with description"
+    - number: 3
+      title: "User Story 1 - Dashboard Overview of All Specs"
+      purpose: "Implement core spec scanning and dashboard header display"
+      story_reference: "US-001"
+      independent_test: "Run autospec view in a project with multiple specs and verify dashboard displays total count and category counts"
+      tasks:
+        - id: "T006"
+          title: "Implement getSpecSummary function to gather single spec data"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "Function accepts spec directory path and returns SpecSummary"
+            - "Parses spec.yaml for status field"
+            - "Uses existing validation.GetTaskStats for task progress"
+            - "Determines LastModified from directory contents"
+            - "Lists artifacts present (spec.yaml, plan.yaml, tasks.yaml)"
+            - "Returns error wrapped with context on failure"
+        - id: "T007"
+          title: "Implement scanSpecsDir function to collect all spec summaries"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Function accepts specs directory path and returns []SpecSummary"
+            - "Iterates over immediate subdirectories of specs_dir"
+            - "Skips directories without spec.yaml"
+            - "Sorts results by LastModified descending"
+            - "Handles empty specs directory gracefully"
+        - id: "T008"
+          title: "Implement computeDashboardStats function"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "Function accepts []SpecSummary and returns DashboardStats"
+            - "TotalSpecs equals length of input slice"
+            - "InProgressCount includes Draft, In Progress, Review statuses"
+            - "CompletedCount includes Completed status or 100% task completion"
+            - "SkippedCount includes Rejected, Skipped statuses"
+        - id: "T009"
+          title: "Implement renderDashboardHeader function"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "Outputs project-wide statistics in formatted text"
+            - "Shows total specs count"
+            - "Shows categorized counts (in progress, completed, skipped)"
+            - "Output fits within 80 columns"
+    - number: 4
+      title: "User Story 2 & 4 - Recent Specs Progress Section"
+      purpose: "Display recent specs with task progress in dashboard body"
+      story_reference: "US-002"
+      independent_test: "Run autospec view and verify the N most recent specs are shown with task counts"
+      tasks:
+        - id: "T010"
+          title: "Implement renderRecentSpecs function"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "Function accepts []SpecSummary and limit int"
+            - "Outputs up to limit specs sorted by recency"
+            - "Each spec shows name, status, and task progress"
+            - "Task progress shown as 'X/Y tasks' or 'no tasks'"
+            - "Output fits within 80 columns"
+        - id: "T011"
+          title: "Implement renderCompletedSpecs function"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "Function accepts []SpecSummary"
+            - "Filters to only specs with Completed status or 100% tasks"
+            - "Outputs completed specs section"
+            - "Section omitted if no completed specs"
+        - id: "T012"
+          title: "Integrate all render functions in viewCmd.RunE"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T010", "T011"]
+          acceptance_criteria:
+            - "viewCmd.RunE loads config and specs directory"
+            - "Calls scanSpecsDir, computeDashboardStats, and all render functions"
+            - "Handles friendly message for empty specs directory"
+            - "Returns appropriate exit codes"
+    - number: 5
+      title: "User Story 5 - Edge Cases and Error Handling"
+      purpose: "Handle all edge cases with graceful error messages"
+      story_reference: "US-005"
+      independent_test: "Create specs with various edge cases and verify graceful handling"
+      tasks:
+        - id: "T013"
+          title: "Handle empty specs directory case"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Displays 'No specs found in specs/' when directory is empty"
+            - "Returns exit code 0 (not an error)"
+            - "No panic or stack trace"
+        - id: "T014"
+          title: "Handle malformed YAML files gracefully"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Spec with malformed spec.yaml shows 'parse error' status"
+            - "Spec with malformed tasks.yaml shows 'no tasks'"
+            - "Warning logged but processing continues"
+            - "Other specs still display correctly"
+        - id: "T015"
+          title: "Handle invalid view_limit config value"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-005"
+          file_path: "internal/cli/util/view.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Negative or zero --limit uses default value of 5"
+            - "Warning message displayed to user"
+            - "Command completes successfully"
+    - number: 6
+      title: "Polish & Documentation"
+      purpose: "Add documentation and run quality gates"
+      tasks:
+        - id: "T016"
+          title: "Write view_test.go with comprehensive test coverage"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/util/view_test.go"
+          dependencies: ["T015"]
+          acceptance_criteria:
+            - "Uses map-based table-driven test pattern"
+            - "Tests getSpecSummary with various inputs"
+            - "Tests computeDashboardStats with edge cases"
+            - "Tests scanSpecsDir with temp directory fixtures"
+            - "Tests render functions output formatting"
+            - "Calls t.Parallel() in all test functions"
+        - id: "T017"
+          title: "Add view command documentation to docs/reference.md"
+          status: "Completed"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/reference.md"
+          dependencies: ["T015"]
+          acceptance_criteria:
+            - "View command documented in reference.md"
+            - "Includes --limit flag documentation"
+            - "Includes view_limit config option"
+            - "Example output shown"
+        - id: "T018"
+          title: "Run quality gates: make test, make fmt, make lint, make build"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: null
+          dependencies: ["T016", "T017"]
+          acceptance_criteria:
+            - "make test passes with exit code 0"
+            - "make fmt produces no changes"
+            - "make lint passes with no errors"
+            - "make build produces working binary"
+            - "autospec view --help shows correct output"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002", "US-003"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-003"
+          depends_on: ["US-001"]
+          blocks: []
+        - story_id: "US-004"
+          depends_on: []
+          blocks: []
+        - story_id: "US-005"
+          depends_on: ["US-001", "US-002"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T003", "T004"]
+          rationale: "SpecSummary/DashboardStats structs and config changes are independent files"
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T013", "T014", "T015"]
+          rationale: "Each edge case handler is independent"
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T016", "T017"]
+          rationale: "Test file and documentation are independent"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + Dashboard Overview - core command showing spec counts and categories"
+        validation: "Run autospec view and verify total specs and category counts display correctly"
+    incremental_delivery:
+        - milestone: "Command Available"
+          phases: [1, 2]
+          deliverable: "autospec view command registered and executes with basic structure"
+        - milestone: "MVP Complete"
+          phases: [1, 2, 3]
+          deliverable: "Dashboard header shows total specs and status categories"
+        - milestone: "Recent Specs Section"
+          phases: [1, 2, 3, 4]
+          deliverable: "Recent specs with task progress and completed specs section"
+        - milestone: "Production Ready"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "Full feature with edge case handling, tests, and documentation"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-19T21:15:54Z"
+    artifact_type: "tasks"

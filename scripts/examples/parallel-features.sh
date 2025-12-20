@@ -20,7 +20,7 @@ for feature in "${FEATURES[@]}"; do
     name="${feature%%:*}"
     desc="${feature#*:}"
     (
-        cd "${REPO_DIR}-${name}" || exit
+        cd "${REPO_DIR}-${name}" || exit 1
         autospec run -a "${desc}"
     ) &
     pids+=($!)

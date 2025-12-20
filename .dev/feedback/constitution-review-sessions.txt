@@ -1,0 +1,64 @@
+# Sessions Reviewed for Constitution Improvements
+# Format: short_id | date | type | project | notes
+# Created: 2025-12-19
+# Updated: 2025-12-19 (added 20 more sessions)
+# Purpose: Track which conversations were analyzed for constitution.yaml improvements
+# (Separate from reviewed.txt which tracks context improvement analysis)
+
+# === Initial batch (10 sessions) ===
+46724d23 | 2025-12-19 | autospec | -home-ari-repos-autospec | spec editing with references
+5cad14df | 2025-12-19 | autospec | -home-ari-repos-autospec | clean session
+30279777 | 2025-12-18 | autospec | -home-ari-repos-autospec | retry context handling discussion
+55fb7dbc | 2025-12-18 | implement | -home-ari-repos-autospec | quality gate phase execution
+d60c7341 | 2025-12-17 | plan | -home-ari-repos-autospec | phase context metadata planning
+c6349e3b | 2025-12-17 | specify | -home-ari-repos-autospec | test coverage data-driven spec
+5fdaf897 | 2025-12-16 | tasks | -home-ari-repos-autospec | prereq validation task generation
+8da05ffb | 2025-12-15 | tasks | -home-ari-repos-autospec | command aliases task generation
+c2881232 | 2025-12-18 | specify | -home-ari-repos-autospec | assumption patterns
+c3549092 | 2025-12-18 | specify | -home-ari-repos-autospec | scope boundary patterns
+
+# === Additional batch (20 sessions) ===
+08024fec | 2025-12-17 | specify | -home-ari-repos-autospec | Serena MCP fallback, coverage analysis
+09e80f0c | 2025-12-16 | specify | -home-ari-repos-autospec | task doc as detailed input
+1013f75f | 2025-12-16 | specify | -home-ari-repos-autospec | docs man command feature branch
+123f4325 | 2025-12-16 | autospec | -home-ari-repos-autospec | clarify taxonomy with options
+1fc1edea | 2025-12-15 | specify | -home-ari-repos-autospec | comprehensive feature description
+26ad9d26 | 2025-12-16 | autospec | -home-ari-repos-autospec | clarify with recommended options
+333a830b | 2025-12-16 | autospec | -home-ari-repos-autospec | clarify workflow structure
+4e032523 | 2025-12-15 | specify | -home-ari-repos-autospec | task-level execution spec
+665bb9e8 | 2025-12-15 | specify | -home-ari-repos-autospec | minimal spec for simple feature
+6db67bf3 | 2025-12-15 | specify | -home-ari-repos-autospec | spec editing during session
+75bcbc08 | 2025-12-16 | specify | -home-ari-repos-autospec | history logging from task doc
+78875c42 | 2025-12-16 | specify | -home-ari-repos-autospec | implement method config
+809972db | 2025-12-15 | specify | -home-ari-repos-autospec | artifact validation feature
+85ac324e | 2025-12-16 | autospec | -home-ari-repos-autospec | checklist generation with gaps
+a35e2197 | 2025-12-16 | autospec | -home-ari-repos-autospec | clarify with state file question
+a8584691 | 2025-12-16 | autospec | -home-ari-repos-autospec | checklist gap analysis
+aa23c079 | 2025-12-15 | specify | -home-ari-repos-autospec | bug doc with line numbers
+b0ab787b | 2025-12-15 | specify | -home-ari-repos-autospec | uninstall after reading install.sh
+b711d2e0 | 2025-12-15 | tasks | -home-ari-repos-autospec | clean command tasks generation
+f62d0a3f | 2025-12-16 | plan | -home-ari-repos-autospec | exploration before planning
+
+# === Patterns identified ===
+# Initial:
+# - Cross-artifact references (PRIN-013) - REJECTED
+# - Explicit assumptions (PRIN-014)
+# - Scope boundaries (PRIN-015)
+# - Quality gate final phase (PRIN-016)
+# - Task dependencies (PRIN-017)
+# - Open questions resolution (PRIN-018)
+# - Infrastructure reuse (PRIN-019)
+# - Backward compatibility (PRIN-020)
+# - Context efficiency (PRIN-021)
+# - Fail-fast validation (PRIN-022)
+# - Test coverage targets (PRIN-023)
+#
+# Additional:
+# - Data-driven specification (PRIN-024)
+# - Pre-spec research documents (PRIN-025)
+# - Proportional specification depth (PRIN-026)
+# - Exploration before planning (PRIN-027)
+# - Graceful tool degradation (PRIN-028)
+# - Immediate artifact validation (PRIN-029)
+# - Structured ambiguity detection (PRIN-030)
+# - Recommended options with rationale (PRIN-031)

@@ -1,8 +1,9 @@
 // Package util provides utility CLI commands for autospec.
-// Includes: status, history, version, clean
+// Includes: status, history, version, clean, worktree
 package util
 
 import (
+	"github.com/ariel-frischer/autospec/internal/cli/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -14,4 +15,6 @@ func Register(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(sauceCmd)
 	rootCmd.AddCommand(cleanCmd)
+	rootCmd.AddCommand(viewCmd)
+	rootCmd.AddCommand(worktree.WorktreeCmd)
 }

@@ -17,6 +17,7 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/notify"
+	"github.com/ariel-frischer/autospec/internal/worktree"
 	"github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
@@ -74,6 +75,14 @@ type Configuration struct {
 	// Oldest entries are pruned when this limit is exceeded.
 	// Default: 500. Can be set via AUTOSPEC_MAX_HISTORY_ENTRIES env var.
 	MaxHistoryEntries int `koanf:"max_history_entries"`
+
+	// ViewLimit sets the number of recent specs displayed by the view command.
+	// Default: 5. Can be set via AUTOSPEC_VIEW_LIMIT env var.
+	ViewLimit int `koanf:"view_limit"`
+
+	// Worktree configures worktree management settings.
+	// Used by the 'autospec worktree' command for creating and managing git worktrees.
+	Worktree *worktree.WorktreeConfig `koanf:"worktree"`
 }
 
 // LoadOptions configures how configuration is loaded
