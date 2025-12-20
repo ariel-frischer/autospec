@@ -53,6 +53,31 @@ agent_preset: claude
 
 ---
 
+### use_subscription
+
+Force Claude to use subscription (Pro/Max) instead of API credits.
+
+| Property | Value |
+|:---------|:------|
+| Type | boolean |
+| Default | `true` |
+| Environment | `AUTOSPEC_USE_SUBSCRIPTION` |
+
+```yaml
+# Default: use subscription mode (recommended)
+use_subscription: true
+
+# Disable to use API credits instead
+use_subscription: false
+```
+
+When enabled (default), `ANTHROPIC_API_KEY` is set to empty at execution time. This prevents accidental API charges when you have an API key set in your shell for other purposes.
+
+{: .note }
+> Set to `false` only if you specifically want to use API billing. Ensure `ANTHROPIC_API_KEY` is set in your shell environment when using API mode.
+
+---
+
 ### max_retries
 
 Maximum retry attempts on validation failure.
@@ -422,7 +447,8 @@ custom_agent:
 # .autospec/config.yml
 
 # Core settings
-claude_cmd: claude
+agent_preset: claude
+use_subscription: true  # Use Claude subscription, not API credits
 max_retries: 3
 specs_dir: ./specs
 state_dir: ~/.autospec/state
@@ -481,6 +507,7 @@ All configuration options can be set via environment variables with the `AUTOSPE
 | Variable | Config Key |
 |:---------|:-----------|
 | `AUTOSPEC_AGENT_PRESET` | `agent_preset` |
+| `AUTOSPEC_USE_SUBSCRIPTION` | `use_subscription` |
 | `AUTOSPEC_MAX_RETRIES` | `max_retries` |
 | `AUTOSPEC_SPECS_DIR` | `specs_dir` |
 | `AUTOSPEC_STATE_DIR` | `state_dir` |
