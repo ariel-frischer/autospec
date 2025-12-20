@@ -1,0 +1,378 @@
+plan:
+  branch: "064-worktree-management"
+  created: "2025-12-20"
+  spec_path: "specs/064-worktree-management/spec.yaml"
+
+summary: |
+  Implements a worktree management command for autospec that automates git worktree creation
+  with project-specific setup. The feature solves the problem of running parallel autospec
+  workflows across worktrees where non-tracked directories (.autospec/, .claude/) and project
+  setup (npm install, etc.) must be manually configured.
+
+  The implementation follows existing autospec patterns: state persistence via YAML files in
+  .autospec/state/, Cobra command structure with subcommands, and atomic file operations using
+  temp file + rename. The Manager interface pattern enables clean testing via mocks.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8+"
+      purpose: "CLI command framework"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0+"
+      purpose: "YAML state file persistence"
+    - name: "github.com/fatih/color"
+      version: "v1.16+"
+      purpose: "Colored terminal output for list command"
+  storage: "YAML file (.autospec/state/worktrees.yaml)"
+  testing:
+    framework: "Go testing with testify/assert"
+    approach: "Unit tests with mocks for git commands; integration tests for full workflows"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "List operation under 1 second for up to 50 worktrees"
+  constraints:
+    - "Must use git worktree commands (not manual directory creation)"
+    - "State file in .autospec/state/ directory"
+    - "Setup script execution is synchronous"
+    - "Worktree names must be unique within project"
+  scale_scope: "Typical project has 1-10 parallel worktrees"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "All new code will have tests written first using table-driven patterns"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "PASS"
+      notes: "Worktree operations validate preconditions (path exists, branch valid, etc.)"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "List operation targets <1s; no validation functions expected"
+    - name: "Idempotency and Retry Logic (PRIN-004)"
+      status: "PASS"
+      notes: "Create returns clear error if exists; prune is idempotent"
+    - name: "Standardized Exit Codes (PRIN-005)"
+      status: "PASS"
+      notes: "Will use exit code 3 for invalid args, 1 for operation failures"
+    - name: "YAML-First Artifacts (PRIN-006)"
+      status: "PASS"
+      notes: "State persisted to worktrees.yaml"
+    - name: "Code Formatting (PRIN-007)"
+      status: "PASS"
+      notes: "All code passes gofmt/govet before merge"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Functions <40 lines, errors wrapped with context, table-driven tests"
+    - name: "Command Template Independence (PRIN-012)"
+      status: "N/A"
+      notes: "No command templates being created"
+
+research_findings:
+  decisions:
+    - topic: "State file location"
+      decision: "Store in .autospec/state/worktrees.yaml"
+      rationale: "Follows existing pattern of retry.json in state dir; keeps worktree state with other autospec state"
+      alternatives_considered:
+        - "~/.autospec/worktrees.yaml (global state)"
+        - ".autospec/worktrees.yaml (project root)"
+    - topic: "Git worktree interaction"
+      decision: "Shell out to git worktree commands via exec.Command"
+      rationale: "Simpler than go-git library; git is already a dependency; matches existing git.GetBranch pattern"
+      alternatives_considered:
+        - "go-git library (heavy dependency)"
+        - "libgit2 bindings (complex build)"
+    - topic: "Directory copy mechanism"
+      decision: "Use filepath.WalkDir with os.MkdirAll and io.Copy"
+      rationale: "Standard library approach; no external dependencies; handles nested directories"
+      alternatives_considered:
+        - "cp -r via shell (not cross-platform)"
+        - "github.com/otiai10/copy library (extra dependency)"
+    - topic: "Subcommand structure"
+      decision: "worktree parent command with create/list/remove/setup/prune subcommands"
+      rationale: "Matches Cobra best practices; groups related functionality; allows future subcommands"
+      alternatives_considered:
+        - "Flat commands (wt-create, wt-list, etc.)"
+        - "Single command with action flag"
+    - topic: "Concurrency safety for state file"
+      decision: "Atomic writes using temp file + rename pattern"
+      rationale: "Follows existing retry.go pattern; prevents partial writes; well-tested approach"
+      alternatives_considered:
+        - "File locking (more complex, OS-specific)"
+        - "SQLite database (overkill for simple state)"
+
+data_model:
+  entities:
+    - name: "Worktree"
+      description: "Represents a git worktree with tracking metadata"
+      fields:
+        - name: "Name"
+          type: "string"
+          description: "Unique identifier for the worktree"
+          constraints: "alphanumeric, hyphens, underscores only"
+        - name: "Path"
+          type: "string"
+          description: "Absolute filesystem path to worktree"
+          constraints: "valid absolute path"
+        - name: "Branch"
+          type: "string"
+          description: "Git branch checked out in worktree"
+          constraints: "valid git branch name"
+        - name: "Status"
+          type: "WorktreeStatus"
+          description: "Current state of the worktree"
+          constraints: "one of: active, merged, abandoned, stale"
+        - name: "CreatedAt"
+          type: "time.Time"
+          description: "Timestamp when worktree was created"
+          constraints: "RFC3339 format in YAML"
+        - name: "SetupCompleted"
+          type: "bool"
+          description: "Whether setup script ran successfully"
+          constraints: "defaults to false"
+        - name: "LastAccessed"
+          type: "time.Time"
+          description: "Timestamp of last access"
+          constraints: "optional, updated on operations"
+        - name: "MergedAt"
+          type: "*time.Time"
+          description: "Timestamp when branch was merged"
+          constraints: "nil if not merged"
+      relationships:
+        - target: "WorktreeState"
+          type: "many-to-one"
+          description: "Multiple worktrees belong to one state container"
+
+    - name: "WorktreeState"
+      description: "Container for all tracked worktrees persisted to YAML"
+      fields:
+        - name: "Version"
+          type: "string"
+          description: "Schema version for state file"
+          constraints: "semver format (e.g., 1.0.0)"
+        - name: "Worktrees"
+          type: "[]Worktree"
+          description: "List of tracked worktree entries"
+          constraints: "names must be unique"
+      relationships:
+        - target: "Worktree"
+          type: "one-to-many"
+          description: "State contains multiple worktrees"
+
+    - name: "WorktreeConfig"
+      description: "Configuration for worktree management"
+      fields:
+        - name: "BaseDir"
+          type: "string"
+          description: "Parent directory for new worktrees"
+          constraints: "defaults to parent of repo root"
+        - name: "Prefix"
+          type: "string"
+          description: "Directory name prefix"
+          constraints: "defaults to empty string"
+        - name: "SetupScript"
+          type: "string"
+          description: "Path to setup script relative to repo"
+          constraints: "optional"
+        - name: "AutoSetup"
+          type: "bool"
+          description: "Whether to run setup automatically on create"
+          constraints: "defaults to true"
+        - name: "TrackStatus"
+          type: "bool"
+          description: "Whether to persist worktree state"
+          constraints: "defaults to true"
+        - name: "CopyDirs"
+          type: "[]string"
+          description: "Non-tracked directories to copy"
+          constraints: "defaults to [.autospec, .claude]"
+      relationships: []
+
+    - name: "WorktreeStatus"
+      description: "Enumeration of possible worktree states"
+      fields:
+        - name: "Active"
+          type: "constant"
+          description: "Worktree is in active use"
+          constraints: "value: active"
+        - name: "Merged"
+          type: "constant"
+          description: "Branch has been merged"
+          constraints: "value: merged"
+        - name: "Abandoned"
+          type: "constant"
+          description: "Work was abandoned"
+          constraints: "value: abandoned"
+        - name: "Stale"
+          type: "constant"
+          description: "Worktree path no longer exists"
+          constraints: "value: stale"
+      relationships: []
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/worktree.md"
+      description: "User documentation for worktree command"
+  source_code:
+    - path: "internal/worktree/worktree.go"
+      description: "Core Worktree, WorktreeState, and WorktreeConfig types"
+    - path: "internal/worktree/manager.go"
+      description: "Manager interface and implementation for CRUD operations"
+    - path: "internal/worktree/state.go"
+      description: "State persistence (load/save YAML with atomic writes)"
+    - path: "internal/worktree/git.go"
+      description: "Git worktree command wrappers (add, remove, list)"
+    - path: "internal/worktree/copy.go"
+      description: "Directory copy utilities for .autospec/, .claude/"
+    - path: "internal/worktree/setup.go"
+      description: "Setup script execution logic"
+    - path: "internal/cli/worktree/worktree.go"
+      description: "Parent worktree command registration"
+    - path: "internal/cli/worktree/create.go"
+      description: "Create subcommand implementation"
+    - path: "internal/cli/worktree/list.go"
+      description: "List subcommand implementation"
+    - path: "internal/cli/worktree/remove.go"
+      description: "Remove subcommand with safety checks"
+    - path: "internal/cli/worktree/setup.go"
+      description: "Setup subcommand for existing worktrees"
+    - path: "internal/cli/worktree/prune.go"
+      description: "Prune subcommand for stale entries"
+  tests:
+    - path: "internal/worktree/*_test.go"
+      description: "Unit tests for worktree package"
+    - path: "internal/cli/worktree/*_test.go"
+      description: "CLI command tests"
+
+implementation_phases:
+  - phase: 1
+    name: "Core Types and State Management"
+    goal: "Establish data model and state persistence layer"
+    deliverables:
+      - "Worktree, WorktreeState, WorktreeConfig structs"
+      - "WorktreeStatus type with string constants"
+      - "State load/save with atomic writes"
+      - "Unit tests for state operations"
+
+  - phase: 2
+    name: "Git Operations"
+    goal: "Implement git worktree command wrappers"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "git worktree add wrapper"
+      - "git worktree remove wrapper"
+      - "git worktree list parser"
+      - "Safety checks (uncommitted changes, unpushed commits)"
+      - "Unit tests with mock exec"
+
+  - phase: 3
+    name: "Directory Copy and Setup"
+    goal: "Implement non-tracked directory copying and setup script execution"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Recursive directory copy function"
+      - "Setup script execution with argument passing"
+      - "Unit tests for copy and setup"
+
+  - phase: 4
+    name: "Manager Implementation"
+    goal: "Create Manager interface binding git, copy, and state operations"
+    dependencies:
+      - "Phase 1"
+      - "Phase 2"
+      - "Phase 3"
+    deliverables:
+      - "Manager interface definition"
+      - "DefaultManager implementation"
+      - "Create, List, Get, Remove, Setup, Prune, UpdateStatus methods"
+      - "Unit tests with mocked dependencies"
+
+  - phase: 5
+    name: "CLI Commands"
+    goal: "Implement all worktree subcommands"
+    dependencies:
+      - "Phase 4"
+    deliverables:
+      - "worktree parent command"
+      - "create subcommand with --branch, --path flags"
+      - "list subcommand with tabular output"
+      - "remove subcommand with --force flag"
+      - "setup subcommand"
+      - "prune subcommand"
+      - "CLI tests"
+
+  - phase: 6
+    name: "Configuration Integration"
+    goal: "Add worktree config to existing config system"
+    dependencies:
+      - "Phase 4"
+      - "Phase 5"
+    deliverables:
+      - "WorktreeConfig fields in Configuration struct"
+      - "Config defaults and environment variable support"
+      - "Documentation updates"
+
+  - phase: 7
+    name: "Quality Gates"
+    goal: "Ensure all quality requirements pass"
+    dependencies:
+      - "Phase 6"
+    deliverables:
+      - "make test passes"
+      - "make fmt shows no changes"
+      - "make lint passes"
+      - "make build succeeds"
+
+risks:
+  - risk: "Setup script failures may leave worktree in inconsistent state"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Mark worktree as setup_completed=false; provide setup subcommand for retry"
+
+  - risk: "Directory copy may fail with permission errors"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Copy errors are logged as warnings; worktree creation still succeeds"
+
+  - risk: "State file corruption from concurrent operations"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Atomic writes via temp file + rename; state file is project-local"
+
+  - risk: "Git worktree commands may behave differently across versions"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Test against git 2.20+ (worktree support); document minimum version"
+
+  - risk: "Cross-platform path handling issues"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Use filepath package consistently; test on Windows CI"
+
+open_questions:
+  - question: "Should worktree config be in project config or separate file?"
+    context: "WorktreeConfig could be in .autospec/config.yml or .autospec/worktree.yml"
+    proposed_resolution: "Add worktree section to existing .autospec/config.yml for simplicity"
+
+  - question: "How to handle nested .git worktree references?"
+    context: "Git worktrees use .git files pointing to parent; may affect .autospec/ copy"
+    proposed_resolution: "Copy only explicitly configured dirs; don't traverse .git"
+
+  - question: "Should setup script receive environment variables?"
+    context: "Scripts may need WORKTREE_NAME, WORKTREE_BRANCH, SOURCE_REPO variables"
+    proposed_resolution: "Pass as both args and env vars for flexibility"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-20T00:48:50Z"
+  artifact_type: "plan"
