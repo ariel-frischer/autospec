@@ -410,7 +410,7 @@ phases:
             - "Table-driven with map[string]struct pattern"
         - id: "T027"
           title: "Write unit tests for internal/worktree/copy.go"
-          status: "InProgress"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -424,7 +424,7 @@ phases:
             - "Table-driven with map[string]struct pattern"
         - id: "T028"
           title: "Write unit tests for internal/worktree/manager.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -437,7 +437,7 @@ phases:
             - "Table-driven with map[string]struct pattern"
         - id: "T029"
           title: "Write CLI tests for worktree commands"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null
@@ -451,7 +451,7 @@ phases:
             - "Table-driven with map[string]struct pattern"
         - id: "T030"
           title: "Write user documentation in docs/worktree.md"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -465,7 +465,7 @@ phases:
             - "Troubleshooting section for common issues"
         - id: "T031"
           title: "Update docs/reference.md with worktree command"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -478,7 +478,7 @@ phases:
             - "Follows existing reference.md format"
         - id: "T032"
           title: "Run quality gates: make test, make fmt, make lint, make build"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null

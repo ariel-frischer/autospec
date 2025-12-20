@@ -37,13 +37,13 @@ func TestWorktreeStatus_IsValid(t *testing.T) {
 		status WorktreeStatus
 		want   bool
 	}{
-		"active is valid":      {status: StatusActive, want: true},
-		"merged is valid":      {status: StatusMerged, want: true},
-		"abandoned is valid":   {status: StatusAbandoned, want: true},
-		"stale is valid":       {status: StatusStale, want: true},
-		"empty is invalid":     {status: WorktreeStatus(""), want: false},
-		"random is invalid":    {status: WorktreeStatus("random"), want: false},
-		"ACTIVE is invalid":    {status: WorktreeStatus("ACTIVE"), want: false},
+		"active is valid":    {status: StatusActive, want: true},
+		"merged is valid":    {status: StatusMerged, want: true},
+		"abandoned is valid": {status: StatusAbandoned, want: true},
+		"stale is valid":     {status: StatusStale, want: true},
+		"empty is invalid":   {status: WorktreeStatus(""), want: false},
+		"random is invalid":  {status: WorktreeStatus("random"), want: false},
+		"ACTIVE is invalid":  {status: WorktreeStatus("ACTIVE"), want: false},
 	}
 
 	for name, tt := range tests {

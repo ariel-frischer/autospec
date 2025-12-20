@@ -73,7 +73,7 @@ func TestDocumentationLineCount(t *testing.T) {
 		t.Fatalf("Failed to find repository root: %v", err)
 	}
 
-	maxLines := 1050 // Allow for comprehensive documentation including troubleshooting guides, command reference, and new commands
+	maxLines := 1100 // Allow for comprehensive documentation including troubleshooting guides, command reference, worktree commands, and new features
 
 	for _, file := range docFiles {
 		path := filepath.Join(repoRoot, "docs", file)

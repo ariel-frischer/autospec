@@ -83,6 +83,7 @@ func GitWorktreeList(repoPath string) ([]GitWorktreeEntry, error) {
 func parseWorktreeList(output []byte) ([]GitWorktreeEntry, error) {
 	var entries []GitWorktreeEntry
 	var current GitWorktreeEntry
+	var isBare bool
 
 	scanner := bufio.NewScanner(bytes.NewReader(output))
 	for scanner.Scan() {
@@ -90,23 +91,25 @@ func parseWorktreeList(output []byte) ([]GitWorktreeEntry, error) {
 
 		switch {
 		case strings.HasPrefix(line, "worktree "):
-			if current.Path != "" {
+			// Add previous entry if not bare
+			if current.Path != "" && !isBare {
 				entries = append(entries, current)
 			}
 			current = GitWorktreeEntry{Path: strings.TrimPrefix(line, "worktree ")}
+			isBare = false
 		case strings.HasPrefix(line, "HEAD "):
 			current.Commit = strings.TrimPrefix(line, "HEAD ")
 		case strings.HasPrefix(line, "branch "):
 			current.Branch = strings.TrimPrefix(line, "branch refs/heads/")
 		case line == "bare":
-			// Skip bare repositories
+			isBare = true
 		case line == "detached":
 			current.Branch = "(detached)"
 		}
 	}
 
-	// Add the last entry if present
-	if current.Path != "" {
+	// Add the last entry if not bare
+	if current.Path != "" && !isBare {
 		entries = append(entries, current)
 	}
 

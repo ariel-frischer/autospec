@@ -98,11 +98,11 @@ func GetDefaults() map[string]interface{} {
 		// worktree: Configuration for git worktree management.
 		// Used by 'autospec worktree' command for creating and managing worktrees.
 		"worktree": map[string]interface{}{
-			"base_dir":     "",                            // Parent directory for new worktrees
-			"prefix":       "",                            // Directory name prefix
-			"setup_script": "",                            // Path to setup script relative to repo
-			"auto_setup":   true,                          // Run setup automatically on create
-			"track_status": true,                          // Persist worktree state
+			"base_dir":     "",                               // Parent directory for new worktrees
+			"prefix":       "",                               // Directory name prefix
+			"setup_script": "",                               // Path to setup script relative to repo
+			"auto_setup":   true,                             // Run setup automatically on create
+			"track_status": true,                             // Persist worktree state
 			"copy_dirs":    []string{".autospec", ".claude"}, // Non-tracked dirs to copy
 		},
 	}

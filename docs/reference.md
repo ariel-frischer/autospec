@@ -474,6 +474,49 @@ autospec version
 
 **Exit Codes**: 0 (success)
 
+### autospec worktree
+
+Manage git worktrees with project-aware setup automation
+
+**Syntax**: `autospec worktree <subcommand> [flags]`
+
+**Description**: Create and manage git worktrees with automatic copying of non-tracked directories (`.autospec/`, `.claude/`) and execution of project-specific setup scripts.
+
+**Subcommands**:
+- `create <name> --branch <branch> [--path <path>]`: Create new worktree
+- `list`: List all tracked worktrees
+- `remove <name> [--force]`: Remove a worktree
+- `setup <path> [--track]`: Run setup on existing worktree
+- `prune`: Remove stale tracking entries
+
+**Examples**:
+```bash
+# Create a new worktree
+autospec worktree create feature-auth --branch feat/user-auth
+
+# Create at custom location
+autospec worktree create zoom --branch feat/zoom --path /tmp/zoom-dev
+
+# List all worktrees
+autospec worktree list
+
+# Remove (with safety checks)
+autospec worktree remove feature-auth
+
+# Force remove (bypass checks)
+autospec worktree remove feature-auth --force
+
+# Setup existing worktree
+autospec worktree setup ../my-worktree --track
+
+# Clean up stale entries
+autospec worktree prune
+```
+
+**Exit Codes**: 0 (success), 1 (operation failed), 3 (invalid args)
+
+See [docs/worktree.md](worktree.md) for detailed documentation.
+
 ## Configuration Options
 
 Configuration sources (priority order): Environment variables > Local config > Global config > Defaults
