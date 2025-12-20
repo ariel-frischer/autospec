@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `init` command shows recommended full automation setup with cclean post_processor and --dangerously-skip-permissions disclaimer on first run
 - Native cclean (claude-clean) library integration as internal dependency for beautiful Claude JSONL output parsing with `--output-style` flag and `output_style` config option
 - One-time security notice on first workflow run explaining `--dangerously-skip-permissions` usage with sandbox status; suppress via `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
+- `init` command now prompts to add `.autospec/` to `.gitignore` with guidance for shared vs personal repos
 
 ### Changed
 - `init` agent selection now uses interactive arrow-key navigation with space to toggle (replaces number input)
