@@ -132,6 +132,31 @@ timeout: 0
 
 See [Configuration Reference](/autospec/reference/configuration) for customization options.
 
+### Security Notice
+
+On your first workflow run, you'll see a one-time notice about `--dangerously-skip-permissions`:
+
+```
+┌───────────────────────────────────────────────────────────────────┐
+│ Security Notice                                                   │
+├───────────────────────────────────────────────────────────────────┤
+│ Running with --dangerously-skip-permissions                       │
+│                                                                   │
+│ This flag is RECOMMENDED for autospec workflows. Without it,     │
+│ Claude requires manual approval for every file edit, shell       │
+│ command, etc., making automation impractical.                    │
+│                                                                   │
+│ ✓ Sandbox: enabled ✓                                              │
+│   OS-level protection active.                                    │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+{: .warning }
+> **Caution**: This flag gives Claude full access within your project directory without prompts. Sandbox (configured during `autospec init`) limits access to your project only, but Claude can still modify any file in the project. This tradeoff is necessary for practical automation—manually approving every file edit and command would be impractical. See [Configuration - Security](/autospec/reference/configuration#security-sandbox--permissions) for details.
+
+{: .note }
+> Suppress this notice: `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
+
 `autospec init` also installs slash commands to `.claude/commands/autospec.*.md`:
 
 | Command | Purpose |

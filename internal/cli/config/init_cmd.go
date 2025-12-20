@@ -148,8 +148,8 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 					fmt.Fprintf(out, "⚠ Sandbox configuration failed: %v\n", err)
 				}
 			} else {
-				// Sandbox is fully configured - show checkmark
-				fmt.Fprintln(out, "✓ Sandbox: configured")
+				// Sandbox is fully configured - show checkmark with details
+				fmt.Fprintln(out, "✓ Sandbox: enabled with write paths for autospec")
 			}
 		}
 		return nil
@@ -353,7 +353,7 @@ func promptAndConfigureSandbox(cmd *cobra.Command, out io.Writer, info sandboxPr
 	}
 
 	if result == nil || result.AlreadyConfigured {
-		fmt.Fprintf(out, "✓ %s sandbox: already configured\n", info.displayName)
+		fmt.Fprintf(out, "✓ %s sandbox: enabled with write paths configured\n", info.displayName)
 		return nil
 	}
 
@@ -388,7 +388,7 @@ func displayAgentConfigResult(out io.Writer, agentName string, result *cliagent.
 	}
 
 	if result.AlreadyConfigured {
-		fmt.Fprintf(out, "✓ %s: already configured\n", displayName)
+		fmt.Fprintf(out, "✓ %s: permissions already configured (Bash(autospec:*), Write, Edit)\n", displayName)
 		return
 	}
 
