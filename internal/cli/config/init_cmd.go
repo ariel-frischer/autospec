@@ -112,7 +112,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	worktreeScriptPath := filepath.Join(".autospec", "scripts", "setup-worktree.sh")
 	worktreeScriptExists := fileExistsCheck(worktreeScriptPath)
 	if worktreeScriptExists {
-		fmt.Fprintf(out, "✓ Worktree setup script: already exists at %s\n", worktreeScriptPath)
+		fmt.Fprintf(out, "%s %s: already exists at %s\n", cGreen("✓"), cBold("Worktree script"), cDim(worktreeScriptPath))
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════
@@ -124,7 +124,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Phase 3: Apply all pending changes
 	// ═══════════════════════════════════════════════════════════════════════
 	configPath, _ := getConfigPath(project)
-	constitutionExists = applyPendingActions(cmd, out, pending, configPath, constitutionExists)
+	result := applyPendingActions(cmd, out, pending, configPath, constitutionExists)
 
 	// Load config to get specsDir for summary
 	cfg, _ := config.Load(configPath)
@@ -133,7 +133,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		specsDir = cfg.SpecsDir
 	}
 
-	printSummary(out, constitutionExists, specsDir)
+	printSummary(out, result, specsDir)
 	return nil
 }
 
@@ -144,7 +144,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgents bool) error {
 	// In production builds, skip agent selection and configure Claude only
 	if !build.MultiAgentEnabled() {
-		fmt.Fprintln(out, "✓ Agent: Claude Code (default)")
+		fmt.Fprintf(out, "%s %s: Claude Code (default)\n", cGreen("✓"), cBold("Agent"))
 		agent := cliagent.Get("claude")
 		if agent != nil {
 			specsDir := "specs"
@@ -156,7 +156,7 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 			// Configure permissions and display result
 			result, err := cliagent.Configure(agent, ".", specsDir)
 			if err != nil {
-				fmt.Fprintf(out, "⚠ Claude configuration: %v\n", err)
+				fmt.Fprintf(out, "%s Claude configuration: %v\n", cYellow("⚠"), err)
 			} else {
 				displayAgentConfigResult(out, "claude", result)
 			}
@@ -165,11 +165,11 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 			if info := checkSandboxConfiguration("claude", agent, ".", specsDir); info != nil {
 				// Sandbox needs configuration - prompt user
 				if err := promptAndConfigureSandbox(cmd, out, *info, ".", specsDir); err != nil {
-					fmt.Fprintf(out, "⚠ Sandbox configuration failed: %v\n", err)
+					fmt.Fprintf(out, "%s Sandbox configuration failed: %v\n", cYellow("⚠"), err)
 				}
 			} else {
 				// Sandbox is fully configured - show checkmark with details
-				fmt.Fprintln(out, "✓ Sandbox: enabled with write paths for autospec")
+				fmt.Fprintf(out, "%s %s: enabled with write paths for autospec\n", cGreen("✓"), cBold("Sandbox"))
 			}
 		}
 		return nil
@@ -233,6 +233,12 @@ type pendingActions struct {
 	addGitignore       bool // add .autospec/ to .gitignore
 	createConstitution bool // run constitution workflow
 	createWorktree     bool // run worktree gen-script workflow
+}
+
+// initResult holds the results of the init command for final summary.
+type initResult struct {
+	constitutionExists bool
+	hadErrors          bool
 }
 
 // configureSelectedAgents configures each selected agent and persists preferences.
@@ -339,33 +345,33 @@ func handleSandboxConfiguration(cmd *cobra.Command, out io.Writer, prompts []san
 func promptAndConfigureSandbox(cmd *cobra.Command, out io.Writer, info sandboxPromptInfo, projectDir, specsDir string) error {
 	// Display the proposed changes with different messaging based on current state
 	if info.needsEnable {
-		fmt.Fprintf(out, "\n%s sandbox not enabled. Enabling sandbox improves security.\n\n", info.displayName)
+		fmt.Fprintf(out, "\n%s sandbox not enabled. Enabling sandbox improves security.\n\n", cBold(info.displayName))
 	} else {
-		fmt.Fprintf(out, "\n%s sandbox configuration detected.\n\n", info.displayName)
+		fmt.Fprintf(out, "\n%s sandbox configuration detected.\n\n", cBold(info.displayName))
 	}
 
 	fmt.Fprintf(out, "Proposed changes to .claude/settings.local.json:\n\n")
 
 	if info.needsEnable {
-		fmt.Fprintf(out, "  sandbox.enabled: true\n")
+		fmt.Fprintf(out, "  %s: %s\n", cDim("sandbox.enabled"), cGreen("true"))
 	}
 
 	if len(info.pathsToAdd) > 0 {
-		fmt.Fprintf(out, "  sandbox.additionalAllowWritePaths:\n")
+		fmt.Fprintf(out, "%s:\n", cDim("sandbox.additionalAllowWritePaths"))
 		for _, path := range info.pathsToAdd {
-			fmt.Fprintf(out, "  + %q\n", path)
+			fmt.Fprintf(out, "%s %q\n", cGreen("+"), path)
 		}
 	}
 
 	if len(info.existing) > 0 {
-		fmt.Fprintf(out, "\n  (existing paths preserved)\n")
+		fmt.Fprintf(out, "\n  %s\n", cDim("(existing paths preserved)"))
 	}
 
 	fmt.Fprintf(out, "\n")
 
 	// Prompt for confirmation (defaults to Yes)
 	if !promptYesNoDefaultYes(cmd, "Configure Claude sandbox for autospec?") {
-		fmt.Fprintf(out, "⏭ Sandbox configuration: skipped\n")
+		fmt.Fprintf(out, "%s Sandbox configuration: skipped\n", cDim("⏭"))
 		return nil
 	}
 
@@ -381,18 +387,18 @@ func promptAndConfigureSandbox(cmd *cobra.Command, out io.Writer, info sandboxPr
 	}
 
 	if result == nil || result.AlreadyConfigured {
-		fmt.Fprintf(out, "✓ %s sandbox: enabled with write paths configured\n", info.displayName)
+		fmt.Fprintf(out, "%s %s sandbox: enabled with write paths configured\n", cGreen("✓"), cBold(info.displayName))
 		return nil
 	}
 
 	// Show what was configured
 	if result.SandboxWasEnabled {
-		fmt.Fprintf(out, "✓ %s sandbox: enabled\n", info.displayName)
+		fmt.Fprintf(out, "%s %s sandbox: enabled\n", cGreen("✓"), cBold(info.displayName))
 	}
 	if len(result.PathsAdded) > 0 {
-		fmt.Fprintf(out, "✓ %s sandbox: configured with paths:\n", info.displayName)
+		fmt.Fprintf(out, "%s %s sandbox: configured with paths:\n", cGreen("✓"), cBold(info.displayName))
 		for _, path := range result.PathsAdded {
-			fmt.Fprintf(out, "    + %s\n", path)
+			fmt.Fprintf(out, "%s %s\n", cGreen("+"), path)
 		}
 	}
 
@@ -407,23 +413,23 @@ func displayAgentConfigResult(out io.Writer, agentName string, result *cliagent.
 	}
 
 	if result == nil {
-		fmt.Fprintf(out, "✓ %s: no configuration needed\n", displayName)
+		fmt.Fprintf(out, "%s %s: no configuration needed\n", cGreen("✓"), cBold(displayName))
 		return
 	}
 
 	if result.Warning != "" {
-		fmt.Fprintf(out, "⚠ %s: %s\n", displayName, result.Warning)
+		fmt.Fprintf(out, "%s %s: %s\n", cYellow("⚠"), cBold(displayName), result.Warning)
 	}
 
 	if result.AlreadyConfigured {
-		fmt.Fprintf(out, "✓ %s: permissions already configured (Bash(autospec:*), Write, Edit)\n", displayName)
+		fmt.Fprintf(out, "%s %s: permissions already configured %s\n", cGreen("✓"), cBold(displayName), cDim("(Bash(autospec:*), Write, Edit)"))
 		return
 	}
 
 	if len(result.PermissionsAdded) > 0 {
-		fmt.Fprintf(out, "✓ %s: configured with permissions:\n", displayName)
+		fmt.Fprintf(out, "%s %s: configured with permissions:\n", cGreen("✓"), cBold(displayName))
 		for _, perm := range result.PermissionsAdded {
-			fmt.Fprintf(out, "    - %s\n", perm)
+			fmt.Fprintf(out, "    %s %s\n", cDim("-"), perm)
 		}
 	}
 }
@@ -447,7 +453,7 @@ func persistAgentPreferences(out io.Writer, selected []string, cfg *config.Confi
 		return fmt.Errorf("saving agent preferences: %w", err)
 	}
 
-	fmt.Fprintf(out, "✓ Agent preferences saved to %s\n", configPath)
+	fmt.Fprintf(out, "%s Agent preferences saved to %s\n", cGreen("✓"), cDim(configPath))
 	return nil
 }
 
@@ -677,18 +683,20 @@ var WorktreeScriptRunner = runWorktreeGenScriptFromInitImpl
 
 // runWorktreeGenScriptFromInit executes the worktree gen-script workflow.
 // This generates a project-specific setup script for git worktrees.
-func runWorktreeGenScriptFromInit(cmd *cobra.Command, configPath string) {
-	WorktreeScriptRunner(cmd, configPath)
+// Returns true if the script was generated successfully.
+func runWorktreeGenScriptFromInit(cmd *cobra.Command, configPath string) bool {
+	return WorktreeScriptRunner(cmd, configPath)
 }
 
 // runWorktreeGenScriptFromInitImpl is the real implementation.
-func runWorktreeGenScriptFromInitImpl(cmd *cobra.Command, configPath string) {
+// Returns true if the script was generated successfully.
+func runWorktreeGenScriptFromInitImpl(cmd *cobra.Command, configPath string) bool {
 	out := cmd.OutOrStdout()
 
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(out, "⚠ Failed to load config: %v\n", err)
-		return
+		return false
 	}
 
 	notifHandler := notify.NewHandler(cfg.Notifications)
@@ -710,11 +718,12 @@ func runWorktreeGenScriptFromInitImpl(cmd *cobra.Command, configPath string) {
 
 	if err != nil {
 		fmt.Fprintf(out, "\n⚠ Worktree script generation failed: %v\n", err)
-		return
+		return false
 	}
 
 	fmt.Fprintf(out, "\n✓ Worktree setup script generated at .autospec/scripts/setup-worktree.sh\n")
 	fmt.Fprintf(out, "  Use 'autospec worktree create <branch>' to create worktrees with auto-setup.\n")
+	return true
 }
 
 // handleConstitution checks for existing constitution and copies it if needed.
@@ -892,8 +901,10 @@ func collectPendingActions(cmd *cobra.Command, out io.Writer, constitutionExists
 }
 
 // applyPendingActions applies all collected user choices.
-// Returns updated constitutionExists value.
-func applyPendingActions(cmd *cobra.Command, out io.Writer, pending pendingActions, configPath string, constitutionExists bool) bool {
+// Returns initResult with updated state and error tracking.
+func applyPendingActions(cmd *cobra.Command, out io.Writer, pending pendingActions, configPath string, constitutionExists bool) initResult {
+	result := initResult{constitutionExists: constitutionExists}
+
 	// Apply gitignore change (fast, no Claude)
 	if pending.addGitignore {
 		if err := addAutospecToGitignore(".gitignore"); err != nil {
@@ -910,7 +921,9 @@ func applyPendingActions(cmd *cobra.Command, out io.Writer, pending pendingActio
 		fmt.Fprintf(out, "%s\n", cMagenta("                    RUNNING: CONSTITUTION"))
 		fmt.Fprintf(out, "%s\n", cMagenta("═══════════════════════════════════════════════════════════════════════"))
 		if runConstitutionFromInit(cmd, configPath) {
-			constitutionExists = true
+			result.constitutionExists = true
+		} else {
+			result.hadErrors = true
 		}
 	}
 
@@ -920,24 +933,36 @@ func applyPendingActions(cmd *cobra.Command, out io.Writer, pending pendingActio
 		fmt.Fprintf(out, "%s\n", cGreen("═══════════════════════════════════════════════════════════════════════"))
 		fmt.Fprintf(out, "%s\n", cGreen("                    RUNNING: WORKTREE SCRIPT"))
 		fmt.Fprintf(out, "%s\n", cGreen("═══════════════════════════════════════════════════════════════════════"))
-		runWorktreeGenScriptFromInit(cmd, configPath)
+		if !runWorktreeGenScriptFromInit(cmd, configPath) {
+			result.hadErrors = true
+		}
 	}
 
-	return constitutionExists
+	return result
 }
 
-func printSummary(out io.Writer, constitutionExists bool, specsDir string) {
+func printSummary(out io.Writer, result initResult, specsDir string) {
 	fmt.Fprintf(out, "\n")
 
-	if !constitutionExists {
+	// Show ready message only if constitution exists AND no errors occurred
+	if result.constitutionExists && !result.hadErrors {
+		fmt.Fprintf(out, "%s %s\n\n", cGreen("✓"), cBold("Autospec is ready!"))
+	}
+
+	// Show constitution warning if it doesn't exist
+	if !result.constitutionExists {
 		fmt.Fprintf(out, "%s %s: You MUST create a constitution before using autospec.\n", cYellow("⚠"), cBold("IMPORTANT"))
-		fmt.Fprintf(out, "Run the following command to get started:\n\n")
+		fmt.Fprintf(out, "Run the following command first:\n\n")
 		fmt.Fprintf(out, "  %s\n\n", cCyan("autospec constitution"))
 		fmt.Fprintf(out, "The constitution defines your project's principles and guidelines.\n")
 		fmt.Fprintf(out, "Without it, workflow commands (specify, plan, tasks, implement) will fail.\n\n")
 	}
 
 	fmt.Fprintf(out, "%s\n", cBold("Quick start:"))
+	// Add step 0 if constitution doesn't exist
+	if !result.constitutionExists {
+		fmt.Fprintf(out, "  %s %s  %s\n", cYellow("0."), cCyan("autospec constitution"), cDim("# required first!"))
+	}
 	fmt.Fprintf(out, "  %s %s\n", cDim("1."), cCyan("autospec specify \"Add user authentication\""))
 	fmt.Fprintf(out, "  %s Review the generated spec in %s/\n", cDim("2."), cDim(specsDir))
 	fmt.Fprintf(out, "  %s %s  %s\n", cDim("3."), cCyan("autospec run -pti"), cDim("# -pti is short for --plan --tasks --implement"))

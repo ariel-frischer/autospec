@@ -27,8 +27,8 @@ func TestRunInit_InstallsCommands(t *testing.T) {
 	ConstitutionRunner = func(cmd *cobra.Command, configPath string) bool {
 		return true // Simulate successful constitution creation
 	}
-	WorktreeScriptRunner = func(cmd *cobra.Command, configPath string) {
-		// No-op mock
+	WorktreeScriptRunner = func(cmd *cobra.Command, configPath string) bool {
+		return true // Simulate successful worktree script creation
 	}
 	defer func() {
 		ConstitutionRunner = originalConstitutionRunner
@@ -645,9 +645,10 @@ func TestPrintSummary_WithConstitution(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	printSummary(&buf, true, "specs")
+	printSummary(&buf, initResult{constitutionExists: true, hadErrors: false}, "specs")
 
 	output := buf.String()
+	assert.Contains(t, output, "Autospec is ready!")
 	assert.Contains(t, output, "Quick start")
 	assert.Contains(t, output, "Review the generated spec in specs/")
 	assert.NotContains(t, output, "IMPORTANT: You MUST create a constitution")
@@ -657,21 +658,35 @@ func TestPrintSummary_WithoutConstitution(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	printSummary(&buf, false, "specs")
+	printSummary(&buf, initResult{constitutionExists: false, hadErrors: false}, "specs")
 
 	output := buf.String()
 	assert.Contains(t, output, "IMPORTANT: You MUST create a constitution")
 	assert.Contains(t, output, "autospec constitution")
+	assert.Contains(t, output, "# required first!")
+	assert.NotContains(t, output, "Autospec is ready!")
 }
 
 func TestPrintSummary_CustomSpecsDir(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	printSummary(&buf, true, "my-specs")
+	printSummary(&buf, initResult{constitutionExists: true, hadErrors: false}, "my-specs")
 
 	output := buf.String()
 	assert.Contains(t, output, "Review the generated spec in my-specs/")
+}
+
+func TestPrintSummary_WithErrors(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	printSummary(&buf, initResult{constitutionExists: true, hadErrors: true}, "specs")
+
+	output := buf.String()
+	// Should NOT show "ready" message when there were errors
+	assert.NotContains(t, output, "Autospec is ready!")
+	assert.Contains(t, output, "Quick start")
 }
 
 func TestInitCmd_RunE(t *testing.T) {

@@ -25,8 +25,8 @@ func mockClaudeRunners() func() {
 	config.ConstitutionRunner = func(cmd *cobra.Command, configPath string) bool {
 		return true // Simulate successful constitution creation
 	}
-	config.WorktreeScriptRunner = func(cmd *cobra.Command, configPath string) {
-		// No-op mock
+	config.WorktreeScriptRunner = func(cmd *cobra.Command, configPath string) bool {
+		return true // Simulate successful worktree script creation
 	}
 	return func() {
 		config.ConstitutionRunner = originalConstitutionRunner

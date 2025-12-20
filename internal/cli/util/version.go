@@ -9,7 +9,6 @@ import (
 	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 var (
@@ -25,25 +24,6 @@ func IsDevBuild() bool {
 	return Version == "dev"
 }
 
-// ASCII logo for autospec - minimal block style
-// Both lines are exactly 33 display characters wide
-var logo = []string{
-	"▄▀█ █ █ ▀█▀ █▀█ █▀ █▀█ █▀▀ █▀▀",
-	"█▀█ █▄█  █  █▄█ ▄█ █▀▀ ██▄ █▄▄",
-}
-
-// logoDisplayWidth is the visual width of the logo (for centering)
-const logoDisplayWidth = 33
-
-// Box drawing characters
-const (
-	boxTopLeft     = "╭"
-	boxTopRight    = "╮"
-	boxBottomLeft  = "╰"
-	boxBottomRight = "╯"
-	boxHorizontal  = "─"
-	boxVertical    = "│"
-)
 
 var versionPlain bool
 
