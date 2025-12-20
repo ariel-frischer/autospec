@@ -32,7 +32,7 @@ phases:
       tasks:
         - id: "T002"
           title: "Add DefaultAgents field to Configuration struct"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: null
@@ -44,7 +44,7 @@ phases:
             - "Field is optional (omitempty)"
         - id: "T003"
           title: "Add default_agents to config template"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: null
@@ -55,7 +55,7 @@ phases:
             - "Comment explaining field purpose"
         - id: "T004"
           title: "Add AddPermissions method to Claude settings"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: null

@@ -44,6 +44,8 @@ func TestGetDefaultConfigTemplate(t *testing.T) {
 		"on_error:",
 		"on_long_running:",
 		"long_running_threshold:",
+		"Agent initialization settings",
+		"default_agents:",
 	}
 
 	for _, section := range expectedSections {
@@ -72,6 +74,7 @@ func TestGetDefaults(t *testing.T) {
 		"implement_method",
 		"notifications",
 		"max_history_entries",
+		"default_agents",
 	}
 
 	for _, key := range requiredKeys {

@@ -246,6 +246,24 @@ func (s *Settings) AddPermission(perm string) {
 	perms["allow"] = newAllow
 }
 
+// AddPermissions adds multiple permissions to the allow list, skipping duplicates.
+// Returns the list of permissions that were actually added (not already present).
+// This method is idempotent - calling multiple times with the same permissions
+// has the same effect as calling once.
+// Does not check the deny list - caller should check that first for each permission.
+func (s *Settings) AddPermissions(permissions []string) []string {
+	var added []string
+
+	for _, perm := range permissions {
+		if !s.HasPermission(perm) {
+			s.AddPermission(perm)
+			added = append(added, perm)
+		}
+	}
+
+	return added
+}
+
 // Save writes the settings to disk using atomic write (temp file + rename).
 // Creates the .claude directory if it doesn't exist.
 // Written JSON is pretty-printed with indentation for human readability.

@@ -83,6 +83,11 @@ type Configuration struct {
 	// Worktree configures worktree management settings.
 	// Used by the 'autospec worktree' command for creating and managing git worktrees.
 	Worktree *worktree.WorktreeConfig `koanf:"worktree"`
+
+	// DefaultAgents stores the list of agent names to pre-select in future init prompts.
+	// Set during 'autospec init' when user selects agents for configuration.
+	// Can be set via AUTOSPEC_DEFAULT_AGENTS env var (comma-separated).
+	DefaultAgents []string `koanf:"default_agents,omitempty"`
 }
 
 // LoadOptions configures how configuration is loaded

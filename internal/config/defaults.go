@@ -36,6 +36,9 @@ max_history_entries: 500              # Max command history entries to retain
 # View dashboard settings
 view_limit: 5                         # Number of recent specs to display
 
+# Agent initialization settings
+default_agents: []                    # Agents to pre-select in 'autospec init' prompt
+
 # Worktree management settings
 worktree:
   base_dir: ""                        # Parent dir for worktrees (default: parent of repo)
@@ -103,6 +106,9 @@ func GetDefaults() map[string]interface{} {
 		// view_limit: Number of recent specs to display in the view command.
 		// Default: 5. Can be overridden with --limit flag.
 		"view_limit": 5,
+		// default_agents: List of agent names to pre-select in 'autospec init' prompts.
+		// Saved from previous init selections. Empty by default.
+		"default_agents": []string{},
 		// worktree: Configuration for git worktree management.
 		// Used by 'autospec worktree' command for creating and managing worktrees.
 		"worktree": map[string]interface{}{

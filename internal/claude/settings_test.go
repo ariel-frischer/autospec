@@ -299,6 +299,63 @@ func TestAddPermission(t *testing.T) {
 	}
 }
 
+func TestAddPermissions(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		initialAllow  []string
+		permsToAdd    []string
+		wantAdded     []string
+		wantFinalList []string
+	}{
+		"add multiple to empty list": {
+			initialAllow:  nil,
+			permsToAdd:    []string{"Bash(autospec:*)", "Write(.autospec/**)"},
+			wantAdded:     []string{"Bash(autospec:*)", "Write(.autospec/**)"},
+			wantFinalList: []string{"Bash(autospec:*)", "Write(.autospec/**)"},
+		},
+		"add multiple to existing list": {
+			initialAllow:  []string{"Bash(foo:*)"},
+			permsToAdd:    []string{"Bash(autospec:*)", "Edit(.autospec/**)"},
+			wantAdded:     []string{"Bash(autospec:*)", "Edit(.autospec/**)"},
+			wantFinalList: []string{"Bash(foo:*)", "Bash(autospec:*)", "Edit(.autospec/**)"},
+		},
+		"skip duplicates": {
+			initialAllow:  []string{"Bash(autospec:*)", "Write(.autospec/**)"},
+			permsToAdd:    []string{"Bash(autospec:*)", "Write(.autospec/**)", "Edit(specs/**)"},
+			wantAdded:     []string{"Edit(specs/**)"},
+			wantFinalList: []string{"Bash(autospec:*)", "Write(.autospec/**)", "Edit(specs/**)"},
+		},
+		"all duplicates returns empty": {
+			initialAllow:  []string{"Bash(autospec:*)", "Write(.autospec/**)"},
+			permsToAdd:    []string{"Bash(autospec:*)", "Write(.autospec/**)"},
+			wantAdded:     nil,
+			wantFinalList: []string{"Bash(autospec:*)", "Write(.autospec/**)"},
+		},
+		"empty input returns nil": {
+			initialAllow:  []string{"Bash(autospec:*)"},
+			permsToAdd:    []string{},
+			wantAdded:     nil,
+			wantFinalList: []string{"Bash(autospec:*)"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s := &Settings{data: make(map[string]interface{})}
+			if tt.initialAllow != nil {
+				setAllowList(s, tt.initialAllow)
+			}
+
+			added := s.AddPermissions(tt.permsToAdd)
+
+			assert.Equal(t, tt.wantAdded, added)
+			assert.Equal(t, tt.wantFinalList, s.getAllowList())
+		})
+	}
+}
+
 func TestSave(t *testing.T) {
 	t.Parallel()
 
