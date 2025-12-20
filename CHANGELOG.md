@@ -16,15 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[Dev builds only]** `dag` command to visualize task dependencies as ASCII graph with wave grouping
 - **[Dev builds only]** Parallel execution state persistence with resume support (R/W/S/A options: resume, resume wave, skip failed, abort)
 - Multi-agent CLI abstraction layer with 6 built-in agents (claude, cline, gemini, codex, opencode, goose) and custom agent support via `agent_preset` config or `--agent` flag
+- Structured `custom_agent` config with explicit `command`, `args`, `env`, and `post_processor` fields (replaces error-prone shell string parsing)
 - Agent discovery and status in `autospec doctor` showing installed agents with versions
 - `view` command to display dashboard overview of all specs with completion status and task progress
 - `worktree` command for git worktree management (create, list, remove, setup, prune) with automatic project setup
 - `worktree gen-script` command to generate project-specific setup scripts for worktrees
 - `init` command now prompts to create constitution if none exists (Y/n default yes)
 - `init` command now prompts to generate worktree setup script if not already present (y/N default no)
+- Dark mode support for GitHub Pages documentation site
+
+### Changed
+- `init` agent selection now uses interactive arrow-key navigation with space to toggle (replaces number input)
 
 ### Deprecated
-- `claude_cmd`, `claude_args`, `custom_claude_cmd` config fields (use `agent_preset` or `custom_agent_cmd` instead)
+- `claude_cmd`, `claude_args`, `custom_claude_cmd`, `custom_agent_cmd` config fields (use `agent_preset` or structured `custom_agent` instead)
 
 ## [0.5.0] - 2025-12-18
 
