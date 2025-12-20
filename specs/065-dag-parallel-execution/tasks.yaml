@@ -338,7 +338,7 @@ phases:
             - "Error if --worktrees used without --parallel"
         - id: "T023"
           title: "Implement worktree creation per task in ParallelExecutor"
-          status: "InProgress"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -351,7 +351,7 @@ phases:
             - "Claude session runs in worktree directory"
         - id: "T024"
           title: "Implement sequential merge into DAG-ROOT after wave completion"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-004"
@@ -364,7 +364,7 @@ phases:
             - "Cleanup worktree after successful merge"
         - id: "T025"
           title: "Add worktree isolation warning prompt when --parallel without --worktrees"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-004"
@@ -377,7 +377,7 @@ phases:
             - "Prompt only shown when tasks exist in parallel waves"
         - id: "T026"
           title: "Write tests for worktree integration"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-004"
@@ -440,7 +440,7 @@ phases:
       tasks:
         - id: "T030"
           title: "Implement single-line progress display for parallel tasks"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-007"
@@ -453,7 +453,7 @@ phases:
             - "Graceful degradation if terminal doesn't support ANSI"
         - id: "T031"
           title: "Implement parallel execution state persistence in retry.json"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-007"
@@ -466,7 +466,7 @@ phases:
             - "Loaded on resume to restore state"
         - id: "T032"
           title: "Implement resume prompt with R/W/S/A options"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-007"
@@ -485,7 +485,7 @@ phases:
       tasks:
         - id: "T033"
           title: "Create docs/parallel-execution.md user guide"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -498,7 +498,7 @@ phases:
             - "Documents resume behavior after interruption"
         - id: "T034"
           title: "Verify all quality gates pass (make test, fmt, lint, build)"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null

@@ -2,6 +2,70 @@
 
 This guide covers strategies for running multiple autospec workflows, whether sequentially on a single branch or in parallel using git worktrees.
 
+## Built-in Parallel Task Execution (New!)
+
+The `--parallel` flag enables concurrent task execution within a single `autospec implement` run using DAG-based wave scheduling. Independent tasks within each wave run in parallel, respecting dependency ordering across waves.
+
+### Quick Start
+
+```bash
+# Enable parallel execution
+autospec implement --parallel
+
+# Set maximum concurrent tasks (default: 4)
+autospec implement --parallel --max-parallel 8
+
+# Preview execution plan without running tasks
+autospec implement --parallel --dry-run
+
+# Skip confirmation prompts
+autospec implement --parallel --yes
+```
+
+### How Wave Scheduling Works
+
+Tasks are grouped into "waves" based on their dependencies:
+- **Wave 1**: Tasks with no dependencies (roots)
+- **Wave 2**: Tasks that depend only on Wave 1 tasks
+- **Wave N**: Tasks that depend on tasks from earlier waves
+
+Example with dependencies `T001 -> T002 -> T004` and `T003 -> T004`:
+```
+Wave 1: [T001, T003] (parallel)
+Wave 2: [T002]
+Wave 3: [T004]
+```
+
+### Parallel Execution Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--parallel` | Enable parallel execution | `false` |
+| `--max-parallel` | Maximum concurrent Claude sessions | `4` |
+| `--worktrees` | Use git worktrees for isolation | `false` |
+| `--dry-run` | Show execution plan without running | `false` |
+| `--yes` | Skip confirmation prompts | `false` |
+
+### Progress Display
+
+During execution, progress is shown in single-line format:
+```
+Wave 2: T002 * T003 + T004 o
+```
+
+Status symbols:
+- `*` = running, `+` = completed, `x` = failed, `-` = skipped, `o` = pending
+
+### Resume on Interrupt
+
+If execution is interrupted, the next run prompts with options:
+- **[R] Retry**: Retry failed tasks and continue
+- **[W] Skip Wave**: Skip current wave and continue
+- **[S] Start Fresh**: Clear state and start over
+- **[A] Abort**: Cancel and exit
+
+---
+
 ## Understanding Branch Behavior
 
 **Important**: When you run `autospec specify` or `autospec run -a`, the command creates a new feature branch and **automatically checks it out**. This is critical to understand when planning parallel workflows.

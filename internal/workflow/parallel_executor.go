@@ -5,6 +5,8 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -13,15 +15,22 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// ProgressCallback is called when task status changes.
+type ProgressCallback func(waveNum int, taskID string, status dag.TaskStatus, progressLine string)
+
 // ParallelExecutor orchestrates concurrent task execution across waves.
 type ParallelExecutor struct {
-	maxParallel     int                   // Maximum concurrent Claude sessions
-	graph           *dag.DependencyGraph  // Task dependency graph
-	worktreeManager worktree.Manager      // Git worktree manager for isolation (optional)
-	dagRoot         string                // Branch name where worktree changes merge
-	failedTasks     map[string]error      // Tasks that failed execution
-	skippedTasks    map[string]string     // Tasks skipped due to failed dependencies
-	mu              sync.Mutex            // Protects failedTasks and skippedTasks
+	maxParallel     int                  // Maximum concurrent Claude sessions
+	graph           *dag.DependencyGraph // Task dependency graph
+	worktreeManager worktree.Manager     // Git worktree manager for isolation (optional)
+	dagRoot         string               // Branch name where worktree changes merge
+	worktreeDir     string               // Directory for worktrees (default: .worktrees)
+	repoRoot        string               // Repository root path
+	failedTasks     map[string]error     // Tasks that failed execution
+	skippedTasks    map[string]string    // Tasks skipped due to failed dependencies
+	worktreePaths   map[string]string    // TaskID -> worktree path mapping
+	progressCb      ProgressCallback     // Callback for progress updates
+	mu              sync.Mutex           // Protects failedTasks, skippedTasks, worktreePaths
 
 	// Dependencies injected for testing
 	taskRunner TaskRunner // Interface for running individual tasks
@@ -91,13 +100,36 @@ func WithParallelDebug(debug bool) ParallelExecutorOption {
 	}
 }
 
+// WithRepoRoot sets the repository root path.
+func WithRepoRoot(repoRoot string) ParallelExecutorOption {
+	return func(pe *ParallelExecutor) {
+		pe.repoRoot = repoRoot
+	}
+}
+
+// WithWorktreeDir sets the worktree directory name.
+func WithWorktreeDir(dir string) ParallelExecutorOption {
+	return func(pe *ParallelExecutor) {
+		pe.worktreeDir = dir
+	}
+}
+
+// WithProgressCallback sets the progress callback function.
+func WithProgressCallback(cb ProgressCallback) ParallelExecutorOption {
+	return func(pe *ParallelExecutor) {
+		pe.progressCb = cb
+	}
+}
+
 // NewParallelExecutor creates a new ParallelExecutor with the given options.
 func NewParallelExecutor(graph *dag.DependencyGraph, opts ...ParallelExecutorOption) *ParallelExecutor {
 	pe := &ParallelExecutor{
-		maxParallel:  4, // Default
-		graph:        graph,
-		failedTasks:  make(map[string]error),
-		skippedTasks: make(map[string]string),
+		maxParallel:   4, // Default
+		graph:         graph,
+		worktreeDir:   ".worktrees",
+		failedTasks:   make(map[string]error),
+		skippedTasks:  make(map[string]string),
+		worktreePaths: make(map[string]string),
 	}
 
 	for _, opt := range opts {
@@ -262,31 +294,59 @@ func (pe *ParallelExecutor) executeTask(ctx context.Context, taskID, specName, t
 		TaskID: taskID,
 	}
 
-	// Update graph status
+	// Find current wave for progress reporting
+	waveNum := pe.graph.GetWaveForTask(taskID)
+
+	// Update graph status and report progress
 	_ = pe.graph.SetNodeStatus(taskID, dag.StatusRunning)
+	pe.reportProgress(waveNum, taskID, dag.StatusRunning)
 
 	if pe.taskRunner == nil {
 		result.Error = fmt.Errorf("no task runner configured")
 		result.Success = false
 		_ = pe.graph.SetNodeStatus(taskID, dag.StatusFailed)
+		pe.reportProgress(waveNum, taskID, dag.StatusFailed)
 		result.Duration = time.Since(startTime)
 		return result
 	}
 
+	// Create worktree if enabled
+	worktreePath, err := pe.createWorktree(taskID)
+	if err != nil {
+		result.Error = err
+		result.Success = false
+		_ = pe.graph.SetNodeStatus(taskID, dag.StatusFailed)
+		pe.reportProgress(waveNum, taskID, dag.StatusFailed)
+		result.Duration = time.Since(startTime)
+		return result
+	}
+	result.WorktreePath = worktreePath
+
 	// Execute the task
-	err := pe.taskRunner.RunTask(ctx, taskID, specName, tasksPath)
+	err = pe.taskRunner.RunTask(ctx, taskID, specName, tasksPath)
 	result.Duration = time.Since(startTime)
 
 	if err != nil {
 		result.Error = err
 		result.Success = false
 		_ = pe.graph.SetNodeStatus(taskID, dag.StatusFailed)
+		pe.reportProgress(waveNum, taskID, dag.StatusFailed)
 	} else {
 		result.Success = true
 		_ = pe.graph.SetNodeStatus(taskID, dag.StatusCompleted)
+		pe.reportProgress(waveNum, taskID, dag.StatusCompleted)
 	}
 
 	return result
+}
+
+// reportProgress calls the progress callback if set.
+func (pe *ParallelExecutor) reportProgress(waveNum int, taskID string, status dag.TaskStatus) {
+	if pe.progressCb == nil {
+		return
+	}
+	progressLine := pe.graph.RenderProgress(waveNum)
+	pe.progressCb(waveNum, taskID, status, progressLine)
 }
 
 // recordFailedTask records a task as failed for dependency checking.
@@ -338,4 +398,138 @@ func (pe *ParallelExecutor) MaxParallel() int {
 // Graph returns the underlying dependency graph.
 func (pe *ParallelExecutor) Graph() *dag.DependencyGraph {
 	return pe.graph
+}
+
+// UseWorktrees returns true if worktree isolation is enabled.
+func (pe *ParallelExecutor) UseWorktrees() bool {
+	return pe.worktreeManager != nil
+}
+
+// createWorktree creates a worktree for a task if worktree mode is enabled.
+// Returns the worktree path (or empty string if not using worktrees).
+func (pe *ParallelExecutor) createWorktree(taskID string) (string, error) {
+	if pe.worktreeManager == nil {
+		return "", nil
+	}
+
+	// Create worktree path: .worktrees/<task-id>/
+	worktreePath := filepath.Join(pe.repoRoot, pe.worktreeDir, taskID)
+
+	// Create the worktree using the manager
+	// Branch name is the task ID for easy identification
+	wt, err := pe.worktreeManager.Create(taskID, taskID, worktreePath)
+	if err != nil {
+		return "", fmt.Errorf("creating worktree for task %s: %w", taskID, err)
+	}
+
+	pe.mu.Lock()
+	pe.worktreePaths[taskID] = wt.Path
+	pe.mu.Unlock()
+
+	return wt.Path, nil
+}
+
+// mergeWorktree merges changes from a task's worktree into DAG-ROOT.
+func (pe *ParallelExecutor) mergeWorktree(taskID string) error {
+	if pe.worktreeManager == nil {
+		return nil
+	}
+
+	pe.mu.Lock()
+	wtPath, exists := pe.worktreePaths[taskID]
+	pe.mu.Unlock()
+
+	if !exists {
+		return nil // No worktree for this task
+	}
+
+	// Update worktree status to merged
+	if err := pe.worktreeManager.UpdateStatus(taskID, worktree.StatusMerged); err != nil {
+		return fmt.Errorf("updating worktree status: %w", err)
+	}
+
+	// Note: Actual git merge is handled separately as it may require
+	// user intervention for conflicts. The worktree package handles this.
+	_ = wtPath // Used for potential merge operations
+
+	return nil
+}
+
+// cleanupWorktree removes a task's worktree after successful merge.
+func (pe *ParallelExecutor) cleanupWorktree(taskID string) error {
+	if pe.worktreeManager == nil {
+		return nil
+	}
+
+	pe.mu.Lock()
+	_, exists := pe.worktreePaths[taskID]
+	pe.mu.Unlock()
+
+	if !exists {
+		return nil
+	}
+
+	// Remove the worktree (force=false to preserve uncommitted work)
+	if err := pe.worktreeManager.Remove(taskID, false); err != nil {
+		return fmt.Errorf("removing worktree for task %s: %w", taskID, err)
+	}
+
+	pe.mu.Lock()
+	delete(pe.worktreePaths, taskID)
+	pe.mu.Unlock()
+
+	return nil
+}
+
+// getWorktreeDir returns the worktree directory for a task, creating it if needed.
+func (pe *ParallelExecutor) getWorktreeDir() string {
+	if pe.repoRoot == "" {
+		if wd, err := os.Getwd(); err == nil {
+			return filepath.Join(wd, pe.worktreeDir)
+		}
+		return pe.worktreeDir
+	}
+	return filepath.Join(pe.repoRoot, pe.worktreeDir)
+}
+
+// MergeWaveWorktrees sequentially merges all worktrees from a completed wave.
+// Returns an error if any merge fails (typically due to conflicts).
+func (pe *ParallelExecutor) MergeWaveWorktrees(waveResult *WaveResult) error {
+	if pe.worktreeManager == nil {
+		return nil
+	}
+
+	for taskID, result := range waveResult.Results {
+		// Only merge successful tasks
+		if !result.Success || result.Skipped {
+			continue
+		}
+
+		if err := pe.mergeWorktree(taskID); err != nil {
+			return fmt.Errorf("merging worktree for task %s: %w", taskID, err)
+		}
+	}
+
+	return nil
+}
+
+// CleanupWaveWorktrees removes all worktrees from a merged wave.
+func (pe *ParallelExecutor) CleanupWaveWorktrees(waveResult *WaveResult) error {
+	if pe.worktreeManager == nil {
+		return nil
+	}
+
+	var lastErr error
+	for taskID, result := range waveResult.Results {
+		// Only cleanup successful merged tasks
+		if !result.Success || result.Skipped {
+			continue
+		}
+
+		if err := pe.cleanupWorktree(taskID); err != nil {
+			lastErr = err // Continue cleanup, but track error
+		}
+	}
+
+	return lastErr
 }

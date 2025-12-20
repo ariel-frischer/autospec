@@ -9,6 +9,7 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/dag"
 	"github.com/ariel-frischer/autospec/internal/validation"
+	"github.com/ariel-frischer/autospec/internal/worktree"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -441,4 +442,289 @@ func TestParallelExecutor_EmptyGraph(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Nil(t, results)
+}
+
+func TestParallelExecutor_UseWorktrees(t *testing.T) {
+	t.Parallel()
+
+	tasks := []validation.TaskItem{
+		{ID: "T001", Dependencies: []string{}},
+	}
+
+	g, err := dag.BuildFromTasks(tasks)
+	require.NoError(t, err)
+	_, err = g.ComputeWaves()
+	require.NoError(t, err)
+
+	tests := map[string]struct {
+		opts          []ParallelExecutorOption
+		wantWorktrees bool
+	}{
+		"without worktree manager": {
+			opts:          nil,
+			wantWorktrees: false,
+		},
+		"with worktree manager": {
+			opts:          []ParallelExecutorOption{WithWorktreeManager(&mockWorktreeManager{})},
+			wantWorktrees: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			pe := NewParallelExecutor(g, tt.opts...)
+			assert.Equal(t, tt.wantWorktrees, pe.UseWorktrees())
+		})
+	}
+}
+
+// mockWorktreeManager implements worktree.Manager for testing.
+type mockWorktreeManager struct {
+	createCalls []string
+	removeCalls []string
+	statusCalls []string
+	failCreate  bool
+	failRemove  bool
+	failStatus  bool
+}
+
+func (m *mockWorktreeManager) Create(name, branch, customPath string) (*worktree.Worktree, error) {
+	m.createCalls = append(m.createCalls, name)
+	if m.failCreate {
+		return nil, errors.New("mock create error")
+	}
+	return &worktree.Worktree{Name: name, Path: customPath, Branch: branch}, nil
+}
+
+func (m *mockWorktreeManager) List() ([]worktree.Worktree, error) {
+	return nil, nil
+}
+
+func (m *mockWorktreeManager) Get(name string) (*worktree.Worktree, error) {
+	return nil, nil
+}
+
+func (m *mockWorktreeManager) Remove(name string, force bool) error {
+	m.removeCalls = append(m.removeCalls, name)
+	if m.failRemove {
+		return errors.New("mock remove error")
+	}
+	return nil
+}
+
+func (m *mockWorktreeManager) Setup(path string, addToState bool) (*worktree.Worktree, error) {
+	return nil, nil
+}
+
+func (m *mockWorktreeManager) Prune() (int, error) {
+	return 0, nil
+}
+
+func (m *mockWorktreeManager) UpdateStatus(name string, status worktree.WorktreeStatus) error {
+	m.statusCalls = append(m.statusCalls, name)
+	if m.failStatus {
+		return errors.New("mock status error")
+	}
+	return nil
+}
+
+func TestParallelExecutor_WithWorktreeManager_CreatesWorktrees(t *testing.T) {
+	t.Parallel()
+
+	tasks := []validation.TaskItem{
+		{ID: "T001", Dependencies: []string{}},
+		{ID: "T002", Dependencies: []string{}},
+	}
+
+	g, err := dag.BuildFromTasks(tasks)
+	require.NoError(t, err)
+	_, err = g.ComputeWaves()
+	require.NoError(t, err)
+
+	runner := newMockTaskRunner()
+	wm := &mockWorktreeManager{}
+
+	pe := NewParallelExecutor(g,
+		WithTaskRunner(runner),
+		WithWorktreeManager(wm),
+		WithRepoRoot("/tmp/test-repo"),
+	)
+
+	ctx := context.Background()
+	results, err := pe.ExecuteWaves(ctx, "test-spec", "tasks.yaml")
+
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+
+	// Verify worktrees were created for each task
+	assert.Len(t, wm.createCalls, 2)
+	assert.Contains(t, wm.createCalls, "T001")
+	assert.Contains(t, wm.createCalls, "T002")
+}
+
+func TestParallelExecutor_WorktreeCreationFailure(t *testing.T) {
+	t.Parallel()
+
+	tasks := []validation.TaskItem{
+		{ID: "T001", Dependencies: []string{}},
+	}
+
+	g, err := dag.BuildFromTasks(tasks)
+	require.NoError(t, err)
+	_, err = g.ComputeWaves()
+	require.NoError(t, err)
+
+	runner := newMockTaskRunner()
+	wm := &mockWorktreeManager{failCreate: true}
+
+	pe := NewParallelExecutor(g,
+		WithTaskRunner(runner),
+		WithWorktreeManager(wm),
+		WithRepoRoot("/tmp/test-repo"),
+	)
+
+	ctx := context.Background()
+	results, err := pe.ExecuteWaves(ctx, "test-spec", "tasks.yaml")
+
+	require.NoError(t, err) // Execution continues, but task fails
+	assert.Len(t, results, 1)
+
+	// Task should have failed due to worktree creation failure
+	assert.False(t, results[0].Results["T001"].Success)
+	assert.Contains(t, results[0].Results["T001"].Error.Error(), "creating worktree")
+
+	// Task should not have run
+	assert.Equal(t, 0, runner.RunCount())
+}
+
+func TestParallelExecutor_MergeWaveWorktrees(t *testing.T) {
+	t.Parallel()
+
+	tasks := []validation.TaskItem{
+		{ID: "T001", Dependencies: []string{}},
+		{ID: "T002", Dependencies: []string{}},
+	}
+
+	g, err := dag.BuildFromTasks(tasks)
+	require.NoError(t, err)
+	_, err = g.ComputeWaves()
+	require.NoError(t, err)
+
+	wm := &mockWorktreeManager{}
+	pe := NewParallelExecutor(g, WithWorktreeManager(wm))
+
+	// Simulate completed wave
+	waveResult := &WaveResult{
+		WaveNumber: 1,
+		Results: map[string]*ParallelTaskResult{
+			"T001": {TaskID: "T001", Success: true},
+			"T002": {TaskID: "T002", Success: true},
+		},
+	}
+
+	// Store worktree paths manually (simulating createWorktree having run)
+	pe.worktreePaths["T001"] = "/tmp/worktree-T001"
+	pe.worktreePaths["T002"] = "/tmp/worktree-T002"
+
+	err = pe.MergeWaveWorktrees(waveResult)
+	require.NoError(t, err)
+
+	// Verify status was updated for both tasks
+	assert.Len(t, wm.statusCalls, 2)
+	assert.Contains(t, wm.statusCalls, "T001")
+	assert.Contains(t, wm.statusCalls, "T002")
+}
+
+func TestParallelExecutor_CleanupWaveWorktrees(t *testing.T) {
+	t.Parallel()
+
+	tasks := []validation.TaskItem{
+		{ID: "T001", Dependencies: []string{}},
+	}
+
+	g, err := dag.BuildFromTasks(tasks)
+	require.NoError(t, err)
+	_, err = g.ComputeWaves()
+	require.NoError(t, err)
+
+	wm := &mockWorktreeManager{}
+	pe := NewParallelExecutor(g, WithWorktreeManager(wm))
+
+	// Store worktree path
+	pe.worktreePaths["T001"] = "/tmp/worktree-T001"
+
+	waveResult := &WaveResult{
+		WaveNumber: 1,
+		Results: map[string]*ParallelTaskResult{
+			"T001": {TaskID: "T001", Success: true},
+		},
+	}
+
+	err = pe.CleanupWaveWorktrees(waveResult)
+	require.NoError(t, err)
+
+	// Verify worktree was removed
+	assert.Len(t, wm.removeCalls, 1)
+	assert.Contains(t, wm.removeCalls, "T001")
+
+	// Verify path was cleared from map
+	assert.NotContains(t, pe.worktreePaths, "T001")
+}
+
+func TestParallelExecutor_SkipsCleanupForFailedTasks(t *testing.T) {
+	t.Parallel()
+
+	tasks := []validation.TaskItem{
+		{ID: "T001", Dependencies: []string{}},
+		{ID: "T002", Dependencies: []string{}},
+	}
+
+	g, err := dag.BuildFromTasks(tasks)
+	require.NoError(t, err)
+	_, err = g.ComputeWaves()
+	require.NoError(t, err)
+
+	wm := &mockWorktreeManager{}
+	pe := NewParallelExecutor(g, WithWorktreeManager(wm))
+
+	// Store worktree paths
+	pe.worktreePaths["T001"] = "/tmp/worktree-T001"
+	pe.worktreePaths["T002"] = "/tmp/worktree-T002"
+
+	waveResult := &WaveResult{
+		WaveNumber: 1,
+		Results: map[string]*ParallelTaskResult{
+			"T001": {TaskID: "T001", Success: true},
+			"T002": {TaskID: "T002", Success: false, Error: errors.New("failed")},
+		},
+	}
+
+	err = pe.CleanupWaveWorktrees(waveResult)
+	require.NoError(t, err)
+
+	// Only successful task should have cleanup called
+	assert.Len(t, wm.removeCalls, 1)
+	assert.Contains(t, wm.removeCalls, "T001")
+
+	// Failed task should still have worktree path
+	assert.Contains(t, pe.worktreePaths, "T002")
+}
+
+func TestParallelExecutor_WithWorktreeDir(t *testing.T) {
+	t.Parallel()
+
+	tasks := []validation.TaskItem{
+		{ID: "T001", Dependencies: []string{}},
+	}
+
+	g, err := dag.BuildFromTasks(tasks)
+	require.NoError(t, err)
+
+	pe := NewParallelExecutor(g,
+		WithWorktreeDir(".custom-worktrees"),
+		WithRepoRoot("/tmp/test"),
+	)
+
+	assert.Equal(t, "/tmp/test/.custom-worktrees", pe.getWorktreeDir())
 }
