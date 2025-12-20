@@ -430,13 +430,9 @@ Use these when you prefer chat-based iteration over autospec's automated (`-p`) 
 
 ### Readable Streaming Output with claude-clean
 
-[claude-clean](https://github.com/ariel-frischer/claude-clean) makes Claude's `stream-json` output readable in real-time:
+[claude-clean](https://github.com/ariel-frischer/claude-clean) makes Claude's `stream-json` output readable in real-time.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/ariel-frischer/claude-clean/main/install.sh | sh
-```
-
-Then configure a custom command in `~/.config/autospec/config.yml`:
+Configure a custom command in `~/.config/autospec/config.yml`:
 
 ```yaml
 custom_claude_cmd: "claude -p --verbose --output-format stream-json {{PROMPT}} | cclean"

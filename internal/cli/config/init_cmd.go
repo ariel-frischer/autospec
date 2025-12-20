@@ -516,13 +516,9 @@ func showAutomationSetupNotice(out io.Writer, configPath string) {
 	fmt.Fprintf(out, "   - Claude can read/write files without permission checks\n")
 	fmt.Fprintf(out, "   - Claude can access network resources without prompts\n")
 	fmt.Fprintf(out, "\n")
-	fmt.Fprintf(out, "Prerequisites:\n")
-	fmt.Fprintf(out, "  1. Install cclean (output formatter):\n")
-	fmt.Fprintf(out, "     go install github.com/ariel-frischer/claude-clean@latest\n")
-	fmt.Fprintf(out, "\n")
-	fmt.Fprintf(out, "  2. Edit your config to enable automation:\n")
-	fmt.Fprintf(out, "     %s\n", configPath)
-	fmt.Fprintf(out, "     Uncomment the custom_agent section at the top of the file.\n")
+	fmt.Fprintf(out, "To enable, edit your config:\n")
+	fmt.Fprintf(out, "  %s\n", configPath)
+	fmt.Fprintf(out, "  Uncomment the custom_agent section at the top of the file.\n")
 	fmt.Fprintf(out, "\n")
 }
 

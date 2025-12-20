@@ -73,6 +73,8 @@ require (
 	golang.org/x/sync v0.19.0
 )
 
+require github.com/ariel-frischer/claude-clean v0.2.0
+
 require (
 	// Terminal colors with auto-detection (used in errors package)
 	github.com/fatih/color v1.18.0
