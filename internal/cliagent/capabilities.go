@@ -64,4 +64,9 @@ type Caps struct {
 	// OptionalEnv lists optional environment variables.
 	// Informational only - validation does not fail if missing.
 	OptionalEnv []string
+
+	// DefaultArgs are CLI arguments always included when executing this agent.
+	// Added after prompt delivery args but before AutonomousFlag and ExtraArgs.
+	// Example: ["--verbose", "--output-format", "stream-json"]
+	DefaultArgs []string
 }

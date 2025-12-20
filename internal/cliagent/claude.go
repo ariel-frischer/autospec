@@ -30,6 +30,9 @@ func NewClaude() *Claude {
 				AutonomousFlag: "--dangerously-skip-permissions",
 				RequiredEnv:    []string{}, // No required env - works with subscription or API
 				OptionalEnv:    []string{"ANTHROPIC_API_KEY", "CLAUDE_MODEL"},
+				// DefaultArgs enables stream-json output for better terminal parsing.
+				// --verbose is required with stream-json or Claude will error.
+				DefaultArgs: []string{"--verbose", "--output-format", "stream-json"},
 			},
 		},
 	}

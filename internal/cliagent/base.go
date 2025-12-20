@@ -87,6 +87,8 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 		args = append(args, pd.Flag, pd.PromptFlag, prompt)
 	}
 
+	// Add default args (e.g., --verbose --output-format stream-json for Claude)
+	args = append(args, b.AgentCaps.DefaultArgs...)
 	args = b.appendAutonomousArgs(args, opts)
 	args = append(args, opts.ExtraArgs...)
 	return args
