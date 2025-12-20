@@ -64,7 +64,7 @@ func TestConfigShowCmd_DefaultOutput(t *testing.T) {
 	assert.Contains(t, output, "Configuration Sources")
 
 	// Should contain key config fields in YAML format (default)
-	assert.Contains(t, output, "claude_cmd:")
+	assert.Contains(t, output, "agent_preset:")
 	assert.Contains(t, output, "max_retries:")
 	assert.Contains(t, output, "specs_dir:")
 }
@@ -104,7 +104,7 @@ func TestConfigShowCmd_JSONOutput(t *testing.T) {
 	require.NoError(t, err, "Output should contain valid JSON")
 
 	// Verify expected fields
-	assert.Contains(t, config, "claude_cmd")
+	assert.Contains(t, config, "agent_preset")
 	assert.Contains(t, config, "max_retries")
 	assert.Contains(t, config, "specs_dir")
 	assert.Contains(t, config, "state_dir")
@@ -138,9 +138,8 @@ func TestConfigShowCmd_AllFields(t *testing.T) {
 
 	// All expected fields should be present
 	expectedFields := []string{
-		"claude_cmd",
-		"claude_args",
-		"custom_claude_cmd",
+		"agent_preset",
+		"custom_agent",
 		"max_retries",
 		"specs_dir",
 		"state_dir",

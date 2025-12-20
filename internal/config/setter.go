@@ -242,3 +242,14 @@ func loadOrCreateYAML(filePath string) (*yaml.Node, error) {
 	}
 	return &root, nil
 }
+
+// MarkSkipPermissionsNoticeShown sets skip_permissions_notice_shown to true in user config.
+// This is called after the first successful workflow command to suppress future notices.
+// Errors are non-fatal and logged to stderr.
+func MarkSkipPermissionsNoticeShown() error {
+	userPath, err := UserConfigPath()
+	if err != nil {
+		return fmt.Errorf("getting user config path: %w", err)
+	}
+	return SetConfigValue(userPath, "skip_permissions_notice_shown", "true")
+}

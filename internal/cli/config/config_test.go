@@ -32,7 +32,7 @@ func TestRunConfigShow_YAMLOutput(t *testing.T) {
 	output := buf.String()
 	assert.Contains(t, output, "Configuration Sources")
 	// YAML output should have key: value format
-	assert.Contains(t, output, "claude_cmd:")
+	assert.Contains(t, output, "agent_preset:")
 }
 
 func TestRunConfigShow_JSONOutput(t *testing.T) {
@@ -100,7 +100,7 @@ func TestConfigShowCmd_OutputFormats(t *testing.T) {
 
 			output := buf.String()
 			if tt.wantYAML {
-				assert.Contains(t, output, "claude_cmd:")
+				assert.Contains(t, output, "agent_preset:")
 			} else {
 				assert.Contains(t, output, "{")
 			}

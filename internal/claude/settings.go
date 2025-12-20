@@ -390,6 +390,17 @@ func (s *Settings) GetSandboxConfigDiff(requiredPaths []string) SandboxConfig {
 	}
 }
 
+// CheckSandboxStatus checks if sandbox is enabled in Claude settings.
+// Returns (enabled, error) where enabled indicates if sandbox is configured.
+// This is a convenience function that loads settings and checks sandbox status.
+func CheckSandboxStatus(projectDir string) (bool, error) {
+	settings, err := Load(projectDir)
+	if err != nil {
+		return false, fmt.Errorf("loading claude settings: %w", err)
+	}
+	return settings.IsSandboxEnabled(), nil
+}
+
 // atomicWrite writes data to a file atomically using temp file + rename.
 func atomicWrite(filePath string, data []byte) error {
 	dir := filepath.Dir(filePath)
