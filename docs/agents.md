@@ -90,13 +90,58 @@ export AUTOSPEC_CUSTOM_AGENT_CMD="my-agent --prompt {{PROMPT}}"
 
 Environment variables take precedence over config file values.
 
+## Claude Subscription Mode
+
+By default, autospec forces Claude to use your **subscription (Pro/Max)** instead of API credits. This protects users from accidentally burning API credits when they have `ANTHROPIC_API_KEY` set in their shell for other purposes.
+
+### How It Works
+
+| Setting | Behavior |
+|---------|----------|
+| `use_subscription: true` (default) | Forces `ANTHROPIC_API_KEY=""` at execution → uses subscription |
+| `use_subscription: false` | Uses shell's `ANTHROPIC_API_KEY` → uses API credits |
+
+### Configuration
+
+```yaml
+# ~/.config/autospec/config.yml or .autospec/config.yml
+
+# Default: use subscription (recommended - no API charges)
+use_subscription: true
+
+# Override: use API credits instead
+use_subscription: false
+```
+
+### Using API Mode
+
+If you specifically want to use API billing:
+
+1. Set `use_subscription: false` in your config
+2. Ensure `ANTHROPIC_API_KEY` is set in your shell environment
+
+```yaml
+# Enable API mode
+use_subscription: false
+```
+
+Or with a custom agent:
+
+```yaml
+custom_agent:
+  command: claude
+  args: ["-p", "{{PROMPT}}"]
+  env:
+    ANTHROPIC_API_KEY: "sk-ant-..."  # Explicit API key
+```
+
 ## Agent Requirements
 
 Each agent has specific requirements:
 
 | Agent | Binary in PATH | Environment Variables |
 |-------|----------------|----------------------|
-| `claude` | `claude` | - |
+| `claude` | `claude` | - (uses subscription by default) |
 | `cline` | `cline` | - |
 | `gemini` | `gemini` | `GOOGLE_API_KEY` |
 | `codex` | `codex` | `OPENAI_API_KEY` |

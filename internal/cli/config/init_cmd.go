@@ -107,6 +107,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("configuring agents: %w", err)
 	}
 
+	// Detect Claude auth and configure use_subscription
+	configPath, _ := getConfigPath(project)
+	handleClaudeAuthDetection(cmd, out, configPath)
+
 	// Check current state of constitution and worktree script
 	constitutionExists := handleConstitution(out)
 	worktreeScriptPath := filepath.Join(".autospec", "scripts", "setup-worktree.sh")
@@ -123,7 +127,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// ═══════════════════════════════════════════════════════════════════════
 	// Phase 3: Apply all pending changes
 	// ═══════════════════════════════════════════════════════════════════════
-	configPath, _ := getConfigPath(project)
 	result := applyPendingActions(cmd, out, pending, configPath, constitutionExists)
 
 	// Load config to get specsDir for summary
@@ -403,6 +406,116 @@ func promptAndConfigureSandbox(cmd *cobra.Command, out io.Writer, info sandboxPr
 	}
 
 	return nil
+}
+
+// handleClaudeAuthDetection detects Claude auth status and configures use_subscription.
+// Returns the recommended use_subscription value based on detection and user input.
+func handleClaudeAuthDetection(cmd *cobra.Command, out io.Writer, configPath string) {
+	status := cliagent.DetectClaudeAuth()
+
+	fmt.Fprintf(out, "\n%s %s:\n", cBold("Claude Authentication"), cDim("(detected)"))
+
+	// Show OAuth status
+	if status.AuthType == cliagent.AuthTypeOAuth {
+		fmt.Fprintf(out, "  %s OAuth: %s subscription\n",
+			cGreen("✓"), status.SubscriptionType)
+	} else {
+		fmt.Fprintf(out, "  %s OAuth: not logged in\n", cDim("✗"))
+	}
+
+	// Show API key status
+	if status.APIKeySet {
+		fmt.Fprintf(out, "  %s API key: set in environment\n", cGreen("✓"))
+	} else {
+		fmt.Fprintf(out, "  %s API key: not set\n", cDim("✗"))
+	}
+
+	// Determine use_subscription value based on detection
+	var useSubscription bool
+	var reason string
+
+	switch {
+	case status.AuthType == cliagent.AuthTypeOAuth:
+		// OAuth detected - use subscription
+		useSubscription = true
+		reason = fmt.Sprintf("using %s subscription, not API credits", status.SubscriptionType)
+
+	case status.APIKeySet && status.AuthType != cliagent.AuthTypeOAuth:
+		// Only API key detected - prompt user
+		fmt.Fprintf(out, "\n")
+		fmt.Fprintf(out, "  %s You have an API key but no OAuth login.\n", cYellow("💡"))
+		fmt.Fprintf(out, "     %s Use API key: charges apply per request\n", cDim("→"))
+		fmt.Fprintf(out, "     %s Use OAuth: run 'claude' to login with Pro/Max subscription\n", cDim("→"))
+		fmt.Fprintf(out, "\n")
+
+		if promptYesNo(cmd, "Use API key for billing? (n = login for OAuth instead)") {
+			useSubscription = false
+			reason = "using API credits"
+		} else {
+			useSubscription = true
+			reason = "will use subscription after OAuth login"
+			fmt.Fprintf(out, "  %s Run %s to login before using autospec\n", cDim("→"), cCyan("'claude'"))
+		}
+
+	default:
+		// No auth detected - safe default
+		useSubscription = true
+		reason = "safe default, no API charges"
+	}
+
+	// Update config file
+	if err := updateUseSubscriptionInConfig(configPath, useSubscription); err != nil {
+		fmt.Fprintf(out, "\n  %s Failed to update config: %v\n", cYellow("⚠"), err)
+		return
+	}
+
+	fmt.Fprintf(out, "\n  %s use_subscription: %v %s\n",
+		cGreen("→"), useSubscription, cDim("("+reason+")"))
+}
+
+// updateUseSubscriptionInConfig updates the use_subscription value in the config file.
+func updateUseSubscriptionInConfig(configPath string, useSubscription bool) error {
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("reading config: %w", err)
+	}
+
+	lines := strings.Split(string(content), "\n")
+	found := false
+	newValue := fmt.Sprintf("use_subscription: %v", useSubscription)
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "use_subscription:") {
+			lines[i] = newValue
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		// Find agent_preset line and insert after it
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "agent_preset:") {
+				// Insert after agent_preset
+				newLines := make([]string, 0, len(lines)+1)
+				newLines = append(newLines, lines[:i+1]...)
+				newLines = append(newLines, newValue)
+				newLines = append(newLines, lines[i+1:]...)
+				lines = newLines
+				found = true
+				break
+			}
+		}
+	}
+
+	if !found {
+		// Append at end if neither found
+		lines = append(lines, newValue)
+	}
+
+	return os.WriteFile(configPath, []byte(strings.Join(lines, "\n")), 0644)
 }
 
 // displayAgentConfigResult displays the configuration result for an agent.

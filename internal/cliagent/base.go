@@ -87,6 +87,8 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 		args = append(args, pd.Flag, pd.PromptFlag, prompt)
 	}
 
+	// Add default args (e.g., --verbose --output-format stream-json for Claude)
+	args = append(args, b.AgentCaps.DefaultArgs...)
 	args = b.appendAutonomousArgs(args, opts)
 	args = append(args, opts.ExtraArgs...)
 	return args
@@ -120,6 +122,12 @@ func (b *BaseAgent) buildEnv(opts ExecOptions) []string {
 		for k, v := range b.AgentCaps.AutonomousEnv {
 			env = append(env, fmt.Sprintf("%s=%s", k, v))
 		}
+	}
+
+	// Force subscription mode: set ANTHROPIC_API_KEY to empty string
+	// This prevents accidental API charges when users have API keys in their shell
+	if opts.UseSubscription {
+		env = append(env, "ANTHROPIC_API_KEY=")
 	}
 
 	// Add user-provided env vars (overrides)

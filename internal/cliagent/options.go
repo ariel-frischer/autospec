@@ -33,6 +33,11 @@ type ExecOptions struct {
 	// Stderr is where to write stderr.
 	// If nil, output is captured in Result.Stderr.
 	Stderr io.Writer
+
+	// UseSubscription forces subscription mode (Pro/Max) instead of API credits.
+	// When true, ANTHROPIC_API_KEY is set to empty string in the execution environment.
+	// This prevents accidental API charges when users have API keys in their shell.
+	UseSubscription bool
 }
 
 // Result contains the outcome of an agent execution.

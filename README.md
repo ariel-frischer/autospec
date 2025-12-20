@@ -35,6 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/instal
 - **Configurable Retry Logic** — Automatic retries with persistent state tracking
 - **Performance Optimized** — Sub-second validation (<10ms per check), <50ms startup
 - **Cross-Platform** — Native binaries for Linux and macOS (Intel/Apple Silicon). Windows users: use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+- **Smart Claude Setup** — Auto-detects OAuth/API auth, defaults to subscription billing to prevent accidental API charges
 - **Flexible Stage Selection** — Mix and match stages with intuitive flags (`-spti`, `-a`, etc.)
 - **Constitution Support** — Project-level principles that guide all specifications
 - **Cross-Artifact Analysis** — Consistency checks across spec, plan, and tasks

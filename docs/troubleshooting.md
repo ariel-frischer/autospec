@@ -132,6 +132,53 @@ echo 'export AUTOSPEC_TIMEOUT=600' >> ~/.bashrc
 source ~/.bashrc
 ```
 
+### API Billing Issues
+
+#### Accidentally using API credits instead of subscription
+
+**Problem**: Commands are consuming API credits instead of using your Claude Pro/Max subscription.
+
+**Cause**: You have `ANTHROPIC_API_KEY` set in your shell environment (perhaps for other tools), and autospec is using it instead of your subscription.
+
+**Solution**: autospec defaults to subscription mode (`use_subscription: true`), which should prevent this. If you're still seeing API charges:
+
+1. **Verify subscription mode is enabled**:
+   ```bash
+   autospec config show | grep use_subscription
+   ```
+
+2. **Ensure you haven't disabled it**:
+   ```yaml
+   # Check .autospec/config.yml and ~/.config/autospec/config.yml
+   # This should be true (or not set, as true is the default)
+   use_subscription: true
+   ```
+
+3. **If using custom_agent, check for explicit API key**:
+   ```yaml
+   # Remove or leave empty the ANTHROPIC_API_KEY in custom_agent.env
+   custom_agent:
+     env:
+       ANTHROPIC_API_KEY: ""  # Empty = use subscription
+   ```
+
+#### Want to use API credits instead of subscription
+
+**Problem**: You want to use API billing, but autospec keeps using subscription.
+
+**Solution**: Disable subscription mode:
+
+```yaml
+# In .autospec/config.yml or ~/.config/autospec/config.yml
+use_subscription: false
+```
+
+Then ensure `ANTHROPIC_API_KEY` is set in your shell:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
 ### Workflow Execution Issues
 
 #### Retry limit exhausted (exit code 2)

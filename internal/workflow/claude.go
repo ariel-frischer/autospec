@@ -23,6 +23,10 @@ type ClaudeExecutor struct {
 	// When set and stream-json mode is detected, output is formatted using cclean.
 	// Valid values: default, compact, minimal, plain, raw
 	OutputStyle config.OutputStyle
+
+	// UseSubscription forces subscription mode (Pro/Max) instead of API credits.
+	// When true, ANTHROPIC_API_KEY is set to empty string in the execution environment.
+	UseSubscription bool
 }
 
 // Execute runs an agent command with the given prompt.
@@ -46,9 +50,10 @@ func (c *ClaudeExecutor) executeWithAgent(prompt string) error {
 	stdout := c.getFormattedStdout(os.Stdout)
 
 	opts := cliagent.ExecOptions{
-		Stdout:  stdout,
-		Stderr:  os.Stderr,
-		Timeout: time.Duration(c.Timeout) * time.Second,
+		Stdout:          stdout,
+		Stderr:          os.Stderr,
+		Timeout:         time.Duration(c.Timeout) * time.Second,
+		UseSubscription: c.UseSubscription,
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)
@@ -114,9 +119,10 @@ func (c *ClaudeExecutor) StreamCommand(prompt string, stdout, stderr io.Writer) 
 	formattedStdout := c.getFormattedStdout(stdout)
 
 	opts := cliagent.ExecOptions{
-		Stdout:  formattedStdout,
-		Stderr:  stderr,
-		Timeout: time.Duration(c.Timeout) * time.Second,
+		Stdout:          formattedStdout,
+		Stderr:          stderr,
+		Timeout:         time.Duration(c.Timeout) * time.Second,
+		UseSubscription: c.UseSubscription,
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)

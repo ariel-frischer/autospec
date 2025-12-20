@@ -125,13 +125,13 @@ func TestBuildCommand(t *testing.T) {
 			agent:    NewClaude(),
 			prompt:   "fix the bug",
 			opts:     ExecOptions{},
-			wantArgs: []string{"-p", "fix the bug"},
+			wantArgs: []string{"-p", "fix the bug", "--verbose", "--output-format", "stream-json"},
 		},
 		"claude autonomous": {
 			agent:    NewClaude(),
 			prompt:   "fix the bug",
 			opts:     ExecOptions{Autonomous: true},
-			wantArgs: []string{"-p", "fix the bug", "--dangerously-skip-permissions"},
+			wantArgs: []string{"-p", "fix the bug", "--verbose", "--output-format", "stream-json", "--dangerously-skip-permissions"},
 		},
 		"cline basic": {
 			agent:    NewCline(),
@@ -240,15 +240,28 @@ func TestGoosePromptFlag(t *testing.T) {
 	}
 }
 
-// TestClaudeRequiredEnv verifies Claude requires ANTHROPIC_API_KEY.
+// TestClaudeRequiredEnv verifies Claude has no required env vars.
+// Claude works with either subscription (Pro/Max) or API key, so ANTHROPIC_API_KEY is optional.
 func TestClaudeRequiredEnv(t *testing.T) {
 	t.Parallel()
 
 	agent := NewClaude()
 	caps := agent.Capabilities()
 
-	if len(caps.RequiredEnv) != 1 || caps.RequiredEnv[0] != "ANTHROPIC_API_KEY" {
-		t.Errorf("Claude RequiredEnv = %v, want [ANTHROPIC_API_KEY]", caps.RequiredEnv)
+	if len(caps.RequiredEnv) != 0 {
+		t.Errorf("Claude RequiredEnv = %v, want [] (empty - no required env vars)", caps.RequiredEnv)
+	}
+
+	// ANTHROPIC_API_KEY should be in OptionalEnv
+	hasAPIKey := false
+	for _, env := range caps.OptionalEnv {
+		if env == "ANTHROPIC_API_KEY" {
+			hasAPIKey = true
+			break
+		}
+	}
+	if !hasAPIKey {
+		t.Errorf("Claude OptionalEnv = %v, want to contain ANTHROPIC_API_KEY", caps.OptionalEnv)
 	}
 }
 
