@@ -418,7 +418,32 @@ func TestHandleConstitution_ExistingAutospec(t *testing.T) {
 	assert.Contains(t, buf.String(), "found at")
 }
 
-func TestCheckGitignore_NoGitignore(t *testing.T) {
+func TestGitignoreHasAutospec(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		content string
+		want    bool
+	}{
+		"empty file":             {content: "", want: false},
+		"no autospec":            {content: "node_modules/\ndist/", want: false},
+		".autospec exact":        {content: ".autospec", want: true},
+		".autospec/ with slash":  {content: ".autospec/", want: true},
+		".autospec/ with others": {content: "node_modules/\n.autospec/\ndist/", want: true},
+		".autospec subpath":      {content: ".autospec/config.yml", want: true},
+		"similar but not match":  {content: "autospec/", want: false},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := gitignoreHasAutospec(tt.content)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestHandleGitignorePrompt_NoGitignore_UserSaysNo(t *testing.T) {
 	// Cannot run in parallel due to working directory change
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -430,14 +455,51 @@ func TestCheckGitignore_NoGitignore(t *testing.T) {
 		_ = os.Chdir(origDir)
 	}()
 
+	cmd := &cobra.Command{Use: "test"}
 	var buf bytes.Buffer
-	checkGitignore(&buf)
+	cmd.SetOut(&buf)
+	cmd.SetIn(bytes.NewBufferString("n\n"))
 
-	// Should not output anything if no .gitignore
-	assert.Empty(t, buf.String())
+	handleGitignorePrompt(cmd, &buf)
+
+	// Should show prompt and skip message
+	assert.Contains(t, buf.String(), "Add .autospec/ to .gitignore?")
+	assert.Contains(t, buf.String(), "skipped")
+
+	// File should not be created
+	_, err = os.Stat(".gitignore")
+	assert.True(t, os.IsNotExist(err))
 }
 
-func TestCheckGitignore_WithAutospec(t *testing.T) {
+func TestHandleGitignorePrompt_NoGitignore_UserSaysYes(t *testing.T) {
+	// Cannot run in parallel due to working directory change
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	err = os.Chdir(tmpDir)
+	require.NoError(t, err)
+	defer func() {
+		_ = os.Chdir(origDir)
+	}()
+
+	cmd := &cobra.Command{Use: "test"}
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetIn(bytes.NewBufferString("y\n"))
+
+	handleGitignorePrompt(cmd, &buf)
+
+	// Should show checkmark
+	assert.Contains(t, buf.String(), "✓ Gitignore: added .autospec/")
+
+	// File should be created with .autospec/
+	data, err := os.ReadFile(".gitignore")
+	require.NoError(t, err)
+	assert.Contains(t, string(data), ".autospec/")
+}
+
+func TestHandleGitignorePrompt_WithAutospec(t *testing.T) {
 	// Cannot run in parallel due to working directory change
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -453,14 +515,18 @@ func TestCheckGitignore_WithAutospec(t *testing.T) {
 	err = os.WriteFile(".gitignore", []byte(".autospec/\nnode_modules/"), 0644)
 	require.NoError(t, err)
 
+	cmd := &cobra.Command{Use: "test"}
 	var buf bytes.Buffer
-	checkGitignore(&buf)
+	cmd.SetOut(&buf)
 
-	// Should not output recommendation since .autospec is already there
-	assert.Empty(t, buf.String())
+	handleGitignorePrompt(cmd, &buf)
+
+	// Should show already present, no prompt
+	assert.Contains(t, buf.String(), "✓ Gitignore: .autospec/ already present")
+	assert.NotContains(t, buf.String(), "[y/N]")
 }
 
-func TestCheckGitignore_WithoutAutospec(t *testing.T) {
+func TestHandleGitignorePrompt_WithoutAutospec_UserSaysNo(t *testing.T) {
 	// Cannot run in parallel due to working directory change
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -476,12 +542,103 @@ func TestCheckGitignore_WithoutAutospec(t *testing.T) {
 	err = os.WriteFile(".gitignore", []byte("node_modules/\ndist/"), 0644)
 	require.NoError(t, err)
 
+	cmd := &cobra.Command{Use: "test"}
 	var buf bytes.Buffer
-	checkGitignore(&buf)
+	cmd.SetOut(&buf)
+	cmd.SetIn(bytes.NewBufferString("n\n"))
 
-	// Should output recommendation
-	assert.Contains(t, buf.String(), "Recommendation")
-	assert.Contains(t, buf.String(), ".autospec")
+	handleGitignorePrompt(cmd, &buf)
+
+	// Should show skipped
+	assert.Contains(t, buf.String(), "skipped")
+
+	// File should not be modified
+	data, err := os.ReadFile(".gitignore")
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), ".autospec")
+}
+
+func TestHandleGitignorePrompt_WithoutAutospec_UserSaysYes(t *testing.T) {
+	// Cannot run in parallel due to working directory change
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+
+	err = os.Chdir(tmpDir)
+	require.NoError(t, err)
+	defer func() {
+		_ = os.Chdir(origDir)
+	}()
+
+	// Create .gitignore without .autospec entry (no trailing newline)
+	err = os.WriteFile(".gitignore", []byte("node_modules/\ndist/"), 0644)
+	require.NoError(t, err)
+
+	cmd := &cobra.Command{Use: "test"}
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetIn(bytes.NewBufferString("y\n"))
+
+	handleGitignorePrompt(cmd, &buf)
+
+	// Should show checkmark
+	assert.Contains(t, buf.String(), "✓ Gitignore: added .autospec/")
+
+	// File should have .autospec/ appended with proper newline handling
+	data, err := os.ReadFile(".gitignore")
+	require.NoError(t, err)
+	assert.Contains(t, string(data), ".autospec/")
+	// Original content should be preserved
+	assert.Contains(t, string(data), "node_modules/")
+	assert.Contains(t, string(data), "dist/")
+}
+
+func TestAddAutospecToGitignore_NewFile(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+
+	err := addAutospecToGitignore(gitignorePath)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(gitignorePath)
+	require.NoError(t, err)
+	assert.Equal(t, ".autospec/\n", string(data))
+}
+
+func TestAddAutospecToGitignore_ExistingWithNewline(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+
+	err := os.WriteFile(gitignorePath, []byte("node_modules/\n"), 0644)
+	require.NoError(t, err)
+
+	err = addAutospecToGitignore(gitignorePath)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(gitignorePath)
+	require.NoError(t, err)
+	assert.Equal(t, "node_modules/\n.autospec/\n", string(data))
+}
+
+func TestAddAutospecToGitignore_ExistingWithoutNewline(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+
+	err := os.WriteFile(gitignorePath, []byte("node_modules/"), 0644)
+	require.NoError(t, err)
+
+	err = addAutospecToGitignore(gitignorePath)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(gitignorePath)
+	require.NoError(t, err)
+	assert.Equal(t, "node_modules/\n.autospec/\n", string(data))
 }
 
 func TestPrintSummary_WithConstitution(t *testing.T) {

@@ -90,7 +90,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	constitutionExists := handleConstitution(out)
-	checkGitignore(out)
+	handleGitignorePrompt(cmd, out)
 
 	// If no constitution, prompt user to create one
 	if !constitutionExists {
@@ -752,31 +752,66 @@ func copyConstitution(src, dst string) error {
 	return nil
 }
 
-// checkGitignore checks if .gitignore exists and contains .autospec entry.
-// If not, prints a recommendation to add it.
-func checkGitignore(out io.Writer) {
-	gitignorePath := ".gitignore"
-
-	data, err := os.ReadFile(gitignorePath)
-	if err != nil {
-		// .gitignore doesn't exist - no recommendation needed
-		return
-	}
-
-	content := string(data)
-	// Check for .autospec or .autospec/ in the file
+// gitignoreHasAutospec checks if .gitignore contains .autospec entry.
+func gitignoreHasAutospec(content string) bool {
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == ".autospec" || line == ".autospec/" || strings.HasPrefix(line, ".autospec/") {
-			// Already has .autospec entry
-			return
+			return true
+		}
+	}
+	return false
+}
+
+// addAutospecToGitignore appends .autospec/ to the gitignore file.
+// Creates the file if it doesn't exist.
+func addAutospecToGitignore(gitignorePath string) error {
+	var content string
+	data, err := os.ReadFile(gitignorePath)
+	if err == nil {
+		content = string(data)
+		// Ensure there's a newline before our entry
+		if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+			content += "\n"
 		}
 	}
 
-	// .gitignore exists but doesn't have .autospec
-	fmt.Fprintf(out, "\n💡 Recommendation: Consider adding .autospec/ to your .gitignore\n")
-	fmt.Fprintf(out, "   This prevents accidental commit of local configuration and state files.\n")
+	content += ".autospec/\n"
+	if err := os.WriteFile(gitignorePath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("writing .gitignore: %w", err)
+	}
+	return nil
+}
+
+// handleGitignorePrompt checks if .autospec/ is in .gitignore and prompts to add it.
+// For shared/public/company repos, recommends adding it; personal projects can skip.
+func handleGitignorePrompt(cmd *cobra.Command, out io.Writer) {
+	gitignorePath := ".gitignore"
+
+	data, err := os.ReadFile(gitignorePath)
+	if err == nil {
+		// .gitignore exists - check if .autospec is already there
+		if gitignoreHasAutospec(string(data)) {
+			fmt.Fprintf(out, "✓ Gitignore: .autospec/ already present\n")
+			return
+		}
+	}
+	// Either .gitignore doesn't exist or doesn't have .autospec/
+
+	fmt.Fprintf(out, "\n💡 Add .autospec/ to .gitignore?\n")
+	fmt.Fprintf(out, "   → Recommended for shared/public/company repos (prevents config conflicts)\n")
+	fmt.Fprintf(out, "   → Personal projects can keep .autospec/ tracked for backup\n")
+
+	if promptYesNo(cmd, "Add .autospec/ to .gitignore?") {
+		if err := addAutospecToGitignore(gitignorePath); err != nil {
+			fmt.Fprintf(out, "⚠ Failed to update .gitignore: %v\n", err)
+			return
+		}
+		fmt.Fprintf(out, "✓ Gitignore: added .autospec/\n")
+	} else {
+		fmt.Fprintf(out, "⏭ Gitignore: skipped\n")
+	}
 }
 
 func printSummary(out io.Writer, constitutionExists bool) {
