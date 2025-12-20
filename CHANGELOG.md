@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dark mode support for GitHub Pages documentation site
 - `init` command now prompts to enable Claude sandbox with required write paths for improved security
 - `init` command shows recommended full automation setup with cclean post_processor and --dangerously-skip-permissions disclaimer on first run
-- Native cclean integration for automatic stream-json output formatting with `--output-style` flag and `output_style` config option
+- Native cclean (claude-clean) library integration as internal dependency for beautiful Claude JSONL output parsing with `--output-style` flag and `output_style` config option
 
 ### Changed
 - `init` agent selection now uses interactive arrow-key navigation with space to toggle (replaces number input)
