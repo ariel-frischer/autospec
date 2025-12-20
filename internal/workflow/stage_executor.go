@@ -220,7 +220,7 @@ func (s *StageExecutor) ExecuteConstitution(prompt string) error {
 		return fmt.Errorf("constitution failed: %w", err)
 	}
 
-	fmt.Println("\n✓ Constitution updated!")
+	fmt.Println("\n✓ Constitution created at .autospec/memory/constitution.yaml")
 	return nil
 }
 

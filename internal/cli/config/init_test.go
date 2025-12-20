@@ -642,23 +642,36 @@ func TestAddAutospecToGitignore_ExistingWithoutNewline(t *testing.T) {
 }
 
 func TestPrintSummary_WithConstitution(t *testing.T) {
+	t.Parallel()
 
 	var buf bytes.Buffer
-	printSummary(&buf, true)
+	printSummary(&buf, true, "specs")
 
 	output := buf.String()
 	assert.Contains(t, output, "Quick start")
+	assert.Contains(t, output, "Review the generated spec in specs/")
 	assert.NotContains(t, output, "IMPORTANT: You MUST create a constitution")
 }
 
 func TestPrintSummary_WithoutConstitution(t *testing.T) {
+	t.Parallel()
 
 	var buf bytes.Buffer
-	printSummary(&buf, false)
+	printSummary(&buf, false, "specs")
 
 	output := buf.String()
 	assert.Contains(t, output, "IMPORTANT: You MUST create a constitution")
 	assert.Contains(t, output, "autospec constitution")
+}
+
+func TestPrintSummary_CustomSpecsDir(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	printSummary(&buf, true, "my-specs")
+
+	output := buf.String()
+	assert.Contains(t, output, "Review the generated spec in my-specs/")
 }
 
 func TestInitCmd_RunE(t *testing.T) {

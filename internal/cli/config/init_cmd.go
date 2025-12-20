@@ -117,7 +117,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(out, "✓ Worktree setup script: already exists at %s\n", worktreeScriptPath)
 	}
 
-	printSummary(out, constitutionExists)
+	// Load config to get specsDir for summary
+	configPath, _ := getConfigPath(project)
+	cfg, _ := config.Load(configPath)
+	specsDir := "specs"
+	if cfg != nil && cfg.SpecsDir != "" {
+		specsDir = cfg.SpecsDir
+	}
+
+	printSummary(out, constitutionExists, specsDir)
 	return nil
 }
 
@@ -642,7 +650,6 @@ func runConstitutionFromInitImpl(cmd *cobra.Command, configPath string) bool {
 		return false
 	}
 
-	fmt.Fprintf(out, "\n✓ Constitution created successfully\n")
 	return true
 }
 
@@ -818,7 +825,7 @@ func handleGitignorePrompt(cmd *cobra.Command, out io.Writer) {
 	}
 }
 
-func printSummary(out io.Writer, constitutionExists bool) {
+func printSummary(out io.Writer, constitutionExists bool, specsDir string) {
 	fmt.Fprintf(out, "\n")
 
 	if !constitutionExists {
@@ -831,9 +838,8 @@ func printSummary(out io.Writer, constitutionExists bool) {
 
 	fmt.Fprintf(out, "Quick start:\n")
 	fmt.Fprintf(out, "  1. autospec specify \"Add user authentication\"\n")
-	fmt.Fprintf(out, "  2. Review the generated spec\n")
-	fmt.Fprintf(out, "  # -pti is short for --plan --tasks --implement\n")
-	fmt.Fprintf(out, "  3. autospec run -pti\n")
+	fmt.Fprintf(out, "  2. Review the generated spec in %s/\n", specsDir)
+	fmt.Fprintf(out, "  3. autospec run -pti  # -pti is short for --plan --tasks --implement\n")
 	fmt.Fprintf(out, "\n")
 	fmt.Fprintf(out, "Or run all steps at once (specify → plan → tasks → implement):\n")
 	fmt.Fprintf(out, "  autospec all \"Add user authentication\"\n")
