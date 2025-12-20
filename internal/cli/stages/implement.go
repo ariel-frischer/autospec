@@ -109,6 +109,37 @@ The --tasks mode provides maximum context isolation:
 		// Get single-session flag
 		singleSession, _ := cmd.Flags().GetBool("single-session")
 
+		// Get parallel execution flags
+		parallelMode, _ := cmd.Flags().GetBool("parallel")
+		maxParallel, _ := cmd.Flags().GetInt("max-parallel")
+		useWorktrees, _ := cmd.Flags().GetBool("worktrees")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		skipConfirmation, _ := cmd.Flags().GetBool("yes")
+
+		// Validate parallel flag values
+		if maxParallel <= 0 {
+			cliErr := clierrors.NewArgumentError("--max-parallel must be a positive integer")
+			clierrors.PrintError(cliErr)
+			return cliErr
+		}
+		if maxParallel > 8 {
+			fmt.Fprintf(os.Stderr, "Warning: --max-parallel=%d may cause resource contention; recommended max is 8\n", maxParallel)
+		}
+
+		// Validate --dry-run requires --parallel
+		if dryRun && !parallelMode {
+			cliErr := clierrors.NewArgumentError("--dry-run requires --parallel flag")
+			clierrors.PrintError(cliErr)
+			return cliErr
+		}
+
+		// Validate --worktrees requires --parallel
+		if useWorktrees && !parallelMode {
+			cliErr := clierrors.NewArgumentError("--worktrees requires --parallel flag")
+			clierrors.PrintError(cliErr)
+			return cliErr
+		}
+
 		// Validate phase flag values
 		if singlePhase < 0 {
 			cliErr := clierrors.NewArgumentError("--phase must be a positive integer")
@@ -150,7 +181,8 @@ The --tasks mode provides maximum context isolation:
 			cmd.Flags().Changed("phase") ||
 			cmd.Flags().Changed("from-phase") ||
 			cmd.Flags().Changed("from-task") ||
-			cmd.Flags().Changed("single-session")
+			cmd.Flags().Changed("single-session") ||
+			cmd.Flags().Changed("parallel")
 
 		execMode := ResolveExecutionMode(
 			ExecutionModeFlags{
@@ -160,12 +192,22 @@ The --tasks mode provides maximum context isolation:
 				PhaseFlag:         singlePhase,
 				FromPhaseFlag:     fromPhase,
 				FromTaskFlag:      fromTask,
+				ParallelFlag:      parallelMode,
+				MaxParallelFlag:   maxParallel,
+				WorktreesFlag:     useWorktrees,
+				DryRunFlag:        dryRun,
+				YesFlag:           skipConfirmation,
 			},
 			anyFlagsChanged,
 			cfg.ImplementMethod,
 		)
 		runAllPhases = execMode.RunAllPhases
 		taskMode = execMode.TaskMode
+		parallelMode = execMode.ParallelMode
+		maxParallel = execMode.MaxParallel
+		useWorktrees = execMode.UseWorktrees
+		dryRun = execMode.DryRun
+		skipConfirmation = execMode.SkipConfirmation
 
 		// Check if constitution exists (required for implement)
 		constitutionCheck := workflow.CheckConstitutionExists()
@@ -202,11 +244,16 @@ The --tasks mode provides maximum context isolation:
 
 			// Build phase execution options
 			phaseOpts := workflow.PhaseExecutionOptions{
-				RunAllPhases: runAllPhases,
-				SinglePhase:  singlePhase,
-				FromPhase:    fromPhase,
-				TaskMode:     taskMode,
-				FromTask:     fromTask,
+				RunAllPhases:     runAllPhases,
+				SinglePhase:      singlePhase,
+				FromPhase:        fromPhase,
+				TaskMode:         taskMode,
+				FromTask:         fromTask,
+				ParallelMode:     parallelMode,
+				MaxParallel:      maxParallel,
+				UseWorktrees:     useWorktrees,
+				DryRun:           dryRun,
+				SkipConfirmation: skipConfirmation,
 			}
 
 			// Execute implement stage with optional prompt and phase options
@@ -249,26 +296,53 @@ type ExecutionModeFlags struct {
 	PhaseFlag         int
 	FromPhaseFlag     int
 	FromTaskFlag      string
+	ParallelFlag      bool
+	MaxParallelFlag   int
+	WorktreesFlag     bool
+	DryRunFlag        bool
+	YesFlag           bool
 }
 
 // ExecutionModeResult holds the resolved execution mode
 type ExecutionModeResult struct {
-	RunAllPhases bool
-	TaskMode     bool
-	SinglePhase  int
-	FromPhase    int
-	FromTask     string
+	RunAllPhases     bool
+	TaskMode         bool
+	SinglePhase      int
+	FromPhase        int
+	FromTask         string
+	ParallelMode     bool
+	MaxParallel      int
+	UseWorktrees     bool
+	DryRun           bool
+	SkipConfirmation bool
 }
 
 // ResolveExecutionMode determines the execution mode based on CLI flags and config.
 // CLI flags take precedence over config settings. Exported for testing.
 func ResolveExecutionMode(flags ExecutionModeFlags, flagsChanged bool, configMethod string) ExecutionModeResult {
 	result := ExecutionModeResult{
-		RunAllPhases: flags.PhasesFlag,
-		TaskMode:     flags.TasksFlag,
-		SinglePhase:  flags.PhaseFlag,
-		FromPhase:    flags.FromPhaseFlag,
-		FromTask:     flags.FromTaskFlag,
+		RunAllPhases:     flags.PhasesFlag,
+		TaskMode:         flags.TasksFlag,
+		SinglePhase:      flags.PhaseFlag,
+		FromPhase:        flags.FromPhaseFlag,
+		FromTask:         flags.FromTaskFlag,
+		ParallelMode:     flags.ParallelFlag,
+		MaxParallel:      flags.MaxParallelFlag,
+		UseWorktrees:     flags.WorktreesFlag,
+		DryRun:           flags.DryRunFlag,
+		SkipConfirmation: flags.YesFlag,
+	}
+
+	// Default max-parallel to 4 if not set
+	if result.MaxParallel == 0 {
+		result.MaxParallel = 4
+	}
+
+	// If --parallel flag is set, it takes precedence over other modes
+	if flags.ParallelFlag {
+		result.RunAllPhases = false
+		result.TaskMode = false
+		return result
 	}
 
 	// If --single-session flag is explicitly set, ensure phase/task modes are disabled
@@ -285,6 +359,8 @@ func ResolveExecutionMode(flags ExecutionModeFlags, flagsChanged bool, configMet
 			result.RunAllPhases = true
 		case "tasks":
 			result.TaskMode = true
+		case "parallel":
+			result.ParallelMode = true
 		case "single-session":
 			// Legacy behavior: no phase/task mode (default state)
 		}
@@ -326,6 +402,20 @@ func init() {
 	implementCmd.MarkFlagsMutuallyExclusive("single-session", "phase")
 	implementCmd.MarkFlagsMutuallyExclusive("single-session", "from-phase")
 	implementCmd.MarkFlagsMutuallyExclusive("single-session", "tasks")
+
+	// Parallel execution flags
+	implementCmd.Flags().Bool("parallel", false, "Execute independent tasks concurrently using DAG-based wave scheduling")
+	implementCmd.Flags().Int("max-parallel", 4, "Maximum concurrent Claude sessions when using --parallel")
+	implementCmd.Flags().Bool("worktrees", false, "Use git worktrees for isolation when running in parallel")
+	implementCmd.Flags().Bool("dry-run", false, "Preview execution plan without running (requires --parallel)")
+	implementCmd.Flags().Bool("yes", false, "Bypass confirmation prompts (e.g., worktree isolation warning)")
+
+	// Mark parallel as mutually exclusive with other execution modes
+	implementCmd.MarkFlagsMutuallyExclusive("parallel", "tasks")
+	implementCmd.MarkFlagsMutuallyExclusive("parallel", "phases")
+	implementCmd.MarkFlagsMutuallyExclusive("parallel", "phase")
+	implementCmd.MarkFlagsMutuallyExclusive("parallel", "from-phase")
+	implementCmd.MarkFlagsMutuallyExclusive("parallel", "single-session")
 
 	// Agent override flag
 	shared.AddAgentFlag(implementCmd)

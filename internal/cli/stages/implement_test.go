@@ -125,6 +125,8 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				ParallelMode: false,
+				MaxParallel:  4, // Default value
 			},
 		},
 		"phases flag set": {
@@ -139,6 +141,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"tasks flag set": {
@@ -153,6 +156,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"single-session flag disables phase mode": {
@@ -168,6 +172,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"single-session flag disables task mode": {
@@ -183,6 +188,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"config phases method applied when no flags": {
@@ -195,6 +201,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"config tasks method applied when no flags": {
@@ -207,6 +214,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"config single-session method applied when no flags": {
@@ -219,6 +227,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"flag overrides config - phases flag vs tasks config": {
@@ -233,6 +242,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"flag overrides config - tasks flag vs phases config": {
@@ -247,6 +257,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"phase flag with value": {
@@ -261,6 +272,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  3,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"from-phase flag with value": {
@@ -275,6 +287,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    2,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"from-task flag with value": {
@@ -289,6 +302,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "T003",
+				MaxParallel:  4,
 			},
 		},
 		"tasks mode with from-task": {
@@ -304,6 +318,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "T005",
+				MaxParallel:  4,
 			},
 		},
 		"unknown config method ignored": {
@@ -316,6 +331,7 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
 			},
 		},
 		"flagsChanged true but no flags set - no config applied": {
@@ -328,6 +344,65 @@ func TestResolveExecutionMode(t *testing.T) {
 				SinglePhase:  0,
 				FromPhase:    0,
 				FromTask:     "",
+				MaxParallel:  4,
+			},
+		},
+		"parallel flag set": {
+			flags: ExecutionModeFlags{
+				ParallelFlag:    true,
+				MaxParallelFlag: 6,
+			},
+			flagsChanged: true,
+			configMethod: "",
+			want: ExecutionModeResult{
+				RunAllPhases: false,
+				TaskMode:     false,
+				SinglePhase:  0,
+				FromPhase:    0,
+				FromTask:     "",
+				ParallelMode: true,
+				MaxParallel:  6,
+			},
+		},
+		"parallel flag disables phases mode": {
+			flags: ExecutionModeFlags{
+				ParallelFlag: true,
+				PhasesFlag:   true,
+			},
+			flagsChanged: true,
+			configMethod: "",
+			want: ExecutionModeResult{
+				RunAllPhases: false,
+				TaskMode:     false,
+				ParallelMode: true,
+				MaxParallel:  4,
+			},
+		},
+		"parallel flag with worktrees and dry-run": {
+			flags: ExecutionModeFlags{
+				ParallelFlag:    true,
+				MaxParallelFlag: 2,
+				WorktreesFlag:   true,
+				DryRunFlag:      true,
+				YesFlag:         true,
+			},
+			flagsChanged: true,
+			configMethod: "",
+			want: ExecutionModeResult{
+				ParallelMode:     true,
+				MaxParallel:      2,
+				UseWorktrees:     true,
+				DryRun:           true,
+				SkipConfirmation: true,
+			},
+		},
+		"config parallel method applied when no flags": {
+			flags:        ExecutionModeFlags{},
+			flagsChanged: false,
+			configMethod: "parallel",
+			want: ExecutionModeResult{
+				ParallelMode: true,
+				MaxParallel:  4,
 			},
 		},
 	}
@@ -342,6 +417,11 @@ func TestResolveExecutionMode(t *testing.T) {
 			assert.Equal(t, tt.want.SinglePhase, got.SinglePhase, "SinglePhase mismatch")
 			assert.Equal(t, tt.want.FromPhase, got.FromPhase, "FromPhase mismatch")
 			assert.Equal(t, tt.want.FromTask, got.FromTask, "FromTask mismatch")
+			assert.Equal(t, tt.want.ParallelMode, got.ParallelMode, "ParallelMode mismatch")
+			assert.Equal(t, tt.want.MaxParallel, got.MaxParallel, "MaxParallel mismatch")
+			assert.Equal(t, tt.want.UseWorktrees, got.UseWorktrees, "UseWorktrees mismatch")
+			assert.Equal(t, tt.want.DryRun, got.DryRun, "DryRun mismatch")
+			assert.Equal(t, tt.want.SkipConfirmation, got.SkipConfirmation, "SkipConfirmation mismatch")
 		})
 	}
 }
@@ -437,6 +517,11 @@ func TestExecutionModeFlags_ZeroValue(t *testing.T) {
 	assert.Equal(t, 0, flags.PhaseFlag)
 	assert.Equal(t, 0, flags.FromPhaseFlag)
 	assert.Empty(t, flags.FromTaskFlag)
+	assert.False(t, flags.ParallelFlag)
+	assert.Equal(t, 0, flags.MaxParallelFlag)
+	assert.False(t, flags.WorktreesFlag)
+	assert.False(t, flags.DryRunFlag)
+	assert.False(t, flags.YesFlag)
 }
 
 func TestExecutionModeResult_ZeroValue(t *testing.T) {
@@ -450,6 +535,11 @@ func TestExecutionModeResult_ZeroValue(t *testing.T) {
 	assert.Equal(t, 0, result.SinglePhase)
 	assert.Equal(t, 0, result.FromPhase)
 	assert.Empty(t, result.FromTask)
+	assert.False(t, result.ParallelMode)
+	assert.Equal(t, 0, result.MaxParallel)
+	assert.False(t, result.UseWorktrees)
+	assert.False(t, result.DryRun)
+	assert.False(t, result.SkipConfirmation)
 }
 
 func TestImplementCmd_FlagDefaults(t *testing.T) {
@@ -502,6 +592,31 @@ func TestImplementCmd_FlagDefaults(t *testing.T) {
 			wantIntVal: 0,
 			checkType:  "int",
 		},
+		"parallel default false": {
+			flagName:    "parallel",
+			wantBoolVal: false,
+			checkType:   "bool",
+		},
+		"max-parallel default 4": {
+			flagName:   "max-parallel",
+			wantIntVal: 4,
+			checkType:  "int-custom",
+		},
+		"worktrees default false": {
+			flagName:    "worktrees",
+			wantBoolVal: false,
+			checkType:   "bool",
+		},
+		"dry-run default false": {
+			flagName:    "dry-run",
+			wantBoolVal: false,
+			checkType:   "bool",
+		},
+		"yes default false": {
+			flagName:    "yes",
+			wantBoolVal: false,
+			checkType:   "bool",
+		},
 	}
 
 	for name, tt := range tests {
@@ -516,6 +631,8 @@ func TestImplementCmd_FlagDefaults(t *testing.T) {
 				assert.Equal(t, "false", flag.DefValue, "default value for %s", tt.flagName)
 			case "int":
 				assert.Equal(t, "0", flag.DefValue, "default value for %s", tt.flagName)
+			case "int-custom":
+				assert.Equal(t, "4", flag.DefValue, "default value for %s", tt.flagName)
 			case "string":
 				assert.Equal(t, tt.wantDefault, flag.DefValue, "default value for %s", tt.flagName)
 			}
@@ -702,6 +819,13 @@ func TestImplementCmd_MutuallyExclusiveFlagsRegistered(t *testing.T) {
 
 	singleSessionFlag := implementCmd.Flags().Lookup("single-session")
 	assert.NotNil(t, singleSessionFlag, "single-session flag should exist")
+
+	// Check parallel execution flags exist
+	parallelFlags := []string{"parallel", "max-parallel", "worktrees", "dry-run", "yes"}
+	for _, flagName := range parallelFlags {
+		flag := implementCmd.Flags().Lookup(flagName)
+		assert.NotNil(t, flag, "flag %s should exist", flagName)
+	}
 }
 
 func TestExecutionModeFlags_AllFieldsAccessible(t *testing.T) {
@@ -715,6 +839,11 @@ func TestExecutionModeFlags_AllFieldsAccessible(t *testing.T) {
 		PhaseFlag:         5,
 		FromPhaseFlag:     3,
 		FromTaskFlag:      "T007",
+		ParallelFlag:      true,
+		MaxParallelFlag:   8,
+		WorktreesFlag:     true,
+		DryRunFlag:        true,
+		YesFlag:           true,
 	}
 
 	assert.True(t, flags.PhasesFlag)
@@ -723,6 +852,11 @@ func TestExecutionModeFlags_AllFieldsAccessible(t *testing.T) {
 	assert.Equal(t, 5, flags.PhaseFlag)
 	assert.Equal(t, 3, flags.FromPhaseFlag)
 	assert.Equal(t, "T007", flags.FromTaskFlag)
+	assert.True(t, flags.ParallelFlag)
+	assert.Equal(t, 8, flags.MaxParallelFlag)
+	assert.True(t, flags.WorktreesFlag)
+	assert.True(t, flags.DryRunFlag)
+	assert.True(t, flags.YesFlag)
 }
 
 func TestExecutionModeResult_AllFieldsAccessible(t *testing.T) {
@@ -730,11 +864,16 @@ func TestExecutionModeResult_AllFieldsAccessible(t *testing.T) {
 
 	// Test that all fields can be set and accessed correctly
 	result := ExecutionModeResult{
-		RunAllPhases: true,
-		TaskMode:     true,
-		SinglePhase:  2,
-		FromPhase:    1,
-		FromTask:     "T003",
+		RunAllPhases:     true,
+		TaskMode:         true,
+		SinglePhase:      2,
+		FromPhase:        1,
+		FromTask:         "T003",
+		ParallelMode:     true,
+		MaxParallel:      6,
+		UseWorktrees:     true,
+		DryRun:           true,
+		SkipConfirmation: true,
 	}
 
 	assert.True(t, result.RunAllPhases)
@@ -742,6 +881,11 @@ func TestExecutionModeResult_AllFieldsAccessible(t *testing.T) {
 	assert.Equal(t, 2, result.SinglePhase)
 	assert.Equal(t, 1, result.FromPhase)
 	assert.Equal(t, "T003", result.FromTask)
+	assert.True(t, result.ParallelMode)
+	assert.Equal(t, 6, result.MaxParallel)
+	assert.True(t, result.UseWorktrees)
+	assert.True(t, result.DryRun)
+	assert.True(t, result.SkipConfirmation)
 }
 
 func TestResolveExecutionMode_FlagsOverrideConfig(t *testing.T) {

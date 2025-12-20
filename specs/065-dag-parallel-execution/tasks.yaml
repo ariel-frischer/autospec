@@ -177,7 +177,7 @@ phases:
             - "Functions under 40 lines"
         - id: "T012"
           title: "Implement autospec dag subcommand in internal/cli/util/dag.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -191,7 +191,7 @@ phases:
             - "Registered in root command"
         - id: "T013"
           title: "Write tests for ASCII visualization in internal/dag/visualize_test.go"
-          status: "InProgress"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-002"
@@ -204,7 +204,7 @@ phases:
             - "Verifies ASCII characters only (no Unicode)"
         - id: "T014"
           title: "Write tests for dag command in internal/cli/util/dag_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-002"
@@ -223,7 +223,7 @@ phases:
       tasks:
         - id: "T015"
           title: "Add --parallel and --max-parallel flags to implement command"
-          status: "Pending"
+          status: "InProgress"
           type: "implementation"
           parallel: false
           story_id: "US-003"

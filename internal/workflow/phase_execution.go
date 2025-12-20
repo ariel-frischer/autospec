@@ -14,6 +14,8 @@ const (
 	ModeFromPhase
 	// ModeAllTasks executes each task in a separate Claude session
 	ModeAllTasks
+	// ModeParallel executes independent tasks concurrently using DAG-based wave scheduling
+	ModeParallel
 )
 
 // PhaseExecutionOptions contains configuration for phase-based execution
@@ -28,10 +30,23 @@ type PhaseExecutionOptions struct {
 	TaskMode bool
 	// FromTask is the task ID to start from (--from-task TXXX, empty = not set)
 	FromTask string
+	// ParallelMode indicates --parallel flag was set (DAG-based concurrent execution)
+	ParallelMode bool
+	// MaxParallel is the maximum number of concurrent Claude sessions (default 4)
+	MaxParallel int
+	// UseWorktrees indicates --worktrees flag was set (git worktree isolation)
+	UseWorktrees bool
+	// DryRun indicates --dry-run flag was set (preview execution plan only)
+	DryRun bool
+	// SkipConfirmation indicates --yes flag was set (bypass confirmation prompts)
+	SkipConfirmation bool
 }
 
 // Mode determines the execution mode from the options
 func (o *PhaseExecutionOptions) Mode() PhaseExecutionMode {
+	if o.ParallelMode {
+		return ModeParallel
+	}
 	if o.TaskMode {
 		return ModeAllTasks
 	}
