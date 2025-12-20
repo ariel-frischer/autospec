@@ -13,6 +13,8 @@ type Claude struct {
 }
 
 // NewClaude creates a new Claude Code agent.
+// Note: ANTHROPIC_API_KEY is optional - Claude works with subscription (Pro/Max) when not set.
+// The use_subscription config option (default: true) forces subscription mode by clearing any API key.
 func NewClaude() *Claude {
 	return &Claude{
 		BaseAgent: BaseAgent{
@@ -26,8 +28,8 @@ func NewClaude() *Claude {
 					Flag:   "-p",
 				},
 				AutonomousFlag: "--dangerously-skip-permissions",
-				RequiredEnv:    []string{"ANTHROPIC_API_KEY"},
-				OptionalEnv:    []string{"CLAUDE_MODEL"},
+				RequiredEnv:    []string{}, // No required env - works with subscription or API
+				OptionalEnv:    []string{"ANTHROPIC_API_KEY", "CLAUDE_MODEL"},
 			},
 		},
 	}

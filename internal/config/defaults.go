@@ -32,6 +32,7 @@ func GetDefaultConfigTemplate() string {
 
 # Agent settings
 agent_preset: ""                      # Built-in agent: claude | gemini | cline | codex | opencode | goose
+use_subscription: true                # Force subscription mode (no API charges); set false to use API key
 
 # Workflow settings
 max_retries: 0                        # Max retry attempts per stage (0-10)
@@ -82,8 +83,9 @@ notifications:
 func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
 		// Agent configuration
-		"agent_preset":       "",
-		"max_retries":        0,
+		"agent_preset":      "",
+		"use_subscription":  true, // Protect users from accidental API charges
+		"max_retries":       0,
 		"specs_dir":          "./specs",
 		"state_dir":          "~/.autospec/state",
 		"skip_preflight":     false,

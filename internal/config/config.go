@@ -52,6 +52,13 @@ type Configuration struct {
 	//     post_processor: "cclean"
 	CustomAgent *cliagent.CustomAgentConfig `koanf:"custom_agent"`
 
+	// UseSubscription forces Claude to use subscription (Pro/Max) instead of API credits.
+	// When true, ANTHROPIC_API_KEY is set to empty string at execution time,
+	// and validation is skipped for this environment variable.
+	// Default: true (protects users from accidental API charges).
+	// Can be set via AUTOSPEC_USE_SUBSCRIPTION env var.
+	UseSubscription bool `koanf:"use_subscription"`
+
 	MaxRetries        int    `koanf:"max_retries"`
 	SpecsDir          string `koanf:"specs_dir"`
 	StateDir          string `koanf:"state_dir"`

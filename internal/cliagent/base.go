@@ -122,6 +122,12 @@ func (b *BaseAgent) buildEnv(opts ExecOptions) []string {
 		}
 	}
 
+	// Force subscription mode: set ANTHROPIC_API_KEY to empty string
+	// This prevents accidental API charges when users have API keys in their shell
+	if opts.UseSubscription {
+		env = append(env, "ANTHROPIC_API_KEY=")
+	}
+
 	// Add user-provided env vars (overrides)
 	for k, v := range opts.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))

@@ -725,15 +725,17 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 	if err != nil {
 		// This should not happen as GetAgent() has defaults, but handle gracefully
 		return &ClaudeExecutor{
-			Timeout:     cfg.Timeout,
-			OutputStyle: outputStyle,
+			Timeout:         cfg.Timeout,
+			OutputStyle:     outputStyle,
+			UseSubscription: cfg.UseSubscription,
 		}
 	}
 
 	return &ClaudeExecutor{
-		Agent:       agent,
-		Timeout:     cfg.Timeout,
-		OutputStyle: outputStyle,
+		Agent:           agent,
+		Timeout:         cfg.Timeout,
+		OutputStyle:     outputStyle,
+		UseSubscription: cfg.UseSubscription,
 	}
 }
 

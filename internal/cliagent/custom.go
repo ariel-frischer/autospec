@@ -176,7 +176,13 @@ func (c *CustomAgent) configureCmd(cmd *exec.Cmd, opts ExecOptions) {
 	// Start with current environment
 	cmd.Env = os.Environ()
 
-	// Add config-level env vars
+	// Force subscription mode: set ANTHROPIC_API_KEY to empty string
+	// This prevents accidental API charges when users have API keys in their shell
+	if opts.UseSubscription {
+		cmd.Env = append(cmd.Env, "ANTHROPIC_API_KEY=")
+	}
+
+	// Add config-level env vars (can override subscription mode if explicitly set)
 	for k, v := range c.config.Env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}

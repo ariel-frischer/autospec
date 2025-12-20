@@ -283,6 +283,50 @@ func TestBaseAgent_BuildCommand_Env(t *testing.T) {
 	}
 }
 
+func TestBaseAgent_BuildCommand_UseSubscription(t *testing.T) {
+	t.Parallel()
+	agent := &BaseAgent{
+		Cmd: "echo",
+		AgentCaps: Caps{
+			PromptDelivery: PromptDelivery{Method: PromptMethodPositional},
+		},
+	}
+
+	t.Run("subscription mode sets empty ANTHROPIC_API_KEY", func(t *testing.T) {
+		t.Parallel()
+		cmd, _ := agent.BuildCommand("test", ExecOptions{UseSubscription: true})
+
+		// When UseSubscription is true, ANTHROPIC_API_KEY= (empty) should be appended
+		// This should be the LAST occurrence (takes precedence over any shell value)
+		found := false
+		for _, e := range cmd.Env {
+			if e == "ANTHROPIC_API_KEY=" {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("env should contain ANTHROPIC_API_KEY= (empty) when UseSubscription is true")
+		}
+	})
+
+	t.Run("subscription mode overrides shell API key", func(t *testing.T) {
+		t.Parallel()
+		cmd, _ := agent.BuildCommand("test", ExecOptions{UseSubscription: true})
+
+		// Count occurrences of ANTHROPIC_API_KEY - the last one should be empty
+		var lastValue string
+		for _, e := range cmd.Env {
+			if strings.HasPrefix(e, "ANTHROPIC_API_KEY=") {
+				lastValue = e
+			}
+		}
+		// The last occurrence should be the empty override
+		if lastValue != "ANTHROPIC_API_KEY=" {
+			t.Errorf("last ANTHROPIC_API_KEY value = %q, want ANTHROPIC_API_KEY= (empty override)", lastValue)
+		}
+	})
+}
+
 func TestBaseAgent_Execute(t *testing.T) {
 	t.Parallel()
 
