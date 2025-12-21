@@ -97,7 +97,7 @@ phases:
       tasks:
         - id: "T006"
           title: "Remove startAsyncUpdateCheck from version command"
-          status: "Pending"
+          status: "Completed"
           type: "refactor"
           parallel: true
           story_id: "US-002"
@@ -110,7 +110,7 @@ phases:
             - "Version output remains unchanged (backward compatible)"
         - id: "T007"
           title: "Update version_test.go to verify no network calls"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-002"
