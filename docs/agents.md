@@ -113,6 +113,17 @@ use_subscription: true
 use_subscription: false
 ```
 
+### Cost Display Note
+
+When using subscription mode (`use_subscription: true`), Claude Code still displays cost information in its output:
+
+```
+Cost: $0.5014
+Tokens: in=2 out=4558 cache_read=284417
+```
+
+**This cost is informational only** — it shows what the tokens *would* cost at API rates, but you are not actually charged this amount. With a subscription (Pro/Max), you pay a flat monthly fee and token usage counts against rate limits, not billing.
+
 ### Using API Mode
 
 If you specifically want to use API billing:

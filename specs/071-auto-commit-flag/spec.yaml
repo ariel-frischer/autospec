@@ -1,0 +1,199 @@
+feature:
+  branch: "071-auto-commit-flag"
+  created: "2025-12-21"
+  status: "Draft"
+  input: "lets add a new configuration option + -- flag to all workflow run commands that injects more instructions into the agent - the instructions will be clear and concise - to create a commit at the end of the session - 1. Run:  2. determine for any untracked files/folders if they should be added to .gitignore - if so add them 3. Git add all files that should be version tracked (dont add tmp files for example, node_modules, etc...) 4. remove any files that were temporary for this session (clean up house) 5. Create a git commit message in conventional commit format."
+
+user_stories:
+  - id: "US-001"
+    title: "Auto-commit changes after workflow completion"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "to have the agent automatically create a clean git commit after completing a workflow session"
+    so_that: "I don't have to manually stage, clean up, and commit changes after each implementation session"
+    why_this_priority: "Core feature that reduces manual post-session work and ensures consistent commit hygiene"
+    independent_test: "Run a workflow command with the auto-commit flag enabled and verify a commit is created with proper conventional commit format"
+    acceptance_scenarios:
+      - given: "A workflow session has completed with uncommitted changes"
+        when: "The auto-commit flag is enabled"
+        then: "The agent creates a git commit with all appropriate files staged and a conventional commit message"
+      - given: "A workflow session completes with the auto-commit flag enabled"
+        when: "There are untracked files that should be ignored (node_modules, tmp files, etc.)"
+        then: "Those files are added to .gitignore before staging"
+      - given: "A workflow session completes with the auto-commit flag enabled"
+        when: "There are temporary session files"
+        then: "Temporary files are cleaned up before committing"
+
+  - id: "US-002"
+    title: "Configure auto-commit behavior in config file"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "to set auto-commit as the default behavior in my configuration"
+    so_that: "I don't have to specify the flag every time I run a workflow command"
+    why_this_priority: "Essential for user convenience - most users will want consistent behavior across sessions"
+    independent_test: "Set auto_commit: true in config, run workflow without flag, verify commit behavior occurs"
+    acceptance_scenarios:
+      - given: "auto_commit is set to true in the project or user config"
+        when: "A workflow command is run without specifying the flag"
+        then: "The auto-commit behavior is applied"
+      - given: "auto_commit is set to true in config"
+        when: "A workflow command is run with --no-auto-commit flag"
+        then: "The auto-commit behavior is disabled for that session"
+
+  - id: "US-003"
+    title: "Smart .gitignore management"
+    priority: "P2"
+    as_a: "developer using autospec"
+    i_want: "the agent to intelligently determine which untracked files should be added to .gitignore"
+    so_that: "common build artifacts, dependencies, and temporary files don't pollute my repository"
+    why_this_priority: "Improves commit quality but can work with reasonable defaults"
+    independent_test: "Create a session that generates node_modules and .tmp files, verify they are added to .gitignore"
+    acceptance_scenarios:
+      - given: "A workflow session has created untracked files"
+        when: "The auto-commit process runs"
+        then: "Common ignorable patterns (node_modules, __pycache__, .tmp, etc.) are identified and added to .gitignore"
+      - given: "Untracked files exist that should be version controlled"
+        when: "The auto-commit process runs"
+        then: "Those files are staged for commit, not ignored"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST add --auto-commit flag to all workflow run commands (specify, plan, tasks, implement, prep, run)"
+      testable: true
+      acceptance_criteria: "Each workflow command accepts --auto-commit flag and processes it correctly"
+    - id: "FR-002"
+      description: "MUST add --no-auto-commit flag to disable auto-commit when enabled by config"
+      testable: true
+      acceptance_criteria: "--no-auto-commit flag overrides config setting when present"
+    - id: "FR-003"
+      description: "MUST add auto_commit configuration option in config.yml (project and user level)"
+      testable: true
+      acceptance_criteria: "Config parser recognizes auto_commit boolean field at both config levels"
+    - id: "FR-004"
+      description: "MUST inject clear instructions into the agent prompt to perform the commit workflow"
+      testable: true
+      acceptance_criteria: "Agent receives instructions covering: .gitignore updates, staging, cleanup, and commit creation"
+    - id: "FR-005"
+      description: "MUST instruct agent to identify and add common ignorable files/folders to .gitignore"
+      testable: true
+      acceptance_criteria: "Instructions include guidance for node_modules, __pycache__, .tmp, build artifacts, IDE files"
+    - id: "FR-006"
+      description: "MUST instruct agent to stage only files appropriate for version control"
+      testable: true
+      acceptance_criteria: "Instructions explicitly exclude temporary files, build outputs, and dependency directories"
+    - id: "FR-007"
+      description: "MUST instruct agent to clean up temporary session files before committing"
+      testable: true
+      acceptance_criteria: "Instructions include step to remove session-specific temporary files"
+    - id: "FR-008"
+      description: "MUST instruct agent to create commit message in conventional commit format"
+      testable: true
+      acceptance_criteria: "Instructions specify conventional commit format: type(scope): description"
+    - id: "FR-009"
+      description: "MUST follow existing config priority: Environment > project config > user config > defaults"
+      testable: true
+      acceptance_criteria: "AUTOSPEC_AUTO_COMMIT env var overrides config file settings"
+    - id: "FR-010"
+      description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
+      testable: true
+      acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "code_quality"
+      description: "All functions must be under 40 lines; extract helpers for complex logic"
+      measurable_target: "No function exceeds 40 lines excluding comments"
+    - id: "NFR-002"
+      category: "code_quality"
+      description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
+      measurable_target: "Zero bare 'return err' statements in new code"
+    - id: "NFR-003"
+      category: "code_quality"
+      description: "Tests must use map-based table-driven pattern with t.Parallel()"
+      measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
+    - id: "NFR-004"
+      category: "code_quality"
+      description: "Accept interfaces, return concrete types"
+      measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
+    - id: "NFR-005"
+      category: "usability"
+      description: "Flag naming must follow existing CLI conventions"
+      measurable_target: "Flag uses kebab-case and follows pattern of existing boolean flags"
+    - id: "NFR-006"
+      category: "reliability"
+      description: "Auto-commit instructions must be idempotent"
+      measurable_target: "Running the commit workflow multiple times produces same result"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Developers can enable auto-commit via flag or config with zero additional manual steps"
+      metric: "Number of manual steps required after workflow completion"
+      target: "Zero manual git operations needed when auto-commit is enabled"
+    - id: "SC-002"
+      description: "Generated commits follow conventional commit format consistently"
+      metric: "Percentage of auto-commits matching conventional commit pattern"
+      target: "100% of auto-commits match pattern: type(scope): description"
+    - id: "SC-003"
+      description: "Common ignorable files are properly excluded from commits"
+      metric: "Percentage of sessions where ignorable files are correctly handled"
+      target: "95% of sessions correctly identify and ignore common patterns"
+
+key_entities:
+  - name: "AutoCommitConfig"
+    description: "Configuration settings for the auto-commit feature"
+    attributes:
+      - "enabled: boolean indicating if auto-commit is active"
+      - "source: where the setting came from (flag, env, project, user, default)"
+  - name: "CommitInstructions"
+    description: "The set of instructions injected into the agent prompt"
+    attributes:
+      - "gitignore_guidance: rules for identifying ignorable files"
+      - "staging_rules: what files to stage for commit"
+      - "cleanup_steps: temporary files to remove"
+      - "commit_format: conventional commit message template"
+
+edge_cases:
+  - scenario: "No changes to commit after workflow completes"
+    expected_behavior: "Agent reports no changes to commit, skips commit creation gracefully"
+  - scenario: "Git repository is in detached HEAD state"
+    expected_behavior: "Agent warns user and skips commit creation to avoid complications"
+  - scenario: ".gitignore file doesn't exist"
+    expected_behavior: "Agent creates .gitignore with identified patterns if needed"
+  - scenario: "Conflict between --auto-commit flag and --no-auto-commit flag"
+    expected_behavior: "CLI rejects command with clear error message about conflicting flags"
+  - scenario: "User has uncommitted changes before workflow starts"
+    expected_behavior: "Auto-commit includes all changes (pre-existing and new) in the commit"
+  - scenario: "Git is not initialized in the working directory"
+    expected_behavior: "Agent skips commit workflow and warns user that git is not available"
+
+assumptions:
+  - "Git is available and the working directory is within a git repository"
+  - "The agent (Claude, Gemini, etc.) can execute git commands as part of its workflow"
+  - "Conventional commit format follows: type(scope): description (feat, fix, docs, style, refactor, test, chore)"
+  - "Common ignorable patterns include: node_modules, __pycache__, .tmp, dist, build, .env.local, .DS_Store, *.log"
+  - "The instructions are appended to the existing agent prompt without modifying core workflow behavior"
+  - "Temporary session files are identifiable by convention or location (e.g., /tmp, .autospec-tmp)"
+
+constraints:
+  - "Must not modify existing command behavior when auto-commit is disabled"
+  - "Must maintain backwards compatibility with existing configs"
+  - "Instructions must be agent-agnostic (work with Claude, Gemini, and other supported agents)"
+  - "Must not interfere with existing git hooks or commit workflows the user may have configured"
+
+out_of_scope:
+  - "Automatic push to remote repository after commit"
+  - "Interactive commit message editing or confirmation prompts"
+  - "Support for non-git version control systems"
+  - "Automatic merge conflict resolution"
+  - "Custom .gitignore pattern configuration beyond common defaults"
+  - "Commit signing (GPG/SSH)"
+  - "Branch management or switching"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec 0.6.1"
+  created: "2025-12-21T19:18:01Z"
+  artifact_type: "spec"
