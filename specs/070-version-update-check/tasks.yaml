@@ -1,0 +1,342 @@
+tasks:
+    branch: "070-version-update-check"
+    created: "2025-12-21"
+    spec_path: "specs/070-version-update-check/spec.yaml"
+    plan_path: "specs/070-version-update-check/plan.yaml"
+summary:
+    total_tasks: 18
+    total_phases: 6
+    parallel_opportunities: 5
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create new internal/update package structure"
+      tasks:
+        - id: "T001"
+          title: "Create internal/update package directory structure"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/update/"
+          dependencies: []
+          acceptance_criteria:
+            - "Directory internal/update/ exists"
+            - "Package can be imported by other internal packages"
+    - number: 2
+      title: "Foundational - Version Parsing"
+      purpose: "Core semantic version comparison infrastructure required by all user stories"
+      tasks:
+        - id: "T002"
+          title: "Implement semantic version parsing and comparison in internal/update/version.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/update/version.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "ParseVersion() parses 'v0.6.1' format correctly"
+            - "CompareVersions() returns -1, 0, 1 for less, equal, greater"
+            - "Handles 'dev' version as special case (never needs update)"
+            - "Functions are under 40 lines each"
+            - "All errors wrapped with context"
+        - id: "T003"
+          title: "Add unit tests for version parsing in internal/update/version_test.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/update/version_test.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "Map-based table-driven tests with t.Parallel()"
+            - "Tests cover valid versions, invalid versions, dev builds"
+            - "Tests cover comparison edge cases (same major, different minor, etc.)"
+    - number: 3
+      title: "User Story 1 - Check for available updates via version command"
+      purpose: "Enable users to see update availability when running autospec version"
+      story_reference: "US-001"
+      independent_test: "Run 'autospec version' and verify update availability is displayed when a newer version exists on GitHub"
+      tasks:
+        - id: "T004"
+          title: "Implement GitHub API client for fetching release info in internal/update/check.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/update/check.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "CheckForUpdate() fetches latest release from GitHub API"
+            - "Parses tag_name and assets from JSON response"
+            - "Returns UpdateCheck struct with CurrentVersion, LatestVersion, UpdateAvailable"
+            - "Handles 403 (rate limit) and 404 (no releases) gracefully"
+            - "Uses configurable HTTP timeout (default 5 seconds)"
+            - "Functions under 40 lines each"
+        - id: "T005"
+          title: "Add unit tests for GitHub API client in internal/update/check_test.go"
+          status: "InProgress"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/update/check_test.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Map-based table-driven tests with t.Parallel()"
+            - "Uses httptest for mock HTTP responses"
+            - "Tests successful response parsing"
+            - "Tests error handling (rate limit, no releases, network error)"
+            - "Tests timeout behavior"
+        - id: "T006"
+          title: "Enhance version command with async update check in internal/cli/util/version.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/version.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "Version info displays immediately without waiting for network"
+            - "Update check runs in goroutine with channel-based result"
+            - "Select with short timeout (500ms) prevents blocking"
+            - "Displays update notification if newer version available"
+            - "Silently skips update notification on network failure"
+            - "Handles 'dev' version by skipping update check"
+        - id: "T007"
+          title: "Add tests for enhanced version command in internal/cli/util/version_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/version_test.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Tests version output format with update available"
+            - "Tests version output format without update available"
+            - "Tests async behavior with simulated slow network"
+            - "Tests graceful handling of network failures"
+    - number: 4
+      title: "User Story 2 - Update autospec to latest version"
+      purpose: "Enable users to run a single command to update autospec to the latest version"
+      story_reference: "US-002"
+      independent_test: "Run 'autospec update' and verify the binary is updated to the latest GitHub release version"
+      tasks:
+        - id: "T008"
+          title: "Implement binary download with progress in internal/update/download.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/update/download.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "DownloadBinary() downloads tar.gz from GitHub release URL"
+            - "Displays download progress (bytes downloaded / total bytes)"
+            - "Streams to temp file to avoid memory issues"
+            - "Extracts binary from tar.gz archive"
+            - "Functions under 40 lines each"
+        - id: "T009"
+          title: "Implement checksum verification in internal/update/download.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/update/download.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "FetchChecksum() downloads checksums.txt from release"
+            - "ParseChecksum() extracts SHA256 for specific asset name"
+            - "VerifyChecksum() computes SHA256 of downloaded file and compares"
+            - "Returns clear error if checksum mismatch"
+        - id: "T010"
+          title: "Implement binary installation with backup in internal/update/install.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/update/install.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "GetExecutablePath() returns current binary location"
+            - "CreateBackup() renames current binary to .bak extension"
+            - "InstallBinary() atomically moves new binary into place"
+            - "SetPermissions() ensures binary is executable"
+            - "Rollback() restores backup if installation fails"
+            - "Functions under 40 lines each"
+        - id: "T011"
+          title: "Add tests for download and install in internal/update/download_test.go and install_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/update/download_test.go"
+          dependencies: ["T009", "T010"]
+          acceptance_criteria:
+            - "Map-based table-driven tests with t.Parallel()"
+            - "Tests checksum parsing from checksums.txt format"
+            - "Tests checksum verification success and failure"
+            - "Tests backup creation and rollback"
+            - "Tests permission handling"
+        - id: "T012"
+          title: "Implement update command in internal/cli/util/update.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/util/update.go"
+          dependencies: ["T009", "T010"]
+          acceptance_criteria:
+            - "Command registered as 'autospec update'"
+            - "Checks for available update first"
+            - "Shows 'already up-to-date' if no update available"
+            - "Downloads, verifies, and installs update"
+            - "Displays progress throughout process"
+            - "Handles errors with clear messages"
+            - "Creates backup before installation"
+            - "Platform detection via runtime.GOOS/GOARCH"
+        - id: "T013"
+          title: "Add tests for update command in internal/cli/util/update_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cli/util/update_test.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Tests successful update flow"
+            - "Tests already up-to-date scenario"
+            - "Tests network error handling"
+            - "Tests permission error handling"
+            - "Tests checksum verification failure"
+    - number: 5
+      title: "User Story 3 - Non-blocking update check for version command"
+      purpose: "Ensure version command responds instantly without waiting for network"
+      story_reference: "US-003"
+      independent_test: "Run 'autospec version' with network latency and verify version info appears within 100ms"
+      tasks:
+        - id: "T014"
+          title: "Optimize async update check with configurable timeout in version command"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/update/check.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "CheckForUpdateAsync() returns channel for non-blocking check"
+            - "Context cancellation support for clean shutdown"
+            - "Configurable display timeout (default 500ms)"
+            - "Version info displays before timeout regardless of network state"
+        - id: "T015"
+          title: "Add performance tests for version command"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/util/version_test.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Test verifies version output in <100ms with simulated slow network"
+            - "Test verifies version output in <100ms with no network"
+            - "Test verifies update notification appears after version if network responds in time"
+    - number: 6
+      title: "Polish & Documentation"
+      purpose: "Edge case handling, documentation, and quality gates"
+      tasks:
+        - id: "T016"
+          title: "Add user documentation in docs/self-update.md"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/self-update.md"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Documents 'autospec version' update check behavior"
+            - "Documents 'autospec update' command usage"
+            - "Explains checksum verification"
+            - "Lists supported platforms"
+            - "Covers common error scenarios and solutions"
+        - id: "T017"
+          title: "Handle edge cases (dev builds, permissions, unusual paths)"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/update/install.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "Dev build version skips update check with informative message"
+            - "Clear error if binary path cannot be determined"
+            - "Clear error if binary location is not writable"
+            - "Handles symlinked binary paths correctly"
+        - id: "T018"
+          title: "Run quality gates and fix any issues"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "."
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "make test passes with no failures"
+            - "make fmt produces no changes"
+            - "make lint produces no errors"
+            - "make build succeeds for all platforms"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-003"]
+        - story_id: "US-002"
+          depends_on: []
+          blocks: []
+        - story_id: "US-003"
+          depends_on: ["US-001"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4]
+        - phase: 3
+          blocks: [5]
+        - phase: 4
+          blocks: [6]
+        - phase: 5
+          blocks: [6]
+parallel_execution:
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T008", "T010"]
+          rationale: "Download and install modules are independent until integration"
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T016", "T017"]
+          rationale: "Documentation and edge case handling are independent"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Version Parsing + Version Command with Update Check"
+        validation: "Run 'autospec version' and verify update availability is shown when newer version exists"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "Version parsing and comparison functions available for use"
+        - milestone: "Update Check Available"
+          phases: [1, 2, 3]
+          deliverable: "Users can see update availability via 'autospec version'"
+        - milestone: "Self-Update Complete"
+          phases: [1, 2, 3, 4]
+          deliverable: "Users can update autospec via 'autospec update'"
+        - milestone: "Production Ready"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "Feature complete with documentation and all edge cases handled"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec 0.6.1"
+    created: "2025-12-21T06:03:04Z"
+    artifact_type: "tasks"

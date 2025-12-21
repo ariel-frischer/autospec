@@ -312,7 +312,7 @@ risks:
       Use atomic rename pattern: download to temp file, verify checksum, rename in place.
       Keep backup until new binary is confirmed working.
   - risk: "Platform detection fails"
-    likelihood: "very low"
+    likelihood: "low"
     impact: "high"
     mitigation: |
       Use runtime.GOOS and runtime.GOARCH which are reliable.
