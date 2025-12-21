@@ -91,6 +91,7 @@ func NewWorkflowOrchestrator(cfg *config.Configuration) *WorkflowOrchestrator {
 		MaxRetries:  cfg.MaxRetries,
 		TotalStages: 3,     // Default to 3 stages (specify, plan, tasks)
 		Debug:       false, // Will be set by CLI command
+		AutoCommit:  cfg.AutoCommit,
 		Progress:    progressCtrl,
 		Notify:      notifyDispatch,
 	}

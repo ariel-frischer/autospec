@@ -1653,3 +1653,127 @@ func TestExecutor_ClaudeRunnerInterface(t *testing.T) {
 		})
 	}
 }
+
+// TestInjectAutoCommitInstructions tests the InjectAutoCommitInstructions function.
+// Verifies that auto-commit instructions are properly appended when enabled.
+func TestInjectAutoCommitInstructions(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		command    string
+		autoCommit bool
+		wantPrefix string
+		wantSuffix bool // Whether instructions should be appended
+	}{
+		"autoCommit disabled - command unchanged": {
+			command:    "/autospec.specify 'add feature'",
+			autoCommit: false,
+			wantPrefix: "/autospec.specify 'add feature'",
+			wantSuffix: false,
+		},
+		"autoCommit enabled - instructions appended": {
+			command:    "/autospec.implement",
+			autoCommit: true,
+			wantPrefix: "/autospec.implement",
+			wantSuffix: true,
+		},
+		"empty command with autoCommit enabled": {
+			command:    "",
+			autoCommit: true,
+			wantPrefix: "",
+			wantSuffix: true,
+		},
+		"multiline command with autoCommit enabled": {
+			command:    "/autospec.plan\n--verbose",
+			autoCommit: true,
+			wantPrefix: "/autospec.plan\n--verbose",
+			wantSuffix: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := InjectAutoCommitInstructions(tc.command, tc.autoCommit)
+
+			if tc.wantSuffix {
+				// Should start with original command
+				assert.True(t, strings.HasPrefix(got, tc.wantPrefix),
+					"result should start with original command")
+				// Should contain auto-commit instructions
+				assert.Contains(t, got, "Auto-Commit Instructions",
+					"result should contain auto-commit instructions header")
+				assert.Contains(t, got, ".gitignore",
+					"result should contain gitignore guidance")
+				assert.Contains(t, got, "Conventional Commit",
+					"result should contain commit format guidance")
+			} else {
+				// Should be exactly the original command
+				assert.Equal(t, tc.wantPrefix, got,
+					"with autoCommit=false, command should be unchanged")
+			}
+		})
+	}
+}
+
+// TestExecuteStage_AutoCommitInjection verifies that auto-commit instructions
+// are injected into commands when AutoCommit is enabled on the Executor.
+func TestExecuteStage_AutoCommitInjection(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		autoCommit      bool
+		wantContains    string
+		wantNotContains string
+	}{
+		"autoCommit enabled - instructions injected": {
+			autoCommit:   true,
+			wantContains: "Auto-Commit Instructions",
+		},
+		"autoCommit disabled - no instructions": {
+			autoCommit:      false,
+			wantNotContains: "Auto-Commit Instructions",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stateDir := t.TempDir()
+			specsDir := t.TempDir()
+
+			// Track commands passed to mock
+			mock := &mockClaudeExecutor{}
+
+			executor := &Executor{
+				Claude:     mock,
+				StateDir:   stateDir,
+				SpecsDir:   specsDir,
+				MaxRetries: 0,
+				AutoCommit: tc.autoCommit,
+			}
+
+			// Validation always succeeds
+			validateFunc := func(dir string) error {
+				return nil
+			}
+
+			_, _ = executor.ExecuteStage("001-test", StageSpecify, "/test.command", validateFunc)
+
+			// Verify the command passed to mock
+			require.Len(t, mock.executeCalls, 1, "mock should be called once")
+			executedCommand := mock.executeCalls[0]
+
+			if tc.wantContains != "" {
+				assert.Contains(t, executedCommand, tc.wantContains,
+					"command should contain auto-commit instructions")
+			}
+			if tc.wantNotContains != "" {
+				assert.NotContains(t, executedCommand, tc.wantNotContains,
+					"command should not contain auto-commit instructions")
+			}
+		})
+	}
+}

@@ -25,6 +25,7 @@ type Executor struct {
 	MaxRetries          int                       // Maximum retry attempts (1-10 range)
 	TotalStages         int                       // Total stages in workflow
 	Debug               bool                      // Enable debug logging
+	AutoCommit          bool                      // Enable auto-commit instruction injection
 	Progress            *ProgressController       // Optional progress display controller
 	Notify              *NotifyDispatcher         // Optional notification dispatcher
 	ProgressDisplay     *progress.ProgressDisplay // Deprecated: use Progress instead
@@ -126,11 +127,15 @@ func (e *Executor) ExecuteStage(specName string, stage Stage, command string, va
 		return result, err
 	}
 
+	// Inject auto-commit instructions if enabled
+	commandWithInstructions := InjectAutoCommitInstructions(command, e.AutoCommit)
+	e.debugLog("AutoCommit enabled: %v", e.AutoCommit)
+
 	ctx := &stageExecutionContext{
 		specName:       specName,
 		stage:          stage,
-		command:        command,
-		currentCommand: command,
+		command:        commandWithInstructions,
+		currentCommand: commandWithInstructions,
 		validateFunc:   validateFunc,
 		result:         result,
 		retryState:     retryState,
@@ -555,6 +560,20 @@ func BuildRetryCommand(command string, retryContext string, originalArgs string)
 	// Separate retry context from original args with a blank line
 	combinedArgs := fmt.Sprintf("%s\n\n%s", retryContext, originalArgs)
 	return fmt.Sprintf("%s %s", command, combinedArgs)
+}
+
+// InjectAutoCommitInstructions appends auto-commit instructions to a command string.
+// The instructions are appended at the end of the command, separated by a blank line.
+// If autoCommit is false, the original command is returned unchanged.
+//
+// This follows the same pattern as FormatRetryContext for instruction injection,
+// ensuring consistency in how additional context is added to agent prompts.
+func InjectAutoCommitInstructions(command string, autoCommit bool) string {
+	if !autoCommit {
+		return command
+	}
+	instructions := BuildAutoCommitInstructions()
+	return fmt.Sprintf("%s\n\n%s", command, instructions)
 }
 
 // ExtractValidationErrors parses a validation error message and extracts individual error lines.
