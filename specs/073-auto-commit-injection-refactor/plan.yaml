@@ -1,0 +1,183 @@
+plan:
+  branch: "073-auto-commit-injection-refactor"
+  created: "2025-12-21"
+  spec_path: "specs/073-auto-commit-injection-refactor/spec.yaml"
+
+summary: |
+  This plan addresses the verbose auto-commit instruction injection problem by implementing a three-phase
+  refactor: (1) create an injectable instruction abstraction with markers for reliable detection,
+  (2) add output compaction to display [+AutoCommit] instead of 90 lines of text, and (3) minimize
+  the actual instruction content to ~15 lines since agents already understand git conventions.
+
+  The key architectural decision is Option B from the task spec: keep injection at the agent execution
+  layer (executor.go) rather than modifying command templates. This maintains template independence
+  per constitution principle PRIN-012. The InjectableInstruction struct with Name, DisplayHint, and
+  Content fields enables extensibility for future injectable instructions while the marker-based
+  detection pattern allows reliable compaction without false positives.
+
+technical_context:
+  language: "Go"
+  framework: "None"
+  primary_dependencies:
+    - name: "strings"
+      version: "stdlib"
+      purpose: "String manipulation for marker detection and replacement"
+    - name: "fmt"
+      version: "stdlib"
+      purpose: "Output formatting for compact display"
+  storage: "None"
+  testing:
+    framework: "testing"
+    approach: "Map-based table-driven unit tests with t.Parallel(); integration via existing workflow tests"
+  target_platform: "linux/darwin/windows (amd64/arm64)"
+  project_type: "cli"
+  performance_goals: "No measurable performance regression in command execution"
+  constraints:
+    - "Command templates in internal/commands/ must remain project-agnostic"
+    - "Backward compatibility with existing auto-commit configuration"
+    - "Instruction markers must not interfere with normal prompt content"
+  scale_scope: "Single-user CLI tool; injection happens once per command execution"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "PRIN-001: Test-First Development"
+      status: "PASS"
+      notes: "Tests defined before implementation: TestCompactInstructionsForDisplay, TestInjectableInstruction, TestMinimalAutoCommitInstructions"
+    - name: "PRIN-002: Validation-First Workflow"
+      status: "N/A"
+      notes: "Not applicable - this feature doesn't involve workflow phase transitions"
+    - name: "PRIN-011: Go Coding Standards"
+      status: "PASS"
+      notes: "All functions <40 lines, error wrapping, map-based table tests, interface-in concrete-out patterns applied"
+    - name: "PRIN-012: Command Template Independence"
+      status: "PASS"
+      notes: "Option B chosen: injection happens at executor layer, templates unchanged"
+
+research_findings:
+  decisions:
+    - topic: "Injection location"
+      decision: "Keep injection in executor.go at ExecuteStage level"
+      rationale: "Maintains template independence per PRIN-012; injection is an execution concern"
+      alternatives_considered:
+        - "Template placeholder ($SYSTEM_INSTRUCTIONS) - rejected as violates template independence"
+        - "Agent-level system prompt - rejected as requires agent abstraction changes"
+    - topic: "Marker format for instruction blocks"
+      decision: "Use HTML comment markers: <!-- AUTOSPEC_INJECT:Name --> ... <!-- /AUTOSPEC_INJECT:Name -->"
+      rationale: "HTML comments are unlikely to appear in normal prompts; pair markers enable reliable extraction"
+      alternatives_considered:
+        - "Custom delimiter (e.g., :::INJECT:::) - less standard, more collision risk"
+        - "JSON envelope - more complex parsing, changes prompt structure"
+    - topic: "Display compaction approach"
+      decision: "Separate display formatting from injection; displayCommandExecution compacts before showing"
+      rationale: "Single responsibility - injection builds full command, display handles user-facing output"
+      alternatives_considered:
+        - "Compact at injection time - would require passing display mode through injection"
+        - "Compact in FormatCommand - would affect error messages and logs"
+
+data_model:
+  entities:
+    - name: "InjectableInstruction"
+      description: "A system instruction that can be injected into agent prompts with metadata for display"
+      fields:
+        - name: "Name"
+          type: "string"
+          description: "Short identifier for the instruction type"
+          constraints: "Non-empty, alphanumeric with underscores"
+        - name: "DisplayHint"
+          type: "string"
+          description: "Brief description for verbose display mode"
+          constraints: "Optional, max 80 characters"
+        - name: "Content"
+          type: "string"
+          description: "Full instruction text for agent consumption"
+          constraints: "Non-empty"
+      relationships: []
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "May need update if injection pattern is documented"
+  source_code:
+    - path: "internal/workflow/autocommit.go"
+      description: "Minimal instruction content, InjectableInstruction struct"
+    - path: "internal/workflow/executor.go"
+      description: "InjectInstructions function, compaction for display"
+    - path: "internal/workflow/inject.go"
+      description: "New file for injection types and utilities (optional, may stay in autocommit.go)"
+  tests:
+    - path: "internal/workflow/autocommit_test.go"
+      description: "Tests for minimal instructions, InjectableInstruction struct"
+    - path: "internal/workflow/executor_test.go"
+      description: "Tests for injection, compaction, display formatting"
+
+implementation_phases:
+  - phase: 1
+    name: "Injectable Instruction Abstraction"
+    goal: "Create InjectableInstruction struct and marker-based injection system"
+    deliverables:
+      - "InjectableInstruction struct with Name, DisplayHint, Content fields"
+      - "InjectInstructions function that wraps content with markers"
+      - "Unit tests for struct and injection function"
+  - phase: 2
+    name: "Output Compaction"
+    goal: "Display [+Name] or [+Name: hint] instead of full instruction blocks"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "CompactInstructionsForDisplay function that detects and replaces marker blocks"
+      - "Update displayCommandExecution to use compaction"
+      - "Unit tests for compaction with various inputs"
+  - phase: 3
+    name: "Minimal Instructions"
+    goal: "Reduce auto-commit instructions from ~90 lines to ~15 lines"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Rewritten autoCommitInstructions constant (~15 lines)"
+      - "git status --short as first action"
+      - "Update BuildAutoCommitInstructions to return InjectableInstruction"
+  - phase: 4
+    name: "Integration and Cleanup"
+    goal: "Wire everything together and ensure all workflow commands work"
+    dependencies:
+      - "Phase 1"
+      - "Phase 2"
+      - "Phase 3"
+    deliverables:
+      - "Update InjectAutoCommitInstructions to use new system"
+      - "Verify all workflow commands show compact output"
+      - "Integration tests for end-to-end flow"
+      - "make test, make fmt, make lint, make build all pass"
+
+risks:
+  - risk: "Marker text could appear in user prompts"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Use distinctive HTML-style markers unlikely to appear naturally; document marker format"
+  - risk: "Compaction could break debugging"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "Keep full instructions in debug logs; add --verbose flag for display hint"
+  - risk: "Minimal instructions may miss edge cases agents need guidance on"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Start with essentials; can iterate if agents miss steps"
+
+open_questions:
+  - question: "Should verbose mode (-v) show the display hint or full instructions?"
+    context: "Spec shows [+AutoCommit: hint] for verbose, but full instructions might be useful for debugging"
+    proposed_resolution: "Show hint in verbose mode; full instructions only in debug logs"
+  - question: "Should we create a separate inject.go file or keep everything in autocommit.go?"
+    context: "InjectableInstruction is generic but only used for auto-commit currently"
+    proposed_resolution: "Keep in autocommit.go for now; refactor to inject.go if more instruction types added"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-21T21:33:37Z"
+  artifact_type: "plan"

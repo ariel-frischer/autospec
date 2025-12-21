@@ -1,0 +1,185 @@
+feature:
+  branch: "073-auto-commit-injection-refactor"
+  created: "2025-12-21"
+  status: "Draft"
+  input: "Refactor auto-commit instruction injection: separate system instructions from user arguments, compact output display to show [+AutoCommit] instead of verbose 90-line blocks, minimize instructions to ~15 lines since agents already understand git conventions"
+
+user_stories:
+  - id: "US-001"
+    title: "Compact auto-commit output display"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "to see compact output like [+AutoCommit] instead of 90 lines of instructions"
+    so_that: "my terminal output is clean and I can focus on the actual workflow progress"
+    why_this_priority: "Primary pain point - verbose output pollution degrades UX significantly"
+    independent_test: "Run any workflow command with auto-commit enabled and verify output shows [+AutoCommit] tag instead of full instruction text"
+    acceptance_scenarios:
+      - given: "auto-commit is enabled for a workflow command"
+        when: "the command is displayed to the user"
+        then: "output shows [+AutoCommit] instead of full instruction block"
+      - given: "verbose mode is enabled (-v flag)"
+        when: "the command with auto-commit is displayed"
+        then: "output shows [+AutoCommit: post-work git commit with conventional format]"
+
+  - id: "US-002"
+    title: "Minimal auto-commit instructions for agents"
+    priority: "P1"
+    as_a: "developer using autospec"
+    i_want: "auto-commit instructions to be concise (~15 lines) rather than verbose (~90 lines)"
+    so_that: "agents receive just the essential workflow reminders without redundant explanations of concepts they already understand"
+    why_this_priority: "Reduces noise in agent prompts and focuses on actionable steps"
+    independent_test: "Verify the auto-commit instruction content is ≤20 lines and contains essential steps only"
+    acceptance_scenarios:
+      - given: "auto-commit is enabled"
+        when: "instructions are injected into the agent prompt"
+        then: "instructions are ≤20 lines total"
+      - given: "auto-commit instructions are generated"
+        when: "reviewing the instruction content"
+        then: "first action is git status --short to assess situation before acting"
+
+  - id: "US-003"
+    title: "Separation of system instructions from user arguments"
+    priority: "P2"
+    as_a: "maintainer of autospec"
+    i_want: "system instructions (like auto-commit) to be clearly separated from user arguments"
+    so_that: "command templates remain clean and the injection pattern is extensible for future features"
+    why_this_priority: "Architectural improvement that enables cleaner code and future extensibility"
+    independent_test: "Verify that command templates do not contain injected instructions and that injection happens at execution layer"
+    acceptance_scenarios:
+      - given: "a workflow command is being executed"
+        when: "system instructions need to be injected"
+        then: "injection happens at the agent execution layer, not in command templates"
+      - given: "a command template in internal/commands/"
+        when: "inspecting the template"
+        then: "template contains no auto-commit or other system instruction content"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST detect injected instruction blocks in command output and replace with compact tags"
+      testable: true
+      acceptance_criteria: "CompactInstructionsForDisplay() function replaces instruction blocks with [+Name] format"
+    - id: "FR-002"
+      description: "MUST preserve full instruction content for actual agent execution while showing compact form to users"
+      testable: true
+      acceptance_criteria: "Agent receives complete instructions; user terminal shows only compact tags"
+    - id: "FR-003"
+      description: "MUST use instruction markers for reliable detection of injectable blocks"
+      testable: true
+      acceptance_criteria: "Markers (e.g., <!-- AUTOSPEC_INJECT:Name -->) wrap instruction blocks and enable parsing"
+    - id: "FR-004"
+      description: "MUST reduce auto-commit instructions to ≤20 lines focusing on essential steps"
+      testable: true
+      acceptance_criteria: "autoCommitInstructions constant in autocommit.go is ≤20 lines; first step is git status"
+    - id: "FR-005"
+      description: "MUST work consistently across all workflow commands (specify, plan, tasks, implement, run, prep)"
+      testable: true
+      acceptance_criteria: "Any command with auto-commit enabled shows compact output and delivers minimal instructions"
+    - id: "FR-006"
+      description: "SHOULD provide InjectableInstruction struct with Name, DisplayHint, and Content fields"
+      testable: true
+      acceptance_criteria: "Struct exists with documented fields; injection functions use this struct"
+    - id: "FR-007"
+      description: "MUST pass all quality gates: make test, make fmt, make lint, and make build"
+      testable: true
+      acceptance_criteria: "All commands exit 0; no test failures, format changes, lint errors, or build failures"
+
+  non_functional:
+    - id: "NFR-001"
+      category: "code_quality"
+      description: "All functions must be under 40 lines; extract helpers for complex logic"
+      measurable_target: "No function exceeds 40 lines excluding comments"
+    - id: "NFR-002"
+      category: "code_quality"
+      description: "All errors must be wrapped with context using fmt.Errorf(\"doing X: %w\", err)"
+      measurable_target: "Zero bare 'return err' statements in new code"
+    - id: "NFR-003"
+      category: "code_quality"
+      description: "Tests must use map-based table-driven pattern with t.Parallel()"
+      measurable_target: "All new test functions use map[string]struct pattern and call t.Parallel()"
+    - id: "NFR-004"
+      category: "code_quality"
+      description: "Accept interfaces, return concrete types"
+      measurable_target: "Function signatures follow interface-in, concrete-out pattern where applicable"
+    - id: "NFR-005"
+      category: "usability"
+      description: "Terminal output for injected instructions must be compact and readable"
+      measurable_target: "Injection display is ≤1 line per injection (e.g., [+AutoCommit])"
+    - id: "NFR-006"
+      category: "maintainability"
+      description: "Injection pattern must be extensible for future injectable instructions"
+      measurable_target: "Adding new injectable instruction type requires no changes to display/compaction logic"
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "User terminal output for auto-commit injection is reduced from ~90 lines to 1 line"
+      metric: "Line count of auto-commit display output"
+      target: "≤1 line showing [+AutoCommit] or [+AutoCommit: hint]"
+    - id: "SC-002"
+      description: "Auto-commit instructions sent to agent are minimal"
+      metric: "Line count of autoCommitInstructions constant"
+      target: "≤20 lines"
+    - id: "SC-003"
+      description: "First action in auto-commit instructions is git status"
+      metric: "Order of instructions in content"
+      target: "git status --short appears as first command in instruction flow"
+    - id: "SC-004"
+      description: "No regression in commit behavior"
+      metric: "All existing auto-commit tests pass"
+      target: "100% of existing tests pass; new tests added for compaction"
+    - id: "SC-005"
+      description: "Works across all workflow commands"
+      metric: "Commands with auto-commit enabled"
+      target: "specify, plan, tasks, implement, run, prep all show compact output"
+
+key_entities:
+  - name: "InjectableInstruction"
+    description: "A system instruction that can be injected into agent prompts with metadata for display"
+    attributes:
+      - "Name: string identifier (e.g., 'AutoCommit')"
+      - "DisplayHint: brief description for verbose display"
+      - "Content: full instruction text for agent"
+
+  - name: "InstructionMarker"
+    description: "Delimiter pattern used to identify injectable instruction blocks in command strings"
+    attributes:
+      - "Start marker format (e.g., <!-- AUTOSPEC_INJECT:Name -->)"
+      - "End marker format"
+      - "Enables reliable detection and extraction"
+
+edge_cases:
+  - scenario: "Multiple injectable instructions in single command"
+    expected_behavior: "Each instruction gets its own compact tag: [+AutoCommit] [+OtherFeature]"
+  - scenario: "No instructions injected"
+    expected_behavior: "No compact tags displayed; command shown as-is"
+  - scenario: "Instruction content contains marker-like text"
+    expected_behavior: "Only actual markers are parsed; content is preserved intact"
+  - scenario: "Verbose mode with very long display hint"
+    expected_behavior: "Display hint is truncated or wrapped appropriately"
+
+assumptions:
+  - "Agents (Claude, Gemini, etc.) understand conventional commit format without detailed explanation"
+  - "Agents understand .gitignore patterns without listing common examples"
+  - "Git workflow basics (status, add, commit) need only brief reminders, not tutorials"
+  - "Option B (agent-level injection) is preferred to keep command templates project-agnostic"
+  - "Existing auto-commit flag handling in internal/cli/shared/auto_commit.go remains unchanged"
+
+constraints:
+  - "Command templates in internal/commands/ must remain project-agnostic per constitution"
+  - "Must maintain backward compatibility with existing auto-commit configuration"
+  - "Instruction markers must not interfere with normal prompt content"
+
+out_of_scope:
+  - "Removing the auto-commit feature entirely"
+  - "Making command templates project-aware or adding conditional logic to templates"
+  - "Supporting arbitrary user-defined injection hooks"
+  - "Changing the auto-commit CLI flag interface"
+  - "Modifications to how auto-commit is triggered or configured"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2025-12-21T21:32:06Z"
+  artifact_type: "spec"

@@ -1,0 +1,243 @@
+tasks:
+    branch: "073-auto-commit-injection-refactor"
+    created: "2025-12-21"
+    spec_path: "specs/073-auto-commit-injection-refactor/spec.yaml"
+    plan_path: "specs/073-auto-commit-injection-refactor/plan.yaml"
+summary:
+    total_tasks: 12
+    total_phases: 5
+    parallel_opportunities: 4
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Verify existing codebase structure and test baseline behavior"
+      tasks:
+        - id: "T001"
+          title: "Verify existing auto-commit implementation in internal/workflow/autocommit.go"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/autocommit.go"
+          dependencies: []
+          acceptance_criteria:
+            - "Document current autoCommitInstructions line count (~90 lines)"
+            - "Document current InjectAutoCommitInstructions function signature"
+            - "Run existing tests to establish baseline"
+    - number: 2
+      title: "Foundational - Injectable Instruction Abstraction"
+      purpose: "Create InjectableInstruction struct and marker-based injection system (Phase 1 from plan)"
+      tasks:
+        - id: "T002"
+          title: "Define InjectableInstruction struct in internal/workflow/autocommit.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/autocommit.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "InjectableInstruction struct with Name, DisplayHint, Content fields"
+            - "Name field is string for identifier (e.g., 'AutoCommit')"
+            - "DisplayHint field is string for brief description"
+            - "Content field is string for full instruction text"
+        - id: "T003"
+          title: "Implement InjectInstructions function with marker wrapping in internal/workflow/autocommit.go"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/autocommit.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "InjectInstructions(command string, instructions []InjectableInstruction) string function"
+            - "Uses markers: <!-- AUTOSPEC_INJECT:Name --> content <!-- /AUTOSPEC_INJECT:Name -->"
+            - "Appends marked instruction blocks to command"
+        - id: "T004"
+          title: "Add unit tests for InjectableInstruction and InjectInstructions in internal/workflow/autocommit_test.go"
+          status: "InProgress"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/autocommit_test.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "TestInjectableInstruction validates struct fields"
+            - "TestInjectInstructions verifies marker wrapping"
+            - "Uses map-based table-driven pattern with t.Parallel()"
+            - "Tests empty instruction list, single instruction, multiple instructions"
+    - number: 3
+      title: "User Story 1 - Compact auto-commit output display"
+      purpose: "Display [+AutoCommit] instead of 90 lines of instructions"
+      story_reference: "US-001"
+      independent_test: "Run any workflow command with auto-commit enabled and verify output shows [+AutoCommit] tag instead of full instruction text"
+      tasks:
+        - id: "T005"
+          title: "Implement CompactInstructionsForDisplay function in internal/workflow/executor.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "CompactInstructionsForDisplay(command string, verbose bool) string function"
+            - "Detects <!-- AUTOSPEC_INJECT:Name --> markers"
+            - "Replaces instruction blocks with [+Name] format"
+            - "In verbose mode, shows [+Name: DisplayHint] if hint exists"
+            - "Handles multiple instruction blocks"
+            - "Function is <40 lines"
+        - id: "T006"
+          title: "Update displayCommandExecution to use compaction in internal/workflow/executor.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor.go"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "displayCommandExecution calls CompactInstructionsForDisplay before output"
+            - "Full instructions still passed to agent execution"
+            - "Compact form shown only to user terminal"
+        - id: "T007"
+          title: "Add unit tests for CompactInstructionsForDisplay in internal/workflow/executor_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor_test.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "TestCompactInstructionsForDisplay with map-based table-driven pattern"
+            - "Tests: no markers, single marker, multiple markers"
+            - "Tests: verbose=false shows [+Name], verbose=true shows [+Name: hint]"
+            - "Tests: marker-like text in content preserved"
+            - "Uses t.Parallel()"
+    - number: 4
+      title: "User Story 2 - Minimal auto-commit instructions for agents"
+      purpose: "Reduce instructions from ~90 lines to ~15 lines"
+      story_reference: "US-002"
+      independent_test: "Verify the auto-commit instruction content is ≤20 lines and contains essential steps only"
+      tasks:
+        - id: "T008"
+          title: "Replace autoCommitInstructions constant with minimal version in internal/workflow/autocommit.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/workflow/autocommit.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "autoCommitInstructions constant is ≤20 lines"
+            - "First action is git status --short"
+            - "Mentions conventional commit format briefly"
+            - "References gitignore without listing patterns"
+            - "Skip commit if no changes or detached HEAD"
+        - id: "T009"
+          title: "Update BuildAutoCommitInstructions to return InjectableInstruction in internal/workflow/autocommit.go"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/workflow/autocommit.go"
+          dependencies: ["T008"]
+          acceptance_criteria:
+            - "BuildAutoCommitInstructions() returns InjectableInstruction"
+            - "Name is 'AutoCommit'"
+            - "DisplayHint is 'post-work git commit with conventional format'"
+            - "Content is the minimal autoCommitInstructions"
+        - id: "T010"
+          title: "Add tests for minimal instructions in internal/workflow/autocommit_test.go"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/workflow/autocommit_test.go"
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "TestMinimalAutoCommitInstructions verifies ≤20 lines"
+            - "Verifies git status --short appears before git add"
+            - "Verifies BuildAutoCommitInstructions returns valid InjectableInstruction"
+            - "Uses map-based table-driven pattern with t.Parallel()"
+    - number: 5
+      title: "Integration and Quality Gates"
+      purpose: "Wire everything together and ensure all quality gates pass"
+      tasks:
+        - id: "T011"
+          title: "Update InjectAutoCommitInstructions to use new injection system in internal/workflow/executor.go"
+          status: "Pending"
+          type: "refactor"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/executor.go"
+          dependencies: ["T006", "T009"]
+          acceptance_criteria:
+            - "InjectAutoCommitInstructions calls BuildAutoCommitInstructions"
+            - "Uses InjectInstructions to add marked instruction block"
+            - "displayCommandExecution shows compact form"
+            - "Agent receives full instruction content"
+        - id: "T012"
+          title: "Run all quality gates and fix any issues"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "Makefile"
+          dependencies: ["T011"]
+          acceptance_criteria:
+            - "make test passes"
+            - "make fmt produces no changes"
+            - "make lint passes"
+            - "make build succeeds"
+            - "All workflow commands show compact output with auto-commit"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: []
+        - story_id: "US-002"
+          depends_on: []
+          blocks: []
+        - story_id: "US-003"
+          depends_on: []
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4]
+        - phase: 3
+          blocks: [5]
+        - phase: 4
+          blocks: [5]
+parallel_execution:
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T005"]
+          rationale: "Can develop compaction while minimal instructions being developed"
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T008"]
+          rationale: "Minimal instructions can be developed in parallel with Phase 3 compaction work"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + Compact Output Display"
+        validation: "Run autospec command with auto-commit and verify [+AutoCommit] in output"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "InjectableInstruction struct and InjectInstructions function available"
+        - milestone: "MVP Complete"
+          phases: [1, 2, 3]
+          deliverable: "Compact output display working for all workflow commands"
+        - milestone: "Full Feature"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Minimal instructions and all quality gates passing"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-21T21:36:17Z"
+    artifact_type: "tasks"
