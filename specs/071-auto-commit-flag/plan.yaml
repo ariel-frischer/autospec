@@ -1,0 +1,305 @@
+plan:
+  branch: "071-auto-commit-flag"
+  created: "2025-12-21"
+  spec_path: "specs/071-auto-commit-flag/spec.yaml"
+
+summary: |
+  This plan implements an auto-commit feature for autospec that automatically creates clean git commits
+  after workflow completion. The feature injects clear instructions into the agent prompt to update .gitignore
+  with common ignorable patterns, stage appropriate files, and create conventional commit messages.
+
+  Key technical decisions: (1) Use go-git library for git state capture to enable test isolation with in-memory
+  repositories. (2) Follow existing instruction injection patterns from retry mechanism in executor.go.
+  (3) Add config option with environment variable support following koanf patterns. (4) Add mutually exclusive
+  CLI flags --auto-commit and --no-auto-commit to all workflow commands. (5) Capture git state before/after
+  workflow to detect branch changes or missing commits, logging warnings without failing the workflow.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/go-git/go-git/v5"
+      version: ">=5.11.0"
+      purpose: "Git state capture (commit SHA, branch name) with testable in-memory repositories"
+    - name: "github.com/knadh/koanf"
+      version: ">=2.0.0"
+      purpose: "Configuration management with environment variable support (already in use)"
+    - name: "github.com/spf13/cobra"
+      version: ">=1.8.0"
+      purpose: "CLI framework for flag handling (already in use)"
+  storage: "None"
+  testing:
+    framework: "go test with testify"
+    approach: "Unit tests using go-git in-memory storage for isolation; table-driven tests with t.Parallel()"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Validation functions <10ms, CLI startup <50ms (existing standards)"
+  constraints:
+    - "MUST NOT shell out to git CLI for state capture - use go-git API"
+    - "Tests MUST NOT touch local .git, git environment, or user git config"
+    - "Instructions must be agent-agnostic (work with Claude, Gemini, and other supported agents)"
+    - "Must maintain backwards compatibility with existing configs"
+    - "Auto-commit failures must be non-fatal (warnings only, exit 0)"
+  scale_scope: "Single repository scope, no remote push operations"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Plan includes test implementation before feature code; tests use in-memory go-git repos"
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Git state validation occurs before and after workflow execution"
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Config parsing and git state capture are lightweight operations (<10ms)"
+    - name: "Idempotency and Retry Logic"
+      status: "PASS"
+      notes: "Auto-commit instructions are idempotent; re-running produces same result"
+    - name: "Standardized Exit Codes"
+      status: "PASS"
+      notes: "Auto-commit failures return exit 0 with warnings, not failures"
+    - name: "YAML-First Artifacts"
+      status: "N/A"
+      notes: "Feature does not create new YAML artifacts"
+    - name: "Code Formatting"
+      status: "PASS"
+      notes: "All code passes make fmt and make lint as required by FR-015"
+    - name: "Go Coding Standards"
+      status: "PASS"
+      notes: "Functions <40 lines, wrapped errors, table-driven tests with t.Parallel()"
+    - name: "Command Template Independence"
+      status: "N/A"
+      notes: "No changes to internal/commands/*.md templates"
+
+research_findings:
+  decisions:
+    - topic: "Git library for state capture"
+      decision: "Use go-git (github.com/go-git/go-git/v5)"
+      rationale: "Pure Go library enables in-memory repository testing without touching filesystem; already specified in constraints"
+      alternatives_considered:
+        - "Shell out to git CLI - rejected due to testing complexity and spec constraint"
+        - "Use existing internal/git/git.go functions - rejected as they shell out to git"
+    - topic: "Instruction injection point"
+      decision: "Inject instructions in workflow executor following retry instruction pattern"
+      rationale: "Existing FormatRetryContext pattern in executor.go provides proven template for instruction injection"
+      alternatives_considered:
+        - "Modify command templates - rejected due to Command Template Independence principle"
+        - "Create post-execution hook - rejected as more complex and harder to test"
+    - topic: "Default behavior"
+      decision: "Default auto_commit to true per FR-007"
+      rationale: "Reduces friction for most users; --no-auto-commit flag provides escape hatch"
+      alternatives_considered:
+        - "Default to false - rejected by spec requirement FR-007"
+    - topic: "One-time migration notice implementation"
+      decision: "Use state file in StateDir to track notice display"
+      rationale: "Follows pattern of existing retry.json state tracking; persists across sessions"
+      alternatives_considered:
+        - "User config flag - rejected as it modifies user files without consent"
+        - "Version-based check - rejected as less reliable than explicit state tracking"
+
+data_model:
+  entities:
+    - name: "AutoCommitConfig"
+      description: "Configuration settings for the auto-commit feature within the main Configuration struct"
+      fields:
+        - name: "AutoCommit"
+          type: "bool"
+          description: "Whether auto-commit behavior is enabled"
+          constraints: "Parsed from config files or environment variable AUTOSPEC_AUTO_COMMIT"
+      relationships:
+        - target: "Configuration"
+          type: "embedded-field"
+          description: "Part of the main config.Configuration struct"
+    - name: "GitState"
+      description: "Captured git repository state for before/after comparison"
+      fields:
+        - name: "CommitSHA"
+          type: "string"
+          description: "Current HEAD commit SHA"
+          constraints: "40-character hex string"
+        - name: "BranchName"
+          type: "string"
+          description: "Current branch name, or 'detached' if in detached HEAD state"
+          constraints: "Valid git ref name or 'detached'"
+        - name: "CapturedAt"
+          type: "time.Time"
+          description: "Timestamp when state was captured"
+          constraints: "UTC time"
+      relationships:
+        - target: "Workflow execution"
+          type: "temporal-snapshot"
+          description: "Captured before and after workflow execution for comparison"
+    - name: "AutoCommitNoticeState"
+      description: "Tracks whether the one-time auto-commit notice has been shown"
+      fields:
+        - name: "NoticeShown"
+          type: "bool"
+          description: "True if the migration notice has been displayed"
+          constraints: "Persisted to state file"
+        - name: "ShownAt"
+          type: "time.Time"
+          description: "When the notice was first shown"
+          constraints: "UTC time, optional"
+      relationships:
+        - target: "State directory"
+          type: "persisted-in"
+          description: "Stored in StateDir/auto_commit_notice.json"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/reference.md"
+      description: "Update with --auto-commit and --no-auto-commit flag documentation"
+    - path: "docs/agents.md"
+      description: "Document auto_commit config option and behavior"
+    - path: "README.md"
+      description: "Add brief mention of auto-commit feature in features section"
+  source_code:
+    - path: "internal/config/config.go"
+      description: "Add AutoCommit field to Configuration struct"
+    - path: "internal/config/schema.go"
+      description: "Add auto_commit schema entry to KnownKeys map"
+    - path: "internal/config/defaults.go"
+      description: "Set auto_commit default to true in GetDefaults()"
+    - path: "internal/git/state.go"
+      description: "New file for GitState struct and go-git based state capture"
+    - path: "internal/workflow/autocommit.go"
+      description: "New file for auto-commit instruction generation"
+    - path: "internal/cli/stages/specify.go"
+      description: "Add --auto-commit and --no-auto-commit flags"
+    - path: "internal/cli/stages/plan.go"
+      description: "Add --auto-commit and --no-auto-commit flags"
+    - path: "internal/cli/stages/tasks.go"
+      description: "Add --auto-commit and --no-auto-commit flags"
+    - path: "internal/cli/stages/implement.go"
+      description: "Add --auto-commit and --no-auto-commit flags"
+    - path: "internal/cli/prep.go"
+      description: "Add --auto-commit and --no-auto-commit flags"
+    - path: "internal/cli/run.go"
+      description: "Add --auto-commit and --no-auto-commit flags"
+    - path: "internal/lifecycle/autocommit.go"
+      description: "New file for state capture/comparison integration with lifecycle wrapper"
+    - path: "internal/state/notice.go"
+      description: "New file for one-time notice state management"
+  tests:
+    - path: "internal/git/state_test.go"
+      description: "Tests for git state capture using in-memory go-git repos"
+    - path: "internal/workflow/autocommit_test.go"
+      description: "Tests for instruction generation"
+    - path: "internal/config/config_test.go"
+      description: "Add tests for auto_commit config parsing"
+    - path: "internal/state/notice_test.go"
+      description: "Tests for one-time notice state management"
+    - path: "internal/cli/stages/flags_test.go"
+      description: "Tests for flag handling across workflow commands"
+
+implementation_phases:
+  - phase: 1
+    name: "Configuration and Schema"
+    goal: "Add auto_commit config option with environment variable support and defaults"
+    deliverables:
+      - "AutoCommit field in Configuration struct with koanf tag"
+      - "auto_commit entry in KnownKeys schema map with Type=TypeBool"
+      - "Default value true in GetDefaults() function"
+      - "Tests for config parsing from YAML, environment variable override, and default behavior"
+  - phase: 2
+    name: "Git State Capture"
+    goal: "Implement go-git based git state capture with in-memory test support"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "GitState struct with CommitSHA, BranchName, CapturedAt fields"
+      - "CaptureGitState(repoPath string) function using go-git"
+      - "CompareGitStates(initial, final *GitState) function returning warnings"
+      - "Unit tests using go-git in-memory storage (memory.NewStorage)"
+  - phase: 3
+    name: "Auto-Commit Instructions"
+    goal: "Create instruction template for agent prompt injection"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Auto-commit instruction template constant covering .gitignore, staging, and commit format"
+      - "BuildAutoCommitInstructions() function"
+      - "InjectAutoCommitInstructions(command string) function following retry pattern"
+      - "Unit tests for instruction generation"
+  - phase: 4
+    name: "CLI Flag Integration"
+    goal: "Add --auto-commit and --no-auto-commit flags to all workflow commands"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Flags added to specify, plan, tasks, implement, prep, run commands"
+      - "Flags marked mutually exclusive with MarkFlagsMutuallyExclusive()"
+      - "Flag-to-config resolution following existing pattern (Changed() check)"
+      - "Tests for flag handling and mutual exclusivity"
+  - phase: 5
+    name: "Workflow Integration"
+    goal: "Integrate instruction injection and state capture into workflow execution"
+    dependencies:
+      - "Phase 2"
+      - "Phase 3"
+      - "Phase 4"
+    deliverables:
+      - "State capture before workflow execution in lifecycle wrapper"
+      - "Instruction injection when auto_commit is enabled"
+      - "State comparison after workflow with warning output"
+      - "Integration tests for full workflow with auto-commit"
+  - phase: 6
+    name: "One-Time Migration Notice"
+    goal: "Implement notice shown on first run after upgrade for users without explicit config"
+    dependencies:
+      - "Phase 1"
+      - "Phase 5"
+    deliverables:
+      - "State file management for notice tracking in StateDir"
+      - "Notice display logic checking for explicit config vs default"
+      - "Notice text explaining auto-commit default behavior"
+      - "Tests for notice state persistence and display conditions"
+  - phase: 7
+    name: "Documentation and Polish"
+    goal: "Update documentation and ensure quality gates pass"
+    dependencies:
+      - "Phase 5"
+      - "Phase 6"
+    deliverables:
+      - "Updated docs/reference.md with flag documentation"
+      - "Updated docs/agents.md with config option documentation"
+      - "Updated README.md with feature mention"
+      - "All quality gates passing: make test, make fmt, make lint, make build"
+
+risks:
+  - risk: "go-git version compatibility issues"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Pin to stable version; test across Go versions in CI"
+  - risk: "Agent fails to follow auto-commit instructions consistently"
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Instructions are guidance only; state comparison warns if no commit created"
+  - risk: "Existing users surprised by new default behavior"
+    likelihood: "medium"
+    impact: "low"
+    mitigation: "One-time notice explains change; --no-auto-commit flag provides escape hatch"
+  - risk: "Tests accidentally modify real git state"
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Spec requires in-memory go-git repos; CI catches filesystem side effects"
+
+open_questions:
+  - question: "Should the notice file path be configurable?"
+    context: "Currently planned to use StateDir/auto_commit_notice.json"
+    proposed_resolution: "Use hardcoded path following retry.json pattern; configurability adds complexity without clear benefit"
+  - question: "What happens if go-git fails to open repository but git CLI works?"
+    context: "Edge case with corrupted or unusual repository configurations"
+    proposed_resolution: "Fall back to no state capture with warning; workflow still succeeds"
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec 0.6.1"
+  created: "2025-12-21T19:56:40Z"
+  artifact_type: "plan"
