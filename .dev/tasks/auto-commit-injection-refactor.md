@@ -6,7 +6,7 @@ Improve how auto-commit instructions are injected into workflow commands. Curren
 
 ## Problem Statement
 
-When running `autospec run -pti` or similar workflow commands with auto-commit enabled:
+When running `autospec run -pti` or ANY workflow commands with auto-commit enabled:
 
 1. **Verbose output pollution**: Full auto-commit instructions (~90 lines) are displayed to the user as part of the command execution output
 2. **Conflation of concerns**: Auto-commit instructions are appended to the command string (e.g., `/autospec.plan "args"\n\n[huge block of text]`), treating system instructions as user input
@@ -108,7 +108,7 @@ Replace the 90-line instruction block with ~15 lines. Agents understand:
 - Explains conventional commit from scratch
 - Provides example commands
 
-**Proposed instructions (~15 lines):**
+**Proposed instructions (~10 lines):**
 ```
 ## Auto-Commit
 
@@ -123,8 +123,7 @@ After completing implementation:
    git add -A
    git commit -m "type(scope): description"
 
-Use conventional commit types: feat, fix, docs, refactor, test, chore.
-Skip commit if no changes or detached HEAD.
+Skip if no changes or detached HEAD.
 ```
 
 **Rationale:**
