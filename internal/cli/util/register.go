@@ -17,6 +17,7 @@ func Register(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(sauceCmd)
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(viewCmd)
+	rootCmd.AddCommand(ckCmd)
 	rootCmd.AddCommand(worktree.WorktreeCmd)
 
 	// Experimental: DAG command only available in dev builds

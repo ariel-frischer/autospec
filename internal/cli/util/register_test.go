@@ -33,7 +33,7 @@ func TestRegister(t *testing.T) {
 		commandNames[cmd.Name()] = true
 	}
 
-	// Should have status, history, version, sauce, clean, view, worktree commands
+	// Should have status, history, version, sauce, clean, view, worktree, ck commands
 	assert.True(t, commandNames["status"], "Should have 'status' command")
 	assert.True(t, commandNames["history"], "Should have 'history' command")
 	assert.True(t, commandNames["version"], "Should have 'version' command")
@@ -41,6 +41,7 @@ func TestRegister(t *testing.T) {
 	assert.True(t, commandNames["clean"], "Should have 'clean' command")
 	assert.True(t, commandNames["view"], "Should have 'view' command")
 	assert.True(t, commandNames["worktree"], "Should have 'worktree' command")
+	assert.True(t, commandNames["ck"], "Should have 'ck' command")
 }
 
 func TestRegister_CommandAnnotations(t *testing.T) {
@@ -72,6 +73,10 @@ func TestRegister_CommandAnnotations(t *testing.T) {
 		},
 		"view command exists": {
 			cmdName: "view",
+			wantCmd: true,
+		},
+		"ck command exists": {
+			cmdName: "ck",
 			wantCmd: true,
 		},
 	}
@@ -106,8 +111,8 @@ func TestRegister_CommandCount(t *testing.T) {
 
 	Register(rootCmd)
 
-	// Should register exactly 9 commands (status, history, version, update, sauce, clean, view, dag, worktree)
-	assert.Equal(t, 9, len(rootCmd.Commands()))
+	// Should register exactly 10 commands (status, history, version, update, sauce, clean, view, dag, worktree, ck)
+	assert.Equal(t, 10, len(rootCmd.Commands()))
 }
 
 func TestStatusCmd_Structure(t *testing.T) {
@@ -142,6 +147,15 @@ func TestCleanCmd_Structure(t *testing.T) {
 	assert.NotEmpty(t, cleanCmd.Short)
 }
 
+func TestCkCmd_Structure(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "ck", ckCmd.Use)
+	assert.NotEmpty(t, ckCmd.Short)
+	assert.NotEmpty(t, ckCmd.Long)
+	assert.Contains(t, ckCmd.Aliases, "check", "Should have 'check' alias")
+}
+
 func TestUtilCommands_HaveRunE(t *testing.T) {
 	t.Parallel()
 
@@ -164,6 +178,10 @@ func TestUtilCommands_HaveRunE(t *testing.T) {
 		},
 		"clean has RunE": {
 			cmd:     cleanCmd,
+			hasRunE: true,
+		},
+		"ck has RunE": {
+			cmd:     ckCmd,
 			hasRunE: true,
 		},
 	}

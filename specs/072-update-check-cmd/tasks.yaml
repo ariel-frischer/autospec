@@ -1,228 +1,212 @@
 tasks:
-  branch: "072-update-check-cmd"
-  created: "2025-12-21"
-  spec_path: "specs/072-update-check-cmd/spec.yaml"
-  plan_path: "specs/072-update-check-cmd/plan.yaml"
-
+    branch: "072-update-check-cmd"
+    created: "2025-12-21"
+    spec_path: "specs/072-update-check-cmd/spec.yaml"
+    plan_path: "specs/072-update-check-cmd/plan.yaml"
 summary:
-  total_tasks: 10
-  total_phases: 5
-  parallel_opportunities: 2
-  estimated_complexity: "low"
-
+    total_tasks: 10
+    total_phases: 5
+    parallel_opportunities: 2
+    estimated_complexity: "low"
 phases:
-  - number: 1
-    title: "Setup"
-    purpose: "Create new check command file structure"
-    tasks:
-      - id: "T001"
-        title: "Create check.go file with command skeleton"
-        status: "Pending"
-        type: "setup"
-        parallel: false
-        story_id: null
-        file_path: "internal/cli/util/check.go"
-        dependencies: []
-        acceptance_criteria:
-          - "File exists at internal/cli/util/check.go"
-          - "Contains package declaration and imports"
-          - "Contains empty ckCmd cobra.Command variable"
-
-  - number: 2
-    title: "Foundational"
-    purpose: "Test infrastructure that MUST be complete before implementation"
-    tasks:
-      - id: "T002"
-        title: "Create check_test.go with table-driven test cases"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: null
-        file_path: "internal/cli/util/check_test.go"
-        dependencies: ["T001"]
-        acceptance_criteria:
-          - "File exists at internal/cli/util/check_test.go"
-          - "Uses map[string]struct pattern per coding standards"
-          - "Calls t.Parallel() in test functions"
-          - "Contains test cases for: update available, already on latest, dev build, network error"
-          - "Tests use mock HTTP responses, not real network calls"
-
-  - number: 3
-    title: "User Story 1 - Quick update availability check"
-    purpose: "Enable users to check for updates with a dedicated short command"
-    story_reference: "US-001"
-    independent_test: "Run 'autospec ck' and verify it outputs update availability status"
-    tasks:
-      - id: "T003"
-        title: "Implement ck command with update check logic"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/cli/util/check.go"
-        dependencies: ["T002"]
-        acceptance_criteria:
-          - "Command named 'ck' with 'check' alias exists"
-          - "Reuses existing update.Checker for GitHub API calls"
-          - "Shows current version and latest version when update available"
-          - "Shows confirmation message when already on latest"
-          - "Handles dev builds with informative message"
-          - "Handles network errors gracefully with user-friendly message"
-          - "Functions are under 40 lines"
-          - "All errors wrapped with context"
-
-      - id: "T004"
-        title: "Add pretty and plain output formats to ck command"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/cli/util/check.go"
-        dependencies: ["T003"]
-        acceptance_criteria:
-          - "Supports --plain flag for scriptable output"
-          - "Pretty output uses color for visual distinction"
-          - "Plain output is deterministic and machine-parseable"
-
-      - id: "T005"
-        title: "Register ck command in util package"
-        status: "Pending"
-        type: "implementation"
-        parallel: false
-        story_id: "US-001"
-        file_path: "internal/cli/util/register.go"
-        dependencies: ["T004"]
-        acceptance_criteria:
-          - "ckCmd is registered with AddCommand in Register function"
-          - "Command appears in 'autospec --help' output"
-
-  - number: 4
-    title: "User Story 2 - Clean version display without update noise"
-    purpose: "Make version command instant by removing network calls"
-    story_reference: "US-002"
-    independent_test: "Run 'autospec version' and confirm no update check occurs"
-    tasks:
-      - id: "T006"
-        title: "Remove startAsyncUpdateCheck from version command"
-        status: "Pending"
-        type: "refactor"
-        parallel: true
-        story_id: "US-002"
-        file_path: "internal/cli/util/version.go"
-        dependencies: ["T002"]
-        acceptance_criteria:
-          - "startAsyncUpdateCheck function removed or not called"
-          - "displayUpdateNotification function removed"
-          - "No network requests made during version command"
-          - "Version output remains unchanged (backward compatible)"
-
-      - id: "T007"
-        title: "Update version_test.go to verify no network calls"
-        status: "Pending"
-        type: "test"
-        parallel: true
-        story_id: "US-002"
-        file_path: "internal/cli/util/version_test.go"
-        dependencies: ["T006"]
-        acceptance_criteria:
-          - "Tests verify version command makes no HTTP requests"
-          - "Tests use map[string]struct pattern"
-          - "Tests call t.Parallel()"
-
-  - number: 5
-    title: "Polish & Quality Gates"
-    purpose: "Ensure all quality gates pass and documentation is updated"
-    tasks:
-      - id: "T008"
-        title: "Update docs/reference.md with ck command documentation"
-        status: "Pending"
-        type: "documentation"
-        parallel: true
-        story_id: null
-        file_path: "docs/reference.md"
-        dependencies: ["T005"]
-        acceptance_criteria:
-          - "ck command documented with description"
-          - "Command aliases listed ('check')"
-          - "Flags documented (--plain)"
-          - "Example usage included"
-
-      - id: "T009"
-        title: "Run make fmt to format all code"
-        status: "Pending"
-        type: "refactor"
-        parallel: false
-        story_id: null
-        file_path: null
-        dependencies: ["T005", "T007"]
-        acceptance_criteria:
-          - "make fmt exits 0"
-          - "No formatting changes needed"
-
-      - id: "T010"
-        title: "Run make test, make lint, make build"
-        status: "Pending"
-        type: "test"
-        parallel: false
-        story_id: null
-        file_path: null
-        dependencies: ["T009"]
-        acceptance_criteria:
-          - "make test exits 0 with no failures"
-          - "make lint exits 0 with no errors"
-          - "make build exits 0 successfully"
-
+    - number: 1
+      title: "Setup"
+      purpose: "Create new check command file structure"
+      tasks:
+        - id: "T001"
+          title: "Create check.go file with command skeleton"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/util/check.go"
+          dependencies: []
+          acceptance_criteria:
+            - "File exists at internal/cli/util/check.go"
+            - "Contains package declaration and imports"
+            - "Contains empty ckCmd cobra.Command variable"
+    - number: 2
+      title: "Foundational"
+      purpose: "Test infrastructure that MUST be complete before implementation"
+      tasks:
+        - id: "T002"
+          title: "Create check_test.go with table-driven test cases"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/cli/util/check_test.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "File exists at internal/cli/util/check_test.go"
+            - "Uses map[string]struct pattern per coding standards"
+            - "Calls t.Parallel() in test functions"
+            - "Contains test cases for: update available, already on latest, dev build, network error"
+            - "Tests use mock HTTP responses, not real network calls"
+    - number: 3
+      title: "User Story 1 - Quick update availability check"
+      purpose: "Enable users to check for updates with a dedicated short command"
+      story_reference: "US-001"
+      independent_test: "Run 'autospec ck' and verify it outputs update availability status"
+      tasks:
+        - id: "T003"
+          title: "Implement ck command with update check logic"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/check.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "Command named 'ck' with 'check' alias exists"
+            - "Reuses existing update.Checker for GitHub API calls"
+            - "Shows current version and latest version when update available"
+            - "Shows confirmation message when already on latest"
+            - "Handles dev builds with informative message"
+            - "Handles network errors gracefully with user-friendly message"
+            - "Functions are under 40 lines"
+            - "All errors wrapped with context"
+        - id: "T004"
+          title: "Add pretty and plain output formats to ck command"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/check.go"
+          dependencies: ["T003"]
+          acceptance_criteria:
+            - "Supports --plain flag for scriptable output"
+            - "Pretty output uses color for visual distinction"
+            - "Plain output is deterministic and machine-parseable"
+        - id: "T005"
+          title: "Register ck command in util package"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cli/util/register.go"
+          dependencies: ["T004"]
+          acceptance_criteria:
+            - "ckCmd is registered with AddCommand in Register function"
+            - "Command appears in 'autospec --help' output"
+    - number: 4
+      title: "User Story 2 - Clean version display without update noise"
+      purpose: "Make version command instant by removing network calls"
+      story_reference: "US-002"
+      independent_test: "Run 'autospec version' and confirm no update check occurs"
+      tasks:
+        - id: "T006"
+          title: "Remove startAsyncUpdateCheck from version command"
+          status: "Pending"
+          type: "refactor"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/util/version.go"
+          dependencies: ["T002"]
+          acceptance_criteria:
+            - "startAsyncUpdateCheck function removed or not called"
+            - "displayUpdateNotification function removed"
+            - "No network requests made during version command"
+            - "Version output remains unchanged (backward compatible)"
+        - id: "T007"
+          title: "Update version_test.go to verify no network calls"
+          status: "Pending"
+          type: "test"
+          parallel: true
+          story_id: "US-002"
+          file_path: "internal/cli/util/version_test.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Tests verify version command makes no HTTP requests"
+            - "Tests use map[string]struct pattern"
+            - "Tests call t.Parallel()"
+    - number: 5
+      title: "Polish & Quality Gates"
+      purpose: "Ensure all quality gates pass and documentation is updated"
+      tasks:
+        - id: "T008"
+          title: "Update docs/reference.md with ck command documentation"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: null
+          file_path: "docs/reference.md"
+          dependencies: ["T005"]
+          acceptance_criteria:
+            - "ck command documented with description"
+            - "Command aliases listed ('check')"
+            - "Flags documented (--plain)"
+            - "Example usage included"
+        - id: "T009"
+          title: "Run make fmt to format all code"
+          status: "Pending"
+          type: "refactor"
+          parallel: false
+          story_id: null
+          file_path: null
+          dependencies: ["T005", "T007"]
+          acceptance_criteria:
+            - "make fmt exits 0"
+            - "No formatting changes needed"
+        - id: "T010"
+          title: "Run make test, make lint, make build"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: null
+          dependencies: ["T009"]
+          acceptance_criteria:
+            - "make test exits 0 with no failures"
+            - "make lint exits 0 with no errors"
+            - "make build exits 0 successfully"
 dependencies:
-  user_story_order:
-    - story_id: "US-001"
-      depends_on: []
-      blocks: []
-    - story_id: "US-002"
-      depends_on: []
-      blocks: []
-
-  phase_order:
-    - phase: 1
-      blocks: [2]
-    - phase: 2
-      blocks: [3, 4]
-    - phase: 3
-      blocks: [5]
-    - phase: 4
-      blocks: [5]
-
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: []
+        - story_id: "US-002"
+          depends_on: []
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3, 4]
+        - phase: 3
+          blocks: [5]
+        - phase: 4
+          blocks: [5]
 parallel_execution:
-  - phase: 4
-    parallel_groups:
-      - tasks: ["T006", "T007"]
-        rationale: "Version refactor and its test can be developed together"
-  - phase: 5
-    parallel_groups:
-      - tasks: ["T008"]
-        rationale: "Documentation can be written in parallel with final testing"
-
+    - phase: 4
+      parallel_groups:
+        - tasks: ["T006", "T007"]
+          rationale: "Version refactor and its test can be developed together"
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T008"]
+          rationale: "Documentation can be written in parallel with final testing"
 implementation_strategy:
-  mvp_scope:
-    phases: [1, 2, 3]
-    description: "Setup + Tests + ck command implementation"
-    validation: "Run 'autospec ck' and verify update check output"
-  incremental_delivery:
-    - milestone: "Tests Ready"
-      phases: [1, 2]
-      deliverable: "Test infrastructure for check command"
-    - milestone: "ck Command Working"
-      phases: [1, 2, 3]
-      deliverable: "Fully functional 'autospec ck' command"
-    - milestone: "Version Command Cleaned"
-      phases: [1, 2, 3, 4]
-      deliverable: "Version command without async update check"
-    - milestone: "Complete"
-      phases: [1, 2, 3, 4, 5]
-      deliverable: "Feature complete with all quality gates passing"
-
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Tests + ck command implementation"
+        validation: "Run 'autospec ck' and verify update check output"
+    incremental_delivery:
+        - milestone: "Tests Ready"
+          phases: [1, 2]
+          deliverable: "Test infrastructure for check command"
+        - milestone: "ck Command Working"
+          phases: [1, 2, 3]
+          deliverable: "Fully functional 'autospec ck' command"
+        - milestone: "Version Command Cleaned"
+          phases: [1, 2, 3, 4]
+          deliverable: "Version command without async update check"
+        - milestone: "Complete"
+          phases: [1, 2, 3, 4, 5]
+          deliverable: "Feature complete with all quality gates passing"
 _meta:
-  version: "1.0.0"
-  generator: "autospec"
-  generator_version: "autospec dev"
-  created: "2025-12-21T22:28:39Z"
-  artifact_type: "tasks"
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-21T22:28:39Z"
+    artifact_type: "tasks"
