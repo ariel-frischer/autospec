@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Removed
-- `handoffs` frontmatter field from command templates (was non-functional; conflicts with Claude Code v2.0.73+ skill/command confusion bug)
+- `handoffs` frontmatter field from command templates (was non-functional)
 
 ### Added
 - `--auto-commit` and `--no-auto-commit` flags for automatic git commit creation after workflow completion with conventional commit messages
