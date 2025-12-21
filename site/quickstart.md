@@ -120,7 +120,12 @@ Create the default configuration:
 autospec init
 ```
 
-This creates `~/.config/autospec/config.yml` with default settings:
+This command:
+1. Creates `~/.config/autospec/config.yml` with default settings
+2. Installs slash commands to `.claude/commands/`
+3. **Prompts to create project constitution** (say "yes" - required for autospec to work)
+
+Default config:
 
 ```yaml
 claude_cmd: claude
@@ -174,9 +179,12 @@ Use these in normal Claude Code sessions when you prefer chat-based iteration ov
 
 ---
 
-## Step 4: Create Project Constitution
+## Step 4: Create Project Constitution (if skipped)
 
-Create a constitution for your project (required once per project):
+{: .note }
+> If you said "yes" to "Create constitution?" during `autospec init`, **skip this step** - your constitution is already created.
+
+If you skipped constitution creation during init, or need to regenerate it:
 
 ```bash
 autospec constitution

@@ -102,11 +102,8 @@ cd your-project
 # Check dependencies
 autospec doctor
 
-# Initialize autospec configuration
+# Initialize autospec configuration (prompts to create constitution)
 autospec init
-
-# Create project constitution (once per project, triggers Claude session)
-autospec constitution
 
 # Create your first specification (also runs git checkout for feature branch)
 autospec run -s "Add user authentication with OAuth"
