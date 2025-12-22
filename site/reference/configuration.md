@@ -231,6 +231,206 @@ Oldest entries are removed when the limit is exceeded.
 
 ---
 
+### view_limit
+
+Number of recent specs to display in the view command.
+
+| Property | Value |
+|:---------|:------|
+| Type | integer |
+| Default | `5` |
+| Environment | `AUTOSPEC_VIEW_LIMIT` |
+
+```yaml
+view_limit: 10
+```
+
+---
+
+### skip_confirmations
+
+Skip confirmation prompts for destructive operations.
+
+| Property | Value |
+|:---------|:------|
+| Type | boolean |
+| Default | `false` |
+| Environment | `AUTOSPEC_YES` |
+
+```yaml
+skip_confirmations: true
+```
+
+Can also be enabled via the `AUTOSPEC_YES` environment variable.
+
+---
+
+### auto_commit
+
+Enable automatic git commit creation after workflow completion.
+
+| Property | Value |
+|:---------|:------|
+| Type | boolean |
+| Default | `false` |
+| Environment | `AUTOSPEC_AUTO_COMMIT` |
+
+```yaml
+auto_commit: true   # Enable auto-commit
+auto_commit: false  # Disable auto-commit (default)
+```
+
+When enabled, instructions are injected into the agent prompt to:
+- Update `.gitignore` with common ignorable patterns
+- Stage appropriate files for version control
+- Create a commit with conventional commit message format
+
+---
+
+### default_agents
+
+Agents to pre-select in `autospec init` prompts.
+
+| Property | Value |
+|:---------|:------|
+| Type | string array |
+| Default | `[]` |
+| Environment | `AUTOSPEC_DEFAULT_AGENTS` (comma-separated) |
+
+```yaml
+default_agents:
+  - claude
+  - gemini
+```
+
+Saved from previous `autospec init` selections. Used to pre-populate agent selection in future init prompts.
+
+---
+
+### output_style
+
+Controls how stream-json output is formatted for display.
+
+| Property | Value |
+|:---------|:------|
+| Type | enum |
+| Default | `"default"` |
+| Values | `"default"`, `"compact"`, `"minimal"`, `"plain"`, `"raw"` |
+| Environment | `AUTOSPEC_OUTPUT_STYLE` |
+
+```yaml
+output_style: default   # Box-drawing characters with colors
+output_style: compact   # Condensed output
+output_style: minimal   # Bare minimum output
+output_style: plain     # No formatting
+output_style: raw       # Raw JSON output
+```
+
+---
+
+## Worktree Management
+
+Configure git worktree creation and management.
+
+### worktree.base_dir
+
+Parent directory for new worktrees.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` (parent of repo) |
+
+```yaml
+worktree:
+  base_dir: /path/to/worktrees
+```
+
+---
+
+### worktree.prefix
+
+Directory name prefix for worktrees.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+
+```yaml
+worktree:
+  prefix: "wt-"
+```
+
+---
+
+### worktree.setup_script
+
+Path to setup script relative to repo root.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+
+```yaml
+worktree:
+  setup_script: scripts/worktree-setup.sh
+```
+
+---
+
+### worktree.auto_setup
+
+Run setup script automatically on worktree creation.
+
+| Property | Value |
+|:---------|:------|
+| Type | boolean |
+| Default | `true` |
+
+```yaml
+worktree:
+  auto_setup: true
+```
+
+---
+
+### worktree.track_status
+
+Persist worktree state for status tracking.
+
+| Property | Value |
+|:---------|:------|
+| Type | boolean |
+| Default | `true` |
+
+```yaml
+worktree:
+  track_status: true
+```
+
+---
+
+### worktree.copy_dirs
+
+Non-tracked directories to copy to new worktrees.
+
+| Property | Value |
+|:---------|:------|
+| Type | string array |
+| Default | `[".autospec", ".claude"]` |
+
+```yaml
+worktree:
+  copy_dirs:
+    - .autospec
+    - .claude
+    - node_modules
+```
+
+---
+
 ## Notifications
 
 Configure desktop notifications when commands complete.
@@ -452,10 +652,25 @@ use_subscription: true  # Use Claude subscription, not API credits
 max_retries: 3
 specs_dir: ./specs
 state_dir: ~/.autospec/state
-timeout: 0
+timeout: 2400
 skip_preflight: false
+skip_confirmations: false
 implement_method: phases
+auto_commit: false
 max_history_entries: 500
+view_limit: 5
+output_style: default
+
+# Worktree management
+worktree:
+  base_dir: ""
+  prefix: ""
+  setup_script: ""
+  auto_setup: true
+  track_status: true
+  copy_dirs:
+    - .autospec
+    - .claude
 
 # Notifications
 notifications:
@@ -513,9 +728,14 @@ All configuration options can be set via environment variables with the `AUTOSPE
 | `AUTOSPEC_STATE_DIR` | `state_dir` |
 | `AUTOSPEC_TIMEOUT` | `timeout` |
 | `AUTOSPEC_SKIP_PREFLIGHT` | `skip_preflight` |
+| `AUTOSPEC_YES` | `skip_confirmations` |
 | `AUTOSPEC_IMPLEMENT_METHOD` | `implement_method` |
+| `AUTOSPEC_AUTO_COMMIT` | `auto_commit` |
 | `AUTOSPEC_CUSTOM_AGENT_CMD` | `custom_agent_cmd` |
 | `AUTOSPEC_MAX_HISTORY_ENTRIES` | `max_history_entries` |
+| `AUTOSPEC_VIEW_LIMIT` | `view_limit` |
+| `AUTOSPEC_DEFAULT_AGENTS` | `default_agents` |
+| `AUTOSPEC_OUTPUT_STYLE` | `output_style` |
 | `AUTOSPEC_NOTIFICATIONS_ENABLED` | `notifications.enabled` |
 | `AUTOSPEC_NOTIFICATIONS_TYPE` | `notifications.type` |
 | `AUTOSPEC_NOTIFICATIONS_SOUND_FILE` | `notifications.sound_file` |

@@ -112,7 +112,7 @@ type Configuration struct {
 	// - Update .gitignore with common ignorable patterns
 	// - Stage appropriate files for version control
 	// - Create a commit with conventional commit message format
-	// Default: true. Can be set via AUTOSPEC_AUTO_COMMIT env var.
+	// Default: false. Can be set via AUTOSPEC_AUTO_COMMIT env var.
 	AutoCommit bool `koanf:"auto_commit"`
 
 	// AutoCommitSource tracks where the AutoCommit value came from.

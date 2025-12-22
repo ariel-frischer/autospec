@@ -297,7 +297,7 @@ skip_preflight: false                 # Skip preflight checks
 timeout: 2400                         # Timeout in seconds (40 min default, 0 = no timeout)
 skip_confirmations: false             # Skip confirmation prompts
 implement_method: phases              # Default: phases | tasks | single-session
-auto_commit: true                     # Auto-create git commit after workflow (default: true)
+auto_commit: false                    # Auto-create git commit after workflow (default: false)
 
 # Notifications (all platforms)
 notifications:
