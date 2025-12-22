@@ -7,15 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-12-21
+
 ### Added
 - `--auto-commit` and `--no-auto-commit` flags for automatic git commit creation after workflow completion with conventional commit messages
 - Compact auto-commit output display (`[+AutoCommit]` tag) and minimal agent instructions (~15 lines vs ~90)
 - `auto_commit` config option to enable automatic commits by default (overridable via CLI flags)
 - `update` command for self-updating autospec to the latest GitHub release with SHA256 checksum verification, automatic backup, and atomic installation with rollback on failure
-- Non-blocking async update check in `version` command (500ms timeout, silent on network failures)
-- `ck` (check) command to quickly verify build + test health after implementation
+- `ck` (check) command to quickly check for newer versions on GitHub releases
 
 ### Removed
+- Async update check from `version` command (moved to dedicated `ck` command)
 - `handoffs` frontmatter field from command templates (was non-functional)
 
 ## [0.6.1] - 2025-12-20
@@ -212,7 +214,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ariel-frischer/autospec/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ariel-frischer/autospec/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ariel-frischer/autospec/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ariel-frischer/autospec/compare/v0.4.0...v0.5.0
