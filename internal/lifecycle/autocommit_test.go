@@ -82,7 +82,7 @@ func TestNewAutoCommitHandler(t *testing.T) {
 }
 
 func TestAutoCommitHandler_CaptureInitialState(t *testing.T) {
-	t.Parallel()
+	// Not parallel: subtests modify global os.Stderr
 
 	tests := map[string]struct {
 		enabled     bool
@@ -108,7 +108,7 @@ func TestAutoCommitHandler_CaptureInitialState(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Not parallel: modifies global os.Stderr
 
 			handler := &AutoCommitHandler{
 				Enabled:  tc.enabled,
@@ -146,7 +146,7 @@ func TestAutoCommitHandler_CaptureInitialState(t *testing.T) {
 }
 
 func TestAutoCommitHandler_CompareAndLogWarnings(t *testing.T) {
-	t.Parallel()
+	// Not parallel: subtests modify global os.Stderr
 
 	initialCommit := "abc123def456789012345678901234567890abcd"
 	newCommit := "def456789012345678901234567890abcd123456"
@@ -201,7 +201,7 @@ func TestAutoCommitHandler_CompareAndLogWarnings(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Not parallel: modifies global os.Stderr
 
 			handler := &AutoCommitHandler{
 				Enabled:      tc.enabled,
@@ -236,7 +236,7 @@ func TestAutoCommitHandler_CompareAndLogWarnings(t *testing.T) {
 }
 
 func TestRunWithAutoCommit(t *testing.T) {
-	t.Parallel()
+	// Not parallel: subtests modify global os.Stderr
 
 	tests := map[string]struct {
 		enabled     bool
@@ -275,7 +275,7 @@ func TestRunWithAutoCommit(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Not parallel: modifies global os.Stderr
 
 			fnCalled := false
 			fn := func() error {
@@ -309,6 +309,7 @@ func TestRunWithAutoCommit(t *testing.T) {
 }
 
 func TestRunWithAutoCommitHandler(t *testing.T) {
+	// Parallel OK: subtests don't modify global os.Stderr
 	t.Parallel()
 
 	tests := map[string]struct {
@@ -365,7 +366,7 @@ func TestRunWithAutoCommitHandler(t *testing.T) {
 }
 
 func TestLogStateWarning(t *testing.T) {
-	t.Parallel()
+	// Not parallel: subtests modify global os.Stderr
 
 	tests := map[string]struct {
 		warning     git.StateWarning
@@ -400,7 +401,7 @@ func TestLogStateWarning(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Not parallel: modifies global os.Stderr
 
 			// Capture stderr
 			oldStderr := os.Stderr
@@ -425,7 +426,7 @@ func TestLogStateWarning(t *testing.T) {
 // TestAutoCommitHandler_FR012_NoWarningsWhenDisabled verifies FR-012:
 // No auto-commit warnings appear when auto_commit=false
 func TestAutoCommitHandler_FR012_NoWarningsWhenDisabled(t *testing.T) {
-	t.Parallel()
+	// Not parallel: modifies global os.Stderr
 
 	handler := &AutoCommitHandler{
 		Enabled:  false,
@@ -463,7 +464,7 @@ func TestAutoCommitHandler_FR012_NoWarningsWhenDisabled(t *testing.T) {
 // TestRunWithAutoCommit_FR013_SuccessOnWarnings verifies FR-013:
 // Workflow returns exit 0 even if comparison shows issues
 func TestRunWithAutoCommit_FR013_SuccessOnWarnings(t *testing.T) {
-	t.Parallel()
+	// Not parallel: modifies global os.Stderr
 
 	// Even if git state comparison would show warnings,
 	// the function should return the original fn result

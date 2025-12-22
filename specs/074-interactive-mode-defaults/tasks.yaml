@@ -236,7 +236,7 @@ phases:
       tasks:
         - id: "T017"
           title: "Run all quality gates"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -249,7 +249,7 @@ phases:
             - "make build exits 0 successfully"
         - id: "T018"
           title: "Manual verification of all scenarios"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: false
           story_id: null

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/build"
 	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/commands"
 	"github.com/ariel-frischer/autospec/internal/config"
@@ -1074,6 +1075,12 @@ func TestGetSupportedAgentsWithDefaults_MalformedDefaultAgents(t *testing.T) {
 // non-interactive terminals fail with helpful message unless --no-agents is used.
 // Edge case from spec: "Non-interactive terminal: fail fast with helpful message"
 func TestHandleAgentConfiguration_NonInteractiveRequiresNoAgentsFlag(t *testing.T) {
+	// This test only applies when multi-agent is enabled (development build).
+	// In production builds, the function configures Claude directly and ignores --no-agents.
+	if !build.MultiAgentEnabled() {
+		t.Skip("Test requires multi-agent enabled (dev build)")
+	}
+
 	// Note: We can't easily test the isTerminal() check in unit tests,
 	// but we verify that --no-agents works correctly
 	t.Parallel()
