@@ -33,14 +33,9 @@ curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/instal
 - **YAML-First Artifacts** — Machine-readable `spec.yaml`, `plan.yaml`, `tasks.yaml` for programmatic access
 - **Smart Validation** — Validates artifacts exist and meet completeness criteria before proceeding
 - **Configurable Retry Logic** — Automatic retries with persistent state tracking
-- **Performance Optimized** — Sub-second validation (<10ms per check), <50ms startup
 - **Cross-Platform** — Native binaries for Linux and macOS (Intel/Apple Silicon). Windows users: use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
 - **Smart Claude Setup** — Auto-detects OAuth/API auth, defaults to subscription billing to prevent accidental API charges
 - **Flexible Stage Selection** — Mix and match stages with intuitive flags (`-spti`, `-a`, etc.)
-- **Constitution Support** — Project-level principles that guide all specifications
-- **Cross-Artifact Analysis** — Consistency checks across spec, plan, and tasks
-- **Custom Checklists** — Auto-generated validation checklists per feature
-- **Comprehensive Testing** — Unit tests, benchmarks, and integration tests
 - **Shell Completion** — Tab completion for bash, zsh, and fish
 - **OS Notifications** — Native desktop notifications with custom sound support
 - **History Tracking** — View and filter command execution history with status, duration, and exit codes
@@ -189,13 +184,13 @@ autospec implement --single-session
 # Create/update project principles
 autospec constitution "Emphasize security"
 
-# Refine spec with Q&A
+# Refine spec with Q&A (interactive mode)
 autospec clarify "Focus on edge cases"
 
 # Generate validation checklist
 autospec checklist "Include a11y checks"
 
-# Cross-artifact consistency analysis
+# Cross-artifact consistency analysis (interactive mode)
 autospec analyze "Verify API contracts"
 ```
 
@@ -209,9 +204,9 @@ autospec analyze "Verify API contracts"
 | `-i` | implement | Execute implementation |
 | `-a` | all | All core stages (`-spti`) |
 | `-n` | constitution | Create/update project constitution |
-| `-r` | clarify | Refine spec with Q&A |
+| `-r` | clarify | Refine spec with Q&A (interactive mode) |
 | `-l` | checklist | Generate validation checklist |
-| `-z` | analyze | Cross-artifact consistency check |
+| `-z` | analyze | Cross-artifact consistency check (interactive mode) |
 
 > Stages always execute in canonical order regardless of flag order:
 > `constitution → specify → clarify → plan → tasks → checklist → analyze → implement`
