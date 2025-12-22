@@ -65,7 +65,7 @@ var SpecSchema = Schema{
 			Children: []SchemaField{
 				{Name: "branch", Type: FieldTypeString, Required: true, Description: "Git branch name for the feature"},
 				{Name: "created", Type: FieldTypeString, Required: true, Description: "Creation date (YYYY-MM-DD)"},
-				{Name: "status", Type: FieldTypeString, Required: false, Enum: []string{"Draft", "Review", "Approved", "Implemented"}, Description: "Feature status"},
+				{Name: "status", Type: FieldTypeString, Required: false, Enum: []string{"Draft", "Review", "Approved", "Completed"}, Description: "Feature status"},
 				{Name: "input", Type: FieldTypeString, Required: false, Description: "Original input description"},
 			},
 		},

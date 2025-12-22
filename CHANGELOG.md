@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Hide help menu on workflow execution errors; still shown for incorrect command usage
+- Spec status validation now accepts `Completed` instead of `Implemented` as final status
 
 ### Removed
 - `handoffs` frontmatter field from command templates (was non-functional)
