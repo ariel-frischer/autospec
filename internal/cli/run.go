@@ -195,6 +195,10 @@ Stages are always executed in canonical order:
 		orchestrator.Debug = debug
 		orchestrator.Executor.Debug = debug
 
+		// Disable process replacement for multi-stage runs
+		// This allows interactive stages to return so subsequent stages can execute
+		orchestrator.DisableProcessReplacement()
+
 		// Apply output style from CLI flag (overrides config)
 		shared.ApplyOutputStyle(cmd, orchestrator)
 
