@@ -2,6 +2,10 @@
 
 Guidance for Claude Code when working with this repository.
 
+## Slash Commands vs Skills (CRITICAL)
+
+Files in `.claude/commands/` (e.g., `autospec.plan.md`, `speckit.specify.md`) are **slash commands**, NOT skills. **DO NOT use the Skill tool to invoke them.** They are user-invoked via `/autospec.plan` syntax, not model-invoked.
+
 ## Commands
 
 ```bash
@@ -207,6 +211,25 @@ functional:
 ```
 
 These are NON-NEGOTIABLE for any Go implementation in this project.
+
+## Git Commits in Sandbox Mode
+
+```bash
+# BAD - heredocs fail in sandbox mode
+git commit -m "$(cat <<'EOF'
+commit message
+EOF
+)"
+
+# GOOD - use regular quoted string with newlines
+git commit -m "feat(scope): description
+
+Body text here.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Ariel Frischer <arielfrischer@gmail.com>"
+```
 
 ## Exit Codes
 

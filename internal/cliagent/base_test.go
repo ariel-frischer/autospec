@@ -470,3 +470,112 @@ func TestBaseAgent_Execute_CustomStdout(t *testing.T) {
 		t.Errorf("custom writer should contain output, got %q", buf.String())
 	}
 }
+
+func TestBaseAgent_BuildCommand_Interactive(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agent       *BaseAgent
+		prompt      string
+		opts        ExecOptions
+		wantArgs    []string
+		excludeArgs []string
+	}{
+		"automated mode includes DefaultArgs": {
+			agent: &BaseAgent{
+				Cmd: "claude",
+				AgentCaps: Caps{
+					PromptDelivery: PromptDelivery{
+						Method: PromptMethodArg,
+						Flag:   "-p",
+					},
+					DefaultArgs: []string{"--verbose", "--output-format", "stream-json"},
+				},
+			},
+			prompt:   "analyze code",
+			opts:     ExecOptions{Interactive: false},
+			wantArgs: []string{"-p", "analyze code", "--verbose", "--output-format", "stream-json"},
+		},
+		"interactive mode uses positional prompt, excludes DefaultArgs and -p": {
+			agent: &BaseAgent{
+				Cmd: "claude",
+				AgentCaps: Caps{
+					PromptDelivery: PromptDelivery{
+						Method: PromptMethodArg,
+						Flag:   "-p",
+					},
+					DefaultArgs: []string{"--verbose", "--output-format", "stream-json"},
+				},
+			},
+			prompt:      "analyze code",
+			opts:        ExecOptions{Interactive: true},
+			wantArgs:    []string{"analyze code"},
+			excludeArgs: []string{"-p", "--verbose", "--output-format", "stream-json"},
+		},
+		"interactive mode with extra args": {
+			agent: &BaseAgent{
+				Cmd: "claude",
+				AgentCaps: Caps{
+					PromptDelivery: PromptDelivery{
+						Method: PromptMethodArg,
+						Flag:   "-p",
+					},
+					DefaultArgs: []string{"--verbose", "--output-format", "stream-json"},
+				},
+			},
+			prompt:      "clarify spec",
+			opts:        ExecOptions{Interactive: true, ExtraArgs: []string{"--model", "opus"}},
+			wantArgs:    []string{"clarify spec", "--model", "opus"},
+			excludeArgs: []string{"-p", "--verbose", "--output-format", "stream-json"},
+		},
+		"interactive with autonomous still adds autonomous flag": {
+			agent: &BaseAgent{
+				Cmd: "claude",
+				AgentCaps: Caps{
+					PromptDelivery: PromptDelivery{
+						Method: PromptMethodArg,
+						Flag:   "-p",
+					},
+					DefaultArgs:    []string{"--verbose"},
+					AutonomousFlag: "--dangerously-skip-permissions",
+				},
+			},
+			prompt:      "analyze code",
+			opts:        ExecOptions{Interactive: true, Autonomous: true},
+			wantArgs:    []string{"analyze code", "--dangerously-skip-permissions"},
+			excludeArgs: []string{"-p", "--verbose"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cmd, err := tt.agent.BuildCommand(tt.prompt, tt.opts)
+			if err != nil {
+				t.Fatalf("BuildCommand() error = %v", err)
+			}
+			gotArgs := cmd.Args[1:] // Skip the command name
+
+			// Check expected args
+			if len(gotArgs) != len(tt.wantArgs) {
+				t.Errorf("args len = %d, want %d\ngot: %v\nwant: %v",
+					len(gotArgs), len(tt.wantArgs), gotArgs, tt.wantArgs)
+				return
+			}
+			for i, arg := range gotArgs {
+				if arg != tt.wantArgs[i] {
+					t.Errorf("args[%d] = %q, want %q", i, arg, tt.wantArgs[i])
+				}
+			}
+
+			// Check excluded args are not present
+			for _, excluded := range tt.excludeArgs {
+				for _, got := range gotArgs {
+					if got == excluded {
+						t.Errorf("args should not contain %q in interactive mode", excluded)
+					}
+				}
+			}
+		})
+	}
+}

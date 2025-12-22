@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Interactive mode defaults for `clarify` and `analyze` commands; notification when interactive session starts after automated stages in `run` command
+- Process replacement via `syscall.Exec` for interactive stages to ensure full terminal control in TUI applications
+
+### Fixed
+- Hide help menu on workflow execution errors; still shown for incorrect command usage
+- Spec status validation now accepts `Completed` instead of `Implemented` as final status
+
 ## [0.7.0] - 2025-12-21
 
 ### Added

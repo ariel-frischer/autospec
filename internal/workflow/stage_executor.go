@@ -10,7 +10,6 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/retry"
 	"github.com/ariel-frischer/autospec/internal/spec"
-	"github.com/ariel-frischer/autospec/internal/validation"
 )
 
 // StageExecutor handles specify, plan, and tasks stage execution.
@@ -226,23 +225,23 @@ func (s *StageExecutor) ExecuteConstitution(prompt string) error {
 
 // ExecuteClarify runs the clarify stage with optional prompt.
 // Clarify refines the specification by asking targeted clarification questions.
+// This stage runs in interactive mode (no retry loop, multi-turn conversation).
 func (s *StageExecutor) ExecuteClarify(specName string, prompt string) error {
 	s.debugLog("ExecuteClarify called for spec: %s, prompt: %s", specName, prompt)
 
 	command := s.buildCommand("/autospec.clarify", prompt)
 	s.printExecuting("/autospec.clarify", prompt)
 
-	result, err := s.executor.ExecuteStage(specName, StageClarify, command,
-		func(specDir string) error { return validation.ValidateSpecFile(specDir) })
+	// ExecuteStage automatically detects interactive mode via IsInteractive(StageClarify)
+	// Interactive stages skip retry loop and run without -p flag
+	_, err := s.executor.ExecuteStage(specName, StageClarify, command,
+		func(specDir string) error { return nil }) // No validation for interactive stages
 
 	if err != nil {
-		if result.Exhausted {
-			return fmt.Errorf("clarify stage exhausted retries: %w", err)
-		}
-		return fmt.Errorf("clarify failed: %w", err)
+		return fmt.Errorf("clarify session failed: %w", err)
 	}
 
-	fmt.Printf("\n✓ Clarification complete for specs/%s/\n", specName)
+	fmt.Printf("\n✓ Clarification session complete for specs/%s/\n", specName)
 	return nil
 }
 
@@ -270,23 +269,23 @@ func (s *StageExecutor) ExecuteChecklist(specName string, prompt string) error {
 
 // ExecuteAnalyze runs the analyze stage with optional prompt.
 // Analyze performs cross-artifact consistency and quality analysis.
+// This stage runs in interactive mode (no retry loop, multi-turn conversation).
 func (s *StageExecutor) ExecuteAnalyze(specName string, prompt string) error {
 	s.debugLog("ExecuteAnalyze called for spec: %s, prompt: %s", specName, prompt)
 
 	command := s.buildCommand("/autospec.analyze", prompt)
 	s.printExecuting("/autospec.analyze", prompt)
 
-	result, err := s.executor.ExecuteStage(specName, StageAnalyze, command,
+	// ExecuteStage automatically detects interactive mode via IsInteractive(StageAnalyze)
+	// Interactive stages skip retry loop and run without -p flag
+	_, err := s.executor.ExecuteStage(specName, StageAnalyze, command,
 		func(specDir string) error { return nil })
 
 	if err != nil {
-		if result.Exhausted {
-			return fmt.Errorf("analyze stage exhausted retries: %w", err)
-		}
-		return fmt.Errorf("analyze failed: %w", err)
+		return fmt.Errorf("analyze session failed: %w", err)
 	}
 
-	fmt.Printf("\n✓ Analysis complete for specs/%s/\n", specName)
+	fmt.Printf("\n✓ Analysis session complete for specs/%s/\n", specName)
 	return nil
 }
 

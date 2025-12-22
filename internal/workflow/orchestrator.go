@@ -733,10 +733,11 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 	}
 
 	return &ClaudeExecutor{
-		Agent:           agent,
-		Timeout:         cfg.Timeout,
-		OutputStyle:     outputStyle,
-		UseSubscription: cfg.UseSubscription,
+		Agent:                        agent,
+		Timeout:                      cfg.Timeout,
+		OutputStyle:                  outputStyle,
+		UseSubscription:              cfg.UseSubscription,
+		ReplaceProcessForInteractive: true, // Default: replace process for full terminal control
 	}
 }
 
@@ -751,5 +752,18 @@ func (w *WorkflowOrchestrator) SetOutputStyle(style config.OutputStyle) {
 	// Type assert to access ClaudeExecutor fields through the interface
 	if claude, ok := w.Executor.Claude.(*ClaudeExecutor); ok {
 		claude.OutputStyle = style
+	}
+}
+
+// DisableProcessReplacement disables syscall.Exec for interactive stages.
+// Use this for multi-stage runs where we need to continue after interactive stages.
+// Without this, interactive stages would replace the process and prevent continuation.
+func (w *WorkflowOrchestrator) DisableProcessReplacement() {
+	if w.Executor == nil || w.Executor.Claude == nil {
+		return
+	}
+
+	if claude, ok := w.Executor.Claude.(*ClaudeExecutor); ok {
+		claude.ReplaceProcessForInteractive = false
 	}
 }

@@ -42,6 +42,7 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
   autospec all "Add API endpoints" --skip-preflight`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Don't show help for execution errors
 		featureDescription := args[0]
 
 		// Get flags

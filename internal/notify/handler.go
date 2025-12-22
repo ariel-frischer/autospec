@@ -254,6 +254,30 @@ func (h *Handler) OnError(commandName string, err error) {
 	h.dispatch(n)
 }
 
+// OnInteractiveSessionStart is called before an interactive stage begins.
+// It sends a notification if the on_interactive_session hook is enabled.
+// This alerts users to return to the terminal after automated stages complete.
+//
+// stageName: the name of the interactive stage about to start (e.g., "clarify", "analyze")
+//
+// TEST COVERAGE BLOCKED: isEnabled() requires TTY; dispatch() calls OS notification APIs.
+func (h *Handler) OnInteractiveSessionStart(stageName string) {
+	if !h.isEnabled() {
+		return
+	}
+
+	if !h.config.OnInteractiveSession {
+		return
+	}
+
+	n := NewNotification(
+		"autospec",
+		fmt.Sprintf("Interactive session starting: %s (your input required)", stageName),
+		TypeInfo,
+	)
+	h.dispatch(n)
+}
+
 // formatDuration formats a duration for display in notifications
 func formatDuration(d time.Duration) string {
 	if d < time.Second {

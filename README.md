@@ -62,7 +62,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
 
 ## 🚀 Quick Start
 
-> **New to autospec?** See the [Quickstart Guide](docs/QUICKSTART.md) for copy-paste commands or run the [interactive demo](scripts/quickstart-demo.sh).
+> **New to autospec?** See the [Quickstart Guide](docs/quickstart.md) or run the [interactive demo](scripts/quickstart-demo.sh).
 
 ### Prerequisites
 

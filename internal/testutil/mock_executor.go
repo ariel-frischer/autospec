@@ -121,6 +121,11 @@ func (m *MockExecutor) Execute(prompt string) error {
 	return m.recordAndRespond("Execute", prompt)
 }
 
+// ExecuteInteractive simulates interactive command execution.
+func (m *MockExecutor) ExecuteInteractive(prompt string) error {
+	return m.recordAndRespond("ExecuteInteractive", prompt)
+}
+
 // ExecuteSpecKitCommand simulates speckit command execution.
 func (m *MockExecutor) ExecuteSpecKitCommand(command string) error {
 	return m.recordAndRespond("ExecuteSpecKitCommand", command)

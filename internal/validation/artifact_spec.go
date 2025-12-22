@@ -82,7 +82,7 @@ func (v *SpecValidator) validateFeature(node *yaml.Node, result *ValidationResul
 	// Validate status enum if present
 	statusNode := findNode(node, "status")
 	if statusNode != nil {
-		validateEnumValue(statusNode, "feature.status", []string{"Draft", "Review", "Approved", "Implemented"}, result)
+		validateEnumValue(statusNode, "feature.status", []string{"Draft", "Review", "Approved", "Completed"}, result)
 	}
 }
 

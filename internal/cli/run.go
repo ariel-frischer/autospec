@@ -53,6 +53,7 @@ Stages are always executed in canonical order:
   # Skip confirmation prompts for CI/CD
   autospec run -ti -y`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Don't show help for execution errors
 		// Get core stage flags
 		specify, _ := cmd.Flags().GetBool("specify")
 		plan, _ := cmd.Flags().GetBool("plan")
@@ -194,6 +195,10 @@ Stages are always executed in canonical order:
 		orchestrator.Debug = debug
 		orchestrator.Executor.Debug = debug
 
+		// Disable process replacement for multi-stage runs
+		// This allows interactive stages to return so subsequent stages can execute
+		orchestrator.DisableProcessReplacement()
+
 		// Apply output style from CLI flag (overrides config)
 		shared.ApplyOutputStyle(cmd, orchestrator)
 
@@ -282,6 +287,9 @@ type stageExecutionContext struct {
 	specName        string
 	specDir         string
 	ranImplement    bool
+	// hadAutomatedStage tracks whether any automated (non-interactive) stage has run.
+	// Used to decide whether to send notification before interactive stages.
+	hadAutomatedStage bool
 }
 
 // executeStages executes the selected stages in order
@@ -314,9 +322,19 @@ func executeStages(cmdCtx context.Context, orchestrator *workflow.WorkflowOrches
 	// Note: spec name may be empty if starting with specify stage
 	return lifecycle.RunWithHistoryContext(cmdCtx, notifHandler, historyLogger, "run", ctx.specName, func(_ context.Context) error {
 		for i, stage := range stages {
+			// Send notification before interactive stages if automated stages preceded
+			if workflow.IsInteractive(stage) && ctx.hadAutomatedStage {
+				ctx.notificationHandler.OnInteractiveSessionStart(string(stage))
+			}
+
 			fmt.Printf("[Stage %d/%d] %s...\n", i+1, len(stages), stage)
 			if err := ctx.executeStage(stage); err != nil {
 				return fmt.Errorf("executing stage %s: %w", stage, err)
+			}
+
+			// Track that we've run an automated stage
+			if !workflow.IsInteractive(stage) {
+				ctx.hadAutomatedStage = true
 			}
 		}
 

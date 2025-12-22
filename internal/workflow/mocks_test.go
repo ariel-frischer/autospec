@@ -87,6 +87,11 @@ func (m *MockClaudeExecutor) Execute(prompt string) error {
 	return m.ExecuteError
 }
 
+// ExecuteInteractive records the call and returns configured error (same as Execute for mocking)
+func (m *MockClaudeExecutor) ExecuteInteractive(prompt string) error {
+	return m.Execute(prompt)
+}
+
 // FormatCommand records the call and returns formatted command
 func (m *MockClaudeExecutor) FormatCommand(prompt string) string {
 	m.FormatCmdCalls = append(m.FormatCmdCalls, prompt)

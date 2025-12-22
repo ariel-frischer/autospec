@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -72,23 +73,32 @@ func (b *BaseAgent) BuildCommand(prompt string, opts ExecOptions) (*exec.Cmd, er
 }
 
 // buildArgs constructs the command arguments based on prompt delivery method.
+// For interactive mode, uses positional argument instead of -p flag to enable
+// multi-turn conversation in Claude Code.
 func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 	var args []string
 	pd := b.AgentCaps.PromptDelivery
 
-	switch pd.Method {
-	case PromptMethodArg:
-		args = append(args, pd.Flag, prompt)
-	case PromptMethodPositional:
+	// Interactive mode: use positional argument (enables multi-turn conversation)
+	// Automated mode: use configured prompt delivery method (e.g., -p flag)
+	if opts.Interactive {
 		args = append(args, prompt)
-	case PromptMethodSubcommand:
-		args = append(args, pd.Flag, prompt)
-	case PromptMethodSubcommandArg:
-		args = append(args, pd.Flag, pd.PromptFlag, prompt)
+	} else {
+		switch pd.Method {
+		case PromptMethodArg:
+			args = append(args, pd.Flag, prompt)
+		case PromptMethodPositional:
+			args = append(args, prompt)
+		case PromptMethodSubcommand:
+			args = append(args, pd.Flag, prompt)
+		case PromptMethodSubcommandArg:
+			args = append(args, pd.Flag, pd.PromptFlag, prompt)
+		}
+		// Add default args (e.g., --verbose --output-format stream-json for Claude)
+		// Only in automated mode - interactive mode omits these for conversation
+		args = append(args, b.AgentCaps.DefaultArgs...)
 	}
 
-	// Add default args (e.g., --verbose --output-format stream-json for Claude)
-	args = append(args, b.AgentCaps.DefaultArgs...)
 	args = b.appendAutonomousArgs(args, opts)
 	args = append(args, opts.ExtraArgs...)
 	return args
@@ -148,7 +158,21 @@ func (b *BaseAgent) Execute(ctx context.Context, prompt string, opts ExecOptions
 }
 
 // runCommand executes the command and captures output.
+// For interactive mode with ReplaceProcess, uses syscall.Exec to replace the current process,
+// giving the agent full terminal control for TUI applications.
 func (b *BaseAgent) runCommand(ctx context.Context, cmd *exec.Cmd, opts ExecOptions) (*Result, error) {
+	// Interactive mode with process replacement: gives agent full terminal control
+	// This is necessary for TUI applications like Claude Code that need raw mode
+	if opts.Interactive && opts.ReplaceProcess {
+		return b.execInteractive(cmd)
+	}
+
+	// Interactive subprocess mode: connect stdin for user input
+	// Note: TUI apps may have limited functionality without full terminal control
+	if opts.Interactive {
+		cmd.Stdin = os.Stdin
+	}
+
 	ctx, cancel := b.applyTimeout(ctx, opts)
 	defer cancel()
 
@@ -196,6 +220,27 @@ func (b *BaseAgent) runCommand(ctx context.Context, cmd *exec.Cmd, opts ExecOpti
 		}
 	}
 	return result, nil
+}
+
+// execInteractive replaces the current process with the agent command.
+// This gives the agent full terminal control, necessary for TUI applications
+// like Claude Code that require raw mode for their UI.
+// Note: This function does not return on success - the process is replaced.
+func (b *BaseAgent) execInteractive(cmd *exec.Cmd) (*Result, error) {
+	binary, err := exec.LookPath(cmd.Path)
+	if err != nil {
+		return nil, fmt.Errorf("finding %s binary: %w", b.AgentName, err)
+	}
+
+	// syscall.Exec replaces the current process with the new one
+	// This gives the child process full control of the terminal
+	err = syscall.Exec(binary, cmd.Args, cmd.Env)
+	if err != nil {
+		return nil, fmt.Errorf("exec %s: %w", b.AgentName, err)
+	}
+
+	// This line is never reached - syscall.Exec replaces the process
+	return nil, nil
 }
 
 // applyTimeout returns a context with timeout if opts.Timeout is set.

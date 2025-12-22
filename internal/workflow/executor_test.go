@@ -51,6 +51,11 @@ func (m *mockClaudeExecutor) Execute(prompt string) error {
 	return m.executeErr
 }
 
+func (m *mockClaudeExecutor) ExecuteInteractive(prompt string) error {
+	m.executeCalls = append(m.executeCalls, prompt)
+	return m.executeErr
+}
+
 func (m *mockClaudeExecutor) FormatCommand(prompt string) string {
 	return "claude " + prompt
 }
@@ -1599,6 +1604,14 @@ type conditionalMockRunner struct {
 }
 
 func (c *conditionalMockRunner) Execute(prompt string) error {
+	*c.callCount++
+	if *c.callCount <= c.failUntilCall {
+		return errors.New("mock execution error")
+	}
+	return nil
+}
+
+func (c *conditionalMockRunner) ExecuteInteractive(prompt string) error {
 	*c.callCount++
 	if *c.callCount <= c.failUntilCall {
 		return errors.New("mock execution error")

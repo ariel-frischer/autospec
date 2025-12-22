@@ -640,3 +640,199 @@ func TestExplicitVsAllFlagBehavior(t *testing.T) {
 		})
 	}
 }
+
+// TestRunCommandMixedModes verifies that the run command correctly handles
+// mixed interactive and automated stages. Interactive stages (clarify, analyze)
+// should use interactive mode, while automated stages (specify, plan, tasks,
+// implement, constitution, checklist) should use automated mode.
+func TestRunCommandMixedModes(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		stages               []workflow.Stage
+		wantInteractiveStage map[workflow.Stage]bool
+	}{
+		"--specify --clarify: automated then interactive": {
+			stages: []workflow.Stage{
+				workflow.StageSpecify,
+				workflow.StageClarify,
+			},
+			wantInteractiveStage: map[workflow.Stage]bool{
+				workflow.StageSpecify: false,
+				workflow.StageClarify: true,
+			},
+		},
+		"--plan --analyze: automated then interactive": {
+			stages: []workflow.Stage{
+				workflow.StagePlan,
+				workflow.StageAnalyze,
+			},
+			wantInteractiveStage: map[workflow.Stage]bool{
+				workflow.StagePlan:    false,
+				workflow.StageAnalyze: true,
+			},
+		},
+		"--specify --plan --tasks: all automated": {
+			stages: []workflow.Stage{
+				workflow.StageSpecify,
+				workflow.StagePlan,
+				workflow.StageTasks,
+			},
+			wantInteractiveStage: map[workflow.Stage]bool{
+				workflow.StageSpecify: false,
+				workflow.StagePlan:    false,
+				workflow.StageTasks:   false,
+			},
+		},
+		"--clarify --plan --analyze: interactive, automated, interactive": {
+			stages: []workflow.Stage{
+				workflow.StageClarify,
+				workflow.StagePlan,
+				workflow.StageAnalyze,
+			},
+			wantInteractiveStage: map[workflow.Stage]bool{
+				workflow.StageClarify: true,
+				workflow.StagePlan:    false,
+				workflow.StageAnalyze: true,
+			},
+		},
+		"all 8 stages: mixed modes in canonical order": {
+			stages: []workflow.Stage{
+				workflow.StageConstitution,
+				workflow.StageSpecify,
+				workflow.StageClarify,
+				workflow.StagePlan,
+				workflow.StageTasks,
+				workflow.StageChecklist,
+				workflow.StageAnalyze,
+				workflow.StageImplement,
+			},
+			wantInteractiveStage: map[workflow.Stage]bool{
+				workflow.StageConstitution: false, // automated
+				workflow.StageSpecify:      false, // automated
+				workflow.StageClarify:      true,  // interactive
+				workflow.StagePlan:         false, // automated
+				workflow.StageTasks:        false, // automated
+				workflow.StageChecklist:    false, // automated
+				workflow.StageAnalyze:      true,  // interactive
+				workflow.StageImplement:    false, // automated
+			},
+		},
+		"only interactive stages: clarify and analyze": {
+			stages: []workflow.Stage{
+				workflow.StageClarify,
+				workflow.StageAnalyze,
+			},
+			wantInteractiveStage: map[workflow.Stage]bool{
+				workflow.StageClarify: true,
+				workflow.StageAnalyze: true,
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			for _, stage := range tt.stages {
+				gotInteractive := workflow.IsInteractive(stage)
+				wantInteractive := tt.wantInteractiveStage[stage]
+
+				if gotInteractive != wantInteractive {
+					t.Errorf("stage %s: IsInteractive() = %v, want %v",
+						stage, gotInteractive, wantInteractive)
+				}
+			}
+		})
+	}
+}
+
+// TestRunCommandModeTransitions verifies that when running a workflow with
+// mixed modes, the transitions between automated and interactive modes
+// are handled correctly. This tests the execution path logic in run.go.
+func TestRunCommandModeTransitions(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		config                      *workflow.StageConfig
+		wantAutomatedBeforeInteract bool
+		description                 string
+	}{
+		"specify then clarify: has automated before interactive": {
+			config: &workflow.StageConfig{
+				Specify: true,
+				Clarify: true,
+			},
+			wantAutomatedBeforeInteract: true,
+			description:                 "specify (automated) runs before clarify (interactive)",
+		},
+		"plan then analyze: has automated before interactive": {
+			config: &workflow.StageConfig{
+				Plan:    true,
+				Analyze: true,
+			},
+			wantAutomatedBeforeInteract: true,
+			description:                 "plan (automated) runs before analyze (interactive)",
+		},
+		"only clarify: no automated before interactive": {
+			config: &workflow.StageConfig{
+				Clarify: true,
+			},
+			wantAutomatedBeforeInteract: false,
+			description:                 "clarify (interactive) with no preceding automated stage",
+		},
+		"only analyze: no automated before interactive": {
+			config: &workflow.StageConfig{
+				Analyze: true,
+			},
+			wantAutomatedBeforeInteract: false,
+			description:                 "analyze (interactive) with no preceding automated stage",
+		},
+		"specify plan tasks: no interactive at all": {
+			config: &workflow.StageConfig{
+				Specify: true,
+				Plan:    true,
+				Tasks:   true,
+			},
+			wantAutomatedBeforeInteract: false,
+			description:                 "all stages automated, no transition needed",
+		},
+		"constitution specify clarify plan: automated before interactive": {
+			config: &workflow.StageConfig{
+				Constitution: true,
+				Specify:      true,
+				Clarify:      true,
+				Plan:         true,
+			},
+			wantAutomatedBeforeInteract: true,
+			description:                 "constitution and specify (automated) run before clarify (interactive)",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			stages := tt.config.GetCanonicalOrder()
+
+			// Check if any automated stage precedes an interactive stage
+			hasAutomatedBeforeInteract := false
+			sawAutomated := false
+
+			for _, stage := range stages {
+				isInteractive := workflow.IsInteractive(stage)
+				if !isInteractive {
+					sawAutomated = true
+				} else if sawAutomated && isInteractive {
+					hasAutomatedBeforeInteract = true
+					break
+				}
+			}
+
+			if hasAutomatedBeforeInteract != tt.wantAutomatedBeforeInteract {
+				t.Errorf("%s: hasAutomatedBeforeInteract = %v, want %v",
+					tt.description, hasAutomatedBeforeInteract, tt.wantAutomatedBeforeInteract)
+			}
+		})
+	}
+}

@@ -34,10 +34,26 @@ type ExecOptions struct {
 	// If nil, output is captured in Result.Stderr.
 	Stderr io.Writer
 
+	// Stdin is where to read stdin from.
+	// Required for interactive mode to allow user input.
+	// If nil in interactive mode, os.Stdin is used automatically.
+	Stdin io.Reader
+
 	// UseSubscription forces subscription mode (Pro/Max) instead of API credits.
 	// When true, ANTHROPIC_API_KEY is set to empty string in the execution environment.
 	// This prevents accidental API charges when users have API keys in their shell.
 	UseSubscription bool
+
+	// Interactive enables interactive conversation mode (skips headless flags).
+	// When true, -p and --output-format flags are omitted, allowing multi-turn conversation.
+	// Used for recommendation-focused stages like analyze and clarify.
+	Interactive bool
+
+	// ReplaceProcess controls whether interactive mode replaces the current process.
+	// When true (default for standalone commands), uses syscall.Exec for full terminal control.
+	// When false (for multi-stage runs), uses subprocess which may have limited terminal support.
+	// Only applies when Interactive is true.
+	ReplaceProcess bool
 }
 
 // Result contains the outcome of an agent execution.

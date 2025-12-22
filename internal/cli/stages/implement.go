@@ -89,6 +89,7 @@ The --tasks mode provides maximum context isolation:
   # Run all tasks in a single Claude session (legacy mode)
   autospec implement --single-session`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Don't show help for execution errors
 		// Parse args to distinguish between spec-name and prompt
 		specName, prompt := ParseImplementArgs(args)
 

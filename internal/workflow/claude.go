@@ -27,6 +27,11 @@ type ClaudeExecutor struct {
 	// UseSubscription forces subscription mode (Pro/Max) instead of API credits.
 	// When true, ANTHROPIC_API_KEY is set to empty string in the execution environment.
 	UseSubscription bool
+
+	// ReplaceProcessForInteractive controls whether interactive mode replaces the process.
+	// When true (default), uses syscall.Exec for full terminal control in interactive mode.
+	// Set to false for multi-stage runs where we need to continue after interactive stages.
+	ReplaceProcessForInteractive bool
 }
 
 // Execute runs an agent command with the given prompt.
@@ -36,30 +41,49 @@ func (c *ClaudeExecutor) Execute(prompt string) error {
 	if c.Agent == nil {
 		return fmt.Errorf("no agent configured")
 	}
-	return c.executeWithAgent(prompt)
+	return c.executeWithAgent(prompt, false)
+}
+
+// ExecuteInteractive runs an agent command in interactive mode.
+// Unlike Execute, this skips headless flags (-p, --output-format)
+// to allow multi-turn conversation with the user.
+func (c *ClaudeExecutor) ExecuteInteractive(prompt string) error {
+	if c.Agent == nil {
+		return fmt.Errorf("no agent configured")
+	}
+	return c.executeWithAgent(prompt, true)
 }
 
 // executeWithAgent uses the new Agent interface for execution.
-func (c *ClaudeExecutor) executeWithAgent(prompt string) error {
+// When interactive is true, sets ExecOptions.Interactive to skip headless flags.
+func (c *ClaudeExecutor) executeWithAgent(prompt string, interactive bool) error {
 	ctx, cancel := c.createTimeoutContext()
 	if cancel != nil {
 		defer cancel()
 	}
 
 	// Determine stdout writer, potentially wrapping with formatter
-	stdout := c.getFormattedStdout(os.Stdout)
+	// Skip formatter for interactive mode (no stream-json output)
+	var stdout io.Writer = os.Stdout
+	if !interactive {
+		stdout = c.getFormattedStdout(os.Stdout)
+	}
 
 	opts := cliagent.ExecOptions{
 		Stdout:          stdout,
 		Stderr:          os.Stderr,
 		Timeout:         time.Duration(c.Timeout) * time.Second,
 		UseSubscription: c.UseSubscription,
+		Interactive:     interactive,
+		ReplaceProcess:  interactive && c.ReplaceProcessForInteractive,
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)
 
-	// Flush formatter if used
-	c.flushFormatter(stdout)
+	// Flush formatter if used (only applies to non-interactive mode)
+	if !interactive {
+		c.flushFormatter(stdout)
+	}
 
 	if err != nil {
 		// Check for timeout specifically

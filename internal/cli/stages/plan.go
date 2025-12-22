@@ -37,6 +37,7 @@ You can optionally provide a prompt to guide the planning process.`,
   # Run planning with performance considerations
   autospec plan "Optimize for low-latency API responses"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Don't show help for execution errors
 		// Get optional prompt from args
 		var prompt string
 		if len(args) > 0 {

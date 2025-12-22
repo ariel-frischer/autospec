@@ -44,6 +44,7 @@ The feature description should be a clear, concise description of what you want 
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Don't show help for execution errors
 		// Join all args as the feature description
 		featureDescription := strings.Join(args, " ")
 

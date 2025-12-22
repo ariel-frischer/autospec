@@ -39,6 +39,7 @@ Prerequisites:
   # Clarify specific flows
   autospec clarify "Clarify the authentication flow"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Don't show help for execution errors
 		// Get optional prompt from args
 		var prompt string
 		if len(args) > 0 {

@@ -23,6 +23,13 @@ type ClaudeRunner interface {
 	// Returns TimeoutError if the configured timeout is exceeded.
 	Execute(prompt string) error
 
+	// ExecuteInteractive runs a Claude command in interactive mode.
+	// Unlike Execute, this skips headless flags (-p, --output-format)
+	// to allow multi-turn conversation with the user.
+	//
+	// Used for recommendation-focused stages like analyze and clarify.
+	ExecuteInteractive(prompt string) error
+
 	// FormatCommand returns a human-readable command string for display.
 	// This is used in error messages, debug output, and progress display
 	// to show users what command would be executed.

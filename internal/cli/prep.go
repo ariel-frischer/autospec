@@ -39,6 +39,7 @@ This is useful when you want to review the generated artifacts before implementa
   autospec prep "Refactor database layer"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true // Don't show help for execution errors
 		featureDescription := args[0]
 
 		// Get flags

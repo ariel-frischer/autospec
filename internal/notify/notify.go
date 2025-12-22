@@ -63,6 +63,10 @@ type NotificationConfig struct {
 	// LongRunningThreshold is the threshold for on_long_running hook (default: 30s)
 	// A value of 0 or negative means "always notify"
 	LongRunningThreshold time.Duration `koanf:"long_running_threshold" yaml:"long_running_threshold" json:"long_running_threshold"`
+
+	// OnInteractiveSession notifies when an interactive stage is about to begin (default: true when enabled)
+	// This alerts users to return to the terminal after automated stages complete.
+	OnInteractiveSession bool `koanf:"on_interactive_session" yaml:"on_interactive_session" json:"on_interactive_session"`
 }
 
 // DefaultConfig returns a NotificationConfig with default values
@@ -76,6 +80,7 @@ func DefaultConfig() NotificationConfig {
 		OnError:              true,
 		OnLongRunning:        false,
 		LongRunningThreshold: 2 * time.Minute,
+		OnInteractiveSession: true,
 	}
 }
 

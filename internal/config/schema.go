@@ -156,7 +156,7 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Path:        "auto_commit",
 		Type:        TypeBool,
 		Description: "Enable automatic git commit creation after workflow completion",
-		Default:     true,
+		Default:     false,
 	},
 }
 

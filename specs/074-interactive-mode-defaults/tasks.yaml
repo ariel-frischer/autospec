@@ -1,0 +1,326 @@
+tasks:
+    branch: "074-interactive-mode-defaults"
+    created: "2025-12-22"
+    spec_path: "specs/074-interactive-mode-defaults/spec.yaml"
+    plan_path: "specs/074-interactive-mode-defaults/plan.yaml"
+summary:
+    total_tasks: 18
+    total_phases: 6
+    parallel_opportunities: 4
+    estimated_complexity: "medium"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Create new stage mode configuration file"
+      tasks:
+        - id: "T001"
+          title: "Create stage_mode.go with StageMode type and IsInteractive()"
+          status: "Completed"
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/stage_mode.go"
+          dependencies: []
+          acceptance_criteria:
+            - "StageMode type with Interactive and Automated constants defined"
+            - "IsInteractive(stage Stage) bool function returns true for analyze and clarify"
+            - "IsInteractive() returns false for specify, plan, tasks, implement, constitution, checklist"
+    - number: 2
+      title: "Foundational"
+      purpose: "Core infrastructure that MUST be complete before user stories"
+      tasks:
+        - id: "T002"
+          title: "Add Interactive field to ExecOptions struct"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/cliagent/options.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "ExecOptions has Interactive bool field"
+            - "Field defaults to false (automated mode)"
+            - "Existing ExecOptions usage unaffected"
+        - id: "T003"
+          title: "Update BaseAgent.buildArgs() to respect Interactive flag"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: null
+          file_path: "internal/cliagent/base.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "When Interactive is true, skip -p flag"
+            - "When Interactive is true, skip --output-format stream-json"
+            - "When Interactive is false, include DefaultArgs as before"
+            - "No changes to autonomous mode handling"
+        - id: "T004"
+          title: "Add unit tests for stage_mode.go"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/workflow/stage_mode_test.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Test IsInteractive() returns true for analyze stage"
+            - "Test IsInteractive() returns true for clarify stage"
+            - "Test IsInteractive() returns false for all automated stages"
+            - "Map-based table-driven tests with t.Parallel()"
+        - id: "T005"
+          title: "Add unit tests for Interactive flag in buildArgs"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: "internal/cliagent/base_test.go"
+          dependencies: ["T002", "T003"]
+          acceptance_criteria:
+            - "Test buildArgs without Interactive flag includes -p and --output-format"
+            - "Test buildArgs with Interactive=true excludes -p and --output-format"
+            - "Map-based table-driven tests with t.Parallel()"
+    - number: 3
+      title: "User Story 1 - Interactive Mode for Non-Modifying Commands"
+      purpose: "Enable analyze and clarify to run in interactive Claude mode by default"
+      story_reference: "US-001"
+      independent_test: "Run 'autospec analyze' or 'autospec clarify' and verify Claude launches in interactive mode"
+      tasks:
+        - id: "T006"
+          title: "Update stageExecutionContext to include Interactive flag"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/executor.go"
+          dependencies: ["T002", "T003"]
+          acceptance_criteria:
+            - "stageExecutionContext has Interactive bool field"
+            - "ExecuteStage sets Interactive based on IsInteractive(stage)"
+            - "Interactive flag propagated to ClaudeExecutor"
+        - id: "T007"
+          title: "Update ClaudeExecutor to pass Interactive flag to agent"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/workflow/claude.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "ClaudeExecutor reads Interactive from execution context"
+            - "ExecOptions.Interactive set when calling agent.Execute()"
+            - "Existing automated execution unaffected"
+        - id: "T008"
+          title: "Update StageExecutor.ExecuteAnalyze() to use interactive mode"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/workflow/stage_executor.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "ExecuteAnalyze sets Interactive=true in execution context"
+            - "No retry loop for analyze stage"
+            - "Returns after Claude session ends"
+        - id: "T009"
+          title: "Update StageExecutor.ExecuteClarify() to use interactive mode"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/workflow/stage_executor.go"
+          dependencies: ["T007"]
+          acceptance_criteria:
+            - "ExecuteClarify sets Interactive=true in execution context"
+            - "No retry loop for clarify stage"
+            - "Returns after Claude session ends"
+    - number: 4
+      title: "User Story 3 - Interactive Mode via Run Command"
+      purpose: "Ensure analyze and clarify stages within run command also use interactive mode"
+      story_reference: "US-003"
+      independent_test: "Run 'autospec run --clarify --plan' and verify clarify uses interactive mode while plan uses automated mode"
+      tasks:
+        - id: "T010"
+          title: "Verify run command respects IsInteractive() for stage execution"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/run.go"
+          dependencies: ["T008", "T009"]
+          acceptance_criteria:
+            - "Run command executor uses same stage execution path as individual commands"
+            - "Interactive stages (clarify, analyze) use interactive mode within run"
+            - "Automated stages use automated mode within run"
+        - id: "T011"
+          title: "Add integration test for run command with mixed modes"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cli/run_test.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "Test run with --specify --clarify uses automated then interactive"
+            - "Test run with --plan --analyze uses automated then interactive"
+            - "Test run with only automated stages stays automated"
+    - number: 5
+      title: "User Story 4 - Interactive Session Notification"
+      purpose: "Notify users when workflow transitions to an interactive session"
+      story_reference: "US-004"
+      independent_test: "Run 'autospec run --specify --clarify' with notifications enabled and verify notification appears before clarify starts"
+      tasks:
+        - id: "T012"
+          title: "Add OnInteractiveSessionStart method to notify.Handler"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/notify/handler.go"
+          dependencies: ["T010"]
+          acceptance_criteria:
+            - "OnInteractiveSessionStart(stageName string) method added"
+            - "Method uses async dispatch pattern with 5-second timeout"
+            - "Sends notification with message about interactive session starting"
+        - id: "T013"
+          title: "Add on_interactive_session to NotificationConfig"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-004"
+          file_path: "internal/notify/notify.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "NotificationConfig has OnInteractiveSession field"
+            - "Config supports sound/command hooks like other notifications"
+            - "Default value allows notifications to work out of the box"
+        - id: "T014"
+          title: "Track hadAutomatedStage in run command"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-004"
+          file_path: "internal/cli/run.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "hadAutomatedStage bool tracks if any automated stage executed"
+            - "Set to true when any non-interactive stage completes"
+            - "Used to decide whether to send interactive session notification"
+        - id: "T015"
+          title: "Call OnInteractiveSessionStart before interactive stages in run"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/cli/run.go"
+          dependencies: ["T013", "T014"]
+          acceptance_criteria:
+            - "Before clarify/analyze stage, check if hadAutomatedStage is true"
+            - "If true, call notifHandler.OnInteractiveSessionStart(stageName)"
+            - "If false (only interactive stages requested), skip notification"
+        - id: "T016"
+          title: "Add unit tests for OnInteractiveSessionStart"
+          status: "Completed"
+          type: "test"
+          parallel: false
+          story_id: "US-004"
+          file_path: "internal/notify/handler_test.go"
+          dependencies: ["T012", "T013"]
+          acceptance_criteria:
+            - "Test notification sent with correct stage name"
+            - "Test respects on_interactive_session config"
+            - "Test nil handler safety"
+            - "Map-based table-driven tests with t.Parallel()"
+    - number: 6
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Quality gates and final validation"
+      tasks:
+        - id: "T017"
+          title: "Run all quality gates"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "Makefile"
+          dependencies: ["T011", "T015", "T016"]
+          acceptance_criteria:
+            - "make fmt exits 0 with no changes"
+            - "make lint exits 0 with no errors"
+            - "make test exits 0 with all tests passing"
+            - "make build exits 0 successfully"
+        - id: "T018"
+          title: "Manual verification of all scenarios"
+          status: "Completed"
+          type: "documentation"
+          parallel: false
+          story_id: null
+          file_path: "specs/074-interactive-mode-defaults/verification.md"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "autospec analyze runs in interactive mode"
+            - "autospec clarify runs in interactive mode"
+            - "autospec specify runs in automated mode"
+            - "autospec run --specify --clarify sends notification before clarify"
+            - "autospec run --clarify alone does not send notification"
+            - "Existing automated workflows unchanged"
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-003", "US-004"]
+        - story_id: "US-002"
+          depends_on: []
+          blocks: []
+        - story_id: "US-003"
+          depends_on: ["US-001"]
+          blocks: ["US-004"]
+        - story_id: "US-004"
+          depends_on: ["US-003"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+parallel_execution:
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T002", "T003"]
+          rationale: "Different files, both depend only on T001"
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T008", "T009"]
+          rationale: "Both update stage_executor.go but different methods"
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T013", "T014"]
+          rationale: "Different files, both depend on T012"
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3]
+        description: "Setup + Foundational + US-001 (Interactive Mode for analyze/clarify)"
+        validation: "Run autospec analyze and autospec clarify, verify Claude launches in interactive mode"
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "Stage mode infrastructure in place, no user-visible changes"
+        - milestone: "MVP Complete"
+          phases: [1, 2, 3]
+          deliverable: "analyze and clarify commands work in interactive mode"
+        - milestone: "Run Command Integration"
+          phases: [1, 2, 3, 4]
+          deliverable: "run command correctly switches modes per stage"
+        - milestone: "Full Feature"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "Complete feature with notifications and quality gates"
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2025-12-22T01:06:32Z"
+    artifact_type: "tasks"

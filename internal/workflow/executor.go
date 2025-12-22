@@ -139,6 +139,7 @@ func (e *Executor) ExecuteStage(specName string, stage Stage, command string, va
 		validateFunc:   validateFunc,
 		result:         result,
 		retryState:     retryState,
+		interactive:    IsInteractive(stage),
 	}
 
 	return e.executeStageLoop(ctx)
@@ -154,10 +155,17 @@ type stageExecutionContext struct {
 	result               *StageResult
 	retryState           *retry.RetryState
 	lastValidationErrors []string
+	interactive          bool // When true, skip retry loop and use interactive mode
 }
 
-// executeStageLoop runs the retry loop for stage execution
+// executeStageLoop runs the retry loop for stage execution.
+// For interactive stages, executes once without retry loop.
 func (e *Executor) executeStageLoop(ctx *stageExecutionContext) (*StageResult, error) {
+	// Interactive mode: execute once, no retry loop
+	if ctx.interactive {
+		return e.executeInteractiveStage(ctx)
+	}
+
 	for {
 		stageInfo := e.buildStageInfo(ctx.stage, ctx.retryState.Count)
 		e.startProgressDisplay(stageInfo)
@@ -175,6 +183,22 @@ func (e *Executor) executeStageLoop(ctx *stageExecutionContext) (*StageResult, e
 			return ctx.result, err
 		}
 	}
+}
+
+// executeInteractiveStage runs a stage in interactive mode without retry loop.
+// Interactive stages skip validation and rely on user conversation.
+func (e *Executor) executeInteractiveStage(ctx *stageExecutionContext) (*StageResult, error) {
+	e.debugLog("Executing interactive stage: %s", ctx.stage)
+
+	e.displayInteractiveCommandExecution(ctx.currentCommand)
+	if err := e.Claude.ExecuteInteractive(ctx.currentCommand); err != nil {
+		ctx.result.Error = fmt.Errorf("interactive session failed: %w", err)
+		return ctx.result, ctx.result.Error
+	}
+
+	ctx.result.Success = true
+	e.debugLog("Interactive stage %s completed", ctx.stage)
+	return ctx.result, nil
 }
 
 // executeStageAttempt executes a single attempt of a stage
@@ -271,6 +295,30 @@ func (e *Executor) displayCommandExecution(command string) {
 	fullCommand := e.Claude.FormatCommand(compactedCommand)
 	fmt.Printf("\n→ Executing: %s\n\n", fullCommand)
 	e.debugLog("About to call Claude.Execute()")
+}
+
+// displayInteractiveCommandExecution shows the interactive command being executed.
+// Interactive mode uses positional argument without -p flag for multi-turn conversation.
+func (e *Executor) displayInteractiveCommandExecution(command string) {
+	compactedCommand := CompactInstructionsForDisplay(command, e.Debug)
+	fullCommand := e.formatInteractiveCommand(compactedCommand)
+	fmt.Printf("\n→ Executing (interactive): %s\n\n", fullCommand)
+	e.debugLog("About to call Claude.ExecuteInteractive()")
+}
+
+// formatInteractiveCommand returns the command string for interactive mode.
+// Interactive mode uses positional argument (no -p, no --output-format stream-json).
+func (e *Executor) formatInteractiveCommand(prompt string) string {
+	if e.Claude == nil {
+		return "[no agent configured]"
+	}
+	// For Claude, interactive mode is: claude <prompt> (positional, no -p flag)
+	// We get the agent name and append the prompt directly
+	ce, ok := e.Claude.(*ClaudeExecutor)
+	if !ok || ce.Agent == nil {
+		return fmt.Sprintf("claude %s", prompt)
+	}
+	return fmt.Sprintf("%s %s", ce.Agent.Name(), prompt)
 }
 
 // failStageProgress marks a stage as failed in the progress display.
