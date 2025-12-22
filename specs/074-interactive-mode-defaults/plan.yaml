@@ -1,423 +1,228 @@
-# Implementation Plan for Interactive Mode Defaults
-# Feature: 074-interactive-mode-defaults
-# Generated: 2025-12-22
+plan:
+  branch: "074-interactive-mode-defaults"
+  created: "2025-12-22"
+  spec_path: "specs/074-interactive-mode-defaults/spec.yaml"
 
-design:
-  overview: |
-    This plan introduces stage-aware execution modes to autospec, enabling non-modifying
-    stages (analyze, clarify) to run in interactive Claude mode while preserving automated
-    mode for file-modifying stages (specify, plan, tasks, implement, constitution, checklist).
+summary: |
+  This plan introduces stage-aware execution modes to autospec, enabling non-modifying
+  stages (analyze, clarify) to run in interactive Claude mode while preserving automated
+  mode for file-modifying stages (specify, plan, tasks, implement, constitution, checklist).
 
-    The key insight is that the current architecture already supports this through the
-    cliagent.ExecOptions structure - we just need to make the agent invocation path
-    stage-aware so that DefaultArgs (which include -p and --output-format stream-json)
-    can be conditionally applied.
+  The key insight is that the current architecture already supports this through the
+  cliagent.ExecOptions structure - we just need to make the agent invocation path
+  stage-aware so that DefaultArgs (which include -p and --output-format stream-json)
+  can be conditionally applied. The BaseAgent.buildArgs() method will check an Interactive
+  flag in ExecOptions to skip headless mode flags when running interactive stages.
 
-  architecture_decisions:
-    - decision: "Add IsInteractive field to Stage enum or create StageMode lookup"
+  For the run command, we track whether automated stages have executed to conditionally
+  send a notification before interactive stages, alerting users to return to the terminal.
+
+technical_context:
+  language: "Go"
+  framework: "Cobra CLI"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.8.1"
+      purpose: "CLI command framework"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "YAML artifact parsing/writing"
+  storage: "None (file-based artifacts)"
+  testing:
+    framework: "go test"
+    approach: "Map-based table-driven tests with t.Parallel(), integration tests for CLI commands"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Validation <10ms, CLI startup <50ms"
+  constraints:
+    - "Must not break existing automated workflows"
+    - "Backwards compatible - existing configs work without modification"
+    - "Notification follows async dispatch pattern with 5-second timeout"
+  scale_scope: "Single-user CLI tool"
+
+constitution_check:
+  constitution_path: ".autospec/memory/constitution.yaml"
+  gates:
+    - name: "Test-First Development (PRIN-001)"
+      status: "PASS"
+      notes: "Tasks include test implementation before feature code"
+    - name: "Validation-First Workflow (PRIN-002)"
+      status: "PASS"
+      notes: "Interactive stages skip retry validation; automated stages unchanged"
+    - name: "Performance Standards (PRIN-003)"
+      status: "PASS"
+      notes: "IsInteractive() lookup is O(1); no performance impact"
+    - name: "Go Coding Standards (PRIN-011)"
+      status: "PASS"
+      notes: "Functions under 40 lines, error wrapping, map-based tests"
+    - name: "Command Template Independence (PRIN-012)"
+      status: "N/A"
+      notes: "No changes to command templates"
+
+research_findings:
+  decisions:
+    - topic: "How to skip -p and DefaultArgs for interactive stages"
+      decision: "Add Interactive bool to ExecOptions, check in BaseAgent.buildArgs()"
       rationale: |
-        Centralizing stage mode configuration enables easy extension for future stages
-        and ensures consistent behavior across all execution paths (CLI commands, run command).
+        ExecOptions already exists and is passed through the executor chain.
+        Adding a flag is minimal change with maximum flexibility.
       alternatives_considered:
-        - "Hardcode in each stage handler - rejected due to duplication"
-        - "Config file option per stage - rejected as too complex for initial implementation"
-
-    - decision: "Modify PromptDelivery pattern to support optional flags"
+        - "Create InteractiveAgent type - rejected as too much duplication"
+        - "Remove DefaultArgs entirely - breaks automated stages"
+        - "Environment variable toggle - less explicit, harder to test"
+    - topic: "Where to configure which stages are interactive"
+      decision: "Create stage_mode.go with IsInteractive(stage Stage) function"
       rationale: |
-        The current BaseAgent.buildArgs() unconditionally appends DefaultArgs. For interactive
-        mode, we need to skip the -p flag (PromptDelivery.Flag) and --output-format stream-json.
-        This requires extending ExecOptions with an Interactive flag that bypasses prompt delivery.
+        Centralizes mode configuration in one place. Easy to extend for future stages.
+        Avoids scattering mode logic across CLI commands.
       alternatives_considered:
-        - "Create separate InteractiveAgent type - rejected as too much duplication"
-        - "Remove DefaultArgs entirely - rejected as it breaks automated stages"
-
-    - decision: "Add OnInteractiveSessionStart hook to notification system"
+        - "Hardcode in each stage handler - duplication, error-prone"
+        - "Config file option per stage - too complex for initial implementation"
+    - topic: "How to handle retry logic for interactive stages"
+      decision: "Skip retry logic for interactive stages (validation N/A)"
       rationale: |
-        Users running multi-stage workflows with automated stages before interactive stages
-        need to be notified when the interactive session begins so they can return to the terminal.
-        Follows existing notification pattern with async dispatch and 5-second timeout.
+        Interactive sessions are conversational - validation happens during the session.
+        Retry loops make no sense for interactive mode.
+      alternatives_considered:
+        - "Run validation after session ends - rejected as disruptive UX"
 
-    - decision: "Track 'hadAutomatedStages' state in run command context"
-      rationale: |
-        The interactive session notification should only fire when automated stages preceded
-        the interactive stage. This requires tracking state as stages execute in the run command.
+data_model:
+  entities:
+    - name: "StageMode"
+      description: "Enum indicating whether a stage runs in interactive or automated mode"
+      fields:
+        - name: "Interactive"
+          type: "const"
+          description: "Stage runs without -p flag, user can converse"
+          constraints: "analyze, clarify stages"
+        - name: "Automated"
+          type: "const"
+          description: "Stage uses -p flag and stream-json output"
+          constraints: "specify, plan, tasks, implement, constitution, checklist"
+      relationships: []
+    - name: "ExecOptions.Interactive"
+      description: "Flag added to existing ExecOptions struct"
+      fields:
+        - name: "Interactive"
+          type: "bool"
+          description: "When true, skips -p flag and DefaultArgs"
+          constraints: "Default false (automated mode)"
+      relationships:
+        - target: "BaseAgent.buildArgs"
+          type: "one-to-one"
+          description: "buildArgs reads Interactive flag to determine args"
 
-  components:
-    - name: "StageMode Configuration"
-      description: "Centralized stage mode lookup"
-      location: "internal/workflow/stage_mode.go (new file)"
-      responsibilities:
-        - "Define StageMode enum (Interactive, Automated)"
-        - "Provide IsInteractive(stage Stage) function"
-        - "Document which stages use which mode"
+api_contracts:
+  endpoints: []
 
-    - name: "Agent Interactive Mode Support"
-      description: "ExecOptions extension for interactive execution"
-      location: "internal/cliagent/options.go"
-      responsibilities:
-        - "Add Interactive bool field to ExecOptions"
-        - "Document behavior when Interactive is true"
+project_structure:
+  documentation:
+    - path: "CLAUDE.md"
+      description: "Developer documentation (no changes needed)"
+  source_code:
+    - path: "internal/workflow/stage_mode.go"
+      description: "NEW: Stage mode configuration and IsInteractive() function"
+    - path: "internal/cliagent/options.go"
+      description: "ExecOptions with Interactive field"
+    - path: "internal/cliagent/base.go"
+      description: "BaseAgent.buildArgs() with Interactive flag handling"
+    - path: "internal/workflow/executor.go"
+      description: "ExecuteStage with mode propagation"
+    - path: "internal/workflow/stage_executor.go"
+      description: "Stage methods use IsInteractive()"
+    - path: "internal/workflow/claude.go"
+      description: "ClaudeExecutor passes Interactive to agent"
+    - path: "internal/notify/handler.go"
+      description: "OnInteractiveSessionStart method"
+    - path: "internal/notify/notify.go"
+      description: "NotificationConfig with OnInteractiveSession"
+    - path: "internal/cli/run.go"
+      description: "hadAutomatedStage tracking and notification call"
+  tests:
+    - path: "internal/cliagent/base_test.go"
+      description: "Tests for Interactive flag in buildArgs"
+    - path: "internal/workflow/stage_mode_test.go"
+      description: "Tests for IsInteractive()"
+    - path: "internal/notify/handler_test.go"
+      description: "Tests for OnInteractiveSessionStart"
 
-    - name: "BaseAgent Interactive Handling"
-      description: "Skip headless flags when Interactive mode requested"
-      location: "internal/cliagent/base.go"
-      responsibilities:
-        - "Modify buildArgs to check opts.Interactive"
-        - "Skip PromptDelivery flag (-p) when Interactive is true"
-        - "Skip DefaultArgs when Interactive is true"
-        - "Preserve WorkDir, Env, ExtraArgs, Timeout, UseSubscription"
-
-    - name: "Executor Stage-Aware Mode"
-      description: "Pass Interactive flag based on stage"
-      location: "internal/workflow/executor.go, internal/workflow/stage_executor.go"
-      responsibilities:
-        - "StageExecutor methods call IsInteractive() to determine mode"
-        - "Pass mode through executor chain to ClaudeExecutor"
-
-    - name: "ClaudeExecutor Interactive Support"
-      description: "Propagate Interactive flag to Agent"
-      location: "internal/workflow/claude.go"
-      responsibilities:
-        - "Add method to execute with interactive flag"
-        - "Ensure output formatting is skipped in interactive mode"
-
-    - name: "Interactive Session Notification"
-      description: "Notify when interactive session starts"
-      location: "internal/notify/handler.go"
-      responsibilities:
-        - "Add OnInteractiveSessionStart method"
-        - "Send notification with info about interactive mode"
-
-    - name: "Run Command Interactive Integration"
-      description: "Handle mode transitions in multi-stage workflows"
-      location: "internal/cli/run.go"
-      responsibilities:
-        - "Track whether automated stages have run"
-        - "Notify before interactive stage starts (if automated stages preceded)"
-        - "Pass stage mode to orchestrator"
-
-  data_flow: |
-    1. CLI Command (clarify/analyze/run)
-       ↓
-    2. StageExecutor.ExecuteClarify/ExecuteAnalyze
-       ↓
-    3. IsInteractive(stage) → true for clarify/analyze
-       ↓
-    4. Executor.ExecuteStage with Interactive=true in ExecOptions
-       ↓
-    5. ClaudeExecutor.executeWithAgent with opts.Interactive=true
-       ↓
-    6. Agent.Execute with Interactive=true
-       ↓
-    7. BaseAgent.buildArgs skips -p and DefaultArgs
-       ↓
-    8. Claude launches in interactive mode (no -p flag)
-
-  file_changes:
-    new_files:
-      - path: "internal/workflow/stage_mode.go"
-        purpose: "Centralized stage mode configuration"
-        estimated_lines: 40
-
-    modified_files:
-      - path: "internal/cliagent/options.go"
-        changes: "Add Interactive field to ExecOptions"
-        estimated_lines_changed: 10
-
-      - path: "internal/cliagent/base.go"
-        changes: "Modify buildArgs to skip -p and DefaultArgs when Interactive=true"
-        estimated_lines_changed: 20
-
-      - path: "internal/workflow/stage_executor.go"
-        changes: "Use IsInteractive() and pass mode to executor"
-        estimated_lines_changed: 30
-
-      - path: "internal/workflow/executor.go"
-        changes: "Add mode parameter to ExecuteStage"
-        estimated_lines_changed: 20
-
-      - path: "internal/workflow/claude.go"
-        changes: "Propagate Interactive flag to agent, skip formatting"
-        estimated_lines_changed: 15
-
-      - path: "internal/workflow/interfaces.go"
-        changes: "Update ClaudeRunner interface if needed"
-        estimated_lines_changed: 5
-
-      - path: "internal/notify/handler.go"
-        changes: "Add OnInteractiveSessionStart method"
-        estimated_lines_changed: 25
-
-      - path: "internal/notify/notify.go"
-        changes: "Add OnInteractiveSession hook to config"
-        estimated_lines_changed: 5
-
-      - path: "internal/cli/run.go"
-        changes: "Track automated stage execution, call notification"
-        estimated_lines_changed: 25
-
-      - path: "internal/cli/stages/clarify.go"
-        changes: "Ensure interactive mode is used (may be automatic)"
-        estimated_lines_changed: 5
-
-      - path: "internal/cli/stages/analyze.go"
-        changes: "Ensure interactive mode is used (may be automatic)"
-        estimated_lines_changed: 5
-
-phases:
+implementation_phases:
   - phase: 1
     name: "Core Stage Mode Infrastructure"
-    description: |
-      Establish the foundation for stage-specific execution modes by creating the
-      StageMode configuration and extending ExecOptions with Interactive flag.
-    tasks:
-      - id: "T1.1"
-        description: "Create internal/workflow/stage_mode.go with IsInteractive function"
-        acceptance_criteria:
-          - "StageMode type defined with Interactive and Automated values"
-          - "IsInteractive(stage Stage) returns true for analyze/clarify, false otherwise"
-          - "Clear documentation for each stage's mode"
-        dependencies: []
-
-      - id: "T1.2"
-        description: "Add Interactive field to ExecOptions in internal/cliagent/options.go"
-        acceptance_criteria:
-          - "Interactive bool field added with documentation"
-          - "Behavior documented in struct comment"
-        dependencies: []
-
-      - id: "T1.3"
-        description: "Modify BaseAgent.buildArgs to respect Interactive flag"
-        acceptance_criteria:
-          - "When Interactive=true, -p flag is NOT added"
-          - "When Interactive=true, DefaultArgs are NOT appended"
-          - "Other options (WorkDir, Env, ExtraArgs, Timeout) still work"
-          - "When Interactive=false, behavior is unchanged"
-        dependencies:
-          - "T1.2"
-
-      - id: "T1.4"
-        description: "Add unit tests for interactive mode in cliagent"
-        acceptance_criteria:
-          - "Test buildArgs with Interactive=true skips -p and DefaultArgs"
-          - "Test buildArgs with Interactive=false includes all flags"
-          - "Map-based table tests with t.Parallel()"
-        dependencies:
-          - "T1.3"
-
+    goal: "Establish foundation for stage-specific execution modes"
+    deliverables:
+      - "internal/workflow/stage_mode.go with IsInteractive() function"
+      - "ExecOptions.Interactive field in cliagent/options.go"
+      - "BaseAgent.buildArgs() respects Interactive flag"
+      - "Unit tests for all new code"
   - phase: 2
     name: "Executor Chain Integration"
-    description: |
-      Thread the interactive mode flag through the executor chain from StageExecutor
-      to ClaudeExecutor to BaseAgent.
-    tasks:
-      - id: "T2.1"
-        description: "Add Interactive field to workflow execution context"
-        acceptance_criteria:
-          - "stageExecutionContext includes Interactive flag"
-          - "Flag is set based on IsInteractive(stage) for each stage"
-        dependencies:
-          - "T1.1"
-
-      - id: "T2.2"
-        description: "Modify ExecuteStage to accept and propagate Interactive mode"
-        acceptance_criteria:
-          - "ExecuteStage signature updated or mode passed via context"
-          - "Interactive flag reaches ClaudeExecutor.Execute"
-        dependencies:
-          - "T2.1"
-
-      - id: "T2.3"
-        description: "Update ClaudeExecutor to pass Interactive to agent"
-        acceptance_criteria:
-          - "executeWithAgent sets opts.Interactive correctly"
-          - "Output formatting skipped when Interactive=true"
-        dependencies:
-          - "T2.2"
-
-      - id: "T2.4"
-        description: "Update StageExecutor.ExecuteAnalyze and ExecuteClarify"
-        acceptance_criteria:
-          - "Both methods pass Interactive=true to executor"
-          - "Existing behavior unchanged for other stages"
-        dependencies:
-          - "T2.2"
-
-      - id: "T2.5"
-        description: "Add integration tests for interactive stage execution"
-        acceptance_criteria:
-          - "Test verifies analyze stage uses interactive mode"
-          - "Test verifies clarify stage uses interactive mode"
-          - "Test verifies plan stage still uses automated mode"
-        dependencies:
-          - "T2.4"
-
+    goal: "Thread interactive mode through executor chain"
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "stageExecutionContext includes Interactive flag"
+      - "ExecuteStage propagates Interactive to ClaudeExecutor"
+      - "ClaudeExecutor passes Interactive to agent"
+      - "StageExecutor.ExecuteAnalyze/ExecuteClarify use interactive mode"
+      - "Integration tests for stage execution modes"
   - phase: 3
-    name: "Run Command Integration"
-    description: |
-      Integrate interactive mode handling into the run command, including notification
-      for interactive session transitions.
-    tasks:
-      - id: "T3.1"
-        description: "Add hadAutomatedStage tracking to stageExecutionContext in run.go"
-        acceptance_criteria:
-          - "Boolean flag tracks if any automated stage has executed"
-          - "Flag is set true after specify/plan/tasks/implement/constitution/checklist"
-        dependencies: []
-
-      - id: "T3.2"
-        description: "Add OnInteractiveSessionStart to notification handler"
-        acceptance_criteria:
-          - "Method exists on notify.Handler"
-          - "Sends notification with interactive session message"
-          - "Follows async dispatch pattern with 5-second timeout"
-        dependencies: []
-
-      - id: "T3.3"
-        description: "Add on_interactive_session hook to NotificationConfig"
-        acceptance_criteria:
-          - "Field exists in NotificationConfig struct"
-          - "Default value is true when notifications enabled"
-          - "Documented in config"
-        dependencies:
-          - "T3.2"
-
-      - id: "T3.4"
-        description: "Call OnInteractiveSessionStart before interactive stages in run"
-        acceptance_criteria:
-          - "Notification sent only if hadAutomatedStage is true"
-          - "Notification sent before executeClarify/executeAnalyze"
-          - "No notification if only running interactive stages"
-        dependencies:
-          - "T3.1"
-          - "T3.3"
-
-      - id: "T3.5"
-        description: "Add tests for run command interactive mode handling"
-        acceptance_criteria:
-          - "Test notification sent when automated→interactive transition"
-          - "Test no notification when only interactive stages"
-          - "Test stages execute in correct mode"
-        dependencies:
-          - "T3.4"
-
+    name: "Run Command and Notifications"
+    goal: "Handle mode transitions in run command with notifications"
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "hadAutomatedStage tracking in run.go"
+      - "OnInteractiveSessionStart notification hook"
+      - "on_interactive_session config option"
+      - "Tests for notification behavior"
   - phase: 4
-    name: "CLI Command Updates and Validation"
-    description: |
-      Ensure individual CLI commands for clarify and analyze work correctly
-      with interactive mode, and run full validation.
-    tasks:
-      - id: "T4.1"
-        description: "Verify clarify CLI command uses interactive mode"
-        acceptance_criteria:
-          - "autospec clarify launches Claude without -p flag"
-          - "User can have multi-turn conversation"
-          - "Validation still runs after session ends"
-        dependencies:
-          - "T2.4"
-
-      - id: "T4.2"
-        description: "Verify analyze CLI command uses interactive mode"
-        acceptance_criteria:
-          - "autospec analyze launches Claude without -p flag"
-          - "User can have multi-turn conversation"
-          - "No file changes expected (pure analysis)"
-        dependencies:
-          - "T2.4"
-
-      - id: "T4.3"
-        description: "Run make fmt, make lint, make test, make build"
-        acceptance_criteria:
-          - "All quality gates pass with exit code 0"
-          - "No test failures"
-          - "No lint errors"
-          - "Binary builds successfully"
-        dependencies:
-          - "T4.1"
-          - "T4.2"
-          - "T3.5"
-
-      - id: "T4.4"
-        description: "Manual testing of all scenarios"
-        acceptance_criteria:
-          - "autospec clarify → interactive mode"
-          - "autospec analyze → interactive mode"
-          - "autospec run --specify --clarify → notification before clarify"
-          - "autospec run --clarify → no notification (no preceding automated)"
-          - "autospec specify → automated mode (unchanged)"
-        dependencies:
-          - "T4.3"
+    name: "Validation and Polish"
+    goal: "Ensure quality gates pass and manual verification"
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "All quality gates pass (make test, make fmt, make lint, make build)"
+      - "Manual testing of all scenarios documented"
+      - "No regressions in existing functionality"
 
 risks:
-  - id: "R1"
-    description: "Interactive mode may not work correctly with retry logic"
+  - risk: "Interactive mode may conflict with retry logic"
     likelihood: "medium"
     impact: "medium"
     mitigation: |
-      Interactive stages should not use retry logic since validation happens during
-      the conversation. Ensure ExecuteStage detects interactive mode and skips retry
-      logic, or clarify/analyze return immediately after Claude session ends.
-
-  - id: "R2"
-    description: "Output formatting may interfere with interactive mode"
+      Interactive stages should skip retry logic. IsInteractive() check before
+      retry loop ensures interactive stages return immediately after session.
+  - risk: "Output formatting interferes with interactive mode"
     likelihood: "low"
     impact: "low"
     mitigation: |
-      The getFormattedStdout function already checks for hasHeadlessFlag before
-      applying formatting. Since interactive mode won't have -p flag, formatting
-      should be automatically skipped.
-
-  - id: "R3"
-    description: "Breaking changes to ClaudeRunner interface"
-    likelihood: "low"
-    impact: "medium"
-    mitigation: |
-      If interface changes are needed, use optional pattern (add method with default
-      behavior) or extend with a new interface that ClaudeExecutor implements.
-
-  - id: "R4"
-    description: "Notification timing may not be visible before Claude starts"
+      getFormattedStdout() already checks hasHeadlessFlag. Without -p flag,
+      formatting is automatically skipped.
+  - risk: "Notification timing - notification not visible before Claude starts"
     likelihood: "medium"
     impact: "low"
     mitigation: |
-      Send notification synchronously (blocking) or add small delay before launching
-      interactive session to ensure notification is delivered first.
+      Use synchronous notification dispatch or small delay (100ms) before
+      launching interactive session.
+  - risk: "Breaking changes to ClaudeRunner interface"
+    likelihood: "low"
+    impact: "medium"
+    mitigation: |
+      ClaudeRunner interface may need ExecuteInteractive() or we pass mode
+      through existing Execute(). Prefer extending ExecOptions over interface changes.
 
-dependencies:
-  external:
-    - name: "Claude Code CLI"
-      version: "Any version supporting interactive mode (without -p flag)"
-      required_for: "Interactive session execution"
-
-  internal:
-    - name: "cliagent package"
-      required_for: "Agent execution abstraction"
-    - name: "notify package"
-      required_for: "Notification hooks"
-    - name: "workflow package"
-      required_for: "Stage execution"
-
-testing_strategy:
-  unit_tests:
-    - "TestIsInteractive - stage mode lookup"
-    - "TestBuildArgsInteractive - agent args in interactive mode"
-    - "TestBuildArgsAutomated - agent args in automated mode"
-    - "TestExecuteStageInteractive - stage execution with interactive mode"
-    - "TestOnInteractiveSessionStart - notification dispatch"
-
-  integration_tests:
-    - "TestClarifyInteractiveMode - end-to-end clarify"
-    - "TestAnalyzeInteractiveMode - end-to-end analyze"
-    - "TestRunCommandModeTransition - automated→interactive transition"
-
-  manual_tests:
-    - "Run autospec clarify and verify interactive Claude session"
-    - "Run autospec analyze and verify interactive Claude session"
-    - "Run autospec run --specify --clarify and verify notification appears"
+open_questions:
+  - question: "Should Interactive flag be per-execution or configured at agent level?"
+    context: "Currently planning per-execution via ExecOptions"
+    proposed_resolution: "Per-execution is more flexible; agent doesn't need to know stage context"
+  - question: "Should clarify stage really be interactive if it modifies spec.yaml?"
+    context: "Clarify does modify files but is recommendation-focused"
+    proposed_resolution: "Spec says clarify should be interactive; user interaction is the primary value"
 
 _meta:
   version: "1.0.0"
   generator: "autospec"
   generator_version: "autospec v0.6.1"
-  created: "2025-12-22T00:50:00Z"
+  created: "2025-12-22T00:58:30Z"
   artifact_type: "plan"
