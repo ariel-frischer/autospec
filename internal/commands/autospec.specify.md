@@ -44,72 +44,78 @@ Given that feature description, do this:
 
    Set `FEATURE_DIR` to `specs/<BRANCH_NAME>/`
 
-3. **Generate spec.yaml**: Create the YAML specification file with this structure:
+3. **Generate spec.yaml**: Create the YAML specification file with this **exact structure**.
+
+   **Schema reference**: Run `autospec artifact spec --schema` to see the full schema if unsure.
 
    ```yaml
-   feature:
-     branch: "<branch name from step 2>"
-     created: "<today's date YYYY-MM-DD>"
-     status: "Draft"
-     input: "<original user description verbatim>"
+   # ============ REQUIRED SECTIONS ============
 
-   user_stories:
-     - id: "US-001"
-       title: "<story title>"
-       priority: "P1"  # P1=must-have, P2=should-have, P3=nice-to-have
-       as_a: "<role/actor>"
-       i_want: "<action/capability>"
-       so_that: "<benefit/value>"
-       why_this_priority: "<justification for priority level>"
-       independent_test: "<how this story can be tested in isolation>"
-       acceptance_scenarios:
+   feature:                    # REQUIRED section
+     branch: "<branch name from step 2>"      # REQUIRED
+     created: "<today's date YYYY-MM-DD>"     # REQUIRED
+     status: "Draft"           # REQUIRED enum: Draft|Review|Approved|Completed
+     input: "<original user description verbatim>"  # optional
+
+   user_stories:               # REQUIRED section (array, at least one item)
+     - id: "US-001"            # REQUIRED
+       title: "<story title>"  # REQUIRED
+       priority: "P1"          # REQUIRED enum: P0|P1|P2|P3 (P0=critical, P1=must-have, P2=should-have, P3=nice-to-have)
+       as_a: "<role/actor>"    # REQUIRED
+       i_want: "<action/capability>"   # REQUIRED
+       so_that: "<benefit/value>"      # REQUIRED
+       why_this_priority: "<justification for priority level>"  # optional
+       independent_test: "<how this story can be tested in isolation>"  # optional
+       acceptance_scenarios:   # optional (but recommended)
          - given: "<precondition/context>"
            when: "<action taken>"
            then: "<expected outcome>"
 
-   requirements:
-     functional:
+   requirements:               # REQUIRED section
+     functional:               # REQUIRED (array)
        - id: "FR-001"
          description: "<MUST/SHOULD/MAY + requirement>"
          testable: true
          acceptance_criteria: "<how to verify this>"
-     non_functional:
+     non_functional:           # optional (array)
        - id: "NFR-001"
-         category: "<performance|security|usability|reliability>"
+         category: "<performance|security|usability|reliability|code_quality>"
          description: "<requirement>"
          measurable_target: "<specific metric>"
 
-   success_criteria:
+   # ============ OPTIONAL SECTIONS ============
+
+   success_criteria:           # optional
      measurable_outcomes:
        - id: "SC-001"
          description: "<user-focused, measurable outcome>"
          metric: "<how to measure>"
          target: "<specific value or threshold>"
 
-   key_entities:
+   key_entities:               # optional
      - name: "<entity name>"
        description: "<what this entity represents>"
        attributes:
          - "<key attribute 1>"
          - "<key attribute 2>"
 
-   edge_cases:
+   edge_cases:                 # optional
      - scenario: "<edge case description>"
        expected_behavior: "<what should happen>"
 
-   assumptions:
+   assumptions:                # optional
      - "<assumption 1>"
      - "<assumption 2>"
 
-   constraints:
+   constraints:                # optional
      - "<constraint 1>"
      - "<constraint 2>"
 
-   out_of_scope:
+   out_of_scope:               # optional
      - "<explicitly excluded item 1>"
      - "<explicitly excluded item 2>"
 
-   _meta:
+   _meta:                      # optional (but recommended)
      version: "1.0.0"
      generator: "autospec"
      generator_version: "<AUTOSPEC_VERSION from step 2>"
@@ -145,12 +151,20 @@ Given that feature description, do this:
 
 5. **Write the specification** to `FEATURE_DIR/spec.yaml`
 
-6. **Validate the artifact**:
+6. **⚠️ MANDATORY: Validate the artifact** (skipping this WILL cause task failure and retry):
+
    ```bash
    autospec artifact FEATURE_DIR/spec.yaml
    ```
-   - If validation fails: fix schema errors (missing required fields, invalid types) and retry
-   - If validation passes: proceed to report
+
+   - **If validation fails**: Read the error output carefully. Fix ALL schema errors (missing required fields, wrong enum values, invalid types) and re-run validation until it passes.
+   - **If validation passes**: Proceed to report.
+   - **Do NOT skip this step** - post-execution validation will catch errors and force a full retry.
+
+   Common validation errors:
+   - Missing required field (e.g., `user_stories[0].priority`) → add the field
+   - Invalid enum value (e.g., `priority: "High"`) → use valid value (`P0`, `P1`, `P2`, `P3`)
+   - Wrong type (e.g., `user_stories` is object instead of array) → fix structure
 
 7. **Report**: Output:
    - Branch name created
