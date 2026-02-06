@@ -2,6 +2,8 @@ project: autospec
 versions:
   - version: unreleased
     changes:
+      changed:
+        - "Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors"
       added:
         - "`dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management"
         - "`dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming"

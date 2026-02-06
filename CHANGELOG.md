@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization
 - `waves` command for task execution wave visualization
 
+### Changed
+- Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors
+
 ## [0.10.4] - 2026-01-30
 
 ### Fixed
