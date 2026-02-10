@@ -16,7 +16,7 @@ require (
 	// Pure Go git implementation for repository operations without CLI dependency
 	// Enables autospec to perform git operations (branch detection, repo validation, fetch)
 	// without requiring git CLI installation for core operations
-	github.com/go-git/go-git/v5 v5.16.4
+	github.com/go-git/go-git/v5 v5.16.5
 
 	// Koanf configuration management library (224K total for all koanf packages)
 	// Provides flexible config loading from multiple sources with priority ordering
