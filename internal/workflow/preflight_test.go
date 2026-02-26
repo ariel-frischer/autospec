@@ -922,11 +922,11 @@ func copyValidTestdata(t *testing.T, artifact, destDir string) {
 	var srcPath string
 	switch artifact {
 	case "spec.yaml":
-		srcPath = filepath.Join("testdata", "spec", "valid", "spec.yaml")
+		srcPath = testdataPath("spec", "valid", "spec.yaml")
 	case "plan.yaml":
-		srcPath = filepath.Join("testdata", "plan", "valid", "plan.yaml")
+		srcPath = testdataPath("plan", "valid", "plan.yaml")
 	case "tasks.yaml":
-		srcPath = filepath.Join("testdata", "tasks", "valid", "tasks.yaml")
+		srcPath = testdataPath("tasks", "valid", "tasks.yaml")
 	default:
 		t.Fatalf("unknown artifact: %s", artifact)
 	}
