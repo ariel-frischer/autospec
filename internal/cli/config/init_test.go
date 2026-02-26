@@ -1352,12 +1352,6 @@ func TestConfigureSpecificAgents_InvalidAgent(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			tempDir := t.TempDir()
-			origDir, err := os.Getwd()
-			require.NoError(t, err)
-			require.NoError(t, os.Chdir(tempDir))
-			defer func() { _ = os.Chdir(origDir) }()
-
 			cmd := &cobra.Command{Use: "init"}
 			cmd.Flags().BoolP("project", "p", false, "")
 			cmd.Flags().BoolP("force", "f", false, "")
@@ -1367,7 +1361,9 @@ func TestConfigureSpecificAgents_InvalidAgent(t *testing.T) {
 			cmd.SetOut(&buf)
 			cmd.SetErr(&buf)
 
-			_, _, err = configureSpecificAgents(cmd, &buf, true, tt.agents)
+			// These test cases all hit early-return error paths before config loading,
+			// so no working directory setup is needed.
+			_, _, err := configureSpecificAgents(cmd, &buf, true, tt.agents)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantErr)
 		})
