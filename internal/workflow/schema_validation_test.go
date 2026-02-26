@@ -3,9 +3,24 @@ package workflow
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// pkgDir returns the absolute path to this package's source directory.
+// Uses runtime.Caller to get the source file path, which is immune to
+// os.Chdir calls from other tests in this package.
+var pkgDir = func() string {
+	_, filename, _, _ := runtime.Caller(0)
+	return filepath.Dir(filename)
+}()
+
+// testdataPath returns the absolute path to a testdata subdirectory.
+func testdataPath(parts ...string) string {
+	args := append([]string{pkgDir, "testdata"}, parts...)
+	return filepath.Join(args...)
+}
 
 func TestValidateSpecSchema(t *testing.T) {
 	t.Parallel()
@@ -17,18 +32,18 @@ func TestValidateSpecSchema(t *testing.T) {
 		description string
 	}{
 		"valid spec": {
-			specDir:     filepath.Join("testdata", "spec", "valid"),
+			specDir:     testdataPath("spec", "valid"),
 			wantErr:     false,
 			description: "Valid spec.yaml should pass validation",
 		},
 		"invalid spec missing feature": {
-			specDir:     filepath.Join("testdata", "spec", "invalid"),
+			specDir:     testdataPath("spec", "invalid"),
 			wantErr:     true,
 			errContains: "missing required field: feature",
 			description: "Spec missing required 'feature' field should fail",
 		},
 		"nonexistent directory": {
-			specDir:     filepath.Join("testdata", "spec", "nonexistent"),
+			specDir:     testdataPath("spec", "nonexistent"),
 			wantErr:     true,
 			errContains: "failed to parse YAML",
 			description: "Nonexistent directory should fail with parse error",
@@ -70,18 +85,18 @@ func TestValidatePlanSchema(t *testing.T) {
 		description string
 	}{
 		"valid plan": {
-			specDir:     filepath.Join("testdata", "plan", "valid"),
+			specDir:     testdataPath("plan", "valid"),
 			wantErr:     false,
 			description: "Valid plan.yaml should pass validation",
 		},
 		"invalid plan missing plan field": {
-			specDir:     filepath.Join("testdata", "plan", "invalid"),
+			specDir:     testdataPath("plan", "invalid"),
 			wantErr:     true,
 			errContains: "missing required field: plan",
 			description: "Plan missing required 'plan' field should fail",
 		},
 		"nonexistent directory": {
-			specDir:     filepath.Join("testdata", "plan", "nonexistent"),
+			specDir:     testdataPath("plan", "nonexistent"),
 			wantErr:     true,
 			errContains: "failed to parse YAML",
 			description: "Nonexistent directory should fail with parse error",
@@ -123,18 +138,18 @@ func TestValidateTasksSchema(t *testing.T) {
 		description string
 	}{
 		"valid tasks": {
-			specDir:     filepath.Join("testdata", "tasks", "valid"),
+			specDir:     testdataPath("tasks", "valid"),
 			wantErr:     false,
 			description: "Valid tasks.yaml should pass validation",
 		},
 		"invalid tasks missing tasks field": {
-			specDir:     filepath.Join("testdata", "tasks", "invalid"),
+			specDir:     testdataPath("tasks", "invalid"),
 			wantErr:     true,
 			errContains: "missing required field: tasks",
 			description: "Tasks missing required 'tasks' field should fail",
 		},
 		"nonexistent directory": {
-			specDir:     filepath.Join("testdata", "tasks", "nonexistent"),
+			specDir:     testdataPath("tasks", "nonexistent"),
 			wantErr:     true,
 			errContains: "failed to parse YAML",
 			description: "Nonexistent directory should fail with parse error",
@@ -217,13 +232,13 @@ func TestFormatValidationErrors(t *testing.T) {
 
 			if tc.wantNil {
 				// Verify nil behavior by checking valid file returns nil
-				err := ValidateSpecSchema(filepath.Join("testdata", "spec", "valid"))
+				err := ValidateSpecSchema(testdataPath("spec", "valid"))
 				if err != nil {
 					t.Errorf("Expected nil error for valid file: %v", err)
 				}
 			} else {
 				// Verify error formatting by checking invalid file
-				err := ValidateSpecSchema(filepath.Join("testdata", "spec", "invalid"))
+				err := ValidateSpecSchema(testdataPath("spec", "invalid"))
 				if err == nil {
 					t.Error("Expected error for invalid file")
 					return
