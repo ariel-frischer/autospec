@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Public docs: documented `autospec run` command with all flags and stage selection
+- Public docs: documented missing commands (`constitution`, `clarify`, `checklist`, `analyze`, `task`, `update-task`, `new-feature`, `prereqs`, `setup-plan`, `clean`, `migrate`, `commands`, `uninstall`)
+- Public docs: documented missing config fields (`skip_confirmations`, `skip_permissions`, `cclean.*`, `worktree.*`, `dag.*`, `verification.ears_requirements`)
+- Public docs: added `--output-style` global flag and `--resume` implement flag
 - `dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management
 - `dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming
 - `dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup
@@ -18,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Constitution path simplified from `.autospec/memory/constitution.yaml` to `.autospec/constitution.yaml`; legacy paths still supported as fallback
 - Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors
+
+### Fixed
+- Public docs: corrected wrong defaults for `max_retries` (was 3, actual 0), `auto_commit` (was true, actual false), `timeout` (was 0, actual 2400)
+- Public docs: fixed Gemini agent env var from `GOOGLE_API_KEY` to `GEMINI_API_KEY`
+- Public docs: marked `cline`/`gemini`/`codex`/`goose` agents as untested instead of planned (code exists but unverified)
+- Public docs: fixed stale constitution path in CONTRIBUTORS.md
 
 ### Security
 - Bumped `github.com/cloudflare/circl` from v1.6.1 to v1.6.3
