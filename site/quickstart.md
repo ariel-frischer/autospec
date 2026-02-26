@@ -190,7 +190,7 @@ If you skipped constitution creation during init, or need to regenerate it:
 autospec constitution
 ```
 
-This launches a Claude session that analyzes your codebase and creates `.autospec/memory/constitution.yaml` containing your project's:
+This launches a Claude session that analyzes your codebase and creates `.autospec/constitution.yaml` containing your project's:
 - Coding standards and conventions
 - Architectural principles
 - Testing requirements

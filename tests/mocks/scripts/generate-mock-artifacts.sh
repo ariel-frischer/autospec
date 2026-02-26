@@ -147,7 +147,7 @@ technical_context:
   scale_scope: "Unit tests"
 
 constitution_check:
-  constitution_path: ".autospec/memory/constitution.yaml"
+  constitution_path: ".autospec/constitution.yaml"
   gates: []
 
 research_findings:

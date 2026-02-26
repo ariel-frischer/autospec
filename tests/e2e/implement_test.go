@@ -415,7 +415,7 @@ technical_context:
   constraints: []
   scale_scope: "Small"
 constitution_check:
-  constitution_path: ".autospec/memory/constitution.yaml"
+  constitution_path: ".autospec/constitution.yaml"
   gates: []
 research_findings:
   decisions: []

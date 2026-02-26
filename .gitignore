@@ -6,7 +6,7 @@
 !.claude/spec-workflow-settings.json
 .opencode/
 opencode.json
-# .claude/ 
+# .claude/
 # specs/
 
 # Test results and temporary files
@@ -36,6 +36,7 @@ package-lock.json
 .specify
 # Ignore .autospec except for the constitution
 .autospec/*
+!.autospec/constitution.yaml
 !.autospec/memory/
 .autospec/memory/*
 !.autospec/memory/constitution.yaml

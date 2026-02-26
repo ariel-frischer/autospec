@@ -276,13 +276,25 @@ func TestCheckConstitutionExists(t *testing.T) {
 		wantPath     string
 		wantErrEmpty bool
 	}{
-		"autospec constitution exists (.yaml)": {
+		"new default path (.yaml)": {
+			setupFiles:   map[string]string{".autospec/constitution.yaml": "project_name: Test"},
+			wantExists:   true,
+			wantPath:     ".autospec/constitution.yaml",
+			wantErrEmpty: true,
+		},
+		"new default path (.yml)": {
+			setupFiles:   map[string]string{".autospec/constitution.yml": "project_name: Test"},
+			wantExists:   true,
+			wantPath:     ".autospec/constitution.yml",
+			wantErrEmpty: true,
+		},
+		"legacy autospec/memory path (.yaml)": {
 			setupFiles:   map[string]string{".autospec/memory/constitution.yaml": "project_name: Test"},
 			wantExists:   true,
 			wantPath:     ".autospec/memory/constitution.yaml",
 			wantErrEmpty: true,
 		},
-		"autospec constitution exists (.yml)": {
+		"legacy autospec/memory path (.yml)": {
 			setupFiles:   map[string]string{".autospec/memory/constitution.yml": "project_name: Test"},
 			wantExists:   true,
 			wantPath:     ".autospec/memory/constitution.yml",
@@ -300,22 +312,31 @@ func TestCheckConstitutionExists(t *testing.T) {
 			wantPath:     ".specify/memory/constitution.yml",
 			wantErrEmpty: true,
 		},
-		"yaml takes precedence over yml": {
+		"new path takes precedence over legacy": {
 			setupFiles: map[string]string{
-				".autospec/memory/constitution.yaml": "project_name: YAML",
-				".autospec/memory/constitution.yml":  "project_name: YML",
+				".autospec/constitution.yaml":        "project_name: New",
+				".autospec/memory/constitution.yaml": "project_name: Legacy",
 			},
 			wantExists:   true,
-			wantPath:     ".autospec/memory/constitution.yaml",
+			wantPath:     ".autospec/constitution.yaml",
+			wantErrEmpty: true,
+		},
+		"yaml takes precedence over yml": {
+			setupFiles: map[string]string{
+				".autospec/constitution.yaml": "project_name: YAML",
+				".autospec/constitution.yml":  "project_name: YML",
+			},
+			wantExists:   true,
+			wantPath:     ".autospec/constitution.yaml",
 			wantErrEmpty: true,
 		},
 		"autospec takes precedence over specify": {
 			setupFiles: map[string]string{
-				".autospec/memory/constitution.yaml": "project_name: Autospec",
-				".specify/memory/constitution.yaml":  "project_name: Specify",
+				".autospec/constitution.yaml":       "project_name: Autospec",
+				".specify/memory/constitution.yaml": "project_name: Specify",
 			},
 			wantExists:   true,
-			wantPath:     ".autospec/memory/constitution.yaml",
+			wantPath:     ".autospec/constitution.yaml",
 			wantErrEmpty: true,
 		},
 		"no constitution exists": {
@@ -325,7 +346,7 @@ func TestCheckConstitutionExists(t *testing.T) {
 			wantErrEmpty: false,
 		},
 		"directories exist but no constitution file": {
-			setupFiles:   map[string]string{".autospec/memory/.keep": "", ".specify/memory/.keep": ""},
+			setupFiles:   map[string]string{".autospec/.keep": "", ".specify/memory/.keep": ""},
 			wantExists:   false,
 			wantPath:     "",
 			wantErrEmpty: false,
@@ -374,7 +395,7 @@ func TestGenerateConstitutionMissingError(t *testing.T) {
 	assert.Contains(t, errMsg, "Error:")
 	assert.Contains(t, errMsg, "constitution not found")
 	assert.Contains(t, errMsg, "autospec constitution")
-	assert.Contains(t, errMsg, ".specify/memory/constitution.yaml")
+	assert.Contains(t, errMsg, ".autospec/constitution.yaml")
 	assert.Contains(t, errMsg, "autospec init")
 }
 
@@ -390,8 +411,8 @@ func BenchmarkCheckConstitutionExists(b *testing.B) {
 	defer func() { _ = os.Chdir(origDir) }()
 
 	// Setup with constitution file
-	os.MkdirAll(".autospec/memory", 0o755)
-	os.WriteFile(".autospec/memory/constitution.yaml", []byte("project_name: Test"), 0o644)
+	os.MkdirAll(".autospec", 0o755)
+	os.WriteFile(".autospec/constitution.yaml", []byte("project_name: Test"), 0o644)
 
 	b.ResetTimer()
 

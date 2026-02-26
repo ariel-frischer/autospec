@@ -208,7 +208,7 @@ autospec documentation uses Jekyll with Just the Docs theme. To add a page:
 
 ## Why does autospec require a constitution?
 
-The constitution (`.autospec/memory/constitution.yaml`) defines your project's:
+The constitution (`.autospec/constitution.yaml`) defines your project's:
 - Coding standards
 - Architectural principles
 - Testing requirements

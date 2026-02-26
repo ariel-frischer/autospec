@@ -19,7 +19,7 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 **STRICTLY READ-ONLY**: Do **not** modify any files. Output a structured analysis YAML file. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
 
-**Constitution Authority**: The project constitution (`.autospec/memory/constitution.yaml` or `AGENTS.md`, falling back to agent-specific file like `CLAUDE.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks.
+**Constitution Authority**: The project constitution (`.autospec/constitution.yaml` or `AGENTS.md`, falling back to agent-specific file like `CLAUDE.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks.
 
 ## Pre-computed Context
 
@@ -55,7 +55,7 @@ Load only the minimal necessary context from each artifact:
 - Referenced file paths
 
 **From constitution**:
-- Load `.autospec/memory/constitution.yaml` or `AGENTS.md` (falling back to agent-specific file like `CLAUDE.md`) for principle validation
+- Load `.autospec/constitution.yaml` or `AGENTS.md` (falling back to agent-specific file like `CLAUDE.md`) for principle validation
 
 ### 2. Build Semantic Models
 

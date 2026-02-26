@@ -24,7 +24,7 @@ The following paths have been pre-computed and are available for use:
 
 1. **Load context**:
    - Read the spec file at `{{.FeatureSpec}}`
-   - Read project constitution if exists (`.autospec/memory/constitution.yaml` or `AGENTS.md`, falling back to agent-specific file like `CLAUDE.md`)
+   - Read project constitution if exists (`.autospec/constitution.yaml` or `AGENTS.md`, falling back to agent-specific file like `CLAUDE.md`)
    - Extract: feature description, user stories, requirements, constraints
 
 3. **Execute plan workflow**:

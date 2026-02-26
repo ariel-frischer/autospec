@@ -65,16 +65,25 @@ func ValidateTasksFile(specDir string) error {
 }
 
 // ValidateConstitutionFile checks if constitution.yaml exists and validates its schema.
-// Constitution is stored at .autospec/memory/constitution.yaml relative to project root.
+// Checks .autospec/constitution.yaml first, falls back to .autospec/memory/constitution.yaml.
 // Performance contract: <10ms
 func ValidateConstitutionFile(projectDir string) error {
-	constitutionPath := filepath.Join(projectDir, ".autospec", "memory", "constitution.yaml")
+	// Check paths in priority order
+	paths := []string{
+		filepath.Join(projectDir, ".autospec", "constitution.yaml"),
+		filepath.Join(projectDir, ".autospec", "memory", "constitution.yaml"),
+	}
 
-	if _, err := os.Stat(constitutionPath); err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("constitution file not found at %s - run 'autospec constitution' to create it", constitutionPath)
+	var constitutionPath string
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			constitutionPath = p
+			break
 		}
-		return fmt.Errorf("checking constitution file: %w", err)
+	}
+
+	if constitutionPath == "" {
+		return fmt.Errorf("constitution file not found at %s - run 'autospec constitution' to create it", paths[0])
 	}
 
 	// Validate schema

@@ -100,7 +100,7 @@ print_header "3. PROJECT CONSTITUTION (Optional)"
 # ----------------------------------------------------------------------------
 
 print_step "Define project-wide principles that guide all specifications"
-echo -e "  Creates: ${CYAN}.autospec/memory/constitution.yaml${NC}"
+echo -e "  Creates: ${CYAN}.autospec/constitution.yaml${NC}"
 echo -e "  ${YELLOW}Note:${NC} This launches a Claude session for interactive Q&A\n"
 print_cmd "autospec constitution"
 echo -e "  ${CYAN}(Skipped in demo - run manually when ready)${NC}"

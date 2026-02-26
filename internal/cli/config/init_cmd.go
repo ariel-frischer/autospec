@@ -71,7 +71,7 @@ Path argument:
   - Relative: resolved against current directory (e.g., "my-project")
   - Absolute: used as-is (e.g., "/home/user/project")
   - Tilde: expanded to home directory (e.g., "~/projects/new")
-  
+
   If the path does not exist, it will be created automatically.`,
 	Example: `  # Initialize with user-level config (recommended for first-time setup)
   autospec init
@@ -1368,8 +1368,10 @@ func runWorktreeGenScriptFromInitImpl(cmd *cobra.Command, configPath string) boo
 func handleConstitution(out io.Writer) bool {
 	// Autospec paths (where we want the constitution)
 	autospecPaths := []string{
-		".autospec/memory/constitution.yaml",
-		".autospec/memory/constitution.yml",
+		".autospec/constitution.yaml",
+		".autospec/constitution.yml",
+		".autospec/memory/constitution.yaml", // legacy
+		".autospec/memory/constitution.yml",  // legacy
 	}
 
 	// Legacy specify paths (source for migration)

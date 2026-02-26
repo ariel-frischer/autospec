@@ -355,7 +355,7 @@ func (e *E2EEnv) BinDir() string {
 func (e *E2EEnv) SetupConstitution() {
 	e.t.Helper()
 
-	constitutionDir := filepath.Join(e.tempDir, ".autospec", "memory")
+	constitutionDir := filepath.Join(e.tempDir, ".autospec")
 	if err := os.MkdirAll(constitutionDir, 0o755); err != nil {
 		e.t.Fatalf("creating constitution directory: %v", err)
 	}

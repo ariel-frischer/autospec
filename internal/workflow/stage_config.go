@@ -156,7 +156,7 @@ var artifactDependencies = map[Stage]ArtifactDependency{
 	StageConstitution: {
 		Stage:    StageConstitution,
 		Requires: []string{}, // Constitution has no prerequisites
-		Produces: []string{}, // Constitution modifies .autospec/memory/constitution.yaml
+		Produces: []string{}, // Constitution modifies .autospec/constitution.yaml
 	},
 	StageClarify: {
 		Stage:    StageClarify,

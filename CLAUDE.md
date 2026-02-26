@@ -46,7 +46,7 @@ constitution.yaml spec.yaml plan.yaml tasks.yaml
 
 | Stage | Requires | Produces |
 |-------|----------|----------|
-| `constitution` | — | `.autospec/memory/constitution.yaml` |
+| `constitution` | — | `.autospec/constitution.yaml` |
 | `specify` | constitution | `specs/NNN-feature/spec.yaml` |
 | `plan` | spec.yaml | `plan.yaml` |
 | `tasks` | plan.yaml | `tasks.yaml` |
@@ -126,7 +126,7 @@ Key settings: `agent_preset`, `max_retries`, `specs_dir`, `timeout`, `implement_
 
 ## Constitution Principles
 
-From `.autospec/memory/constitution.yaml`:
+From `.autospec/constitution.yaml`:
 
 1. **Validation-First**: All workflow transitions validated before proceeding
 2. **Test-First Development** (NON-NEGOTIABLE): Tests written before implementation
@@ -230,12 +230,12 @@ All must pass before committing. Run `make test-v` for verbose output on failure
 - **Branch naming**: Must match `^\d{3}-.+$` (e.g., `001-feature`) for spec auto-detection
 - **Slash commands vs skills**: Claude Code may incorrectly invoke slash commands as skills (see `docs/public/troubleshooting.md`)
 - **Sandbox heredocs**: Use quoted strings, not heredocs, for git commits in sandbox mode
-- **Constitution required**: All workflow stages fail without `.autospec/memory/constitution.yaml`
+- **Constitution required**: All workflow stages fail without `.autospec/constitution.yaml`
 
 ## Key Files
 
 - `~/.config/autospec/config.yml`: User config
 - `.autospec/config.yml`: Project config
-- `.autospec/memory/constitution.yaml`: Project principles (REQUIRED)
+- `.autospec/constitution.yaml`: Project principles (REQUIRED)
 - `~/.autospec/state/retry.json`: Retry state
 - `specs/*/`: Feature specs (spec.yaml, plan.yaml, tasks.yaml)

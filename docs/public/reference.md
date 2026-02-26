@@ -536,7 +536,7 @@ Validate YAML artifacts against their schemas
 autospec artifact specs/001-feature/spec.yaml
 autospec artifact specs/001-feature/plan.yaml
 autospec artifact specs/001-feature/tasks.yaml
-autospec artifact .autospec/memory/constitution.yaml
+autospec artifact .autospec/constitution.yaml
 
 # Checklist requires explicit type (filename varies)
 autospec artifact checklist specs/001-feature/checklists/ux.yaml
