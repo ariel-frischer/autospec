@@ -2,6 +2,12 @@ project: autospec
 versions:
   - version: unreleased
     changes:
+      added:
+        - "placeholder"
+
+  - version: 0.10.5
+    date: "2026-02-25"
+    changes:
       changed:
         - "Constitution path simplified from `.autospec/memory/constitution.yaml` to `.autospec/constitution.yaml`; legacy paths still supported as fallback"
         - "Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors"
@@ -15,11 +21,11 @@ versions:
         - "Public docs: documented missing commands (`constitution`, `clarify`, `checklist`, `analyze`, `task`, `update-task`, `new-feature`, `prereqs`, `setup-plan`, `clean`, `migrate`, `commands`, `uninstall`)"
         - "Public docs: documented missing config fields (`skip_confirmations`, `skip_permissions`, `cclean.*`, `worktree.*`, `dag.*`, `verification.ears_requirements`)"
         - "Public docs: added `--output-style` global flag and `--resume` implement flag"
-        - "`dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management"
-        - "`dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming"
-        - "`dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup"
-        - "Worktree-based spec isolation with human-readable branch names (`dag/<dag-id>/<spec-id>`) and layer staging for progressive merge propagation"
-        - "`dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization"
+        - "**[Experimental]** `dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management"
+        - "**[Experimental]** `dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming"
+        - "**[Experimental]** `dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup"
+        - "**[Experimental]** Worktree-based spec isolation with human-readable branch names (`dag/<dag-id>/<spec-id>`) and layer staging for progressive merge propagation"
+        - "**[Experimental]** `dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization"
         - "`waves` command for task execution wave visualization"
       security:
         - "Bumped `github.com/cloudflare/circl` from v1.6.1 to v1.6.3"

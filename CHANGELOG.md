@@ -8,15 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- placeholder
+
+## [0.10.5] - 2026-02-25
+
+### Added
 - Public docs: documented `autospec run` command with all flags and stage selection
 - Public docs: documented missing commands (`constitution`, `clarify`, `checklist`, `analyze`, `task`, `update-task`, `new-feature`, `prereqs`, `setup-plan`, `clean`, `migrate`, `commands`, `uninstall`)
 - Public docs: documented missing config fields (`skip_confirmations`, `skip_permissions`, `cclean.*`, `worktree.*`, `dag.*`, `verification.ears_requirements`)
 - Public docs: added `--output-style` global flag and `--resume` implement flag
-- `dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management
-- `dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming
-- `dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup
-- Worktree-based spec isolation with human-readable branch names (`dag/<dag-id>/<spec-id>`) and layer staging for progressive merge propagation
-- `dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization
+- **[Experimental]** `dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management
+- **[Experimental]** `dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming
+- **[Experimental]** `dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup
+- **[Experimental]** Worktree-based spec isolation with human-readable branch names (`dag/<dag-id>/<spec-id>`) and layer staging for progressive merge propagation
+- **[Experimental]** `dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization
 - `waves` command for task execution wave visualization
 
 ### Changed
@@ -342,7 +347,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.10.5...HEAD
+[0.10.5]: https://github.com/ariel-frischer/autospec/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/ariel-frischer/autospec/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/ariel-frischer/autospec/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/ariel-frischer/autospec/compare/v0.10.1...v0.10.2
