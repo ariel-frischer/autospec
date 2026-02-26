@@ -16,7 +16,7 @@ require (
 	// Pure Go git implementation for repository operations without CLI dependency
 	// Enables autospec to perform git operations (branch detection, repo validation, fetch)
 	// without requiring git CLI installation for core operations
-	github.com/go-git/go-git/v5 v5.16.4
+	github.com/go-git/go-git/v5 v5.16.5
 
 	// Koanf configuration management library (224K total for all koanf packages)
 	// Provides flexible config loading from multiple sources with priority ordering
@@ -86,7 +86,7 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
-	github.com/cloudflare/circl v1.6.1 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect

@@ -4,7 +4,9 @@ Complete reference for autospec commands, configuration options, exit codes, and
 
 ## CLI Commands
 
-All commands support global flags: `--config`, `--specs-dir`, `--debug`, `--verbose`
+All commands support global flags: `--config`, `--specs-dir`, `--debug`, `--verbose`, `--output-style`
+
+- `--output-style <style>`: Output formatting style (`default`, `compact`, `minimal`, `plain`, `raw`)
 
 ### autospec all
 
@@ -17,7 +19,7 @@ Execute complete workflow: specify → plan → tasks → implement
 **Flags**:
 - `--skip-preflight`: Skip dependency health checks
 - `--timeout <seconds>`: Command timeout (0=infinite, 1-604800)
-- `--max-retries <count>`: Maximum retry attempts (1-10, default: 3)
+- `--max-retries <count>`: Maximum retry attempts (0-10, default: 0)
 - `--agent <name>`: Override agent for this run (see [CLI Agents](#cli-agents))
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
@@ -53,6 +55,63 @@ Prepare for implementation: specify → plan → tasks (no implementation)
 autospec prep "Add user profile page"
 autospec prep "Implement caching layer" --max-retries 5
 autospec prep "Add payments" --auto-commit
+```
+
+**Exit Codes**: 0 (success), 1 (validation failed), 2 (retries exhausted), 3 (invalid args), 4 (missing deps), 5 (timeout)
+
+### autospec run
+
+Run selected workflow stages with flexible stage selection
+
+**Syntax**: `autospec run [feature-description] [flags]`
+
+**Description**: Flexible workflow command that lets you pick any combination of stages to run. Stages always execute in canonical order regardless of flag order.
+
+**Core Stage Flags**:
+- `-s, --specify`: Include specify stage (requires feature description)
+- `-p, --plan`: Include plan stage
+- `-t, --tasks`: Include tasks stage
+- `-i, --implement`: Include implement stage
+- `-a, --all`: Run all core stages (equivalent to `-spti`)
+
+**Optional Stage Flags**:
+- `-n, --constitution`: Include constitution stage
+- `-r, --clarify`: Include clarify stage
+- `-l, --checklist`: Include checklist stage
+- `-z, --analyze`: Include analyze stage
+
+**Other Flags**:
+- `--spec <name>`: Target a specific spec (overrides branch detection)
+- `-y, --yes`: Skip confirmation prompts
+- `--resume`: Resume implementation from where it left off
+- `--dry-run`: Preview what stages would run without executing
+- `--max-retries <count>`: Override max retry attempts
+- `--agent <name>`: Override agent for this run
+- `--auto-commit` / `--no-auto-commit`: Override auto-commit config
+
+**Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
+
+**Examples**:
+```bash
+# Run all core stages for a new feature
+autospec run -a "Add user authentication"
+
+# Run only plan and implement on current spec
+autospec run -pi
+
+# Run tasks and implement on a specific spec
+autospec run -ti --spec 007-yaml-output
+
+# Preview what stages would run (dry run mode)
+autospec run -ti --dry-run
+
+# Skip confirmation prompts for CI/CD
+autospec run -ti -y
+
+# Include optional stages
+autospec run -a -n "Add feature"         # constitution + all core stages
+autospec run -pi -l                      # plan + checklist + implement
+autospec run -s -r "Add feature"         # specify + clarify
 ```
 
 **Exit Codes**: 0 (success), 1 (validation failed), 2 (retries exhausted), 3 (invalid args), 4 (missing deps), 5 (timeout)
@@ -137,6 +196,7 @@ Execute implementation phase using tasks breakdown
 - `--from-phase <N>`: Run phases N and onwards, each in separate session
 - `--tasks`: Run each task in a separate Claude session (maximum context isolation)
 - `--from-task <ID>`: Resume from specific task ID
+- `--resume`: Resume implementation from where it left off
 - `--single-session`: Run all tasks in one Claude session (legacy mode)
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
@@ -170,6 +230,88 @@ autospec implement --phases "Focus on tests first"
 ```
 
 **Exit Codes**: 0 (success), 1 (validation failed), 2 (retries exhausted), 3 (invalid args), 4 (missing deps), 5 (timeout)
+
+### autospec constitution
+
+Create or update the project constitution
+
+**Syntax**: `autospec constitution [optional-prompt] [flags]`
+
+**Alias**: `autospec const`
+
+**Description**: Generate or update `.autospec/constitution.yaml` which defines project principles and guidelines. Required before running any other workflow stage.
+
+**Flags**:
+- `--max-retries <count>`: Override max retry attempts
+
+**Examples**:
+```bash
+autospec constitution
+autospec constitution "Focus on test-driven development"
+```
+
+**Exit Codes**: 0 (success), 1 (validation failed), 3 (invalid args)
+
+### autospec clarify
+
+Refine the specification by asking clarification questions
+
+**Syntax**: `autospec clarify [optional-prompt] [flags]`
+
+**Alias**: `autospec cl`
+
+**Description**: Identify underspecified areas in the current spec and encode clarifications back into `spec.yaml`.
+
+**Flags**: Global flags only.
+
+**Examples**:
+```bash
+autospec clarify
+autospec clarify "Focus on edge cases in auth flow"
+```
+
+**Exit Codes**: 0 (success), 1 (validation failed), 3 (invalid args)
+
+### autospec checklist
+
+Generate a quality validation checklist
+
+**Syntax**: `autospec checklist [optional-prompt] [flags]`
+
+**Alias**: `autospec chk`
+
+**Description**: Generate a YAML checklist for validating feature quality based on the current spec.
+
+**Flags**:
+- `--max-retries <count>`: Override max retry attempts
+
+**Examples**:
+```bash
+autospec checklist
+autospec checklist "Include accessibility checks"
+```
+
+**Exit Codes**: 0 (success), 1 (validation failed), 3 (invalid args)
+
+### autospec analyze
+
+Perform cross-artifact consistency analysis
+
+**Syntax**: `autospec analyze [optional-prompt] [flags]`
+
+**Alias**: `autospec az`
+
+**Description**: Analyze consistency and quality across spec.yaml, plan.yaml, and tasks.yaml artifacts.
+
+**Flags**: Global flags only.
+
+**Examples**:
+```bash
+autospec analyze
+autospec analyze "Check for gaps in test coverage plan"
+```
+
+**Exit Codes**: 0 (success), 1 (validation failed), 3 (invalid args)
 
 ### autospec doctor
 
@@ -633,6 +775,176 @@ autospec check           # Using the longer alias
 
 **Exit Codes**: 0 (success), 1 (network error)
 
+### autospec update-task
+
+Update the status of a task in tasks.yaml
+
+**Syntax**: `autospec update-task <task-id> <status>`
+
+**Description**: Programmatically update task status. Used internally by the implementation workflow and available for manual task management.
+
+**Examples**:
+```bash
+autospec update-task T001 completed
+autospec update-task T003 in_progress
+```
+
+**Exit Codes**: 0 (success), 3 (invalid args)
+
+### autospec task
+
+Manage tasks within tasks.yaml
+
+**Syntax**: `autospec task <subcommand> [flags]`
+
+**Subcommands**:
+- `list`: List tasks with optional status filters
+- `block <task-id>`: Block a task with a reason
+- `unblock <task-id>`: Unblock a task and set its status
+
+**Flags** (list):
+- `--blocked`: Show only blocked tasks
+- `--pending`: Show only pending tasks
+- `--in-progress`: Show only in-progress tasks
+- `--completed`: Show only completed tasks
+
+**Flags** (block):
+- `-r, --reason <text>`: Reason for blocking (required)
+
+**Flags** (unblock):
+- `-s, --status <status>`: Status to set after unblocking (default: `Pending`)
+
+**Examples**:
+```bash
+autospec task list
+autospec task list --pending
+autospec task block T003 --reason "Waiting on API design"
+autospec task unblock T003 --status InProgress
+```
+
+**Exit Codes**: 0 (success), 3 (invalid args)
+
+### autospec new-feature
+
+Create a new feature branch and directory
+
+**Syntax**: `autospec new-feature <feature_description> [flags]`
+
+**Description**: Create a new numbered spec directory and feature branch without running any workflow stages.
+
+**Flags**:
+- `--json`: Output as JSON
+- `--short-name <name>`: Custom short name for the branch (2-4 words)
+- `--number <N>`: Specify branch number manually (overrides auto-detection)
+- `--no-fetch`: Skip fetching from remote repositories
+
+**Examples**:
+```bash
+autospec new-feature "Add user authentication"
+autospec new-feature "Add caching" --short-name "add-cache"
+autospec new-feature "Add logging" --number 042
+```
+
+**Exit Codes**: 0 (success), 3 (invalid args)
+
+### autospec prereqs
+
+Check prerequisites for workflow stages
+
+**Syntax**: `autospec prereqs [flags]`
+
+**Description**: Validate that required artifacts exist for the current spec before running workflow stages.
+
+**Flags**:
+- `--json`: Output as JSON
+- `--require-spec`: Check for spec.yaml
+- `--require-plan`: Check for plan.yaml
+- `--require-tasks`: Check for tasks.yaml
+- `--include-tasks`: Include task status in output
+- `--paths-only`: Output only file paths
+
+**Examples**:
+```bash
+autospec prereqs
+autospec prereqs --require-plan --json
+```
+
+**Exit Codes**: 0 (success), 1 (prerequisites missing)
+
+### autospec setup-plan
+
+Initialize plan file from template
+
+**Syntax**: `autospec setup-plan [flags]`
+
+**Flags**:
+- `--json`: Output as JSON
+
+**Exit Codes**: 0 (success), 1 (failed)
+
+### autospec clean
+
+Remove autospec files from the project
+
+**Syntax**: `autospec clean [flags]`
+
+**Description**: Remove autospec configuration, state, and optionally spec files from the project.
+
+**Flags**:
+- `-n, --dry-run`: Preview what would be removed
+- `-y, --yes`: Skip confirmation prompt
+- `-k, --keep-specs`: Keep spec directories (remove only config)
+- `-r, --remove-specs`: Remove spec directories too
+
+**Examples**:
+```bash
+autospec clean --dry-run        # Preview cleanup
+autospec clean --yes            # Clean without prompts
+autospec clean --remove-specs   # Also remove specs/
+```
+
+**Exit Codes**: 0 (success), 1 (failed)
+
+### autospec migrate
+
+Migrate artifacts between formats
+
+**Syntax**: `autospec migrate`
+
+**Description**: Migrate legacy configuration and artifact formats to current versions.
+
+**Exit Codes**: 0 (success), 1 (failed)
+
+### autospec commands
+
+Manage autospec command templates
+
+**Syntax**: `autospec commands`
+
+**Description**: List and manage the slash command templates installed in agent command directories.
+
+**Exit Codes**: 0 (success)
+
+### autospec uninstall
+
+Completely remove autospec from the system
+
+**Syntax**: `autospec uninstall [flags]`
+
+**Description**: Remove all autospec files including config, state, and agent integrations.
+
+**Flags**:
+- `-n, --dry-run`: Preview what would be removed
+- `-y, --yes`: Skip confirmation prompt
+
+**Examples**:
+```bash
+autospec uninstall --dry-run    # Preview removal
+autospec uninstall --yes        # Remove without prompts
+```
+
+**Exit Codes**: 0 (success), 1 (failed)
+
 ## CLI Agents
 
 autospec supports multiple CLI-based AI coding agents. The `--agent` flag is available on all workflow commands to override the configured agent for a single execution.
@@ -690,6 +1002,7 @@ Manage git worktrees with project-aware setup automation
 - `remove <name> [--force]`: Remove a worktree
 - `setup <path> [--track]`: Run setup on existing worktree
 - `prune`: Remove stale tracking entries
+- `gen-script`: Generate a project-specific worktree setup script (`--include-env` to include .env files)
 
 **Examples**:
 ```bash
@@ -725,7 +1038,7 @@ DAG multi-spec orchestration commands for running multiple autospec workflows in
 
 **Syntax**: `autospec dag <subcommand> [flags]`
 
-**Subcommands**: `validate`, `visualize`, `run`, `status`, `watch`, `logs`, `list`, `commit`, `merge`, `cleanup`, `clean-logs`
+**Subcommands**: `validate`, `visualize`, `run`, `status`, `watch`, `logs`, `list`, `commit`, `merge`, `cleanup`, `clean-logs`, `migrate-state`
 
 See [DAG Orchestration](dag-orchestration.md) for detailed documentation.
 
@@ -898,9 +1211,9 @@ custom_agent_cmd: "my-agent run --prompt {{PROMPT}} --mode headless"
 ### max_retries
 
 **Type**: integer
-**Default**: `3`
-**Range**: 1-10
-**Description**: Maximum retry attempts on validation failure
+**Default**: `0` (disabled)
+**Range**: 0-10
+**Description**: Maximum retry attempts on validation failure. Set to 0 to disable automatic retries.
 
 **Example**:
 ```yaml
@@ -938,7 +1251,7 @@ state_dir: ~/.autospec/state
 ### timeout
 
 **Type**: integer
-**Default**: `0` (no timeout)
+**Default**: `2400` (40 minutes)
 **Range**: 0 or 1-604800 (7 days in seconds)
 **Description**: Command execution timeout in seconds
 
@@ -950,7 +1263,7 @@ timeout: 600
 **Environment**: `AUTOSPEC_TIMEOUT`
 
 **Behavior**:
-- `0`: No timeout (infinite wait) - backward compatible default
+- `0`: No timeout (infinite wait)
 - `1-604800`: Timeout after specified seconds
 - Commands exceeding timeout return exit code 5
 
@@ -1019,13 +1332,13 @@ view_limit: 10
 ### auto_commit
 
 **Type**: boolean
-**Default**: `true`
+**Default**: `false`
 **Description**: Enable automatic git commit creation after workflow completion. When enabled, the agent receives instructions to update .gitignore with common patterns, stage appropriate files, and create a conventional commit message.
 
 **Example**:
 ```yaml
-auto_commit: true   # Enable auto-commit (default)
-auto_commit: false  # Disable auto-commit
+auto_commit: true   # Enable auto-commit
+auto_commit: false  # Disable auto-commit (default)
 ```
 
 **Environment**: `AUTOSPEC_AUTO_COMMIT`
@@ -1039,7 +1352,7 @@ auto_commit: false  # Disable auto-commit
 - The `--no-auto-commit` flag disables this for a single command (overrides config)
 - Flags are mutually exclusive
 
-**Migration Notice**: On first workflow run after upgrading, a one-time notice is displayed explaining that auto-commit is now enabled by default. This notice is shown once per user and persisted to state.
+**Migration Notice**: On first workflow run after upgrading, a one-time notice about auto-commit is displayed. This notice is shown once per user and persisted to state.
 
 **Failure Handling**: If the auto-commit process fails (e.g., git add fails, .gitignore write fails), the workflow still succeeds (exit 0) and a warning is logged to stderr.
 
@@ -1071,6 +1384,154 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 - Enable for complex features with significant technical unknowns
 - Enable for projects with strict risk management requirements
 - Keep disabled for simple bug fixes or small enhancements
+
+### skip_confirmations
+
+**Type**: boolean
+**Default**: `false`
+**Description**: Skip interactive confirmation prompts. Useful for CI/CD pipelines.
+
+**Environment**: `AUTOSPEC_SKIP_CONFIRMATIONS`
+
+### skip_permissions
+
+**Type**: boolean
+**Default**: `false`
+**Description**: Enable Claude autonomous mode (`--dangerously-skip-permissions`). When `true`, Claude runs without prompting for tool approval.
+
+**Environment**: `AUTOSPEC_SKIP_PERMISSIONS`
+
+### cclean
+
+**Type**: object
+**Description**: Configuration for cclean output formatting.
+
+#### cclean.verbose
+
+**Type**: boolean
+**Default**: `false`
+**Description**: Enable verbose output with usage stats and tool IDs (`-V` flag)
+
+#### cclean.line_numbers
+
+**Type**: boolean
+**Default**: `false`
+**Description**: Show line numbers in formatted output (`-n` flag)
+
+#### cclean.style
+
+**Type**: string (enum)
+**Default**: `"default"`
+**Values**: `"default"` | `"compact"` | `"minimal"` | `"plain"`
+**Description**: Output formatting style for cclean (`-s` flag)
+
+### worktree
+
+**Type**: object
+**Description**: Git worktree management configuration.
+
+#### worktree.base_dir
+
+**Type**: string
+**Default**: `""` (uses default location)
+**Description**: Parent directory for new worktrees
+
+#### worktree.prefix
+
+**Type**: string
+**Default**: `""`
+**Description**: Directory name prefix for worktrees
+
+#### worktree.setup_script
+
+**Type**: string
+**Default**: `""`
+**Description**: Path to setup script relative to repo root. Runs after worktree creation.
+
+#### worktree.auto_setup
+
+**Type**: boolean
+**Default**: `true`
+**Description**: Run setup script automatically on worktree creation
+
+#### worktree.track_status
+
+**Type**: boolean
+**Default**: `true`
+**Description**: Persist worktree state for status tracking
+
+#### worktree.copy_dirs
+
+**Type**: list
+**Default**: `[]`
+**Description**: Non-tracked directories to copy to new worktrees (e.g., `.autospec/`, `.claude/`)
+
+#### worktree.setup_timeout
+
+**Type**: duration
+**Default**: `"5m"`
+**Description**: Maximum duration for setup script execution
+
+### dag
+
+**Type**: object
+**Description**: DAG multi-spec orchestration configuration.
+
+#### dag.on_conflict
+
+**Type**: string (enum)
+**Default**: `"manual"`
+**Values**: `"manual"` | `"agent"`
+**Description**: Merge conflict handling strategy
+
+#### dag.base_branch
+
+**Type**: string
+**Default**: `""` (uses repo default)
+**Description**: Target branch for merging completed specs
+
+#### dag.max_spec_retries
+
+**Type**: integer
+**Default**: `0`
+**Description**: Max auto-retry attempts per spec (0 = manual only)
+
+#### dag.max_log_size
+
+**Type**: string
+**Default**: `"50MB"`
+**Description**: Max log file size per spec (e.g., `50MB`, `100MB`, `1GB`)
+
+#### dag.log_dir
+
+**Type**: string
+**Default**: `""` (XDG cache default)
+**Description**: Custom log directory for DAG execution logs
+
+#### dag.autocommit
+
+**Type**: boolean
+**Default**: `true`
+**Description**: Enable post-execution commit verification
+
+#### dag.autocommit_cmd
+
+**Type**: string
+**Default**: `""` (uses agent session)
+**Description**: Custom commit command template. Supports variables: `{{.SpecID}}`, `{{.Worktree}}`, `{{.Branch}}`, `{{.BaseBranch}}`, `{{.DagID}}`
+
+#### dag.autocommit_retries
+
+**Type**: integer
+**Default**: `1`
+**Range**: 0-10
+**Description**: Number of commit retry attempts
+
+#### dag.automerge
+
+**Type**: boolean
+**Default**: `true`
+**Description**: Enable automatic merge into staging branch after spec commits
 
 ### verification
 
@@ -1205,6 +1666,21 @@ verification:
 ```
 
 **Environment**: `AUTOSPEC_VERIFICATION_COMPLEXITY_MAX`
+
+#### verification.ears_requirements
+
+**Type**: boolean (optional)
+**Default**: Based on level (`basic` = disabled, `enhanced`/`full` = enabled)
+**Description**: Enable EARS (Easy Approach to Requirements Syntax) requirements in spec.yaml. Explicit value overrides level default.
+
+**Example**:
+```yaml
+verification:
+  level: basic
+  ears_requirements: true  # Enable EARS despite basic level
+```
+
+**Environment**: `AUTOSPEC_VERIFICATION_EARS_REQUIREMENTS`
 
 ### Full Verification Configuration Example
 

@@ -16,7 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `waves` command for task execution wave visualization
 
 ### Changed
+- Constitution path simplified from `.autospec/memory/constitution.yaml` to `.autospec/constitution.yaml`; legacy paths still supported as fallback
 - Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors
+
+### Security
+- Bumped `github.com/cloudflare/circl` from v1.6.1 to v1.6.3
+- Bumped `github.com/go-git/go-git/v5` from v5.16.4 to v5.16.5 (fixes untracked file deletion on checkout)
 
 ## [0.10.4] - 2026-01-30
 

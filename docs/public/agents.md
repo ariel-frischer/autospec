@@ -11,16 +11,16 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 | `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported |
 
-### Planned Agents (Not Yet Implemented)
+### Experimental Agents (Untested)
 
 | Agent | Binary | Description | Status |
 |-------|--------|-------------|--------|
-| `cline` | `cline` | Cline VSCode extension CLI | 🚧 Planned |
-| `gemini` | `gemini` | Google Gemini CLI | 🚧 Planned |
-| `codex` | `codex` | OpenAI Codex CLI | 🚧 Planned |
-| `goose` | `goose` | Goose AI CLI | 🚧 Planned |
+| `cline` | `cline` | Cline VSCode extension CLI | ⚠️ Untested |
+| `gemini` | `gemini` | Google Gemini CLI | ⚠️ Untested |
+| `codex` | `codex` | OpenAI Codex CLI | ⚠️ Untested |
+| `goose` | `goose` | Goose AI CLI | ⚠️ Untested |
 
-Once implemented, all built-in agents will support headless/automated execution suitable for CI/CD pipelines.
+These agents have code-level support (agent abstraction, command building, doctor checks) but have not been tested with real binaries. They may require adjustments. Please [report issues](https://github.com/ariel-frischer/autospec/issues) if you try them.
 
 ### Custom Agents
 
@@ -122,17 +122,17 @@ Environment variables take precedence over config file values.
 
 ## Auto-Commit Configuration
 
-By default, autospec enables automatic git commit creation after workflow completion. The agent receives instructions to update .gitignore, stage appropriate files, and create a conventional commit message.
+When enabled, autospec instructs the agent to update .gitignore, stage appropriate files, and create a conventional commit message after workflow completion.
 
 ### Configuration
 
 ```yaml
 # ~/.config/autospec/config.yml or .autospec/config.yml
 
-# Default: auto-commit enabled
+# Enable auto-commit
 auto_commit: true
 
-# Disable auto-commit
+# Default: auto-commit disabled
 auto_commit: false
 ```
 
@@ -241,10 +241,10 @@ Each agent has specific requirements:
 |-------|----------------|----------------------|--------|
 | `claude` | `claude` | - (uses subscription by default) | ✅ Supported |
 | `opencode` | `opencode` | - | ✅ Supported |
-| `cline` | `cline` | - | 🚧 Planned |
-| `gemini` | `gemini` | `GOOGLE_API_KEY` | 🚧 Planned |
-| `codex` | `codex` | `OPENAI_API_KEY` | 🚧 Planned |
-| `goose` | `goose` | - | 🚧 Planned |
+| `cline` | `cline` | - | ⚠️ Untested |
+| `gemini` | `gemini` | `GEMINI_API_KEY` | ⚠️ Untested |
+| `codex` | `codex` | `OPENAI_API_KEY` | ⚠️ Untested |
+| `goose` | `goose` | - | ⚠️ Untested |
 
 Use `autospec doctor` to verify agent availability and configuration.
 
@@ -544,7 +544,7 @@ Some agents require API keys or configuration:
 
 ```bash
 # For Gemini
-export GOOGLE_API_KEY=your-api-key
+export GEMINI_API_KEY=your-api-key
 
 # For Codex
 export OPENAI_API_KEY=your-api-key
