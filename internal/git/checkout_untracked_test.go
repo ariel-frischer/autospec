@@ -133,10 +133,10 @@ func TestCreateBranchPreservesGitignored(t *testing.T) {
 	assert.NoError(t, err, "constitution.yaml should exist after checkout (gitignored)")
 }
 
-// TestGoGitCheckoutWithoutKeepDeletesUntracked documents the dangerous
-// default behavior of go-git's Checkout. This test exists to ensure we
-// never accidentally remove the Keep: true flag from CreateBranch.
-func TestGoGitCheckoutWithoutKeepDeletesUntracked(t *testing.T) {
+// TestGoGitCheckoutWithoutKeepPreservesUntracked documents that go-git v5.16.5+
+// no longer deletes untracked directories on Checkout without Keep: true.
+// We still use Keep: true in CreateBranch as defense-in-depth.
+func TestGoGitCheckoutWithoutKeepPreservesUntracked(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "git-checkout-danger-test-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
@@ -163,17 +163,18 @@ func TestGoGitCheckoutWithoutKeepDeletesUntracked(t *testing.T) {
 	head, err := repo.Head()
 	require.NoError(t, err)
 
-	// Checkout WITHOUT Keep: true (dangerous default behavior)
+	// Checkout WITHOUT Keep: true — as of go-git v5.16.5, untracked
+	// files are preserved even without Keep: true.
 	branchRef := plumbing.NewBranchReferenceName("test-no-keep")
 	err = worktree.Checkout(&git.CheckoutOptions{
 		Hash:   head.Hash(),
 		Branch: branchRef,
 		Create: true,
-		// Keep: false (default) - this DELETES untracked files!
 	})
 	require.NoError(t, err)
 
-	// Document that go-git deletes untracked dirs without Keep: true
+	// go-git v5.16.5+ preserves untracked dirs without Keep: true.
+	// We still use Keep: true in CreateBranch as defense-in-depth.
 	_, err = os.Stat(untrackedDir)
-	assert.Error(t, err, "go-git Checkout WITHOUT Keep: true deletes untracked directories - this test documents the dangerous default behavior")
+	assert.NoError(t, err, "go-git v5.16.5+ should preserve untracked directories even without Keep: true")
 }

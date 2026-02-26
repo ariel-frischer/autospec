@@ -8,12 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management
-- `dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming
-- `dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup
-- Worktree-based spec isolation with human-readable branch names (`dag/<dag-id>/<spec-id>`) and layer staging for progressive merge propagation
-- `dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization
+- placeholder
+
+## [0.10.5] - 2026-02-25
+
+### Added
+- Public docs: documented `autospec run` command with all flags and stage selection
+- Public docs: documented missing commands (`constitution`, `clarify`, `checklist`, `analyze`, `task`, `update-task`, `new-feature`, `prereqs`, `setup-plan`, `clean`, `migrate`, `commands`, `uninstall`)
+- Public docs: documented missing config fields (`skip_confirmations`, `skip_permissions`, `cclean.*`, `worktree.*`, `dag.*`, `verification.ears_requirements`)
+- Public docs: added `--output-style` global flag and `--resume` implement flag
+- **[Experimental]** `dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management
+- **[Experimental]** `dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming
+- **[Experimental]** `dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup
+- **[Experimental]** Worktree-based spec isolation with human-readable branch names (`dag/<dag-id>/<spec-id>`) and layer staging for progressive merge propagation
+- **[Experimental]** `dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization
 - `waves` command for task execution wave visualization
+
+### Changed
+- Constitution path simplified from `.autospec/memory/constitution.yaml` to `.autospec/constitution.yaml`; legacy paths still supported as fallback
+- Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors
+
+### Fixed
+- Public docs: corrected wrong defaults for `max_retries` (was 3, actual 0), `auto_commit` (was true, actual false), `timeout` (was 0, actual 2400)
+- Public docs: fixed Gemini agent env var from `GOOGLE_API_KEY` to `GEMINI_API_KEY`
+- Public docs: marked `cline`/`gemini`/`codex`/`goose` agents as untested instead of planned (code exists but unverified)
+- Public docs: fixed stale constitution path in CONTRIBUTORS.md
+
+### Security
+- Bumped `github.com/cloudflare/circl` from v1.6.1 to v1.6.3
+- Bumped `github.com/go-git/go-git/v5` from v5.16.4 to v5.16.5 (fixes untracked file deletion on checkout)
 
 ## [0.10.4] - 2026-01-30
 
@@ -324,7 +347,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.10.5...HEAD
+[0.10.5]: https://github.com/ariel-frischer/autospec/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/ariel-frischer/autospec/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/ariel-frischer/autospec/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/ariel-frischer/autospec/compare/v0.10.1...v0.10.2

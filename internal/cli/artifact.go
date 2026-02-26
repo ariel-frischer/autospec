@@ -35,7 +35,7 @@ Types:
   tasks        - Task breakdown (tasks.yaml)
   analysis     - Cross-artifact analysis (analysis.yaml)
   checklist    - Feature quality checklist (checklists/*.yaml)
-  constitution - Project constitution (.autospec/memory/constitution.yaml)
+  constitution - Project constitution (.autospec/constitution.yaml)
 
 Validates:
   - Valid YAML syntax
@@ -57,7 +57,7 @@ Exit Codes:
   autospec artifact specs/001-feature/plan.yaml
   autospec artifact specs/001-feature/tasks.yaml
   autospec artifact specs/001-feature/analysis.yaml
-  autospec artifact .autospec/memory/constitution.yaml
+  autospec artifact .autospec/constitution.yaml
 
   # Checklist requires explicit type (filename varies by domain)
   autospec artifact checklist specs/001-feature/checklists/ux.yaml

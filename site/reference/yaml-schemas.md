@@ -263,7 +263,7 @@ implementation_phases:
       - "Phase 1"
 
 constitution_check:
-  constitution_path: ".autospec/memory/constitution.yaml"
+  constitution_path: ".autospec/constitution.yaml"
   gates:
     - name: "Test-First Development"
       status: "PASS"

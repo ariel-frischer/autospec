@@ -129,11 +129,11 @@ notifications:
 | `claude_cmd` | string | `"claude"` | Claude CLI command |
 | `claude_args` | array | `[]` | Arguments passed to Claude CLI |
 | `custom_claude_cmd` | string | `""` | Custom command with `{{PROMPT}}` placeholder |
-| `max_retries` | int | `3` | Maximum retry attempts (1-10) |
+| `max_retries` | int | `0` | Maximum retry attempts (0-10) |
 | `specs_dir` | string | `"./specs"` | Directory for feature specs |
 | `state_dir` | string | `"~/.autospec/state"` | State storage (retry, history) |
 | `skip_preflight` | bool | `false` | Skip dependency checks |
-| `timeout` | int | `0` | Command timeout in seconds (0 = no timeout) |
+| `timeout` | int | `2400` | Command timeout in seconds (0 = no timeout) |
 | `implement_method` | string | `"phases"` | Default implement mode: `phases`, `tasks`, `single-session` |
 | `max_history_entries` | int | `500` | Maximum command history entries |
 | `notifications.enabled` | bool | `false` | Enable desktop notifications |
@@ -336,12 +336,12 @@ make dev
 3. **Add tests for new features** (table-driven tests preferred)
 4. **Add benchmarks** for performance-critical code
 5. **Update documentation**: README.md, CLAUDE.md, and this file
-6. **Follow constitution principles** in `.autospec/memory/constitution.yaml`
+6. **Follow constitution principles** in `.autospec/constitution.yaml`
 7. **Commit message format**: Use conventional commits style
 
 ### Constitution Principles
 
-Development follows `.autospec/memory/constitution.yaml`:
+Development follows `.autospec/constitution.yaml`:
 
 1. **Validation-First**: All workflow transitions validated before proceeding
 2. **Test-First Development** (NON-NEGOTIABLE): Tests written before implementation

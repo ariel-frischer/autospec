@@ -509,7 +509,7 @@ Error: spec.yaml not found.
 Run 'autospec specify' first to create this file.
 ```
 
-All stage commands also require a project constitution (`.autospec/memory/constitution.yaml`). Run `autospec constitution` to create one.
+All stage commands also require a project constitution (`.autospec/constitution.yaml`). Run `autospec constitution` to create one.
 
 ---
 

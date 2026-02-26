@@ -442,10 +442,12 @@ func containsArtifact(artifacts []string, artifact string) bool {
 
 // ConstitutionPaths contains all valid paths for the autospec constitution file (in priority order)
 var ConstitutionPaths = []string{
-	".autospec/memory/constitution.yaml",
-	".autospec/memory/constitution.yml",
-	".specify/memory/constitution.yaml",
-	".specify/memory/constitution.yml",
+	".autospec/constitution.yaml",        // default
+	".autospec/constitution.yml",         // default (alt extension)
+	".autospec/memory/constitution.yaml", // legacy
+	".autospec/memory/constitution.yml",  // legacy
+	".specify/memory/constitution.yaml",  // legacy
+	".specify/memory/constitution.yml",   // legacy
 }
 
 // ConstitutionCheckResult contains the result of constitution validation
@@ -486,8 +488,8 @@ func generateConstitutionMissingError() string {
 	sb.WriteString("The constitution defines your project's principles and guidelines.\n\n")
 	sb.WriteString("To create a constitution, run:\n")
 	sb.WriteString("  autospec constitution\n\n")
-	sb.WriteString("Or if you have an existing constitution at .specify/memory/constitution.yaml,\n")
-	sb.WriteString("run 'autospec init' to copy it to .autospec/memory/constitution.yaml\n")
+	sb.WriteString("Or if you have an existing constitution at a legacy path,\n")
+	sb.WriteString("run 'autospec init' to copy it to .autospec/constitution.yaml\n")
 
 	return sb.String()
 }

@@ -5,7 +5,8 @@
 .claude/
 .opencode/
 opencode.json
-specs/
+# .claude/
+# specs/
 
 # Test results and temporary files
 tests/results/
@@ -32,7 +33,12 @@ node_modules/
 package-lock.json
 
 .specify
-.autospec/
+# Ignore .autospec except for the constitution
+.autospec/*
+!.autospec/constitution.yaml
+!.autospec/memory/
+.autospec/memory/*
+!.autospec/memory/constitution.yaml
 .serena
 
 # Go binary outputs

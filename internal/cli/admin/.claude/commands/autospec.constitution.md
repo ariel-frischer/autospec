@@ -25,7 +25,8 @@ The following values have been pre-computed and are available for use:
 Follow this execution flow:
 
 1. **Load existing context**:
-   - Check if `.autospec/memory/constitution.yaml` exists
+   - Check if `.autospec/constitution.yaml` exists (preferred path)
+   - Check if `.autospec/memory/constitution.yaml` exists (legacy fallback)
    - Check if `.autospec/memory/constitution.md` exists (for migration)
    - Check if `AGENTS.md` exists at project root (or agent-specific file like `CLAUDE.md` as fallback)
    - Extract any existing principles, governance rules, or project guidelines
@@ -165,12 +166,12 @@ Follow this execution flow:
      artifact_type: "constitution"
    ```
 
-4. **Write the constitution** to `.autospec/memory/constitution.yaml`
-   - Create `.autospec/memory/` directory if it doesn't exist
+4. **Write the constitution** to `.autospec/constitution.yaml`
+   - Create `.autospec/` directory if it doesn't exist
 
 5. **Validate the artifact**:
    ```bash
-   autospec artifact .autospec/memory/constitution.yaml
+   autospec artifact .autospec/constitution.yaml
    ```
    - If validation fails: fix schema errors (missing required fields, invalid types/enums) and retry
    - If validation passes: proceed to report

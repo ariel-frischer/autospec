@@ -20,7 +20,7 @@ DAG orchestration is a meta-orchestrator that:
 
 ## Prerequisites
 
-1. **Constitution required**: Run `autospec constitution` first — all workflow stages fail without `.autospec/memory/constitution.yaml`
+1. **Constitution required**: Run `autospec constitution` first — all workflow stages fail without `.autospec/constitution.yaml`
 2. **Worktree setup script** (recommended): Run `autospec worktree gen-script` to generate a project-specific setup script that installs dependencies in each worktree
 
 ## Quick Start
