@@ -551,7 +551,7 @@ func TestE2E_ArtifactValidation(t *testing.T) {
 			description: "Run artifact on valid constitution.yaml",
 			setupFunc: func(env *testutil.E2EEnv) string {
 				setupUtilTestEnvironment(env)
-				return filepath.Join(env.TempDir(), ".autospec", "memory", "constitution.yaml")
+				return filepath.Join(env.TempDir(), ".autospec", "constitution.yaml")
 			},
 			args: func(path string) []string {
 				return []string{"artifact", path}
