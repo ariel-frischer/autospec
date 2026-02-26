@@ -7,7 +7,8 @@ before:
   hooks:
     - go mod tidy
     - go mod download
-    - go test ./...
+    # Tests run in dedicated CI step before goreleaser (release.yml:test job)
+    # Running here causes flaky failures due to goreleaser's working directory context
 
 builds:
   - id: autospec
