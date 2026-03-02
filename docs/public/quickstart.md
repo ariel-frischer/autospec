@@ -6,7 +6,7 @@ Get started with autospec and complete your first workflow in 10 minutes.
 
 Before you begin, ensure you have:
 
-- **Claude CLI**: Installed and authenticated ([installation guide](https://docs.anthropic.com/claude/docs/claude-cli))
+- **Claude CLI**: Installed and authenticated ([installation guide](https://code.claude.com/docs/en/setup#install-claude-code))
 - **Git** (recommended): For branch-based spec detection
 - **Go 1.25+** (if building from source): For compilation
 - **Command Line Familiarity**: Basic terminal/shell knowledge
