@@ -3,7 +3,8 @@ versions:
   - version: unreleased
     changes:
       added:
-        - "placeholder"
+        - "Add `--opencode-agent` flag to specify OpenCode sub-agent (Plan, Build, Explore, etc.)"
+        - "Add `opencode_agent` config option for persistent OpenCode sub-agent selection"
 
   - version: 0.10.5
     date: "2026-02-25"
