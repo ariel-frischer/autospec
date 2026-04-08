@@ -266,6 +266,14 @@ The --tasks mode provides maximum context isolation:
 			// Apply output style from CLI flag (overrides config)
 			shared.ApplyOutputStyle(cmd, orch)
 
+			// Apply opencode-agent from CLI flag or config
+			opencodeAgent := shared.ResolveOpenCodeAgent(cmd, cfg)
+			if opencodeAgent != "" {
+				if claude, ok := orch.Executor.Claude.(*workflow.ClaudeExecutor); ok {
+					claude.OpenCodeAgent = opencodeAgent
+				}
+			}
+
 			// Build phase execution options
 			phaseOpts := workflow.PhaseExecutionOptions{
 				RunAllPhases:     runAllPhases,
@@ -445,6 +453,9 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(implementCmd)
+
+	// OpenCode agent flag
+	shared.AddOpenCodeAgentFlag(implementCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(implementCmd)
