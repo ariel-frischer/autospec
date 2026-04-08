@@ -57,6 +57,13 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description:   "Built-in agent preset to use",
 		Default:       "",
 	},
+	"opencode_agent": {
+		Path:          "opencode_agent",
+		Type:          TypeString,
+		AllowedValues: []string{},
+		Description:   "OpenCode sub-agent to use (Plan, Build, Explore, etc.)",
+		Default:       "",
+	},
 	"use_subscription": {
 		Path:        "use_subscription",
 		Type:        TypeBool,

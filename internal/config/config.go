@@ -64,6 +64,11 @@ type Configuration struct {
 	// Can be set via AUTOSPEC_USE_SUBSCRIPTION env var.
 	UseSubscription bool `koanf:"use_subscription"`
 
+	// OpenCodeAgent specifies the OpenCode sub-agent to use.
+	// Only applies when agent_preset is "opencode".
+	// Can be set via AUTOSPEC_OPENCODE_AGENT env var.
+	OpenCodeAgent string `koanf:"opencode_agent"`
+
 	MaxRetries        int    `koanf:"max_retries"`
 	SpecsDir          string `koanf:"specs_dir"`
 	StateDir          string `koanf:"state_dir"`

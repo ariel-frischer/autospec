@@ -10,6 +10,7 @@ func GetDefaultConfigTemplate() string {
 
 # Agent settings
 agent_preset: ""                      # Built-in agent: claude | opencode
+opencode_agent: ""                    # OpenCode sub-agent: Plan | Build | Explore | etc.
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
 
 # Workflow settings
@@ -93,6 +94,7 @@ func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
 		// Agent configuration
 		"agent_preset":       "",
+		"opencode_agent":     "",   // OpenCode sub-agent (empty = use OpenCode's default)
 		"use_subscription":   true, // Protect users from accidental API charges
 		"max_retries":        0,
 		"specs_dir":          "./specs",

@@ -36,6 +36,9 @@ type ClaudeExecutor struct {
 	// When true (default), uses syscall.Exec for full terminal control in interactive mode.
 	// Set to false for multi-stage runs where we need to continue after interactive stages.
 	ReplaceProcessForInteractive bool
+
+	// OpenCodeAgent specifies the OpenCode sub-agent to use.
+	OpenCodeAgent string
 }
 
 // Execute runs an agent command with the given prompt.
@@ -81,6 +84,7 @@ func (c *ClaudeExecutor) executeWithAgent(prompt string, interactive bool) error
 		Autonomous:      c.SkipPermissions,
 		Interactive:     interactive,
 		ReplaceProcess:  interactive && c.ReplaceProcessForInteractive,
+		OpenCodeAgent:   c.OpenCodeAgent,
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)
@@ -153,6 +157,7 @@ func (c *ClaudeExecutor) StreamCommand(prompt string, stdout, stderr io.Writer) 
 		Timeout:         time.Duration(c.Timeout) * time.Second,
 		UseSubscription: c.UseSubscription,
 		Autonomous:      c.SkipPermissions,
+		OpenCodeAgent:   c.OpenCodeAgent,
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)

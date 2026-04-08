@@ -54,6 +54,11 @@ type ExecOptions struct {
 	// When false (for multi-stage runs), uses subprocess which may have limited terminal support.
 	// Only applies when Interactive is true.
 	ReplaceProcess bool
+
+	// OpenCodeAgent specifies the OpenCode sub-agent to use (e.g., "Plan", "Explore").
+	// Only applies when the agent is OpenCode. Empty string uses OpenCode's default.
+	// Example: "Plan" → opencode run ... --agent Plan
+	OpenCodeAgent string
 }
 
 // Result contains the outcome of an agent execution.

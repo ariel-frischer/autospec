@@ -735,6 +735,7 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 			CcleanConfig:    cfg.Cclean,
 			UseSubscription: cfg.UseSubscription,
 			SkipPermissions: cfg.SkipPermissions,
+			OpenCodeAgent:   cfg.OpenCodeAgent,
 		}
 	}
 
@@ -745,6 +746,7 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 		UseSubscription:              cfg.UseSubscription,
 		SkipPermissions:              cfg.SkipPermissions,
 		ReplaceProcessForInteractive: true, // Default: replace process for full terminal control
+		OpenCodeAgent:                cfg.OpenCodeAgent,
 	}
 }
 

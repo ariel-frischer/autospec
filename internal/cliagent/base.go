@@ -146,6 +146,10 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 			if parts.CmdName != "" && pd.CommandFlag != "" {
 				args = append(args, pd.CommandFlag, parts.CmdName)
 			}
+
+			if opts.OpenCodeAgent != "" {
+				args = append(args, "--agent", opts.OpenCodeAgent)
+			}
 		}
 		// Add default args (e.g., --verbose --output-format stream-json for Claude)
 		// Only in automated mode - interactive mode omits these for conversation
