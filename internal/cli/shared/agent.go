@@ -14,6 +14,9 @@ import (
 // AgentFlagName is the flag name for agent override.
 const AgentFlagName = "agent"
 
+// OpenCodeAgentFlagName is the flag name for OpenCode sub-agent override.
+const OpenCodeAgentFlagName = "opencode-agent"
+
 // availableAgentNames returns agent names available for the current build type.
 // Production builds only show production agents; dev builds show all registered agents.
 func availableAgentNames() []string {
@@ -88,4 +91,28 @@ func ApplyAgentOverride(cmd *cobra.Command, cfg *config.Configuration) (bool, er
 	cfg.CustomAgent = nil
 
 	return true, nil
+}
+
+// AddOpenCodeAgentFlag adds the --opencode-agent flag to a command.
+func AddOpenCodeAgentFlag(cmd *cobra.Command) {
+	if !build.MultiAgentEnabled() {
+		return
+	}
+	cmd.Flags().String(OpenCodeAgentFlagName, "", "OpenCode sub-agent to use (Plan, Build, Explore, etc.)")
+}
+
+// ResolveOpenCodeAgent resolves the OpenCode agent from CLI flag or config.
+// Priority: CLI flag > config > default (empty)
+func ResolveOpenCodeAgent(cmd *cobra.Command, cfg *config.Configuration) string {
+	if !build.MultiAgentEnabled() {
+		return ""
+	}
+
+	// Check CLI flag first
+	if agent, _ := cmd.Flags().GetString(OpenCodeAgentFlagName); agent != "" {
+		return agent
+	}
+
+	// Fall back to config
+	return cfg.OpenCodeAgent
 }
