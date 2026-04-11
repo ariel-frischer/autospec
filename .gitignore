@@ -61,3 +61,10 @@ cover.out
 
 install-dev.sh
 .grepai/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
+
+# Demo assets (WIP)
+assets/
