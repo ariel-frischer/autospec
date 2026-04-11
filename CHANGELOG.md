@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- placeholder
+### Changed
+- CI now runs lint, test, and build on pull requests (previously only on push to main)
+
+### Security
+- Bumped `github.com/go-git/go-git/v5` from v5.16.5 to v5.17.1
+- Bumped `json` Ruby gem from 2.18.0 to 2.19.2 (docs site)
+- Bumped `addressable` Ruby gem from 2.8.8 to 2.9.0 (docs site)
 
 ## [0.10.5] - 2026-02-25
 
