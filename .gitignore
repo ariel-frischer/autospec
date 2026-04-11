@@ -2,8 +2,7 @@
 /tmp/speckit_retry_*
 
 # Isolated settings files (user-specific)
-.claude/*-settings.json
-!.claude/spec-workflow-settings.json
+.claude/
 .opencode/
 opencode.json
 # .claude/
@@ -60,6 +59,9 @@ cover.out
 .cache/
 
 install-dev.sh
+.dev/
+tasks/
+.release/
 .grepai/
 
 # Dolt database files (added by bd init)

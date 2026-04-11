@@ -1,9 +1,0 @@
-{
-  "sandbox": {
-    "additionalAllowWritePaths": [
-      ".autospec",
-      "specs"
-    ],
-    "enabled": true
-  }
-}
