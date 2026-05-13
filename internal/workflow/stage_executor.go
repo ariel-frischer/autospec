@@ -7,6 +7,7 @@ package workflow
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/commands"
 	"github.com/ariel-frischer/autospec/internal/prereqs"
@@ -87,7 +88,10 @@ func (s *StageExecutor) resetSpecifyRetryState() {
 
 // runSpecifyStage executes the specify stage command
 func (s *StageExecutor) runSpecifyStage(featureDescription string) (*StageResult, error) {
-	command := fmt.Sprintf("/autospec.specify \"%s\"", featureDescription)
+	command, err := s.buildRenderedSpecifyCommand(featureDescription)
+	if err != nil {
+		return nil, fmt.Errorf("building specify command: %w", err)
+	}
 	command = InjectEarsInstructions(command, s.enableEarsRequirements)
 	validateFunc := MakeSpecSchemaValidatorWithDetection(s.specsDir)
 	return s.executor.ExecuteStage("", StageSpecify, command, validateFunc)
@@ -211,6 +215,24 @@ func (s *StageExecutor) buildRenderedTasksCommand(prompt string) (string, error)
 	return rendered, nil
 }
 
+// buildRenderedSpecifyCommand renders the specify template with the feature description.
+func (s *StageExecutor) buildRenderedSpecifyCommand(featureDescription string) (string, error) {
+	return s.buildRenderedCommandWithArguments("autospec.specify", featureDescription)
+}
+
+// buildRenderedConstitutionCommand renders the constitution template with optional guidance.
+func (s *StageExecutor) buildRenderedConstitutionCommand(prompt string) (string, error) {
+	return s.buildRenderedCommandWithArguments("autospec.constitution", prompt)
+}
+
+func (s *StageExecutor) buildRenderedCommandWithArguments(commandName, arguments string) (string, error) {
+	rendered, err := s.computeAndRenderCommand(commandName)
+	if err != nil {
+		return "", err
+	}
+	return strings.ReplaceAll(rendered, "$ARGUMENTS", arguments), nil
+}
+
 // formatStageError formats an error from a stage execution.
 func (s *StageExecutor) formatStageError(stageName string, result *StageResult, err error) error {
 	totalAttempts := result.RetryCount + 1
@@ -239,7 +261,10 @@ func (s *StageExecutor) buildRenderedAuxCommand(commandName, prompt string) (str
 func (s *StageExecutor) ExecuteConstitution(prompt string) error {
 	s.debugLog("ExecuteConstitution called with prompt: %s", prompt)
 
-	command := s.buildCommand("/autospec.constitution", prompt)
+	command, err := s.buildRenderedConstitutionCommand(prompt)
+	if err != nil {
+		return fmt.Errorf("building constitution command: %w", err)
+	}
 	s.printExecuting("/autospec.constitution", prompt)
 
 	// Derive project directory from specsDir (parent of specs/)
@@ -367,18 +392,24 @@ func (s *StageExecutor) getOptionsForStage(stageName string) prereqs.Options {
 		SpecsDir: s.specsDir,
 	}
 
+	needsFeatureContext := false
 	for _, v := range requiredVars {
 		switch v {
+		case "FeatureDir":
+			needsFeatureContext = true
 		case "FeatureSpec":
 			opts.RequireSpec = true
+			needsFeatureContext = true
 		case "ImplPlan":
 			opts.RequirePlan = true
+			needsFeatureContext = true
 		case "TasksFile":
 			opts.RequireTasks = true
+			needsFeatureContext = true
 		}
 	}
 
-	if len(requiredVars) == 0 {
+	if !needsFeatureContext {
 		opts.PathsOnly = true
 	}
 

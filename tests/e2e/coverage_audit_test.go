@@ -92,15 +92,6 @@ var allCLICommands = []string{
 	"worktree prune",
 	"worktree setup",
 	"worktree gen-script",
-
-	// DAG Commands
-	"dag",
-	"dag run",
-	"dag status",
-	"dag logs",
-	"dag validate",
-	"dag watch",
-	"dag visualize",
 }
 
 // commandAliases maps command aliases to their primary command.
@@ -367,7 +358,6 @@ func TestE2E_AllCommandsAccessible(t *testing.T) {
 		{"version"},
 		{"config", "--help"},
 		{"worktree", "--help"},
-		{"dag", "--help"},
 		{"completion", "--help"},
 	}
 

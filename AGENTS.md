@@ -79,6 +79,7 @@ autospec implement         # Execute tasks
 | `docs/internal/internals.md` | Spec detection, validation, retry system, phase context |
 | `docs/internal/YAML-STRUCTURED-OUTPUT.md` | YAML artifact schemas and slash commands |
 | `docs/internal/testing-mocks.md` | Mock testing infrastructure for workflows without real API calls |
+| `docs/internal/codex-manual-testing.md` | Manual Codex smoke and regression testing plan |
 | `docs/internal/events.md` | Event-driven architecture using kelindar/event |
 | `docs/internal/risks.md` | Risk documentation in plan.yaml |
 | `docs/internal/cclean.md` | claude-clean tool for transforming streaming JSON output |
@@ -98,7 +99,7 @@ autospec implement         # Execute tasks
 | `docs/public/opencode-settings.md` | OpenCode configuration, permissions, and command patterns |
 | `docs/public/agents.md` | CLI agent configuration (Claude and OpenCode supported) |
 | `docs/public/worktree.md` | Git worktree management for parallel agent execution |
-| `docs/public/parallel-execution.md` | Sequential and parallel execution with DAG scheduling |
+| `docs/public/parallel-execution.md` | Sequential workflows and manual multi-worktree parallel workflows |
 | `docs/public/self-update.md` | Version checking and self-update functionality |
 | `docs/public/faq.md` | Frequently asked questions |
 
@@ -124,7 +125,7 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
   - `internal/cli/admin/`: Admin commands (commands, completion, uninstall)
   - `internal/cli/worktree/`: Worktree management commands (create, list, remove, prune)
   - `internal/cli/shared/`: Shared types and constants
-- `internal/workflow/`: Workflow orchestration and Claude execution
+- `internal/workflow/`: Workflow orchestration and agent execution
 - `internal/config/`: Hierarchical config (env > project > user > defaults)
 - `internal/validation/`: Artifact validation (<10ms performance contract)
 - `internal/retry/`: Persistent retry state
@@ -132,7 +133,6 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
 - `internal/agent/`: Agent abstraction (Claude, Gemini, Cline, etc.)
 - `internal/cliagent/`: CLI agent integration and Configurator interface
 - `internal/worktree/`: Git worktree management logic
-- `internal/taskgraph/`: Task dependency graph for parallel execution waves
 
 ### Configuration
 

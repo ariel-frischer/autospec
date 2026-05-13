@@ -6,7 +6,7 @@ nav_order: 4
 
 # Worktree Management
 
-The `autospec worktree` command enables **parallel agent execution** by creating isolated filesystem directories for each feature. This allows multiple Claude agents to work simultaneously on different features without branch conflicts or file contention.
+The `autospec worktree` command enables **parallel agent execution** by creating isolated filesystem directories for each feature. This allows multiple agent sessions to work simultaneously on different features without branch conflicts or file contention.
 
 ## Why Worktrees?
 
@@ -17,7 +17,7 @@ When running `autospec run -a`, the agent creates and checks out a new feature b
 
 Git worktrees solve this by giving each agent its own complete working directory, all sharing the same repository.
 
-**The problem:** Standard `git worktree add` doesn't copy non-tracked directories (`.autospec/`, `.claude/`) or run project setup (npm install, etc.).
+**The problem:** Standard `git worktree add` doesn't copy non-tracked directories (`.autospec/`, `.claude/`, `.codex/`, `.opencode/`) or run project setup (npm install, etc.).
 
 **The solution:** `autospec worktree create` handles everything automatically.
 
@@ -54,7 +54,7 @@ autospec worktree create <name> --branch <branch> [--path <path>]
 
 **What it does:**
 1. Creates a new git worktree using `git worktree add`
-2. Copies configured directories (`.autospec/`, `.claude/`) to the new worktree
+2. Copies configured directories (for example `.autospec/`, `.claude/`, `.codex/`, `.opencode/`) to the new worktree
 3. Runs the project setup script if configured
 4. Tracks the worktree in `.autospec/state/worktrees.yaml`
 
@@ -138,7 +138,7 @@ autospec worktree setup ../my-worktree --track
 
 ### gen-script
 
-Generate a project-specific worktree setup script using Claude.
+Generate a project-specific worktree setup script using the configured agent.
 
 ```bash
 autospec worktree gen-script [--include-env]
@@ -149,11 +149,11 @@ autospec worktree gen-script [--include-env]
 
 **What it does:**
 1. Analyzes your project to detect package managers and configuration
-2. Generates a customized `setup-worktree.sh` script using Claude
+2. Generates a customized `setup-worktree.sh` script using the configured agent
 3. Saves the script to `.autospec/scripts/setup-worktree.sh` (executable)
 
 **Generated script behavior:**
-- Copies essential directories: `.autospec/`, `.claude/`, `.vscode/` (if present)
+- Copies essential directories such as `.autospec/`, agent config directories, and `.vscode/` (if present)
 - Excludes secrets by default: `.env*`, `credentials.*`, `*.pem`, `*.key`
 - Runs package manager install commands instead of copying dependencies:
   - `npm install` / `yarn install` / `pnpm install` for Node.js projects
@@ -200,10 +200,12 @@ worktree:
   # Persist worktree state (default: true)
   track_status: true
 
-  # Non-tracked directories to copy (default: [.autospec, .claude])
+  # Non-tracked directories to copy
   copy_dirs:
     - .autospec
     - .claude
+    - .codex
+    - .opencode
 ```
 
 ### Environment Variables

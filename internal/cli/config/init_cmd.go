@@ -566,7 +566,12 @@ func checkSandboxConfiguration(agentName string, agent cliagent.Agent, projectDi
 
 // handleSandboxConfiguration prompts for and applies sandbox configuration.
 func handleSandboxConfiguration(cmd *cobra.Command, out io.Writer, prompts []sandboxPromptInfo, projectDir, specsDir string) error {
-	if !sandboxPromptEnabled || len(prompts) == 0 {
+	if len(prompts) == 0 {
+		return nil
+	}
+
+	sandboxFlag := resolveBoolFlag(cmd, "sandbox", "no-sandbox")
+	if !sandboxPromptEnabled && sandboxFlag == nil {
 		return nil
 	}
 

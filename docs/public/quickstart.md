@@ -6,17 +6,21 @@ Get started with autospec and complete your first workflow in 10 minutes.
 
 Before you begin, ensure you have:
 
-- **Claude CLI**: Installed and authenticated ([installation guide](https://docs.anthropic.com/claude/docs/claude-cli))
+- **Supported CLI agent**: Claude Code, Codex CLI, or OpenCode installed and authenticated
 - **Git** (recommended): For branch-based spec detection
 - **Go 1.25+** (if building from source): For compilation
 - **Command Line Familiarity**: Basic terminal/shell knowledge
 
-Verify Claude CLI installation:
+Verify your agent installation:
 ```bash
 claude --version
+# or
+codex --version
+# or
+opencode --version
 ```
 
-Expected output: Claude CLI version number (e.g., `claude version 1.0.0`)
+Expected output: agent CLI version number.
 
 If you see `command not found`, visit the [troubleshooting guide](./troubleshooting.md#claude-command-not-found).
 
@@ -76,7 +80,7 @@ autospec init
 
 This creates `~/.config/autospec/config.yml` with default settings:
 ```yaml
-agent_preset: claude              # Built-in agent: claude | gemini | cline | codex | opencode | goose
+agent_preset: claude              # Built-in agent: claude | codex | opencode
 max_retries: 0                    # Max retry attempts per stage (0-10)
 specs_dir: ./specs                # Directory for feature specs
 state_dir: ~/.autospec/state      # Directory for state files
@@ -95,8 +99,7 @@ autospec doctor
 
 Expected output:
 ```
-✓ Claude CLI found: /usr/local/bin/claude
-✓ Claude CLI authenticated
+✓ CLI agent found
 ✓ Specs directory accessible: ./specs
 ✓ State directory accessible: ~/.autospec/state
 ✓ Configuration loaded successfully
@@ -108,20 +111,20 @@ If any checks fail, see the [troubleshooting guide](./troubleshooting.md) for so
 
 ### Step 3: Create Your First Feature Specification (2-3 minutes)
 
-Describe your feature in natural language. Claude will generate a detailed specification:
+Describe your feature in natural language. The configured agent will generate a detailed specification:
 
 ```bash
 autospec specify "Add dark mode toggle to user settings page"
 ```
 
 **What happens:**
-- Claude analyzes your feature description
+- The agent analyzes your feature description
 - Generates a detailed specification with requirements, acceptance criteria, and success metrics
 - Creates `specs/001-dark-mode-toggle/spec.yaml`
 
 Expected output:
 ```
-→ Executing: claude -p "/autospec.specify \"Add dark mode toggle to user settings page\""
+→ Executing: claude -p "<rendered autospec specify prompt>"
 ✓ Specification created: specs/001-dark-mode-toggle/spec.yaml
 ✓ Validation passed
 ```
@@ -138,14 +141,14 @@ autospec plan
 
 **What happens:**
 - Auto-detects current feature from git branch or most recent spec directory
-- Claude analyzes the specification
+- The agent analyzes the specification
 - Generates technical plan with architecture, file structure, and design decisions
 - Creates `specs/001-dark-mode-toggle/plan.yaml`
 
 Expected output:
 ```
 → Detected spec: 001-dark-mode-toggle
-→ Executing: claude -p "/autospec.plan"
+→ Executing: claude -p "<rendered autospec plan prompt>"
 ✓ Plan created: specs/001-dark-mode-toggle/plan.yaml
 ✓ Validation passed
 ```
@@ -161,14 +164,14 @@ autospec tasks
 ```
 
 **What happens:**
-- Claude analyzes the technical plan
+- The agent analyzes the technical plan
 - Generates ordered task list with dependencies
 - Creates `specs/001-dark-mode-toggle/tasks.yaml`
 
 Expected output:
 ```
 → Detected spec: 001-dark-mode-toggle
-→ Executing: claude -p "/autospec.tasks"
+→ Executing: claude -p "<rendered autospec tasks prompt>"
 ✓ Tasks created: specs/001-dark-mode-toggle/tasks.yaml
 ✓ Validation passed
 ```
@@ -246,7 +249,7 @@ graph LR
 - Output: `tasks.yaml` with task list, dependencies, execution order
 - Duration: 2-3 minutes
 
-**4. Implement**: Execute tasks with Claude's assistance
+**4. Implement**: Execute tasks with your configured agent
 - Input: `tasks.yaml`
 - Output: Completed implementation with validated progress
 - Duration: Varies by feature complexity
@@ -259,7 +262,7 @@ Essential configuration options (stored in `~/.config/autospec/config.yml` or `.
 
 ```yaml
 # Agent settings (recommended)
-agent_preset: claude              # Built-in agent: claude | gemini | cline | codex | opencode | goose
+agent_preset: claude              # Built-in agent: claude | codex | opencode
 custom_agent_cmd: ""              # Custom agent template with {{PROMPT}} placeholder
 
 # Maximum retry attempts (default: 0, range: 0-10)
@@ -297,10 +300,10 @@ For complete configuration reference, see [reference.md](./reference.md#configur
 
 Quick solutions for common first-time issues:
 
-### "claude: command not found"
-**Problem**: Claude CLI is not installed or not in PATH
+### "agent: command not found"
+**Problem**: The selected agent CLI is not installed or not in PATH
 
-**Solution**: Install Claude CLI following the [official guide](https://docs.anthropic.com/claude/docs/claude-cli), then verify with `claude --version`
+**Solution**: Install Claude Code, Codex CLI, or OpenCode, then verify with `claude --version`, `codex --version`, or `opencode --version`.
 
 ### "autospec: command not found"
 **Problem**: autospec binary is not in PATH
@@ -345,6 +348,6 @@ Need assistance?
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/ariel-frischer/autospec/issues)
 - **Documentation**: Browse all docs in the `docs/` directory
-- **Claude AI Support**: [Contact Anthropic](https://support.anthropic.com)
+- **Agent docs**: See [Agent Configuration](./agents.md)
 
 Happy building with autospec!

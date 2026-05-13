@@ -1281,6 +1281,51 @@ func TestConfigureSpecificAgents_OpenCode(t *testing.T) {
 	assert.Contains(t, string(data), "allow")
 }
 
+// TestConfigureSpecificAgents_Codex tests --ai codex records Codex without installing command templates.
+func TestConfigureSpecificAgents_Codex(t *testing.T) {
+	// Cannot run in parallel: changes working directory
+	tempDir := t.TempDir()
+
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	defer func() { _ = os.Chdir(origDir) }()
+
+	configDir := filepath.Join(tempDir, ".autospec")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	configPath := filepath.Join(configDir, "config.yml")
+	require.NoError(t, os.WriteFile(configPath, []byte("specs_dir: specs\nagent_preset: \"\"\ndefault_agents: []\n"), 0o644))
+
+	cmd := &cobra.Command{Use: "init"}
+	cmd.Flags().BoolP("project", "p", false, "")
+	cmd.Flags().BoolP("force", "f", false, "")
+	cmd.Flags().StringSlice("ai", nil, "")
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	configured, agentConfigs, err := configureSpecificAgents(cmd, &buf, true, []string{"codex"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"codex"}, configured)
+	require.Len(t, agentConfigs, 1)
+	assert.Equal(t, "codex", agentConfigs[0].name)
+	assert.True(t, agentConfigs[0].configured)
+
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(configContent), `default_agents: ["codex"]`)
+	assert.Contains(t, string(configContent), "agent_preset: codex")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "commands"))
+	assert.True(t, os.IsNotExist(err), ".claude/commands should not exist for codex")
+	_, err = os.Stat(filepath.Join(tempDir, ".opencode", "command"))
+	assert.True(t, os.IsNotExist(err), ".opencode/command should not exist for codex")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".codex", "config.toml"))
+	assert.NoError(t, err, ".codex/config.toml should exist")
+}
+
 // TestConfigureSpecificAgents_Both tests --ai claude,opencode configures both.
 func TestConfigureSpecificAgents_Both(t *testing.T) {
 	// Cannot run in parallel: changes working directory
@@ -1397,8 +1442,9 @@ func TestProductionAgents(t *testing.T) {
 
 	agents := build.ProductionAgents()
 	assert.Contains(t, agents, "claude")
+	assert.Contains(t, agents, "codex")
 	assert.Contains(t, agents, "opencode")
-	assert.Len(t, agents, 2)
+	assert.Len(t, agents, 3)
 }
 
 // ============================================================================
@@ -2777,6 +2823,36 @@ func TestPromptAndConfigureSandbox_FlagBehavior(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandleSandboxConfiguration_ExplicitSandboxFlagRunsWhenPromptDisabled(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("sandbox", false, "")
+	cmd.Flags().Bool("no-sandbox", false, "")
+	require.NoError(t, cmd.ParseFlags([]string{"--sandbox"}))
+
+	var buf bytes.Buffer
+	info := sandboxPromptInfo{
+		agentName:   "claude",
+		displayName: "Claude Code",
+		pathsToAdd:  []string{".autospec", "specs"},
+		needsEnable: true,
+	}
+
+	err := handleSandboxConfiguration(cmd, &buf, []sandboxPromptInfo{info}, projectDir, "specs")
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "Configuring sandbox")
+	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
+	settingsContent, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(settingsContent), `"enabled": true`)
+	assert.Contains(t, string(settingsContent), `"additionalAllowWritePaths"`)
+	assert.Contains(t, string(settingsContent), `".autospec"`)
+	assert.Contains(t, string(settingsContent), `"specs"`)
 }
 
 // TestSandboxFlagsMutualExclusivity tests that --sandbox and --no-sandbox cannot be used together.

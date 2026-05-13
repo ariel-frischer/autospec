@@ -4,7 +4,7 @@
 
 ## What is autospec?
 
-autospec is a command-line tool that orchestrates the complete software development lifecycle by integrating with Claude AI. It transforms natural language feature descriptions into fully-specified, planned, and implemented features through a structured workflow.
+autospec is a command-line tool that orchestrates the complete software development lifecycle by integrating with CLI coding agents such as Claude Code, Codex, and OpenCode. It transforms natural language feature descriptions into fully-specified, planned, and implemented features through a structured workflow.
 
 The tool automates the SpecKit methodology—a systematic approach to feature development that ensures thorough planning, clear task breakdown, and validated implementation before writing code.
 
@@ -72,12 +72,12 @@ Create comprehensive feature documentation automatically:
 
 ## How It Works
 
-autospec orchestrates interactions between you, Claude AI, and your codebase:
+autospec orchestrates interactions between you, your configured agent, and your codebase:
 
-1. **Specify**: Describe your feature in natural language → Claude generates a detailed specification
-2. **Plan**: Specification → Claude creates technical plan with architecture and design decisions
-3. **Tasks**: Plan → Claude breaks down into actionable, ordered tasks
-4. **Implement**: Tasks → Claude executes implementation with you, validating progress
+1. **Specify**: Describe your feature in natural language → the agent generates a detailed specification
+2. **Plan**: Specification → the agent creates a technical plan with architecture and design decisions
+3. **Tasks**: Plan → the agent breaks work down into actionable, ordered tasks
+4. **Implement**: Tasks → the agent executes implementation while autospec validates progress
 
 Each phase includes:
 - **Validation**: Ensures output artifacts meet quality standards
@@ -109,7 +109,7 @@ For contributors, see [CLAUDE.md](../CLAUDE.md) for detailed development guideli
 
 - **GitHub Repository**: [ariel-frischer/autospec](https://github.com/ariel-frischer/autospec)
 - **Issue Tracker**: [Report bugs or request features](https://github.com/ariel-frischer/autospec/issues)
-- **Claude AI**: [Learn more about Claude](https://www.anthropic.com/claude)
+- **Agent Configuration**: [Configure Claude, Codex, OpenCode, or custom agents](./agents.md)
 - **SpecKit Methodology**: Documentation coming soon
 
 ## License

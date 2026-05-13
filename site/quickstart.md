@@ -18,23 +18,27 @@ Get up and running with autospec in 5 minutes.
 
 Before you begin, ensure you have:
 
-- **Claude Code CLI**: Installed and authenticated ([setup guide](https://docs.anthropic.com/en/docs/claude-code/getting-started))
+- **Supported CLI agent**: Claude Code, Codex CLI, or OpenCode installed and authenticated
 - **Git**: For version control and branch-based spec detection
 
-Verify Claude CLI is installed:
+Verify your agent is installed:
 
 ```bash
 claude --version
+# or
+codex --version
+# or
+opencode --version
 ```
 
-If you see `command not found`, visit the [troubleshooting guide](/autospec/guides/troubleshooting#claude-command-not-found).
+If you see `command not found`, visit the [troubleshooting guide](/autospec/guides/troubleshooting).
 
 ---
 
 ## Cost Warning
 
 {: .warning }
-> **Check your Claude auth method before long runs.** API keys (`ANTHROPIC_API_KEY`) bill per-token and can get expensive. Pro/Max plans ($20+/month) include usage at no extra cost.
+> **Check your agent auth method before long runs.** API keys can bill per-token and get expensive. Claude Pro/Max plans include usage at no extra cost for Claude Code; Codex auth is managed by the Codex CLI.
 >
 > Run `claude` interactively, then `/status` to see your login method.
 
@@ -99,8 +103,8 @@ autospec doctor
 
 Expected output:
 ```
-✓ Claude CLI found: /usr/local/bin/claude
-✓ Claude CLI authenticated
+✓ CLI agent found
+✓ Configuration loaded successfully
 ✓ Specs directory accessible: ./specs
 ✓ State directory accessible: ~/.autospec/state
 ✓ Configuration loaded successfully
@@ -139,17 +143,17 @@ See [Configuration Reference](/autospec/reference/configuration) for customizati
 
 ### Security Notice
 
-On your first workflow run, you'll see a one-time notice about `--dangerously-skip-permissions`:
+On your first workflow run with autonomous mode enabled, you'll see a one-time security notice:
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
 │ Security Notice                                                   │
 ├───────────────────────────────────────────────────────────────────┤
-│ Running with --dangerously-skip-permissions                       │
+│ Running in autonomous permissions mode                            │
 │                                                                   │
-│ This flag is RECOMMENDED for autospec workflows. Without it,     │
-│ Claude requires manual approval for every file edit, shell       │
-│ command, etc., making automation impractical.                    │
+│ This mode is RECOMMENDED for autospec workflows. Without it,     │
+│ supported agents may require manual approval for edits and       │
+│ commands, making automation impractical.                         │
 │                                                                   │
 │ ✓ Sandbox: enabled ✓                                              │
 │   OS-level protection active.                                    │
@@ -157,12 +161,12 @@ On your first workflow run, you'll see a one-time notice about `--dangerously-sk
 ```
 
 {: .warning }
-> **Caution**: This flag gives Claude full access within your project directory without prompts. Sandbox (configured during `autospec init`) limits access to your project only, but Claude can still modify any file in the project. This tradeoff is necessary for practical automation—manually approving every file edit and command would be impractical. See [Configuration - Security](/autospec/reference/configuration#security-sandbox--permissions) for details.
+> **Caution**: Autonomous mode gives the selected agent broad access without prompts. Claude sandboxing can limit access to your project; Codex yolo mode bypasses Codex approvals and sandboxing. Use isolated environments for high-risk work. See [Configuration - Security](/autospec/reference/configuration#security-sandbox--permissions) for details.
 
 {: .note }
 > Suppress this notice: `autospec config set skip_permissions_notice_shown true` or `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
 
-`autospec init` also installs slash commands to `.claude/commands/autospec.*.md`:
+`autospec init` installs slash commands for agents that support them, such as Claude Code (`.claude/commands/autospec.*.md`) and OpenCode (`.opencode/command/autospec.*.md`). Codex receives rendered prompt text directly and does not use command template files.
 
 | Command | Purpose |
 |:--------|:--------|
@@ -175,7 +179,7 @@ On your first workflow run, you'll see a one-time notice about `--dangerously-sk
 | `/autospec.checklist` | Generate quality checklist |
 | `/autospec.constitution` | Create project constitution |
 
-Use these in normal Claude Code sessions when you prefer chat-based iteration over autospec's automated (`-p`) mode.
+Use these in normal Claude Code or OpenCode sessions when you prefer chat-based iteration over autospec's automated mode.
 
 ---
 
@@ -190,13 +194,13 @@ If you skipped constitution creation during init, or need to regenerate it:
 autospec constitution
 ```
 
-This launches a Claude session that analyzes your codebase and creates `.autospec/constitution.yaml` containing your project's:
+This launches the configured agent to analyze your codebase and create `.autospec/constitution.yaml` containing your project's:
 - Coding standards and conventions
 - Architectural principles
 - Testing requirements
 - Documentation standards
 
-The constitution ensures Claude follows your project's patterns during implementation.
+The constitution ensures the agent follows your project's patterns during implementation.
 
 ---
 
@@ -389,11 +393,11 @@ autospec run -a "Create GitHub Actions CI pipeline with test and lint stages"
 
 ## Troubleshooting
 
-### "claude: command not found"
+### "agent: command not found"
 
-Claude CLI is not installed or not in PATH.
+The selected agent CLI is not installed or not in PATH.
 
-**Solution**: Install Claude CLI following the [official guide](https://docs.anthropic.com/en/docs/claude-code/getting-started), then verify with `claude --version`.
+**Solution**: Install Claude Code, Codex CLI, or OpenCode, then verify with `claude --version`, `codex --version`, or `opencode --version`.
 
 ### "autospec: command not found"
 

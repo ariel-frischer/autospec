@@ -59,7 +59,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
 
 ### Prerequisites
 
-- [Claude Code](https://claude.ai/code) or [OpenCode](https://opencode.ai)
+- [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), or [OpenCode](https://opencode.ai)
 - Git
 
 ### Initialize Your Project
@@ -73,13 +73,14 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
    ```bash
    autospec init                    # Interactive agent selection
    autospec init ~/projects/myapp   # Initialize at specific path
+   autospec init --ai codex         # Configure Codex
    autospec init --ai opencode      # Configure specific agent
-   autospec init --ai claude,opencode  # Configure multiple agents
+   autospec init --ai claude,codex,opencode  # Configure multiple agents
    autospec init --project          # Project-level permissions (default: global)
    ```
-   > Permissions write to global config by default: `~/.claude/settings.json` (Claude) or `~/.config/opencode/opencode.json` (OpenCode). Use `--project` for project-level config.
+   > Permissions write to global config by default where supported. Codex project metadata is written to `.codex/config.toml` only with `--project`.
 
-3. Create project constitution (once per project, triggers Claude session):
+3. Create project constitution (once per project, triggers the configured agent):
    ```bash
    autospec constitution
    ```
@@ -288,8 +289,8 @@ Priority: Environment vars > Project config > User config > Defaults
 # .autospec/config.yml
 
 # Agent configuration
-agent_preset: claude                  # Built-in: claude | opencode
-skip_permissions: false               # Add --dangerously-skip-permissions flag (Claude only)
+agent_preset: claude                  # Built-in: claude | codex | opencode
+skip_permissions: false               # Autonomous mode for supported agents
 custom_agent_cmd: ""                  # Custom command template with {{PROMPT}} placeholder
 # custom_agent:                       # Structured agent config (alternative to custom_agent_cmd)
 #   command: claude
@@ -402,7 +403,7 @@ See [docs/public/troubleshooting.md](docs/public/troubleshooting.md) for common 
 
 ## 📝 Slash Commands for Interactive Sessions
 
-`autospec init` installs slash commands to `.claude/commands/autospec.*.md` for use in normal Claude Code sessions:
+`autospec init` installs slash commands for agents that support them, including `.claude/commands/autospec.*.md` for Claude Code and `.opencode/command/autospec.*.md` for OpenCode. Codex receives rendered prompt text directly through `codex exec` and does not use command template files. Codex `exec` is non-interactive; it prints formatted output by default and can emit JSONL with `--json`.
 
 ```bash
 /autospec.specify    # Generate spec.yaml interactively
@@ -425,9 +426,10 @@ Use these when you prefer chat-based iteration over autospec's automated (`-p`) 
 |----------|-------------|
 | [Quickstart Guide](docs/public/quickstart.md) | Complete your first workflow in 10 minutes |
 | [CLI Reference](docs/public/reference.md) | Full command reference with all flags and options |
-| [Agent Configuration](docs/public/agents.md) | Agent configuration (in development, Claude only) |
+| [Agent Configuration](docs/public/agents.md) | Claude, Codex, OpenCode, and custom agent configuration |
 | [Worktree Management](docs/public/worktree.md) | Run multiple features in parallel with git worktrees |
 | [Claude Settings](docs/public/claude-settings.md) | Sandboxing, permissions, and Claude Code configuration |
+| [Codex Settings](docs/public/codex-settings.md) | Codex CLI auth, sandboxing, and yolo mode |
 | [Troubleshooting](docs/public/troubleshooting.md) | Common issues and solutions |
 | [FAQ](docs/public/faq.md) | Frequently asked questions |
 

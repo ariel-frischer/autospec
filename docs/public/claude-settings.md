@@ -1,6 +1,8 @@
 # Claude Code Settings & Sandboxing
 
-*Last updated: 2025-12-16*
+*Last updated: 2026-05-13*
+
+> **Verified with:** Claude Code 2.1.139 (2026-05-13)
 
 Configuration guide for Claude Code settings relevant to autospec workflows.
 

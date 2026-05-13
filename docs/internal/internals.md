@@ -204,11 +204,11 @@ Retries do NOT increment for:
 
 ### Schema Validation on Retry
 
-When a stage fails due to schema validation errors, the orchestrator captures those errors and injects them into the next Claude invocation. This gives Claude specific error context to fix the schema issues.
+When a stage fails due to schema validation errors, the orchestrator captures those errors and injects them into the next agent invocation. This gives the configured agent specific error context to fix the schema issues.
 
 **How it works:**
 
-1. Claude generates an artifact (spec.yaml, plan.yaml, or tasks.yaml)
+1. The configured agent generates an artifact (spec.yaml, plan.yaml, or tasks.yaml)
 2. Orchestrator validates the artifact against its schema using existing validators
 3. If validation fails, errors are formatted into a retry context
 4. Retry context is prepended to `$ARGUMENTS` for the next attempt
@@ -367,7 +367,7 @@ For `--phases` and `--tasks` modes, autospec tracks which phases/tasks completed
 
 ## Phase Context Injection
 
-When running `autospec implement --phases`, each phase executes in a separate Claude session. Phase context injection bundles all required information into a single file, eliminating redundant file reads.
+When running `autospec implement --phases`, each phase executes in a separate agent session. Phase context injection bundles all required information into a single file, eliminating redundant file reads.
 
 ### The Problem It Solves
 
@@ -464,15 +464,15 @@ Or the parent directory (which autospec also recognizes):
 |--------|-------------------|----------------|
 | Time to first task | 15-25 seconds | 3-8 seconds |
 | File reads per phase | 3 | 0 |
-| Claude context used | Variable | Minimal |
+| Agent context used | Variable | Minimal |
 | Task focus | All tasks visible | Only phase tasks |
 
 ### Focused Context
 
-Claude only sees tasks for the current phase. This:
+The agent only sees tasks for the current phase. This:
 - Reduces cognitive load
 - Prevents cross-phase confusion
-- Keeps Claude focused on the immediate work
+- Keeps the agent focused on the immediate work
 - Reduces context token usage
 
 ### Debugging Context Issues

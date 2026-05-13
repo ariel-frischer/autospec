@@ -44,7 +44,7 @@ This is intentional behavior, not an error.
 
 ### The problem with single-session execution
 
-When running all tasks in one Claude session (GitHub SpecKit's approach), Claude:
+When running all tasks in one long agent session (GitHub SpecKit's approach), the agent:
 
 1. Reads the full `tasks.yaml`, `plan.yaml`, and `spec.yaml` on startup
 2. Accumulates conversation context as it works through tasks
@@ -54,7 +54,7 @@ When running all tasks in one Claude session (GitHub SpecKit's approach), Claude
 This leads to:
 - **Context pollution**: Earlier task discussions "contaminate" later task reasoning
 - **LLM degradation**: Performance measurably decreases as context accumulates
-- **Increased errors**: Claude may confuse similar tasks or forget earlier decisions
+- **Increased errors**: The agent may confuse similar tasks or forget earlier decisions
 - **Harder debugging**: When something fails, the entire session's context is involved
 
 ### How phase/task isolation helps
@@ -70,7 +70,7 @@ autospec implement --tasks
 | Benefit | Impact |
 |---------|--------|
 | **Fresh context** | Each session starts clean, no accumulated state |
-| **Focused scope** | Claude sees only relevant tasks, not entire backlog |
+| **Focused scope** | The agent sees only relevant tasks, not entire backlog |
 | **Faster startup** | ~15-30 seconds saved per phase from fewer file reads |
 | **Better accuracy** | No confusion from earlier task discussions |
 | **Easier debugging** | Failures isolated to specific phase/task |
@@ -167,16 +167,14 @@ mv /tmp/retry.json ~/.autospec/state/retry.json
 
 ## Can I use autospec without Claude Code?
 
-autospec is designed to work with Claude Code (the `claude` CLI). You can customize the command via:
+Yes. autospec supports Claude Code, Codex, OpenCode, and custom agent commands. Select a built-in agent with:
 
 ```yaml
 # .autospec/config.yml
-claude_cmd: claude  # default
-# or
-custom_claude_cmd: "claude -p {{PROMPT}} | process-output"
+agent_preset: codex
 ```
 
-However, autospec requires an AI assistant that can execute the embedded slash commands. Other Claude interfaces may work with modifications.
+For other tools, configure `custom_agent_cmd` with a `{{PROMPT}}` placeholder. autospec passes rendered prompt text to the agent.
 
 ---
 
@@ -214,7 +212,7 @@ The constitution (`.autospec/constitution.yaml`) defines your project's:
 - Testing requirements
 - Documentation standards
 
-It ensures Claude follows your project's conventions during implementation. Without it, Claude uses generic best practices which may not match your codebase.
+It ensures the agent follows your project's conventions during implementation. Without it, the agent uses generic best practices which may not match your codebase.
 
 Create one with:
 ```bash
@@ -225,10 +223,10 @@ autospec constitution
 
 ## How do I handle blocked tasks?
 
-When Claude can't complete a task, it marks it as `Blocked` with a reason. Recommended workflow:
+When the agent can't complete a task, it marks it as `Blocked` with a reason. Recommended workflow:
 
 1. Check what's blocked: `autospec st`
-2. Start an interactive Claude session: `claude`
+2. Start an interactive agent session: `claude`, `codex`, or `opencode`
 3. Work through the blocked task interactively
 4. Mark as complete: `autospec task complete T015`
 

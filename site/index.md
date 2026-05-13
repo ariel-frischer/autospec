@@ -26,7 +26,7 @@ Stop AI slop. Build features systematically with AI-powered specification workfl
 
 autospec brings structure to AI coding: **spec → plan → tasks → implement** - all in one command.
 
-Built for Claude Code and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
+Built for CLI coding agents including Claude Code, Codex, and OpenCode, and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
 
 ```bash
 # Generate everything: spec → plan → tasks → implement
@@ -84,7 +84,7 @@ Creates `specs/<feature-name>/` with YAML artifacts at each stage:
 
 ### Prerequisites
 
-- [Claude Code CLI](https://code.claude.com/docs/en/setup) installed and configured
+- Claude Code, Codex CLI, or OpenCode installed and configured
 - Git
 
 ### Installation

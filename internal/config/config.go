@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/cliagent"
-	"github.com/ariel-frischer/autospec/internal/dag"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/verification"
 	"github.com/ariel-frischer/autospec/internal/worktree"
@@ -99,7 +98,7 @@ type Configuration struct {
 	DefaultAgents []string `koanf:"default_agents,omitempty"`
 
 	// SkipPermissionsNoticeShown tracks whether the user has seen the security notice
-	// about --dangerously-skip-permissions. Set to true after first workflow run.
+	// about autonomous agent permissions. Set to true after first workflow run.
 	// This is a user-level config field only (not shown in project config).
 	// Can be set via AUTOSPEC_SKIP_PERMISSIONS_NOTICE_SHOWN env var.
 	SkipPermissionsNoticeShown bool `koanf:"skip_permissions_notice_shown"`
@@ -112,10 +111,9 @@ type Configuration struct {
 	// Default: false. Can be set via AUTOSPEC_AUTO_COMMIT env var.
 	AutoCommit bool `koanf:"auto_commit"`
 
-	// SkipPermissions enables autonomous mode for Claude by adding --dangerously-skip-permissions.
-	// When true, Claude runs without permission prompts (no user confirmations).
-	// This is simpler than configuring custom_agent with the verbose flag boilerplate.
-	// Only affects Claude agent; other agents have different autonomous mechanisms.
+	// SkipPermissions enables autonomous mode for supported agents.
+	// Claude receives --dangerously-skip-permissions; Codex receives
+	// --dangerously-bypass-approvals-and-sandbox.
 	// Default: false (opt-in for security). Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
 	SkipPermissions bool `koanf:"skip_permissions"`
 
@@ -140,11 +138,6 @@ type Configuration struct {
 	// and quality thresholds for mutation testing, coverage, and complexity.
 	// Environment variable support via AUTOSPEC_VERIFICATION_* prefix.
 	Verification verification.VerificationConfig `koanf:"verification"`
-
-	// DAG configures DAG execution settings for multi-spec workflows.
-	// Controls conflict handling, base branch, retry limits, and log size limits.
-	// Environment variable support via AUTOSPEC_DAG_* prefix.
-	DAG *dag.DAGExecutionConfig `koanf:"dag"`
 }
 
 // LoadOptions configures how configuration is loaded
@@ -421,7 +414,7 @@ func envTransform(s string) string {
 
 	// Known nested config prefixes that need dot notation.
 	// Order matters: longer prefixes must come first to avoid partial matches.
-	nestedPrefixes := []string{"custom_agent_", "notifications_", "verification_", "worktree_", "cclean_", "dag_"}
+	nestedPrefixes := []string{"custom_agent_", "notifications_", "verification_", "worktree_", "cclean_"}
 	for _, prefix := range nestedPrefixes {
 		if strings.HasPrefix(key, prefix) {
 			// Replace the trailing underscore of the prefix with a dot

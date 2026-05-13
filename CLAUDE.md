@@ -106,7 +106,7 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
   - `internal/cli/admin/`: Admin commands (commands, completion, uninstall)
   - `internal/cli/worktree/`: Worktree management commands (create, list, remove, prune)
   - `internal/cli/shared/`: Shared types and constants
-- `internal/workflow/`: Workflow orchestration and Claude execution
+- `internal/workflow/`: Workflow orchestration and agent execution
 - `internal/config/`: Hierarchical config (env > project > user > defaults)
 - `internal/validation/`: Artifact validation (<10ms performance contract)
 - `internal/retry/`: Persistent retry state
@@ -114,7 +114,6 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
 - `internal/agent/`: Agent abstraction (Claude, Gemini, Cline, etc.)
 - `internal/cliagent/`: CLI agent integration and Configurator interface
 - `internal/worktree/`: Git worktree management logic
-- `internal/taskgraph/`: Task dependency graph for parallel execution waves
 
 ### Configuration
 

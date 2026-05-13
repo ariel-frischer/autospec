@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ariel-frischer/autospec/internal/dag"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/verification"
 	"gopkg.in/yaml.v3"
@@ -180,13 +179,6 @@ func ValidateConfigValues(cfg *Configuration, filePath string) error {
 		return err
 	}
 
-	// Validate DAG config if present
-	if cfg.DAG != nil {
-		if err := validateDAGConfig(cfg.DAG, filePath); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -251,40 +243,6 @@ func cleanYAMLError(errMsg string) string {
 		}
 	}
 	return errMsg
-}
-
-// validateDAGConfig validates DAG configuration values.
-func validateDAGConfig(dc *dag.DAGExecutionConfig, filePath string) error {
-	// Validate OnConflict: must be "manual" or "agent"
-	if dc.OnConflict != "" && dc.OnConflict != "manual" && dc.OnConflict != "agent" {
-		return &ValidationError{
-			FilePath: filePath,
-			Field:    "dag.on_conflict",
-			Message:  "must be one of: manual, agent",
-		}
-	}
-
-	// Validate MaxSpecRetries: must be non-negative
-	if dc.MaxSpecRetries < 0 {
-		return &ValidationError{
-			FilePath: filePath,
-			Field:    "dag.max_spec_retries",
-			Message:  "must be a non-negative integer",
-		}
-	}
-
-	// Validate MaxLogSize: must be parseable as a size string
-	if dc.MaxLogSize != "" {
-		if _, err := dag.ParseSize(dc.MaxLogSize); err != nil {
-			return &ValidationError{
-				FilePath: filePath,
-				Field:    "dag.max_log_size",
-				Message:  fmt.Sprintf("invalid size format: %s (use format like 50MB, 100MB)", dc.MaxLogSize),
-			}
-		}
-	}
-
-	return nil
 }
 
 // validateVerificationConfig validates verification configuration values.

@@ -51,6 +51,8 @@ Preset agent to use for execution.
 agent_preset: claude
 ```
 
+Supported production presets include `claude`, `codex`, and `opencode`.
+
 ---
 
 ### use_subscription
@@ -604,7 +606,7 @@ notifications:
 ## Security: Sandbox & Permissions
 {: #security-sandbox--permissions }
 
-autospec can run Claude Code with `--dangerously-skip-permissions` for unattended automation. Enable with:
+autospec can run supported agents in autonomous mode for unattended automation. Enable with:
 
 ```bash
 autospec config toggle skip_permissions
@@ -614,21 +616,21 @@ This section explains the security model.
 
 ### Why This Flag is Used
 
-Without `--dangerously-skip-permissions`, Claude requires manual approval for:
+Without autonomous mode, agents may require manual approval for:
 - Every file edit
 - Every shell command
 - Every tool invocation
 
-This makes automated workflows impractical. Managing allow/deny rules for all necessary operations is complex and error-prone.
+This makes automated workflows impractical. Managing allow/deny rules for all necessary operations can be complex and error-prone.
 
 ### Two Separate Security Layers
 
 | Layer | What it does |
 |:------|:-------------|
 | **Sandbox** | OS-level isolation - restricts filesystem to project directory |
-| **Permission prompts** | User approval for actions (skipped with `--dangerously-skip-permissions`) |
+| **Permission prompts** | User approval for actions (skipped by agent-specific autonomous flags) |
 
-**Key insight**: `--dangerously-skip-permissions` only skips the permission prompts—it does **not** bypass sandbox restrictions. When sandbox is enabled, Claude cannot access files outside your project directory.
+**Key insight**: Claude's `--dangerously-skip-permissions` only skips permission prompts—it does **not** bypass Claude sandbox restrictions. Codex uses `--dangerously-bypass-approvals-and-sandbox`, which bypasses Codex approvals and sandboxing and should only be used in trusted or isolated environments.
 
 ### Recommended Setup: Sandbox Enabled
 
@@ -647,10 +649,10 @@ During `autospec init`, you're prompted to enable sandbox. This configures `.cla
 }
 ```
 
-This provides **sandboxed automation**: unattended execution with OS-level filesystem isolation to your project directory. Note that Claude still has full access to modify any file within the project.
+This provides **sandboxed automation** for Claude: unattended execution with OS-level filesystem isolation to your project directory. Note that Claude still has full access to modify any file within the project.
 
 {: .warning }
-> Without sandbox enabled, `--dangerously-skip-permissions` gives Claude full system access. Only use without sandbox in isolated environments (containers, VMs).
+> Without sandbox enabled, autonomous mode can give an agent broad system access. Only use without sandbox in isolated environments (containers, VMs).
 
 ### First-Run Security Notice
 
@@ -668,7 +670,7 @@ export AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1
 
 ### Custom Agent Configuration
 
-To customize the Claude command (e.g., add output formatting), use `custom_agent`:
+To customize an agent command (e.g., add output formatting), use `custom_agent`:
 
 ```yaml
 # ~/.config/autospec/config.yml
@@ -693,7 +695,7 @@ custom_agent:
 
 # Core settings
 agent_preset: claude
-use_subscription: true  # Use Claude subscription, not API credits
+use_subscription: true  # Claude only: use subscription, not API credits
 max_retries: 3
 specs_dir: ./specs
 state_dir: ~/.autospec/state

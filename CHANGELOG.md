@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - CI now runs lint, test, and build on pull requests (previously only on push to main)
+- `autospec doctor` now reports the latest Claude Code and OpenCode versions smoke-tested with autospec
+- Codex is now a supported CLI agent using `codex exec` with rendered autospec prompts
+
+### Removed
+- Removed the experimental DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode
+
+### Fixed
+- `autospec init --sandbox` now applies Claude sandbox settings even while the interactive sandbox prompt is disabled
+- `skip_permissions` now maps to Codex yolo mode without requiring `OPENAI_API_KEY`
 
 ### Security
 - Bumped `github.com/go-git/go-git/v5` from v5.16.5 to v5.17.1
@@ -20,14 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Public docs: documented `autospec run` command with all flags and stage selection
 - Public docs: documented missing commands (`constitution`, `clarify`, `checklist`, `analyze`, `task`, `update-task`, `new-feature`, `prereqs`, `setup-plan`, `clean`, `migrate`, `commands`, `uninstall`)
-- Public docs: documented missing config fields (`skip_confirmations`, `skip_permissions`, `cclean.*`, `worktree.*`, `dag.*`, `verification.ears_requirements`)
+- Public docs: documented missing config fields (`skip_confirmations`, `skip_permissions`, `cclean.*`, `worktree.*`, `verification.ears_requirements`)
 - Public docs: added `--output-style` global flag and `--resume` implement flag
-- **[Experimental]** `dag run` command for multi-spec workflow orchestration with dependency ordering, parallel execution (`--parallel`, `--max-parallel`), and automatic state management
-- **[Experimental]** `dag status`, `dag watch`, and `dag logs` commands for real-time monitoring of spec progress with live-updating status tables and log streaming
-- **[Experimental]** `dag merge` and `dag cleanup` commands for merging completed specs with AI-assisted conflict resolution and worktree cleanup
-- **[Experimental]** Worktree-based spec isolation with human-readable branch names (`dag/<dag-id>/<spec-id>`) and layer staging for progressive merge propagation
-- **[Experimental]** `dag validate` and `dag visualize` commands for workflow validation with cycle detection and ASCII visualization
-- `waves` command for task execution wave visualization
 
 ### Changed
 - Constitution path simplified from `.autospec/memory/constitution.yaml` to `.autospec/constitution.yaml`; legacy paths still supported as fallback
@@ -179,13 +182,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.0] - 2025-12-20
 
 ### Added
-- **[Dev builds only]** DAG-based parallel task execution with `implement --parallel` flag for concurrent task processing
-- **[Dev builds only]** `--max-parallel` flag to limit concurrent task execution (default: number of CPU cores)
-- **[Dev builds only]** `--worktrees` flag for git worktree-based task isolation during parallel execution
-- **[Dev builds only]** `--dry-run` flag to preview execution plan without running tasks
-- **[Dev builds only]** `--yes` flag to skip resume confirmation prompts
-- **[Dev builds only]** `dag` command to visualize task dependencies as ASCII graph with wave grouping
-- **[Dev builds only]** Parallel execution state persistence with resume support (R/W/S/A options: resume, resume wave, skip failed, abort)
 - Multi-agent CLI abstraction layer with 6 built-in agents (claude, cline, gemini, codex, opencode, goose) and custom agent support via `agent_preset` config or `--agent` flag
 - Structured `custom_agent` config with explicit `command`, `args`, `env`, and `post_processor` fields (replaces error-prone shell string parsing)
 - Agent discovery and status in `autospec doctor` showing installed agents with versions
@@ -203,7 +199,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Multi-agent support (in development) now gated to dev builds only; production builds default to Claude Code
-- DAG-based parallel execution (in development) gated to dev builds only
 - `init` command now collects all user choices before applying changes, with final confirmation before running Claude sessions
 
 ### Removed

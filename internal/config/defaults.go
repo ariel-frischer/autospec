@@ -9,7 +9,7 @@ func GetDefaultConfigTemplate() string {
 # See 'autospec config -h' for commands, 'autospec config keys' for all options
 
 # Agent settings
-agent_preset: ""                      # Built-in agent: claude | opencode
+agent_preset: ""                      # Built-in agent: claude | codex | opencode
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
 
 # Workflow settings
@@ -61,7 +61,7 @@ cclean:
   style: default                      # Output style: default | compact | minimal | plain (-s)
 
 # Autonomous execution
-skip_permissions: false               # Enable Claude --dangerously-skip-permissions flag
+skip_permissions: false               # Enable autonomous mode for supported agents
 
 # Verification settings
 verification:
@@ -73,18 +73,6 @@ verification:
   mutation_threshold: 0.8             # Minimum mutation score (0.0-1.0)
   coverage_threshold: 0.85            # Minimum code coverage (0.0-1.0)
   complexity_max: 10                  # Maximum cyclomatic complexity
-
-# DAG execution settings
-dag:
-  on_conflict: manual                 # Merge conflict handling: manual | agent
-  base_branch: ""                     # Target branch for merging (empty = repo default)
-  max_spec_retries: 0                 # Max auto-retry per spec (0 = manual only)
-  max_log_size: "50MB"                # Max log file size per spec (e.g., 50MB, 100MB)
-  # log_dir: ""                       # Custom log directory (empty = XDG cache default)
-  autocommit: true                    # Enable post-execution commit verification
-  # autocommit_cmd: ""                # Custom commit command (empty = agent session)
-  autocommit_retries: 1               # Commit retry attempts (0-10)
-  automerge: true                     # Auto-merge specs into staging branch after commit
 `
 }
 
@@ -101,7 +89,7 @@ func GetDefaults() map[string]interface{} {
 		"timeout":            2400,  // 40 minutes default
 		"skip_confirmations": false, // Confirmation prompts enabled by default
 		// implement_method: Default to "phases" for cost-efficient execution with context isolation.
-		// This changes the legacy behavior (single-session) to run each phase in a separate Claude session.
+		// This changes the legacy behavior (single-session) to run each phase in a separate agent session.
 		// Valid values: "single-session", "phases", "tasks"
 		"implement_method": "phases",
 		// notifications: Notification settings for command and stage completion.
@@ -156,8 +144,9 @@ func GetDefaults() map[string]interface{} {
 			"line_numbers": false,     // Show line numbers in formatted output (-n flag)
 			"style":        "default", // Output style: default, compact, minimal, plain (-s flag)
 		},
-		// skip_permissions: Enable Claude autonomous mode (--dangerously-skip-permissions).
-		// When true, Claude runs without user confirmations for file edits and commands.
+		// skip_permissions: Enable autonomous mode for supported agents.
+		// Claude uses --dangerously-skip-permissions; Codex uses
+		// --dangerously-bypass-approvals-and-sandbox.
 		// Default: false (opt-in for security). Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
 		"skip_permissions": false,
 		// verification: Configuration for verification depth and feature toggles.
@@ -168,20 +157,6 @@ func GetDefaults() map[string]interface{} {
 			"mutation_threshold": 0.8,     // 80% mutation score threshold
 			"coverage_threshold": 0.85,    // 85% code coverage threshold
 			"complexity_max":     10,      // Max cyclomatic complexity
-		},
-		// dag: Configuration for DAG execution settings.
-		// Controls conflict handling, base branch, retry limits, and log size limits.
-		// Environment variable support via AUTOSPEC_DAG_* prefix.
-		"dag": map[string]interface{}{
-			"on_conflict":        "manual", // Default to manual conflict resolution
-			"base_branch":        "",       // Empty means use repo default branch
-			"max_spec_retries":   0,        // 0 means manual retry only
-			"max_log_size":       "50MB",   // Default 50MB max log size per spec
-			"log_dir":            "",       // Empty means XDG cache default
-			"autocommit":         true,     // Enable post-execution commit verification
-			"autocommit_cmd":     "",       // Empty means agent session
-			"autocommit_retries": 1,        // Default 1 retry attempt
-			"automerge":          true,     // Auto-merge specs into staging after commit
 		},
 	}
 }

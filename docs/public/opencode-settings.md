@@ -1,6 +1,6 @@
 # OpenCode Settings
 
-> **Verified with:** OpenCode v1.0.223 (2026-01-03)
+> **Verified with:** OpenCode 1.14.46 (2026-05-13)
 
 This document covers OpenCode configuration for use with autospec.
 

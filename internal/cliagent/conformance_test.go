@@ -65,7 +65,7 @@ func TestAgentInterface(t *testing.T) {
 			wantCmd:     "codex",
 			wantMethod:  PromptMethodSubcommand,
 			wantFlag:    "exec",
-			wantAutonom: "",
+			wantAutonom: "--dangerously-bypass-approvals-and-sandbox",
 		},
 		"opencode": {
 			agent:       NewOpenCode(),
@@ -163,11 +163,11 @@ func TestBuildCommand(t *testing.T) {
 			opts:     ExecOptions{},
 			wantArgs: []string{"exec", "fix tests"},
 		},
-		"codex autonomous (no extra flag)": {
+		"codex autonomous": {
 			agent:    NewCodex(),
 			prompt:   "fix tests",
 			opts:     ExecOptions{Autonomous: true},
-			wantArgs: []string{"exec", "fix tests"},
+			wantArgs: []string{"exec", "fix tests", "--dangerously-bypass-approvals-and-sandbox"},
 		},
 		"opencode basic": {
 			agent:    NewOpenCode(),
@@ -277,15 +277,15 @@ func TestGeminiRequiredEnv(t *testing.T) {
 	}
 }
 
-// TestCodexRequiredEnv verifies Codex requires OPENAI_API_KEY.
+// TestCodexRequiredEnv verifies Codex does not require OPENAI_API_KEY.
 func TestCodexRequiredEnv(t *testing.T) {
 	t.Parallel()
 
 	agent := NewCodex()
 	caps := agent.Capabilities()
 
-	if len(caps.RequiredEnv) != 1 || caps.RequiredEnv[0] != "OPENAI_API_KEY" {
-		t.Errorf("Codex RequiredEnv = %v, want [OPENAI_API_KEY]", caps.RequiredEnv)
+	if len(caps.RequiredEnv) != 0 {
+		t.Errorf("Codex RequiredEnv = %v, want empty", caps.RequiredEnv)
 	}
 }
 
