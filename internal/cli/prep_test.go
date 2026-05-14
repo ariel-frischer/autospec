@@ -4,8 +4,13 @@
 package cli
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,6 +44,10 @@ func TestPrepCmdFlags(t *testing.T) {
 	require.NotNil(t, f)
 	assert.Equal(t, "r", f.Shorthand)
 	assert.Equal(t, "0", f.DefValue)
+
+	specFlag := prepCmd.Flags().Lookup("spec")
+	require.NotNil(t, specFlag)
+	assert.Contains(t, specFlag.Usage, "overrides branch detection")
 }
 
 func TestPrepCmdExamples(t *testing.T) {
@@ -92,4 +101,84 @@ func TestPrepCmd_MaxRetriesDefault(t *testing.T) {
 	f := prepCmd.Flags().Lookup("max-retries")
 	require.NotNil(t, f)
 	assert.Equal(t, "0", f.DefValue)
+}
+
+func TestResolvePrepFeatureCompatibility(t *testing.T) {
+	tests := map[string]struct {
+		branch       string
+		specs        []string
+		persisted    string
+		explicit     string
+		wantSpec     string
+		wantSource   spec.SelectionSource
+		wantErr      string
+		setupGitRepo bool
+	}{
+		"branch prefix fallback without persisted state": {
+			branch:       "128-branch-feature",
+			specs:        []string{"128-branch-feature"},
+			wantSpec:     "128-branch-feature",
+			wantSource:   spec.SelectionSourceGitBranch,
+			setupGitRepo: true,
+		},
+		"explicit spec overrides persisted active feature": {
+			specs:      []string{"128-persisted-feature", "129-explicit-feature"},
+			persisted:  "128-persisted-feature",
+			explicit:   "129-explicit-feature",
+			wantSpec:   "129-explicit-feature",
+			wantSource: spec.SelectionSourceExplicit,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			fixture := newActiveFeatureCLIFixture(t)
+			for _, specName := range tt.specs {
+				fixture.createSpec(t, specName)
+			}
+			if tt.persisted != "" {
+				fixture.persistActiveFeature(t, tt.persisted)
+			}
+			if tt.setupGitRepo {
+				initPrepGitRepo(t, fixture.Root, tt.branch)
+				fixture.chdir(t)
+			}
+
+			cfg := &config.Configuration{
+				SpecsDir: fixture.SpecsDir,
+				StateDir: fixture.StateDir,
+			}
+			got, err := resolvePrepFeature(cfg, tt.explicit)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantSource, got.Source)
+			require.Equal(t, filepath.Join(fixture.SpecsDir, tt.wantSpec), got.Metadata.Directory)
+		})
+	}
+}
+
+func initPrepGitRepo(t *testing.T, dir, branch string) {
+	t.Helper()
+
+	runPrepGit(t, dir, "init")
+	runPrepGit(t, dir, "config", "user.email", "test@example.com")
+	runPrepGit(t, dir, "config", "user.name", "Test User")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("test\n"), 0o644))
+	runPrepGit(t, dir, "add", "README.md")
+	runPrepGit(t, dir, "commit", "-m", "initial")
+	runPrepGit(t, dir, "checkout", "-b", branch)
+}
+
+func runPrepGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
 }

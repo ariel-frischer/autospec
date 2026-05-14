@@ -84,10 +84,10 @@ func resolvePersistedFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, bo
 func resolveCurrentFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, error) {
 	metadata, err := DetectCurrentSpec(req.SpecsDir)
 	if err != nil {
-		return nil, fmt.Errorf("resolving active feature from branch or fallback: %w", err)
+		return nil, fmt.Errorf("resolving active feature from git branch or fallback lookup: %w", err)
 	}
 	if err := requireArtifact(metadata.Directory, req.RequiredArtifact); err != nil {
-		return nil, fmt.Errorf("resolving active feature from branch or fallback: %w", err)
+		return nil, fmt.Errorf("resolving active feature from %s lookup: %w", sourceFromDetection(metadata.Detection), err)
 	}
 	return &ActiveFeatureResult{Metadata: metadata, Source: sourceFromDetection(metadata.Detection)}, nil
 }

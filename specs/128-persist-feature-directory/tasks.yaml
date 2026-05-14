@@ -229,7 +229,7 @@ phases:
       tasks:
         - id: "T017"
           title: "Add backward compatibility tests in internal/spec/metadata_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-003"
@@ -241,7 +241,7 @@ phases:
             - "Assert existing --spec-compatible identifiers still resolve through current metadata helpers."
         - id: "T018"
           title: "Preserve branch fallback integration in internal/spec/active_feature.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-003"
@@ -253,7 +253,7 @@ phases:
             - "Return contextual errors that identify whether failure came from explicit, persisted, branch, or fallback lookup."
         - id: "T019"
           title: "Add workflow compatibility regression tests in internal/cli/prep_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-003"
@@ -265,7 +265,7 @@ phases:
             - "Keep tests isolated from real user config and global autospec state."
         - id: "T020"
           title: "Update prep and all command resolution in internal/cli/prep.go and internal/cli/all.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-003"
