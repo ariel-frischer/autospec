@@ -1,12 +1,19 @@
 #!/bin/bash
-# Auto-clean dev-only files when merging to main
+# Untrack dev-only files when merging to main
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 if [ "$BRANCH" = "main" ]; then
-    if [ -d ".dev" ]; then
-        git rm -rf --quiet ".dev"
-        echo "🧹 Cleaned .dev/ from main"
+    paths=()
+    for path in ".dev" "specs"; do
+        if git ls-files -- "$path" | grep -q .; then
+            paths+=("$path")
+        fi
+    done
+
+    if [ "${#paths[@]}" -gt 0 ]; then
+        git rm -r --cached --quiet -- "${paths[@]}"
+        echo "Untracked dev-only paths from main: ${paths[*]}"
         git commit --amend --no-edit --quiet
     fi
 fi

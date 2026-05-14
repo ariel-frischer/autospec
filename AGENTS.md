@@ -87,6 +87,7 @@ autospec implement         # Execute tasks
 | `docs/internal/events.md` | Event-driven architecture using kelindar/event |
 | `docs/internal/risks.md` | Risk documentation in plan.yaml |
 | `docs/internal/cclean.md` | claude-clean tool for transforming streaming JSON output |
+| `docs/internal/changelog-yaml.md` | Developer workflow for YAML-first changelog and release notes |
 
 ### Public (User-Focused)
 
