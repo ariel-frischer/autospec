@@ -175,7 +175,7 @@ phases:
       tasks:
         - id: "T013"
           title: "Add explicit override precedence tests in internal/cli/run_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-002"
@@ -187,7 +187,7 @@ phases:
             - "Assert invalid explicit selections fail without falling back to persisted state."
         - id: "T014"
           title: "Apply explicit selection precedence in internal/cli/run.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"
@@ -199,7 +199,7 @@ phases:
             - "Keep existing run stage ordering and confirmation behavior intact."
         - id: "T015"
           title: "Add artifact explicit-selection tests in internal/cli/artifact_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-002"
@@ -211,7 +211,7 @@ phases:
             - "Avoid invoking real workflow agents."
         - id: "T016"
           title: "Route artifact type-only lookup through resolver in internal/cli/artifact.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-002"

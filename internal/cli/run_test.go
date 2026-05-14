@@ -4,9 +4,13 @@
 package cli
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/workflow"
+	"github.com/stretchr/testify/require"
 )
 
 // TestRunImplementMethodConfig verifies that 'autospec run -pti' respects the
@@ -106,6 +110,53 @@ func TestRunAndImplementConsistency(t *testing.T) {
 				t.Errorf("implement vs run: TaskMode mismatch for %q: impl=%v, run=%v",
 					method, implTaskMode, runPhaseOpts.TaskMode)
 			}
+		})
+	}
+}
+
+func TestResolveRunFeatureExplicitSelectionWins(t *testing.T) {
+	tests := map[string]struct {
+		explicit  string
+		persisted string
+		wantDir   string
+		wantErr   string
+	}{
+		"--spec exact directory wins over persisted state": {
+			explicit:  "128-explicit-feature",
+			persisted: "129-persisted-feature",
+			wantDir:   "128-explicit-feature",
+		},
+		"--spec number wins over persisted state": {
+			explicit:  "128",
+			persisted: "129-persisted-feature",
+			wantDir:   "128-explicit-feature",
+		},
+		"invalid --spec does not fall back to persisted state": {
+			explicit:  "130-missing-feature",
+			persisted: "129-persisted-feature",
+			wantErr:   "spec not found: 130-missing-feature",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			fixture := newActiveFeatureCLIFixture(t)
+			fixture.createSpec(t, "128-explicit-feature")
+			fixture.createSpec(t, "129-persisted-feature")
+			fixture.persistActiveFeature(t, tt.persisted)
+			cfg := &config.Configuration{SpecsDir: fixture.SpecsDir, StateDir: fixture.StateDir}
+
+			got, err := resolveRunFeature(cfg, tt.explicit)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				require.NotContains(t, err.Error(), tt.persisted)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, spec.SelectionSourceExplicit, got.Source)
+			require.True(t, strings.HasSuffix(got.Metadata.Directory, tt.wantDir))
 		})
 	}
 }

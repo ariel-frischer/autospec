@@ -11,7 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/validation"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArtifactCommand_InvalidType(t *testing.T) {
@@ -370,6 +372,68 @@ func TestParseArtifactArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestArtifactTypeOnlyLookupUsesPersistedState(t *testing.T) {
+	fixture := newActiveFeatureCLIFixture(t)
+	fixture.createSpec(t, "128-branch-feature")
+	persistedDir := fixture.createSpec(t, "129-persisted-feature")
+	fixture.persistActiveFeature(t, "129-persisted-feature")
+
+	got, err := parseArtifactArgs([]string{"plan"}, fixture.SpecsDir, fixture.StateDir)
+
+	require.NoError(t, err)
+	require.Equal(t, validation.ArtifactTypePlan, got.artType)
+	require.Equal(t, filepath.Join(persistedDir, "plan.yaml"), got.filePath)
+	require.Equal(t, spec.SelectionSourcePersisted, got.selectionSource)
+	require.Equal(t, "129-persisted-feature", filepath.Base(got.specMetadata.Directory))
+}
+
+func TestArtifactDirectPathLookupSkipsActiveFeatureResolution(t *testing.T) {
+	fixture := newActiveFeatureCLIFixture(t)
+	fixture.createSpec(t, "128-explicit-path")
+	fixture.createSpec(t, "129-persisted-feature")
+	fixture.persistActiveFeature(t, "129-persisted-feature")
+	planPath := filepath.Join(fixture.SpecsDir, "128-explicit-path", "plan.yaml")
+
+	got, err := parseArtifactArgs([]string{planPath}, fixture.SpecsDir, fixture.StateDir)
+
+	require.NoError(t, err)
+	require.Equal(t, validation.ArtifactTypePlan, got.artType)
+	require.Equal(t, planPath, got.filePath)
+	require.Nil(t, got.specMetadata)
+	require.Empty(t, got.selectionSource)
+}
+
+func TestArtifactCommandReportsInvalidPersistedSelection(t *testing.T) {
+	fixture := newActiveFeatureCLIFixture(t)
+	incompleteDir := fixture.createSpec(t, "129-incomplete-feature")
+	require.NoError(t, os.Remove(filepath.Join(incompleteDir, "plan.yaml")))
+	fixture.persistActiveFeature(t, "129-incomplete-feature")
+
+	var stdout, stderr bytes.Buffer
+	err := runArtifactCommand([]string{"plan"}, fixture.Config, &stdout, &stderr)
+
+	require.Error(t, err)
+	require.Equal(t, ExitInvalidArguments, ExitCode(err))
+	require.Contains(t, stderr.String(), "missing required artifact plan.yaml")
+	require.Contains(t, stderr.String(), "129-incomplete-feature")
+}
+
+func TestArtifactCommandPrintsPersistedSelectionSource(t *testing.T) {
+	fixture := newActiveFeatureCLIFixture(t)
+	persistedDir := fixture.createSpec(t, "129-persisted-feature")
+	validPlan, err := os.ReadFile(filepath.Join("..", "validation", "testdata", "plan", "valid.yaml"))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(persistedDir, "plan.yaml"), validPlan, 0o644))
+	fixture.persistActiveFeature(t, "129-persisted-feature")
+
+	var stdout, stderr bytes.Buffer
+	err = runArtifactCommand([]string{"plan"}, fixture.Config, &stdout, &stderr)
+
+	require.NoError(t, err, stderr.String())
+	require.Contains(t, stdout.String(), "active feature: ")
+	require.Contains(t, stdout.String(), "source: persisted")
 }
 
 // Test path-only invocation with type inference
