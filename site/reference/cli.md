@@ -344,7 +344,7 @@ autospec config get timeout
 
 ### autospec init
 
-Initialize configuration files. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version).
+Initialize configuration files. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version) and `.autospec/.gitignore` for local runtime files.
 
 ```bash
 autospec init [flags]
@@ -360,7 +360,7 @@ autospec init [flags]
 | `--sandbox / --no-sandbox` | Enable/skip Claude sandbox configuration |
 | `--use-subscription / --no-use-subscription` | Use subscription billing vs API key |
 | `--skip-permissions / --no-skip-permissions` | Enable/disable autonomous mode |
-| `--gitignore / --no-gitignore` | Add/skip adding .autospec/ to .gitignore |
+| `--gitignore / --no-gitignore` | Add/skip adding .autospec/ to root .gitignore |
 | `--constitution / --no-constitution` | Create/skip project constitution |
 
 **Examples:**

@@ -185,6 +185,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	_ = newConfigCreated // Used for tracking first-time setup
 
+	if err := ensureAutospecGitignore("."); err != nil {
+		fmt.Fprintf(out, "%s Failed to save .autospec/.gitignore: %v\n", cYellow("⚠"), err)
+	}
+
 	// Handle agent selection and configuration
 	selectedAgents, agentConfigs, err := handleAgentConfiguration(cmd, out, project, noAgents, aiAgents)
 	if err != nil {
@@ -444,6 +448,18 @@ type agentConfigInfo struct {
 	configured   bool   // true if configuration succeeded
 	settingsFile string // path to settings file that was modified
 }
+
+const autospecGitignoreContent = `# Local autospec runtime files
+init.yml
+state/
+context/
+cache/
+tmp/
+
+# Legacy completion markers
+SPEC_DONE
+IMPLEMENTATION_DONE
+`
 
 // pendingActions holds all user choices collected during init prompts.
 // Changes are applied atomically after all questions are answered.
@@ -867,7 +883,7 @@ func updateSkipPermissionsInConfig(configPath string, skipPermissions bool) erro
 // handleSkipPermissionsPrompt prompts the user about the skip_permissions setting.
 // This is only called when Claude is selected as an agent.
 // If --skip-permissions or --no-skip-permissions flag is set, bypasses the prompt.
-// In non-interactive mode without flags, it silently sets the default value (false) without prompting.
+// In non-interactive mode without flags, it silently sets the default value (true) without prompting.
 // If skip_permissions is already set to true, it just displays the value without prompting.
 // If skip_permissions is false or not set, it prompts the user.
 func handleSkipPermissionsPrompt(cmd *cobra.Command, out io.Writer, configPath string, project bool) {
@@ -908,11 +924,11 @@ func handleSkipPermissionsPrompt(cmd *cobra.Command, out io.Writer, configPath s
 			fmt.Fprintf(out, "%s skip_permissions: true %s\n",
 				cGreen("✓"), cDim("(already enabled)"))
 		} else {
-			// Use default value (false) without prompting
-			if err := updateSkipPermissionsInConfig(configPath, false); err != nil {
+			// Use default value (true) without prompting
+			if err := updateSkipPermissionsInConfig(configPath, true); err != nil {
 				fmt.Fprintf(out, "%s Failed to update skip_permissions: %v\n", cYellow("⚠"), err)
 			} else {
-				fmt.Fprintf(out, "%s skip_permissions: false %s\n",
+				fmt.Fprintf(out, "%s skip_permissions: true %s\n",
 					cGreen("✓"), cDim("(default, non-interactive)"))
 			}
 		}
@@ -1465,6 +1481,38 @@ func addAutospecToGitignore(gitignorePath string) error {
 	return nil
 }
 
+func ensureAutospecGitignore(projectDir string) error {
+	gitignorePath := filepath.Join(projectDir, ".autospec", ".gitignore")
+	data, err := os.ReadFile(gitignorePath)
+	if err == nil {
+		content := string(data)
+		if strings.Contains(content, autospecGitignoreContent) {
+			return nil
+		}
+		if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		if content != "" {
+			content += "\n"
+		}
+		content += autospecGitignoreContent
+		if err := os.WriteFile(gitignorePath, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("writing .autospec/.gitignore: %w", err)
+		}
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("reading .autospec/.gitignore: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(gitignorePath), 0o755); err != nil {
+		return fmt.Errorf("creating .autospec directory: %w", err)
+	}
+	if err := os.WriteFile(gitignorePath, []byte(autospecGitignoreContent), 0o644); err != nil {
+		return fmt.Errorf("writing .autospec/.gitignore: %w", err)
+	}
+	return nil
+}
+
 // gitignoreNeedsUpdate checks if .autospec/ needs to be added to .gitignore.
 // Returns true if gitignore doesn't exist or doesn't contain .autospec/.
 func gitignoreNeedsUpdate() bool {
@@ -1490,7 +1538,7 @@ func handleGitignorePrompt(cmd *cobra.Command, out io.Writer) {
 
 	fmt.Fprintf(out, "\n💡 Add .autospec/ to .gitignore?\n")
 	fmt.Fprintf(out, "   → Recommended for shared/public/company repos (prevents config conflicts)\n")
-	fmt.Fprintf(out, "   → Personal projects can keep .autospec/ tracked for backup\n")
+	fmt.Fprintf(out, "   → Personal projects can leave it trackable for version history\n")
 
 	if promptYesNo(cmd, "Add .autospec/ to .gitignore?") {
 		if err := addAutospecToGitignore(gitignorePath); err != nil {
@@ -1549,8 +1597,8 @@ func collectGitignoreChoice(cmd *cobra.Command, out io.Writer) bool {
 
 	// Interactive prompt
 	fmt.Fprintf(out, "Add %s to .gitignore?\n", cBold(".autospec/"))
-	fmt.Fprintf(out, "  %s %s ignore (shared/public repos - prevents conflicts)\n", cGreen("y"), cDim("→"))
-	fmt.Fprintf(out, "  %s %s track in git (personal projects - enables backup)\n", cYellow("n"), cDim("→"))
+	fmt.Fprintf(out, "  %s %s ignore all autospec project files (public/local-only repos)\n", cGreen("y"), cDim("→"))
+	fmt.Fprintf(out, "  %s %s allow versioning of autospec project files\n", cYellow("n"), cDim("→"))
 	result := promptYesNo(cmd, "Add to .gitignore?")
 	fmt.Fprintf(out, "\n") // Visual separation before next question
 	return result

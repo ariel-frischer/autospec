@@ -61,7 +61,7 @@ cclean:
   style: default                      # Output style: default | compact | minimal | plain (-s)
 
 # Autonomous execution
-skip_permissions: false               # Enable autonomous mode for supported agents
+skip_permissions: true                # Enable autonomous mode for supported agents
 
 # Verification settings
 verification:
@@ -147,8 +147,8 @@ func GetDefaults() map[string]interface{} {
 		// skip_permissions: Enable autonomous mode for supported agents.
 		// Claude uses --dangerously-skip-permissions; Codex uses
 		// --dangerously-bypass-approvals-and-sandbox.
-		// Default: false (opt-in for security). Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
-		"skip_permissions": false,
+		// Default: true for unattended autospec runs. Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
+		"skip_permissions": true,
 		// verification: Configuration for verification depth and feature toggles.
 		// Controls verification level (basic, enhanced, full), individual feature toggles,
 		// and quality thresholds. Environment variable support via AUTOSPEC_VERIFICATION_* prefix.

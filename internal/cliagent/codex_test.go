@@ -163,6 +163,29 @@ func TestCodexConfigureProject(t *testing.T) {
 	if _, err := os.Stat(result.SettingsFilePath); err != nil {
 		t.Fatalf("expected codex config to exist: %v", err)
 	}
+	configContent, err := os.ReadFile(result.SettingsFilePath)
+	if err != nil {
+		t.Fatalf("reading codex config: %v", err)
+	}
+	if !strings.Contains(string(configContent), `path = ".codex/skills/autospec"`) {
+		t.Errorf("codex config missing autospec skill registration:\n%s", string(configContent))
+	}
+	skillPath := filepath.Join(projectDir, ".codex", "skills", "autospec", "SKILL.md")
+	skillContent, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("expected codex autospec skill to exist: %v", err)
+	}
+	for _, want := range []string{
+		"name: autospec-commands",
+		"/autospec.specify",
+		"autospec specify",
+		"/autospec.constitution",
+		"autospec constitution",
+	} {
+		if !strings.Contains(string(skillContent), want) {
+			t.Errorf("codex skill missing %q:\n%s", want, string(skillContent))
+		}
+	}
 
 	second, err := NewCodex().ConfigureProject(projectDir, "specs", true)
 	if err != nil {
@@ -170,6 +193,32 @@ func TestCodexConfigureProject(t *testing.T) {
 	}
 	if !second.AlreadyConfigured {
 		t.Error("second ConfigureProject() should report AlreadyConfigured")
+	}
+}
+
+func TestCodexConfigureProjectRefreshesExistingSkill(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	skillPath := filepath.Join(projectDir, ".codex", "skills", "autospec", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {
+		t.Fatalf("creating stale skill dir: %v", err)
+	}
+	if err := os.WriteFile(skillPath, []byte("stale autospec skill\n"), 0o644); err != nil {
+		t.Fatalf("writing stale skill: %v", err)
+	}
+
+	_, err := NewCodex().ConfigureProject(projectDir, "specs", true)
+	if err != nil {
+		t.Fatalf("ConfigureProject() error = %v", err)
+	}
+
+	skillContent, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("reading refreshed skill: %v", err)
+	}
+	if !strings.Contains(string(skillContent), "name: autospec-commands") {
+		t.Fatalf("skill was not refreshed:\n%s", string(skillContent))
 	}
 }
 

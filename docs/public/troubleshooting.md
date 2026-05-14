@@ -259,7 +259,7 @@ autospec doctor
 
 **Problem**: Claude blocks commands (can't respond to approval prompts).
 
-**Solutions**: Allow commands in `~/.claude/settings.json`: `{"permissions":{"allow":["Bash(mkdir:*)", "Edit", "Write", "Read"]}}`. Or enable autospec autonomous mode with `autospec config toggle skip_permissions`. For Claude, enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux). For Codex, this maps to `--dangerously-bypass-approvals-and-sandbox`; use it only in a trusted or isolated environment.
+**Solutions**: Allow commands in `~/.claude/settings.json`: `{"permissions":{"allow":["Bash(mkdir:*)", "Edit", "Write", "Read"]}}`. Or re-enable autospec autonomous mode with `autospec config set skip_permissions true` if it was disabled. For Claude, enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux). For Codex, this maps to `--dangerously-bypass-approvals-and-sandbox`; use it only in a trusted or isolated environment.
 
 ### Prerequisite Validation Errors
 

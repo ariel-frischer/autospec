@@ -290,7 +290,7 @@ Priority: Environment vars > Project config > User config > Defaults
 
 # Agent configuration
 agent_preset: claude                  # Built-in: claude | codex | opencode
-skip_permissions: false               # Autonomous mode for supported agents
+skip_permissions: true                # Autonomous mode for supported agents
 custom_agent_cmd: ""                  # Custom command template with {{PROMPT}} placeholder
 # custom_agent:                       # Structured agent config (alternative to custom_agent_cmd)
 #   command: claude

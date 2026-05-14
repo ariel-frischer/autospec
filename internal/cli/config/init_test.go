@@ -633,6 +633,49 @@ func TestAddAutospecToGitignore_ExistingWithoutNewline(t *testing.T) {
 	assert.Equal(t, "node_modules/\n.autospec/\n", string(data))
 }
 
+func TestEnsureAutospecGitignore(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		existing string
+		want     string
+	}{
+		"creates file with local runtime ignores": {
+			want: autospecGitignoreContent,
+		},
+		"preserves existing content": {
+			existing: "# custom\nlogs/\n",
+			want:     "# custom\nlogs/\n\n" + autospecGitignoreContent,
+		},
+		"adds newline before autospec block": {
+			existing: "# custom",
+			want:     "# custom\n\n" + autospecGitignoreContent,
+		},
+		"is idempotent when autospec block exists": {
+			existing: autospecGitignoreContent,
+			want:     autospecGitignoreContent,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			if tt.existing != "" {
+				require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".autospec"), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".autospec", ".gitignore"), []byte(tt.existing), 0o644))
+			}
+
+			require.NoError(t, ensureAutospecGitignore(tmpDir))
+
+			data, err := os.ReadFile(filepath.Join(tmpDir, ".autospec", ".gitignore"))
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(data))
+		})
+	}
+}
+
 func TestPrintSummary_WithConstitution(t *testing.T) {
 	t.Parallel()
 
@@ -1281,7 +1324,7 @@ func TestConfigureSpecificAgents_OpenCode(t *testing.T) {
 	assert.Contains(t, string(data), "allow")
 }
 
-// TestConfigureSpecificAgents_Codex tests --ai codex records Codex without installing command templates.
+// TestConfigureSpecificAgents_Codex tests --ai codex records Codex and installs its project skill.
 func TestConfigureSpecificAgents_Codex(t *testing.T) {
 	// Cannot run in parallel: changes working directory
 	tempDir := t.TempDir()
@@ -1324,6 +1367,8 @@ func TestConfigureSpecificAgents_Codex(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(tempDir, ".codex", "config.toml"))
 	assert.NoError(t, err, ".codex/config.toml should exist")
+	_, err = os.Stat(filepath.Join(tempDir, ".codex", "skills", "autospec", "SKILL.md"))
+	assert.NoError(t, err, ".codex/skills/autospec/SKILL.md should exist")
 }
 
 // TestConfigureSpecificAgents_Both tests --ai claude,opencode configures both.
@@ -1507,6 +1552,10 @@ func TestRunInit_WithPathArgument(t *testing.T) {
 	info, err := os.Stat(targetDir)
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
+
+	autospecGitignore, err := os.ReadFile(filepath.Join(targetDir, ".autospec", ".gitignore"))
+	require.NoError(t, err)
+	assert.Equal(t, autospecGitignoreContent, string(autospecGitignore))
 
 	// Verify we're back in original working directory
 	cwd, err := os.Getwd()
@@ -2036,9 +2085,9 @@ func TestHandleSkipPermissionsPrompt_ExistingDisabled(t *testing.T) {
 }
 
 // TestHandleSkipPermissionsPrompt_NonInteractiveUsesDefault tests that non-interactive mode
-// uses the default value (false) without prompting.
+// uses the default value (true) without prompting.
 // T008 acceptance criteria:
-// - Non-interactive mode uses default (false)
+// - Non-interactive mode uses default (true)
 // - No prompt displayed in non-interactive mode
 // - Config still updated with default value
 func TestHandleSkipPermissionsPrompt_NonInteractiveUsesDefault(t *testing.T) {
@@ -2067,10 +2116,10 @@ func TestHandleSkipPermissionsPrompt_NonInteractiveUsesDefault(t *testing.T) {
 	// Should show non-interactive feedback
 	assert.Contains(t, output, "non-interactive")
 
-	// Config should be updated with default value (false)
+	// Config should be updated with default value (true)
 	content, err := os.ReadFile(configPath)
 	require.NoError(t, err)
-	assert.Contains(t, string(content), "skip_permissions: false")
+	assert.Contains(t, string(content), "skip_permissions: true")
 }
 
 // TestHandleSkipPermissionsPrompt_DefaultEmpty tests that empty input defaults to Yes (recommended).

@@ -606,10 +606,10 @@ notifications:
 ## Security: Sandbox & Permissions
 {: #security-sandbox--permissions }
 
-autospec can run supported agents in autonomous mode for unattended automation. Enable with:
+autospec runs supported agents in autonomous mode by default for unattended automation. Re-enable it with:
 
 ```bash
-autospec config toggle skip_permissions
+autospec config set skip_permissions true
 ```
 
 This section explains the security model.

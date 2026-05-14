@@ -1550,7 +1550,7 @@ func TestLoad_SkipPermissionsDefaults(t *testing.T) {
 
 	cfg, err := Load("")
 	require.NoError(t, err)
-	assert.False(t, cfg.SkipPermissions, "SkipPermissions should default to false for security")
+	assert.True(t, cfg.SkipPermissions, "SkipPermissions should default to true for unattended autospec runs")
 }
 
 func TestLoad_SkipPermissionsExplicitValues(t *testing.T) {

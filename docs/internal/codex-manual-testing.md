@@ -55,14 +55,16 @@ git init
 Initialize autospec for Codex only:
 
 ```bash
-$AUTOSPEC_BIN init --project --ai codex --no-constitution
+$AUTOSPEC_BIN init --project --ai codex --skip-permissions --no-constitution
 ```
 
 Expected result:
 
 - `.autospec/config.yml` records Codex in `default_agents`.
 - `agent_preset: codex` is set when Codex is the only selected agent.
-- `.codex/config.toml` is created or updated with safe project metadata only.
+- `skip_permissions: true` is set for this disposable test repo.
+- `.codex/config.toml` is created or updated with safe project metadata and `skills.config`.
+- `.codex/skills/autospec/SKILL.md` is installed for interactive Codex `/autospec.*` routing.
 - No `.claude/commands/` directory is created for Codex-only setup.
 - No `.opencode/command/` directory is created for Codex-only setup.
 
@@ -71,156 +73,47 @@ Check the generated files:
 ```bash
 cat .autospec/config.yml
 cat .codex/config.toml
+cat .codex/skills/autospec/SKILL.md
 find . -maxdepth 3 -type f | sort
 ```
 
-`.codex/config.toml` must not force destructive defaults such as disabled approvals or unrestricted sandboxing. Those choices belong to the user, Codex config, or explicit autospec autonomous mode.
+`.codex/config.toml` must not force destructive defaults such as disabled approvals or unrestricted sandboxing. For this manual test, write access comes from autospec `skip_permissions: true`, which maps to Codex `--dangerously-bypass-approvals-and-sandbox` at runtime.
 
-## Prompt Delivery With A Fake Codex CLI
-
-Use a fake Codex binary to verify invocation shape without spending tokens or depending on live model behavior.
-
-Create the shim in a temporary directory:
-
-```bash
-shimdir=$(mktemp -d)
-cat > "$shimdir/codex" <<'SH'
-#!/bin/sh
-printf '%s\n' "$@" > "$PWD/codex-args.log"
-exit 0
-SH
-chmod +x "$shimdir/codex"
-```
-
-Configure retries to avoid repeated fake-agent runs:
-
-```bash
-$AUTOSPEC_BIN config set max_retries 0 --project
-```
-
-Create a minimal constitution so `specify` reaches the agent invocation:
-
-```bash
-mkdir -p .autospec
-cat > .autospec/constitution.yaml <<'YAML'
-constitution:
-  project_name: "codex-manual-test"
-  version: "1.0.0"
-  ratified: "2026-01-01"
-  last_amended: "2026-01-01"
-preamble: "Manual Codex testing constitution."
-principles:
-  - name: "Test-First Development"
-    id: "PRIN-001"
-    category: "quality"
-    priority: "NON-NEGOTIABLE"
-    description: "Tests come before implementation."
-    rationale: "Keeps workflow output verifiable."
-    enforcement: []
-    exceptions: []
-sections: []
-governance:
-  amendment_process: []
-  versioning_policy: "Semantic versioning"
-  compliance_review:
-    frequency: "as needed"
-    process: "Manual review"
-  rules: []
-sync_impact:
-  version_change: "1.0.0 -> 1.0.0"
-  modified_principles: []
-  added_sections: []
-  removed_sections: []
-  templates_requiring_updates: []
-  follow_up_todos: []
-_meta:
-  version: "1.0.0"
-  generator: "manual"
-  generator_version: "manual"
-  created: "2026-01-01T00:00:00Z"
-  artifact_type: "constitution"
-YAML
-```
-
-Run a stage with the shim first on `PATH`:
-
-```bash
-PATH="$shimdir:$PATH" $AUTOSPEC_BIN specify --agent codex "Add a sample feature" || true
-cat codex-args.log
-```
-
-Expected result:
-
-- The first logged argument is `exec`.
-- The next argument is rendered prompt text.
-- The prompt text does not start with `/autospec.specify`.
-- The prompt includes the user feature description.
-
-The command may fail validation because the fake Codex CLI does not create `spec.yaml`; that is acceptable for this check.
-
-Repeat the same shape check for constitution:
-
-```bash
-PATH="$shimdir:$PATH" $AUTOSPEC_BIN constitution --agent codex "Use test-first development" || true
-cat codex-args.log
-```
-
-Expected result:
-
-- The first logged argument is `exec`.
-- The prompt is rendered text, not `/autospec.constitution`.
-- The prompt includes the constitution input.
-
-## Autonomous Mode Mapping
-
-In the disposable repository, enable autonomous mode:
-
-```bash
-$AUTOSPEC_BIN config set skip_permissions true --project
-PATH="$shimdir:$PATH" $AUTOSPEC_BIN specify --agent codex "Add another sample feature" || true
-cat codex-args.log
-```
-
-Expected result:
-
-- The logged command includes `exec`.
-- The logged command includes `--dangerously-bypass-approvals-and-sandbox`.
-- The rendered prompt is still passed as the final prompt argument.
-
-Disable autonomous mode and confirm the flag is removed:
-
-```bash
-$AUTOSPEC_BIN config set skip_permissions false --project
-PATH="$shimdir:$PATH" $AUTOSPEC_BIN specify --agent codex "Add a safe sample feature" || true
-cat codex-args.log
-```
-
-Expected result:
-
-- `--dangerously-bypass-approvals-and-sandbox` is absent.
-- Codex still receives `exec` plus rendered prompt text.
+The Codex skill should tell interactive Codex sessions to route `/autospec.specify "desc"` to `autospec specify "desc"` instead of hand-generating artifacts directly.
 
 ## Real Codex Smoke Test
 
-Run this only in a disposable repository where Codex is allowed to modify files.
+Run this only in a disposable repository where Codex is allowed to modify files. This test must use the real `codex` binary.
 
 ```bash
-$AUTOSPEC_BIN init --project --ai codex
 $AUTOSPEC_BIN doctor
-$AUTOSPEC_BIN specify --agent codex "Add a small README note"
+$AUTOSPEC_BIN constitution "Use test-first development, small focused changes, and artifact validation."
+```
+
+Expected result:
+
+- `autospec doctor` reports Codex as installed.
+- The constitution command runs through `codex exec`.
+- `.autospec/constitution.yaml` is generated and passes autospec validation.
+- Codex auth is handled by the Codex CLI, not by autospec env validation.
+
+Generate the first workflow artifact:
+
+```bash
+$AUTOSPEC_BIN specify "Add a small README note that says this repository supports autospec Codex smoke testing"
 ```
 
 Expected result:
 
 - A numbered feature directory is created under `specs/`.
 - `spec.yaml` is generated and passes autospec validation.
-- Codex auth is handled by the Codex CLI, not by autospec env validation.
+- The generated spec input references the README-note smoke-test request.
 
 Continue through planning if the specify result is acceptable:
 
 ```bash
-$AUTOSPEC_BIN plan --agent codex
-$AUTOSPEC_BIN tasks --agent codex
+$AUTOSPEC_BIN plan
+$AUTOSPEC_BIN tasks
 ```
 
 Expected result:
@@ -228,6 +121,68 @@ Expected result:
 - `plan.yaml` is generated from rendered prompt text.
 - `tasks.yaml` is generated from rendered prompt text.
 - Existing Claude and OpenCode command-template directories are not required for Codex.
+
+## Prompt Delivery Observation
+
+Run one stage with debug output enabled:
+
+```bash
+$AUTOSPEC_BIN --debug specify "Add another tiny README note for Codex prompt delivery observation"
+```
+
+Expected result:
+
+- autospec reports `codex exec` as the command being executed.
+- The visible execution preview begins with rendered prompt content, such as `## User Input`, not a raw `/autospec.*` slash command.
+- The generated `spec.yaml` contains the user request.
+
+This is a manual observation check. The source of truth remains the generated and validated artifact, not parsing terminal text.
+
+## Autonomous Mode Mapping
+
+Run this only in a disposable repository. Enabling `skip_permissions` maps autospec autonomous mode to Codex yolo mode.
+
+```bash
+$AUTOSPEC_BIN config set skip_permissions true --project
+$AUTOSPEC_BIN --debug specify "Add a tiny README note while testing Codex autonomous mode"
+```
+
+Expected result:
+
+- autospec reports `codex exec --dangerously-bypass-approvals-and-sandbox`.
+- Codex runs without prompting for approvals.
+- A valid `spec.yaml` is generated.
+
+Disable autonomous mode before continuing normal manual tests:
+
+```bash
+$AUTOSPEC_BIN config set skip_permissions false --project
+```
+
+Run another debug stage and confirm the yolo flag is gone:
+
+```bash
+$AUTOSPEC_BIN --debug specify "Add a tiny README note while testing normal Codex mode"
+```
+
+Expected result:
+
+- autospec reports `codex exec` without `--dangerously-bypass-approvals-and-sandbox`.
+- A valid `spec.yaml` is generated.
+
+## Codex Output Observation
+
+Codex `exec` prints formatted terminal output by default. For manual inspection of Codex's machine-readable stream, run Codex directly in the disposable repository:
+
+```bash
+codex exec --json "Summarize this disposable autospec test repository without editing files" | tee codex-output.jsonl
+```
+
+Expected result:
+
+- `codex-output.jsonl` contains one JSON object per line.
+- Events include turn lifecycle records and agent-message records.
+- This output is observational only; autospec currently validates generated workflow artifacts rather than parsing Codex JSONL.
 
 ## Claude And OpenCode Regression Checks
 
@@ -268,9 +223,10 @@ OS:
 
 Doctor:
 Init:
-Fake CLI prompt delivery:
-Autonomous mode:
 Real Codex smoke:
+Prompt delivery observation:
+Autonomous mode:
+Codex JSONL observation:
 Claude regression:
 OpenCode regression:
 

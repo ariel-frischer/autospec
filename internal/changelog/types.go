@@ -1,11 +1,77 @@
 package changelog
 
+import (
+	"fmt"
+
+	"gopkg.in/yaml.v3"
+)
+
 // Changelog represents the root structure of a CHANGELOG.yaml file.
 // It contains the project identifier and an ordered list of versions,
 // with the newest versions appearing first.
 type Changelog struct {
 	Project  string    `yaml:"project"`
 	Versions []Version `yaml:"versions"`
+}
+
+// UnmarshalYAML accepts the legacy autospec list format and chlog's map format.
+func (c *Changelog) UnmarshalYAML(value *yaml.Node) error {
+	type rawChangelog struct {
+		Project  string    `yaml:"project"`
+		Versions yaml.Node `yaml:"versions"`
+	}
+
+	var raw rawChangelog
+	if err := value.Decode(&raw); err != nil {
+		return err
+	}
+
+	versions, err := parseVersionsNode(&raw.Versions)
+	if err != nil {
+		return err
+	}
+
+	c.Project = raw.Project
+	c.Versions = versions
+	return nil
+}
+
+func parseVersionsNode(node *yaml.Node) ([]Version, error) {
+	switch node.Kind {
+	case yaml.SequenceNode:
+		var versions []Version
+		if err := node.Decode(&versions); err != nil {
+			return nil, err
+		}
+		return versions, nil
+	case yaml.MappingNode:
+		return parseMappedVersions(node)
+	default:
+		return nil, fmt.Errorf("versions: expected sequence or mapping, got %d", node.Kind)
+	}
+}
+
+func parseMappedVersions(node *yaml.Node) ([]Version, error) {
+	versions := make([]Version, 0, len(node.Content)/2)
+	for i := 0; i < len(node.Content)-1; i += 2 {
+		version, err := parseMappedVersion(node.Content[i].Value, node.Content[i+1])
+		if err != nil {
+			return nil, err
+		}
+		versions = append(versions, version)
+	}
+	return versions, nil
+}
+
+func parseMappedVersion(version string, node *yaml.Node) (Version, error) {
+	var mapped struct {
+		Date    string  `yaml:"date"`
+		Changes Changes `yaml:",inline"`
+	}
+	if err := node.Decode(&mapped); err != nil {
+		return Version{}, fmt.Errorf("versions.%s: %w", version, err)
+	}
+	return Version{Version: version, Date: mapped.Date, Changes: mapped.Changes}, nil
 }
 
 // Version represents a single version entry in the changelog.

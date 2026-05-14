@@ -114,7 +114,7 @@ type Configuration struct {
 	// SkipPermissions enables autonomous mode for supported agents.
 	// Claude receives --dangerously-skip-permissions; Codex receives
 	// --dangerously-bypass-approvals-and-sandbox.
-	// Default: false (opt-in for security). Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
+	// Default: true for unattended autospec runs. Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
 	SkipPermissions bool `koanf:"skip_permissions"`
 
 	// AutoCommitSource tracks where the AutoCommit value came from.

@@ -256,7 +256,7 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Path:        "skip_permissions",
 		Type:        TypeBool,
 		Description: "Enable autonomous mode for supported agents",
-		Default:     false,
+		Default:     true,
 	},
 	"verification.level": {
 		Path:          "verification.level",

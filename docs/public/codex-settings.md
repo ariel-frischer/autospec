@@ -56,7 +56,7 @@ to:
 --dangerously-bypass-approvals-and-sandbox
 ```
 
-Use that mode only in a trusted or externally isolated environment. Keep `skip_permissions: false` if you want Codex sandbox and approval behavior controlled by `~/.codex/config.toml` or explicit Codex flags.
+This is autospec's default because workflow runs are intended to complete unattended. Set `skip_permissions: false` if you want Codex sandbox and approval behavior controlled by `~/.codex/config.toml` or explicit Codex flags.
 
 ## Init
 
@@ -66,6 +66,14 @@ autospec init --project --ai codex
 ```
 
 Codex does not use Claude/OpenCode slash-command files, so autospec does not install command templates for Codex. Workflow stages send rendered prompt text directly to `codex exec`.
+
+For interactive Codex sessions, project-level init installs a Codex skill at:
+
+```text
+.codex/skills/autospec/SKILL.md
+```
+
+and registers it in `.codex/config.toml` with `skills.config`. This gives Codex explicit routing for user text such as `/autospec.specify "Add user auth"` by telling it to run the matching autospec CLI command (`autospec specify "Add user auth"`). This is a Codex skill, not a Codex slash command.
 
 ## Output
 

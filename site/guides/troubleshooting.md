@@ -282,7 +282,7 @@ autospec doctor
 }
 ```
 
-Or enable autospec autonomous mode with `autospec config toggle skip_permissions`. For Claude, enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux). For Codex, this maps to `--dangerously-bypass-approvals-and-sandbox`; use it only in a trusted or isolated environment.
+Or re-enable autospec autonomous mode with `autospec config set skip_permissions true` if it was disabled. For Claude, enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux). For Codex, this maps to `--dangerously-bypass-approvals-and-sandbox`; use it only in a trusted or isolated environment.
 
 {: .warning }
 > **WARNING**: Autonomous mode bypasses approval prompts and may bypass sandboxing depending on the agent. Never use it with credentials or production data unless the environment is isolated.

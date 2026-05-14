@@ -533,9 +533,10 @@ Initialize configuration files and directories
 1. Installs command templates to `.claude/commands/` (automatic)
 2. Creates configuration at `~/.config/autospec/config.yml`
 3. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version)
-4. Prompts for agent selection and configuration
-5. Optionally creates project constitution
-6. Optionally generates worktree setup script
+4. Creates `.autospec/.gitignore` for local runtime files
+5. Prompts for agent selection and configuration
+6. Optionally creates project constitution
+7. Optionally generates worktree setup script
 
 If config already exists, it is left unchanged (use `--force` to overwrite).
 
@@ -559,7 +560,7 @@ If config already exists, it is left unchanged (use `--force` to overwrite).
 | Sandbox | `--sandbox` | `--no-sandbox` | Enable/skip Claude sandbox configuration |
 | Billing | `--use-subscription` | `--no-use-subscription` | Use subscription billing vs API key |
 | Permissions | `--skip-permissions` | `--no-skip-permissions` | Enable/disable autonomous mode |
-| Gitignore | `--gitignore` | `--no-gitignore` | Add/skip adding .autospec/ to .gitignore |
+| Gitignore | `--gitignore` | `--no-gitignore` | Add/skip adding .autospec/ to root .gitignore |
 | Constitution | `--constitution` | `--no-constitution` | Create/skip project constitution |
 
 **Mutual Exclusivity**: Each positive/negative flag pair is mutually exclusive. Using both (e.g., `--sandbox --no-sandbox`) returns an error:
@@ -1085,18 +1086,18 @@ use_subscription: false
 ### skip_permissions
 
 **Type**: boolean
-**Default**: `false`
+**Default**: `true`
 **Description**: Enable autonomous mode for supported agents. Claude receives `--dangerously-skip-permissions`; Codex receives `--dangerously-bypass-approvals-and-sandbox`; OpenCode continues to rely on its `run` mode and configured permissions.
 
 **Example**:
 ```bash
-autospec config toggle skip_permissions
-# or: autospec config set skip_permissions true
+autospec config set skip_permissions false  # require agent approvals/sandbox behavior
+autospec config set skip_permissions true   # restore unattended autonomous mode
 ```
 
 **Environment**: `AUTOSPEC_SKIP_PERMISSIONS`
 
-**Note**: `autospec init` prompts to configure this setting (recommended: Yes). For Claude, enable Claude's sandbox first (`/sandbox` in Claude Code) for OS-level isolation. For Codex, use `--sandbox workspace-write` or Codex config unless you intentionally enable yolo mode. See [Claude Settings](./claude-settings.md) and [Codex Settings](./codex-settings.md) for security details.
+**Note**: `autospec init` defaults this setting to enabled for unattended workflow execution. For Claude, enable Claude's sandbox first (`/sandbox` in Claude Code) for OS-level isolation. For Codex, this maps to yolo mode (`--dangerously-bypass-approvals-and-sandbox`); set `skip_permissions: false` if you want Codex sandbox and approval behavior controlled by Codex config. See [Claude Settings](./claude-settings.md) and [Codex Settings](./codex-settings.md) for security details.
 
 ### custom_agent_cmd
 
@@ -1299,7 +1300,7 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 ### skip_permissions
 
 **Type**: boolean
-**Default**: `false`
+**Default**: `true`
 **Description**: Enable autonomous mode for supported agents. Claude uses `--dangerously-skip-permissions`; Codex uses `--dangerously-bypass-approvals-and-sandbox`.
 
 **Environment**: `AUTOSPEC_SKIP_PERMISSIONS`

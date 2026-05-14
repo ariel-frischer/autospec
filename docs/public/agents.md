@@ -379,11 +379,13 @@ Useful environment variables:
 
 ### Settings
 
-Codex reads user config from `~/.codex/config.toml`. Project-level initialization with `autospec init --project --ai codex` creates `.codex/config.toml` as safe project metadata only; autospec does not write destructive defaults.
+Codex reads user config from `~/.codex/config.toml`. Project-level initialization with `autospec init --project --ai codex` creates `.codex/config.toml` as safe project metadata and registers a project-local Codex skill at `.codex/skills/autospec/SKILL.md`.
 
 Codex supports `--sandbox`, `--ask-for-approval`, and `--dangerously-bypass-approvals-and-sandbox` in `codex exec`. autospec maps `skip_permissions: true` to `--dangerously-bypass-approvals-and-sandbox`.
 
 Codex `exec` prints formatted terminal output by default. For machine-readable streams, Codex supports `codex exec --json`, which emits JSONL events for lifecycle updates, messages, reasoning summaries, command executions, file changes, and tool calls. Codex can also write the final assistant message with `codex exec -o <file>`. autospec does not currently parse those events; it validates generated autospec artifacts after Codex exits.
+
+Codex does not support autospec's Claude/OpenCode command-template directories. The installed Codex skill routes interactive text like `/autospec.specify "Add user auth"` to the real autospec CLI command, for example `autospec specify "Add user auth"`.
 
 See [Codex Settings](./codex-settings.md) for details.
 
