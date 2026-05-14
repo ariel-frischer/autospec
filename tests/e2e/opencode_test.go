@@ -13,6 +13,63 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestE2E_OpenCodeCoreWorkflow(t *testing.T) {
+	const specName = "001-test-feature"
+
+	env := testutil.NewE2EEnvWithAgent(t, testutil.AgentOpencode)
+	env.InitGitRepo()
+	env.CreateBranch(specName)
+	env.SetupConstitution()
+	env.SetupAutospecInit()
+
+	runOpenCodeStage(t, env, "specify", "specify", "test feature", "--agent", "opencode")
+	require.True(t, env.SpecExists(specName), "spec.yaml should exist after specify")
+	assertArtifactValid(t, env, specName, "spec")
+	assertActiveFeatureState(t, env, specName)
+
+	runOpenCodeStage(t, env, "plan", "plan", "--agent", "opencode")
+	require.True(t, env.PlanExists(specName), "plan.yaml should exist after plan")
+	assertArtifactValid(t, env, specName, "plan")
+
+	runOpenCodeStage(t, env, "tasks", "tasks", "--agent", "opencode")
+	require.True(t, env.TasksExists(specName), "tasks.yaml should exist after tasks")
+	assertArtifactValid(t, env, specName, "tasks")
+
+	runOpenCodeStage(t, env, "implement", "implement", "--agent", "opencode")
+	assertArtifactValid(t, env, specName, "tasks")
+
+	status := env.Run("status")
+	require.Equal(t, 0, status.ExitCode, "status should use active feature\nstdout: %s\nstderr: %s",
+		status.Stdout, status.Stderr)
+	require.Contains(t, status.Stdout, "1/1 tasks completed (100%)")
+}
+
+func runOpenCodeStage(t *testing.T, env *testutil.E2EEnv, stage string, args ...string) {
+	t.Helper()
+
+	result := env.Run(args...)
+	require.Equal(t, 0, result.ExitCode, "%s failed\nstdout: %s\nstderr: %s",
+		stage, result.Stdout, result.Stderr)
+}
+
+func assertArtifactValid(t *testing.T, env *testutil.E2EEnv, specName, artifact string) {
+	t.Helper()
+
+	path := filepath.Join(env.SpecsDir(), specName, artifact+".yaml")
+	result := env.Run("artifact", path)
+	require.Equal(t, 0, result.ExitCode, "%s should validate\nstdout: %s\nstderr: %s",
+		path, result.Stdout, result.Stderr)
+}
+
+func assertActiveFeatureState(t *testing.T, env *testutil.E2EEnv, specName string) {
+	t.Helper()
+
+	path := filepath.Join(env.TempDir(), ".autospec", "state", "active-feature.yaml")
+	content, err := os.ReadFile(path)
+	require.NoError(t, err, "active feature state should exist")
+	require.Contains(t, string(content), "feature_directory: "+specName)
+}
+
 // TestE2E_OpenCodeWorkflow verifies that autospec can execute workflows
 // using the OpenCode agent preset (US-002, FR-005).
 // Acceptance criteria from T012:

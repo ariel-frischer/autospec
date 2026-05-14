@@ -65,7 +65,7 @@ autospec init --ai codex
 autospec init --project --ai codex
 ```
 
-Codex does not use Claude/OpenCode slash-command files, so autospec does not install command templates for Codex. Workflow stages started through the autospec CLI send rendered prompt text directly to `codex exec`.
+Codex does not use slash-command files, so autospec does not install command templates for Codex. Workflow stages started through the autospec CLI send rendered prompt text directly to `codex exec`.
 
 For interactive Codex sessions, project-level init installs one shared Agent Skill per autospec command template:
 

@@ -126,7 +126,7 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 			args = append(args, pd.Flag, pd.PromptFlag, prompt)
 		case PromptMethodSubcommandWithFlag:
 			// Pattern: <agent> <subcommand> <prompt> [-f <file>] <command-flag> <command-name>
-			// Example: opencode run "fix bug" -f context.yaml --command autospec.specify
+			// Example: agent run "fix bug" -f context.yaml --command agent.task
 			// Parse slash commands to extract command name, context file, and actual prompt
 			parts := parseSlashCommandFull(prompt)
 

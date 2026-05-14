@@ -1362,10 +1362,8 @@ func TestConfigureSpecificAgents_OpenCode(t *testing.T) {
 	_, _, err = configureSpecificAgents(cmd, &buf, true, []string{"opencode"})
 	assert.NoError(t, err)
 
-	// Verify OpenCode commands dir exists (OpenCode.ConfigureProject installs commands)
-	opencodeCmdDir := filepath.Join(tempDir, ".opencode", "command")
-	_, err = os.Stat(opencodeCmdDir)
-	assert.NoError(t, err, ".opencode/command should exist")
+	_, err = os.Stat(filepath.Join(tempDir, ".opencode"))
+	assert.True(t, os.IsNotExist(err), ".opencode should not be created")
 
 	_, err = os.Stat(filepath.Join(tempDir, ".agents", "skills", "autospec-specify", "SKILL.md"))
 	assert.NoError(t, err, ".agents/skills/autospec-specify/SKILL.md should exist")
@@ -1474,10 +1472,8 @@ func TestConfigureSpecificAgents_Both(t *testing.T) {
 	_, err = os.Stat(filepath.Join(tempDir, ".claude", "skills", "autospec.specify", "SKILL.md"))
 	assert.NoError(t, err, ".claude/skills/autospec.specify/SKILL.md should exist")
 
-	// Verify OpenCode command dir and permissions exist
-	opencodeCmdDir := filepath.Join(tempDir, ".opencode", "command")
-	_, err = os.Stat(opencodeCmdDir)
-	assert.NoError(t, err, ".opencode/command should exist")
+	_, err = os.Stat(filepath.Join(tempDir, ".opencode"))
+	assert.True(t, os.IsNotExist(err), ".opencode should not be created")
 
 	opencodeJSON := filepath.Join(tempDir, "opencode.json")
 	_, err = os.Stat(opencodeJSON)
@@ -3795,6 +3791,29 @@ func TestCollectConstitutionChoice_FlagBehavior(t *testing.T) {
 			assert.Equal(t, tt.wantResult, result)
 		})
 	}
+}
+
+// TestCollectConstitutionChoice_InteractivePromptIsAgentAgnostic verifies init copy
+// does not imply the constitution workflow always runs Claude.
+func TestCollectConstitutionChoice_InteractivePromptIsAgentAgnostic(t *testing.T) {
+	// Cannot run in parallel: modifies global isTerminalFunc.
+	originalIsTerminal := isTerminalFunc
+	isTerminalFunc = func() bool { return true }
+	defer func() { isTerminalFunc = originalIsTerminal }()
+
+	cmd := &cobra.Command{Use: "test"}
+	var buf bytes.Buffer
+	cmd.Flags().Bool("constitution", false, "")
+	cmd.Flags().Bool("no-constitution", false, "")
+	cmd.SetOut(&buf)
+	cmd.SetIn(bytes.NewBufferString("n\n"))
+
+	result := collectConstitutionChoice(cmd, &buf, false)
+
+	output := buf.String()
+	assert.False(t, result)
+	assert.Contains(t, output, "Runs the configured agent to analyze your project")
+	assert.NotContains(t, output, "Runs a Claude session to analyze your project")
 }
 
 // TestCollectGitignoreChoice_NonInteractive tests non-interactive mode behavior.

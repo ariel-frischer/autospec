@@ -1666,7 +1666,7 @@ func collectConstitutionChoice(cmd *cobra.Command, out io.Writer, constitutionEx
 	fmt.Fprintf(out, "%s %s (one-time setup per project)\n", cMagenta("📜"), cBold("Constitution"))
 	fmt.Fprintf(out, "   %s Defines your project's coding standards and principles\n", cDim("→"))
 	fmt.Fprintf(out, "   %s Required before running any autospec workflows\n", cDim("→"))
-	fmt.Fprintf(out, "   %s Runs a Claude session to analyze your project\n", cDim("→"))
+	fmt.Fprintf(out, "   %s Runs the configured agent to analyze your project\n", cDim("→"))
 	return promptYesNoDefaultYes(cmd, "Create constitution?")
 }
 
@@ -1684,7 +1684,7 @@ func applyPendingActions(cmd *cobra.Command, out io.Writer, pending pendingActio
 		}
 	}
 
-	// Run constitution workflow (Claude session)
+	// Run constitution workflow with the configured agent.
 	if pending.createConstitution {
 		printSectionHeader(out, "Running: Constitution")
 		if runConstitutionFromInit(cmd, configPath) {

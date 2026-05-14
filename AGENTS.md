@@ -53,7 +53,7 @@ constitution.yaml spec.yaml plan.yaml tasks.yaml
 ### What `autospec init` Does
 
 1. Creates config (`~/.config/autospec/config.yml` or `.autospec/config.yml`)
-2. Installs agent-native prompts (Claude skills in `.claude/skills/`, OpenCode commands in `.opencode/command/`, shared skills in `.agents/skills/`)
+2. Installs agent-native prompts (Claude skills in `.claude/skills/`, shared Codex/OpenCode skills in `.agents/skills/`)
 3. Configures agent permissions and sandbox settings
 4. Prompts for constitution creation (one-time per project)
 

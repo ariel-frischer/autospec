@@ -385,7 +385,7 @@ Codex supports `--sandbox`, `--ask-for-approval`, and `--dangerously-bypass-appr
 
 autospec uses compact Codex output by default. It runs `codex exec --json`, parses Codex JSONL events, and shows color-coded concise summaries for agent messages, command executions, file changes, and useful reasoning/tool events. Set `codex_output.color: false` to disable ANSI color, or `codex_output.mode: full` to restore Codex's native terminal transcript. Codex can also write the final assistant message with `codex exec -o <file>`. autospec validates generated autospec artifacts after Codex exits.
 
-Codex does not support autospec's Claude/OpenCode command-template directories. Instead, autospec generates shared Agent Skills from each embedded `autospec.*` prompt. In interactive Codex, use `$autospec-specify "Add user auth"`, `$autospec-plan`, `$autospec-tasks`, `$autospec-implement`, `$autospec-constitution`, `$autospec-clarify`, `$autospec-checklist`, or `$autospec-analyze`.
+Codex and OpenCode do not use autospec command-template directories. Instead, autospec generates shared Agent Skills from each embedded `autospec.*` prompt. In interactive sessions, use `$autospec-specify "Add user auth"`, `$autospec-plan`, `$autospec-tasks`, `$autospec-implement`, `$autospec-constitution`, `$autospec-clarify`, `$autospec-checklist`, or `$autospec-analyze`.
 
 See [Codex Settings](./codex-settings.md) for details.
 
@@ -393,15 +393,14 @@ See [Codex Settings](./codex-settings.md) for details.
 
 OpenCode is a fully supported agent with its own configuration patterns that differ from Claude Code.
 
-### Command And Skill Directory Structure
+### Skill Directory Structure
 
 | Agent | Directory | Note |
 |-------|-----------|------|
 | Claude | `.claude/skills/autospec.*/SKILL.md` | Claude skills preserve `/autospec.specify`-style invocation |
-| OpenCode | `.opencode/command/` | Singular "command"; required for `opencode run --command autospec.*` |
 | OpenCode | `.agents/skills/autospec-*/SKILL.md` | Shared skills for skill-aware sessions |
 
-When you run `autospec init --ai opencode`, command templates are installed to `.opencode/command/autospec.*.md` and shared skills are installed to `.agents/skills/autospec-*/SKILL.md`.
+When you run `autospec init --ai opencode`, shared skills are installed to `.agents/skills/autospec-*/SKILL.md`. OpenCode command files under `.opencode/command/` are no longer generated.
 
 When you run `autospec init --ai claude`, skills are installed to `.claude/skills/autospec.*/SKILL.md`. Legacy `.claude/commands/` files still work in Claude Code, but autospec init no longer creates them for Claude.
 
@@ -413,11 +412,10 @@ OpenCode uses a different command invocation pattern than Claude:
 |-------|-------------------|
 | Claude | `claude -p "<rendered autospec prompt>"` |
 | Codex | `codex exec "<rendered autospec prompt>"` |
-| OpenCode | `opencode run "prompt" --command autospec.specify` |
+| OpenCode | `opencode run "<rendered autospec prompt>"` |
 
 Key differences:
 - OpenCode uses `run` subcommand (not `-p` flag)
-- Command name is passed via `--command` flag at the end
 - Non-interactive execution is the default with `run`
 
 ### Model Configuration

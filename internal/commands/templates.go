@@ -262,14 +262,12 @@ func GetDefaultCommandsDir() string {
 }
 
 // GetCommandsDir returns the command directory path for the specified agent.
-// Known agents: "claude" -> ".claude/commands", "opencode" -> ".opencode/command"
+// Known agents: "claude" -> ".claude/commands"
 // Unknown agents return an error.
 func GetCommandsDir(agentName string) (string, error) {
 	switch agentName {
 	case "claude":
 		return filepath.Join(".claude", "commands"), nil
-	case "opencode":
-		return filepath.Join(".opencode", "command"), nil
 	default:
 		return "", fmt.Errorf("unknown agent: %s", agentName)
 	}

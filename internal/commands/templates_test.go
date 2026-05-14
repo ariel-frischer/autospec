@@ -492,11 +492,6 @@ func TestGetCommandsDir(t *testing.T) {
 			wantDir:   filepath.Join(".claude", "commands"),
 			wantErr:   false,
 		},
-		"opencode agent": {
-			agentName: "opencode",
-			wantDir:   filepath.Join(".opencode", "command"),
-			wantErr:   false,
-		},
 		"unknown agent": {
 			agentName: "unknown",
 			wantDir:   "",
@@ -551,22 +546,6 @@ func TestInstallTemplatesForAgent(t *testing.T) {
 				assert.NoError(t, err, "autospec.specify.md should exist")
 			},
 		},
-		"opencode agent installs to .opencode/command": {
-			agentName: "opencode",
-			wantErr:   false,
-			checkResult: func(t *testing.T, projectDir string, results []InstallResult) {
-				assert.NotEmpty(t, results)
-				expectedDir := filepath.Join(projectDir, ".opencode", "command")
-				for _, r := range results {
-					assert.True(t, filepath.HasPrefix(r.Path, expectedDir),
-						"path %s should be under %s", r.Path, expectedDir)
-				}
-				// Verify a specific file exists
-				specifyPath := filepath.Join(expectedDir, "autospec.specify.md")
-				_, err := os.Stat(specifyPath)
-				assert.NoError(t, err, "autospec.specify.md should exist")
-			},
-		},
 		"unknown agent returns error": {
 			agentName: "unknown",
 			wantErr:   true,
@@ -603,12 +582,12 @@ func TestInstallTemplatesForAgent_Idempotent(t *testing.T) {
 	projectDir := t.TempDir()
 
 	// First install
-	results1, err := InstallTemplatesForAgent("opencode", projectDir)
+	results1, err := InstallTemplatesForAgent("claude", projectDir)
 	require.NoError(t, err)
 	assert.NotEmpty(t, results1)
 
 	// Second install - should work without errors
-	results2, err := InstallTemplatesForAgent("opencode", projectDir)
+	results2, err := InstallTemplatesForAgent("claude", projectDir)
 	require.NoError(t, err)
 	assert.Equal(t, len(results1), len(results2), "same number of results on reinstall")
 

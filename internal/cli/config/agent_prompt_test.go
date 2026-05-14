@@ -444,3 +444,65 @@ func TestPromptDefaultAgentSelection(t *testing.T) {
 		})
 	}
 }
+
+func TestPromptDefaultAgentSelection_PrefersClaudeWhenCurrentDefaultUnset(t *testing.T) {
+	t.Parallel()
+
+	agents := []AgentOption{
+		{Name: "codex", DisplayName: "Codex CLI"},
+		{Name: "claude", DisplayName: "Claude Code"},
+		{Name: "opencode", DisplayName: "OpenCode"},
+	}
+	var output bytes.Buffer
+
+	got := promptDefaultAgentSelection(strings.NewReader("\n"), &output, agents, "")
+
+	assert.Equal(t, "claude", got)
+	assert.Contains(t, output.String(), "[2] * Claude Code")
+}
+
+func TestDefaultAgentIndex(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agents         []AgentOption
+		currentDefault string
+		want           int
+	}{
+		"current default wins": {
+			agents: []AgentOption{
+				{Name: "claude"},
+				{Name: "codex"},
+				{Name: "opencode"},
+			},
+			currentDefault: "opencode",
+			want:           2,
+		},
+		"unset current default prefers claude": {
+			agents: []AgentOption{
+				{Name: "codex"},
+				{Name: "claude"},
+				{Name: "opencode"},
+			},
+			want: 1,
+		},
+		"missing claude falls back to first selected": {
+			agents: []AgentOption{
+				{Name: "codex"},
+				{Name: "opencode"},
+			},
+			currentDefault: "gemini",
+			want:           0,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := defaultAgentIndex(tt.agents, tt.currentDefault)
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

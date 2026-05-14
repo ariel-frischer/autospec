@@ -121,7 +121,7 @@ Expected result:
 
 - `plan.yaml` is generated from rendered prompt text.
 - `tasks.yaml` is generated from rendered prompt text.
-- Existing Claude and OpenCode command-template directories are not required for Codex.
+- Existing command-template directories are not required for Codex or OpenCode.
 
 ## Prompt Delivery Observation
 
@@ -208,9 +208,9 @@ find . -maxdepth 4 -type f | sort
 
 Expected result:
 
-- OpenCode command files are installed under `.opencode/command/`.
+- No `.opencode/command/` directory is created.
 - Shared autospec skills are installed under `.agents/skills/`.
-- OpenCode automation still relies on its run mode and configured permissions.
+- OpenCode automation relies on rendered prompt text, run mode, and configured permissions.
 
 ## Report Summaries
 
@@ -241,5 +241,5 @@ Follow-ups:
 - If doctor reports missing `OPENAI_API_KEY` for Codex, check `internal/cliagent/codex.go` and health dependency handling.
 - If Codex receives `/autospec.*` text, check prompt rendering in `internal/workflow/stage_executor.go`.
 - If yolo mode does not pass `--dangerously-bypass-approvals-and-sandbox`, check the Codex agent definition and `skip_permissions` command construction.
-- If `init --ai codex` creates Claude or OpenCode command directories, check init agent-selection and configurator dispatch.
+- If `init --ai codex` creates command directories, check init agent-selection and configurator dispatch.
 - If `.codex/config.toml` contains aggressive sandbox or approval defaults, remove them; autospec should only write safe, discoverable project metadata.

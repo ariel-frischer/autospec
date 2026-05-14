@@ -323,6 +323,12 @@ func defaultAgentIndex(agents []AgentOption, currentDefault string) int {
 		}
 	}
 
+	for i, agent := range agents {
+		if agent.Name == "claude" {
+			return i
+		}
+	}
+
 	return 0
 }
 

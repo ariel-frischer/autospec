@@ -37,7 +37,7 @@ func NewCodex() *Codex {
 }
 
 // ConfigureProject implements Configurator for Codex.
-// Codex does not use Claude/OpenCode slash-command template directories.
+// Codex does not use slash-command template directories.
 // Project setup installs Codex skills generated from autospec command
 // templates, and registers those skills in .codex/config.toml.
 func (c *Codex) ConfigureProject(projectDir, specsDir string, projectLevel bool) (ConfigResult, error) {

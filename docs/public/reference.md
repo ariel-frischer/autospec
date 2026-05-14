@@ -540,7 +540,7 @@ Initialize configuration files and directories
 **Syntax**: `autospec init [path] [flags]`
 
 **Description**: Set up autospec with everything needed to get started:
-1. Installs agent-specific command templates and shared skills for selected agents
+1. Installs agent-specific skills for selected agents
 2. Creates configuration at `~/.config/autospec/config.yml`
 3. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version)
 4. Creates `.autospec/.gitignore` for local runtime files
@@ -590,7 +590,7 @@ Missing flags (use positive or negative form):
   - constitution creation: --constitution or --no-constitution
 ```
 
-**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude installs project skills under `.claude/skills/autospec.*/` so existing `/autospec.specify`-style invocations continue to work. OpenCode installs command templates under `.opencode/command/` for autospec's `opencode run --command autospec.*` path and shared skills under `.agents/skills/`. Codex records project metadata in `.codex/config.toml` and registers shared skills under `.agents/skills/`. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
+**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude installs project skills under `.claude/skills/autospec.*/` so existing `/autospec.specify`-style invocations continue to work. OpenCode installs shared skills under `.agents/skills/` and configures `opencode.json` permissions; autospec workflow runs send rendered prompt text through `opencode run`. Codex records project metadata in `.codex/config.toml` and registers shared skills under `.agents/skills/`. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
 
 > **Note**: `default_agents` remembers init prompt selections. `agent_preset` controls which agent actually runs commands and defaults to `claude` when empty. See `docs/public/agents.md` for details.
 
