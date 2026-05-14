@@ -1,6 +1,7 @@
 project: autospec
 versions:
-    unreleased:
+    0.11.0:
+        date: 2026-05-14
         changed:
             - CI now runs lint, test, and build on pull requests (previously only on push to main)
             - '`autospec doctor` now reports the latest Claude Code and OpenCode versions smoke-tested with autospec'
