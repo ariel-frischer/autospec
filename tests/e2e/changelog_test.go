@@ -67,7 +67,7 @@ func TestE2E_ChangelogCommand(t *testing.T) {
 			args:         []string{"changelog", "unreleased"},
 			wantExitCode: shared.ExitSuccess,
 			wantOutSubstr: []string{
-				"Added", "Changed", "Fixed", // Any category present
+				"Unreleased",
 			},
 		},
 		"changelog for non-existent version shows error": {
@@ -147,12 +147,9 @@ func TestE2E_ChangelogExtract(t *testing.T) {
 			},
 		},
 		"extract unreleased changes": {
-			description:  "Extract unreleased changes",
+			description:  "Extract unreleased changes, allowing empty output after release prep",
 			args:         []string{"changelog", "extract", "unreleased"},
 			wantExitCode: shared.ExitSuccess,
-			wantOutSubstr: []string{
-				"###", "-", // Markdown list items
-			},
 		},
 		"extract for non-existent version errors": {
 			description:   "Extract for non-existent version",
