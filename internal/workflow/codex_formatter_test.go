@@ -3,6 +3,7 @@ package workflow
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -32,7 +33,18 @@ func TestCodexFormatterProcessLine(t *testing.T) {
 		"command execution summarized": {
 			maxLines: 3,
 			line:     fmt.Sprintf(`{"type":"item.completed","item":{"type":"command_execution","command":"go test ./...","status":"completed","stdout":%q,"stderr":%q}}`, numberedLines(5), "warning\n"),
-			want:     []string{"Command: go test ./...", "Status: completed", "stdout:", "line 3", "stderr:", "warning", "truncated 2 lines"},
+			want:     []string{"Command: go test ./...", "stdout:", "line 3", "stderr:", "warning", "truncated 2 lines"},
+			deny:     []string{"Status: completed", "line 4", "line 5"},
+		},
+		"command execution shows non-success status": {
+			maxLines: 3,
+			line:     `{"type":"item.completed","item":{"type":"command_execution","command":"go test ./...","status":"failed"}}`,
+			want:     []string{"Command: go test ./...", "Status: failed"},
+		},
+		"command execution without output stays one line": {
+			maxLines: 3,
+			line:     `{"type":"item.completed","item":{"type":"command_execution","command":"git branch --show-current","status":"completed"}}`,
+			want:     []string{"Command: git branch --show-current"},
 			deny:     []string{"line 4", "line 5"},
 		},
 		"file change summarized": {
@@ -40,6 +52,29 @@ func TestCodexFormatterProcessLine(t *testing.T) {
 			line:     `{"type":"item.completed","item":{"type":"file_change","path":"internal/workflow/codex_formatter.go","action":"modified","diff":"large diff omitted"}}`,
 			want:     []string{"File change: modified internal/workflow/codex_formatter.go"},
 			deny:     []string{"large diff omitted"},
+		},
+		"nested file change summarized": {
+			maxLines: 40,
+			line:     `{"type":"item.completed","item":{"type":"file_change","change":{"path":"specs/128-persist-feature-directory/plan.yaml","operation":"created"}}}`,
+			want:     []string{"File change: created specs/128-persist-feature-directory/plan.yaml"},
+		},
+		"file change array summarized": {
+			maxLines: 40,
+			line:     `{"type":"item.completed","item":{"type":"file_change","changes":[{"path":"specs/128-persist-feature-directory/plan.yaml","action":"created"},{"file":"internal/validation/artifact_plan.go","action":"modified"}]}}`,
+			want: []string{
+				"File change: created specs/128-persist-feature-directory/plan.yaml",
+				"File change: modified internal/validation/artifact_plan.go",
+			},
+		},
+		"real codex file change array uses kind": {
+			maxLines: 40,
+			line:     `{"type":"item.completed","item":{"id":"item_3","type":"file_change","changes":[{"path":"/tmp/codex-output-check.txt","kind":"update"}],"status":"completed"}}`,
+			want:     []string{"File change: update /tmp/codex-output-check.txt"},
+		},
+		"file change string array uses item action": {
+			maxLines: 40,
+			line:     `{"type":"item.completed","item":{"type":"file_change","action":"changed","files":["specs/128-persist-feature-directory/plan.yaml"]}}`,
+			want:     []string{"File change: changed specs/128-persist-feature-directory/plan.yaml"},
 		},
 		"malformed JSON passes through": {
 			maxLines: 40,
@@ -57,13 +92,14 @@ func TestCodexFormatterProcessLine(t *testing.T) {
 			formatter.ProcessLine(tt.line)
 
 			got := out.String()
+			gotPlain := stripANSI(got)
 			for _, want := range tt.want {
-				if !strings.Contains(got, want) {
+				if !strings.Contains(gotPlain, want) {
 					t.Errorf("output missing %q:\n%s", want, got)
 				}
 			}
 			for _, deny := range tt.deny {
-				if strings.Contains(got, deny) {
+				if strings.Contains(gotPlain, deny) {
 					t.Errorf("output contains %q:\n%s", deny, got)
 				}
 			}
@@ -149,4 +185,10 @@ func numberedLines(n int) string {
 		lines[i] = fmt.Sprintf("line %d", i+1)
 	}
 	return strings.Join(lines, "\n")
+}
+
+var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(s string) string {
+	return ansiPattern.ReplaceAllString(s, "")
 }

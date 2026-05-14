@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI now runs lint, test, and build on pull requests (previously only on push to main)
 - `autospec doctor` now reports the latest Claude Code and OpenCode versions smoke-tested with autospec
 - Codex is now a supported CLI agent using `codex exec` with rendered autospec prompts
-- Codex automated runs now use compact JSONL output by default, configurable with `codex_output.mode` and `codex_output.max_lines_per_message`
+- Codex automated runs now use colorized compact JSONL output by default, configurable with `codex_output.mode`, `codex_output.max_lines_per_message`, and `codex_output.color`
 - `skip_permissions` now defaults to `true` so autospec workflows run in autonomous mode unless disabled
 - `autospec init` now creates `.autospec/.gitignore` so local runtime files stay ignored when project autospec files are versioned
 - `autospec init --project --ai codex` now generates project-local Codex skills for every embedded `autospec.*` command prompt

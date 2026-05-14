@@ -22,6 +22,11 @@ type CodexFormatterOptions struct {
 	Writer       io.Writer
 }
 
+type codexFileChange struct {
+	action string
+	path   string
+}
+
 func NewCodexFormatter(maxLines int, writer io.Writer) *CodexFormatter {
 	return NewCodexFormatterWithOptions(CodexFormatterOptions{
 		MaxLines:     maxLines,
@@ -94,7 +99,7 @@ func (f *CodexFormatter) writeCommand(item map[string]interface{}) {
 	if command != "" {
 		f.writeLine(f.colorize(commandLabel, "Command:") + " " + f.colorize(commandText, command))
 	}
-	if status != "" {
+	if shouldShowCommandStatus(status) {
 		f.writeLine(f.colorize(statusLabel, "Status:") + " " + f.colorize(statusText(status), status))
 	}
 	f.writeNamedOutput("stdout", firstText(item, "stdout", "output"))
@@ -102,16 +107,64 @@ func (f *CodexFormatter) writeCommand(item map[string]interface{}) {
 }
 
 func (f *CodexFormatter) writeFileChange(item map[string]interface{}) {
-	path := firstText(item, "path", "file")
-	action := firstText(item, "action", "operation")
+	action := firstText(item, "action", "operation", "kind")
 	if action == "" {
 		action = "changed"
 	}
-	if path == "" {
-		f.writeLine(f.colorize(fileLabel, "File change:") + " " + action)
+	changes := fileChanges(item, action)
+	if len(changes) > 0 {
+		for _, change := range changes {
+			f.writeLine(fmt.Sprintf("%s %s %s", f.colorize(fileLabel, "File change:"), change.action, f.colorize(filePathText, change.path)))
+		}
 		return
 	}
-	f.writeLine(fmt.Sprintf("%s %s %s", f.colorize(fileLabel, "File change:"), action, f.colorize(filePathText, path)))
+	f.writeLine(f.colorize(fileLabel, "File change:") + " " + action)
+}
+
+func fileChanges(item map[string]interface{}, defaultAction string) []codexFileChange {
+	if path := firstText(item, "path", "file", "filename"); path != "" {
+		return []codexFileChange{{action: defaultAction, path: path}}
+	}
+	for _, key := range []string{"change", "file"} {
+		if change := fileChangeFromMap(mapField(item, key), defaultAction); change.path != "" {
+			return []codexFileChange{change}
+		}
+	}
+	for _, key := range []string{"changes", "files"} {
+		if changes := fileChangesFromArray(arrayField(item, key), defaultAction); len(changes) > 0 {
+			return changes
+		}
+	}
+	return nil
+}
+
+func fileChangesFromArray(values []interface{}, defaultAction string) []codexFileChange {
+	changes := make([]codexFileChange, 0, len(values))
+	for _, value := range values {
+		if path, ok := value.(string); ok && path != "" {
+			changes = append(changes, codexFileChange{action: defaultAction, path: path})
+			continue
+		}
+		change := fileChangeFromMap(interfaceMap(value), defaultAction)
+		if change.path != "" {
+			changes = append(changes, change)
+		}
+	}
+	return changes
+}
+
+func fileChangeFromMap(fields map[string]interface{}, defaultAction string) codexFileChange {
+	if fields == nil {
+		return codexFileChange{}
+	}
+	action := firstText(fields, "action", "operation", "kind")
+	if action == "" {
+		action = defaultAction
+	}
+	return codexFileChange{
+		action: action,
+		path:   firstText(fields, "path", "file", "filename"),
+	}
 }
 
 func (f *CodexFormatter) writeReasoning(item map[string]interface{}) {
@@ -251,7 +304,19 @@ func mapField(fields map[string]interface{}, key string) map[string]interface{} 
 	if fields == nil {
 		return nil
 	}
-	value, _ := fields[key].(map[string]interface{})
+	return interfaceMap(fields[key])
+}
+
+func interfaceMap(value interface{}) map[string]interface{} {
+	mapped, _ := value.(map[string]interface{})
+	return mapped
+}
+
+func arrayField(fields map[string]interface{}, key string) []interface{} {
+	if fields == nil {
+		return nil
+	}
+	value, _ := fields[key].([]interface{})
 	return value
 }
 
@@ -285,6 +350,27 @@ var (
 	truncationText = color.New(color.FgYellow, color.Faint)
 )
 
+func init() {
+	for _, style := range []*color.Color{
+		agentLabel,
+		commandLabel,
+		commandText,
+		errorLabel,
+		fileLabel,
+		filePathText,
+		reasoningLabel,
+		stderrLabel,
+		stdoutLabel,
+		statusLabel,
+		statusOK,
+		statusWarn,
+		toolLabel,
+		truncationText,
+	} {
+		style.EnableColor()
+	}
+}
+
 func outputLabel(name string) *color.Color {
 	if name == "stderr" {
 		return stderrLabel
@@ -298,5 +384,14 @@ func statusText(status string) *color.Color {
 		return statusOK
 	default:
 		return statusWarn
+	}
+}
+
+func shouldShowCommandStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "", "completed", "success", "succeeded":
+		return false
+	default:
+		return true
 	}
 }
