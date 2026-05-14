@@ -2,79 +2,70 @@
 
 All notable changes to autospec will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Changed
-
 - CI now runs lint, test, and build on pull requests (previously only on push to main)
 - `autospec doctor` now reports the latest Claude Code and OpenCode versions smoke-tested with autospec
 - Codex is now a supported CLI agent using `codex exec` with rendered autospec prompts
 - `skip_permissions` now defaults to `true` so autospec workflows run in autonomous mode unless disabled
 - `autospec init` now creates `.autospec/.gitignore` so local runtime files stay ignored when project autospec files are versioned
+- `autospec init --project --ai codex` now generates project-local Codex skills for every embedded `autospec.*` command prompt
+- `autospec init` now prompts for the default execution agent when multiple agents are selected
 
 ### Removed
-
 - Removed the experimental DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode
 
 ### Fixed
-
 - `autospec init --sandbox` now applies Claude sandbox settings even while the interactive sandbox prompt is disabled
 - `skip_permissions` now maps to Codex yolo mode without requiring `OPENAI_API_KEY`
 
 ### Security
-
 - Bumped `github.com/go-git/go-git/v5` from v5.16.5 to v5.17.1
 - Bumped `json` Ruby gem from 2.18.0 to 2.19.2 (docs site)
 - Bumped `addressable` Ruby gem from 2.8.8 to 2.9.0 (docs site)
 
 ## [0.10.5] - 2026-02-25
 
-### Changed
-
-- Constitution path simplified from `.autospec/memory/constitution.yaml` to `.autospec/constitution.yaml`; legacy paths still supported as fallback
-- Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors
-
-### Fixed
-
-- Public docs: corrected wrong defaults for `max_retries` (was 3, actual 0), `auto_commit` (was true, actual false), `timeout` (was 0, actual 2400)
-- Public docs: fixed Gemini agent env var from `GOOGLE_API_KEY` to `GEMINI_API_KEY`
-- Public docs: marked `cline`/`gemini`/`codex`/`goose` agents as untested instead of planned (code exists but unverified)
-- Public docs: fixed stale constitution path in CONTRIBUTORS.md
-
 ### Added
-
 - Public docs: documented `autospec run` command with all flags and stage selection
 - Public docs: documented missing commands (`constitution`, `clarify`, `checklist`, `analyze`, `task`, `update-task`, `new-feature`, `prereqs`, `setup-plan`, `clean`, `migrate`, `commands`, `uninstall`)
 - Public docs: documented missing config fields (`skip_confirmations`, `skip_permissions`, `cclean.*`, `worktree.*`, `verification.ears_requirements`)
 - Public docs: added `--output-style` global flag and `--resume` implement flag
 
-### Security
+### Changed
+- Constitution path simplified from `.autospec/memory/constitution.yaml` to `.autospec/constitution.yaml`; legacy paths still supported as fallback
+- Specify command template now explicitly marks required vs optional fields, documents valid enum values (P0-P3 priority, status enums), and emphasizes mandatory validation step to reduce schema errors
 
+### Fixed
+- Public docs: corrected wrong defaults for `max_retries` (was 3, actual 0), `auto_commit` (was true, actual false), `timeout` (was 0, actual 2400)
+- Public docs: fixed Gemini agent env var from `GOOGLE_API_KEY` to `GEMINI_API_KEY`
+- Public docs: marked `cline`/`gemini`/`codex`/`goose` agents as untested instead of planned (code exists but unverified)
+- Public docs: fixed stale constitution path in CONTRIBUTORS.md
+
+### Security
 - Bumped `github.com/cloudflare/circl` from v1.6.1 to v1.6.3
 - Bumped `github.com/go-git/go-git/v5` from v5.16.4 to v5.16.5 (fixes untracked file deletion on checkout)
 
 ## [0.10.4] - 2026-01-30
 
 ### Fixed
-
 - Spec path construction no longer produces leading dash when using `--spec` flag or `SPECIFY_FEATURE` environment variable (e.g., `specs/-110-feature/` -> `specs/110-feature/`)
 
 ## [0.10.3] - 2026-01-28
 
 ### Added
-
 - Template variables (`{{.FeatureDir}}`, `{{.FeatureSpec}}`, etc.) now rendered in workflow execution
 - `--no-fetch` flag for `new-feature` command to skip remote fetch operations
 
 ### Changed
-
 - Command display now shows truncated prompts (first line, max 120 chars); use `--debug` for full output
 - Sandbox configuration prompt disabled during `init`
 
 ### Fixed
-
 - Rendered templates no longer break CLI parsing (YAML frontmatter stripped, leading dashes escaped)
 - `new-feature` no longer hangs in sandboxed environments without SSH agent
 - Fetch operations now have 60-second timeout
@@ -82,23 +73,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.10.2] - 2026-01-28
 
 ### Added
-
 - Released and immediately revoked due to CLI parsing bug
 
 ## [0.10.1] - 2026-01-25
 
 ### Fixed
-
 - `autospec new-feature` no longer deletes untracked directories (like `.autospec/`) when creating a new git branch
 
 ### Security
-
 - Updated `golang.org/x/term`, `golang.org/x/crypto`, and `golang.org/x/net` to fix security vulnerabilities
 
 ## [0.10.0] - 2026-01-16
 
 ### Added
-
 - Pre-computed prereqs context for slash commands: templates now render with feature paths (`{{.FeatureDir}}`, `{{.FeatureSpec}}`, etc.) pre-filled, eliminating agent bash calls
 - **[Experimental]** EARS (Easy Approach to Requirements Syntax) support for unambiguous, structured requirements in spec.yaml; opt-in via `autospec config set enable_ears true`
 - **[Experimental]** Verification config block with tiered validation levels (basic/enhanced/full), feature toggles, and quality thresholds
@@ -109,7 +96,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.9.0] - 2026-01-16
 
 ### Added
-
 - `autospec init` now supports non-interactive mode with flags: `--sandbox`, `--skip-permissions`, `--gitignore`, `--constitution`, and `--use-subscription` (each with `--no-*` counterpart) for CI/CD automation
 - `autospec init` now creates `.autospec/init.yml` to track initialization settings (scope, agent, version) for accurate doctor checks
 - Core git operations now use go-git library internally, reducing dependency on git CLI for branch detection, repository root finding, and remote fetching
@@ -117,26 +103,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `autospec prereqs` now outputs `IS_GIT_REPO` field; implement template uses this instead of git CLI for repo detection
 
 ### Fixed
-
 - `autospec doctor` now checks global agent settings when `init.yml` indicates global scope was used during init
 
 ## [0.8.2] - 2026-01-05
 
 ### Added
-
 - `skip_permissions` config option to pass `--dangerously-skip-permissions` flag to autospec Claude runs (does not modify Claude settings)
 - `autospec init` now prompts to configure `skip_permissions` (recommended: Yes) for autonomous Claude runs; skips prompt if already enabled
 
 ## [0.8.1] - 2026-01-03
 
 ### Fixed
-
 - `autospec init` now correctly installs `.claude/commands/` slash command templates when Claude is selected as an agent
 
 ## [0.8.0] - 2026-01-03
 
 ### Added
-
 - OpenCode agent preset now fully functional with `autospec init --ai opencode` or `agent_preset: opencode` in config
 - `autospec init [path]` now accepts an optional path argument to initialize projects at specified locations (e.g., `autospec init ~/projects/myapp`)
 - Colored output formatting with clear visual markers to distinguish agent output from autospec status messages
@@ -146,15 +128,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `config keys` command to list all available configuration keys with types and descriptions
 - Automatic config sync after `autospec update` - new config options are added and deprecated ones removed while preserving user settings
 
-### Fixed
-
-- Implement template now has explicit "Execution Boundaries" section preventing agents from continuing past `--phase N` scope
-- Security notice about `--dangerously-skip-permissions` now only shows for Claude agent (skipped for OpenCode, Gemini, etc.)
-- `skip_permissions_notice_shown` config key now properly recognized and persists after first display
-- OpenCode `permission.edit` now correctly uses simple string format (`"allow"`) instead of object with patterns, fixing `Invalid option: expected one of "ask"|"allow"|"deny"` error
-
 ### Changed
-
 - Agent permissions now write to global config by default (`~/.claude/settings.json`, `~/.config/opencode/opencode.json`); use `--project` for project-level
 - **BREAKING**: Consolidated `output_style` config into `cclean.style` - run `autospec config sync` after upgrading
 - `autospec init` no longer prompts about git worktrees; shows info message with `autospec worktree gen-script` command instead
@@ -163,35 +137,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Site generation now automated via GitHub Actions - generated files no longer committed to git
 - Added `make docs-sync` and updated `make serve` to auto-sync docs before serving
 
+### Fixed
+- Implement template now has explicit "Execution Boundaries" section preventing agents from continuing past `--phase N` scope
+- Security notice about `--dangerously-skip-permissions` now only shows for Claude agent (skipped for OpenCode, Gemini, etc.)
+- `skip_permissions_notice_shown` config key now properly recognized and persists after first display
+- OpenCode `permission.edit` now correctly uses simple string format (`"allow"`) instead of object with patterns, fixing `Invalid option: expected one of "ask"|"allow"|"deny"` error
+
 ## [0.7.3] - 2025-12-21
 
 ### Changed
-
 - `auto_commit` now defaults to `false` (was `true`) - use `--auto-commit` flag or set `auto_commit: true` in config to enable
 
 ## [0.7.2] - 2025-12-21
 
 ### Fixed
-
 - Add missing `auto_commit` field to default config template generated by `autospec init`
 - `update` command now handles cross-device moves (e.g., `/tmp` to `/home`) by falling back to copy when `rename` fails with `EXDEV`
 
 ## [0.7.1] - 2025-12-21
 
 ### Added
-
 - Interactive mode defaults for `clarify` and `analyze` commands; notification when interactive session starts after automated stages in `run` command
 - Process replacement via `syscall.Exec` for interactive stages to ensure full terminal control in TUI applications
 
 ### Fixed
-
 - Hide help menu on workflow execution errors; still shown for incorrect command usage
 - Spec status validation now accepts `Completed` instead of `Implemented` as final status
 
 ## [0.7.0] - 2025-12-21
 
 ### Added
-
 - `--auto-commit` and `--no-auto-commit` flags for automatic git commit creation after workflow completion with conventional commit messages
 - Compact auto-commit output display (`[+AutoCommit]` tag) and minimal agent instructions (~15 lines vs ~90)
 - `auto_commit` config option for automatic git commits after workflow completion (overridable via CLI flags)
@@ -199,26 +174,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `ck` (check) command to quickly check for newer versions on GitHub releases
 
 ### Removed
-
 - Async update check from `version` command (moved to dedicated `ck` command)
 - `handoffs` frontmatter field from command templates (was non-functional)
 
 ## [0.6.1] - 2025-12-20
 
 ### Added
-
 - `use_subscription` config option (default: `true`) to force Claude subscription mode and prevent accidental API charges; auto-detected during `init`
 - Use output-format stream-json mode by default for claude sessions
 
 ## [0.6.0] - 2025-12-20
 
-### Changed
-
-- Multi-agent support (in development) now gated to dev builds only; production builds default to Claude Code
-- `init` command now collects all user choices before applying changes, with final confirmation before running Claude sessions
-
 ### Added
-
 - Multi-agent CLI abstraction layer with 6 built-in agents (claude, cline, gemini, codex, opencode, goose) and custom agent support via `agent_preset` config or `--agent` flag
 - Structured `custom_agent` config with explicit `command`, `args`, `env`, and `post_processor` fields (replaces error-prone shell string parsing)
 - Agent discovery and status in `autospec doctor` showing installed agents with versions
@@ -234,29 +201,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - One-time security notice on first workflow run explaining `--dangerously-skip-permissions` usage with sandbox status; suppress via `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
 - `init` command now prompts to add `.autospec/` to `.gitignore` with guidance for shared vs personal repos
 
-### Removed
+### Changed
+- Multi-agent support (in development) now gated to dev builds only; production builds default to Claude Code
+- `init` command now collects all user choices before applying changes, with final confirmation before running Claude sessions
 
+### Removed
 - **BREAKING**: Removed legacy config fields `claude_cmd`, `claude_args`, `custom_claude_cmd` (use `agent_preset` or structured `custom_agent` instead)
 
 ## [0.5.0] - 2025-12-18
 
 ### Added
-
 - `config set/get/toggle/keys` subcommands for CLI-based configuration management with `--user` and `--project` scope flags
 - `--max-retries, -r` flag for `plan`, `tasks`, `constitution`, and `checklist` commands to override config retry limit
 
 ### Changed
-
 - Improved internal codebase structure for faster future development and better reliability
 
 ### Fixed
-
 - Description propagation in `run -a` now matches `autospec all` behavior (only specify stage receives description)
 
 ## [0.4.0] - 2025-12-18
 
 ### Added
-
 - GitHub Pages documentation website with architecture overview, internals guide, FAQ, and troubleshooting pages
 - `ContextMeta` struct to reduce redundant artifact file reads during phase execution
 - `task block` and `task unblock` commands to mark tasks as blocked with documented reasons
@@ -266,7 +232,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `notes` field in tasks.yaml for additional task context (max 1000 chars)
 
 ### Changed
-
 - CLI commands reorganized into subpackages (`stages/`, `config/`, `util/`, `admin/`, `shared/`) for improved maintainability
 - Documentation restructured into feature cards for better presentation
 - Custom sidebar styles for improved layout and usability
@@ -274,41 +239,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Retry state resets automatically when starting the specify stage
 
 ### Fixed
-
 - Retry context instructions now dynamically injected only during retries (reduces token waste on first-run executions)
 - Improved artifact validation shows both missing and invalid files in error output
 
 ## [0.3.2] - 2025-12-17
 
 ### Added
-
 - `sauce` command to display the project source URL
 
 ### Changed
-
 - Installer shows download progress bar for better visibility
 - Default installation directory changed to `~/.local/bin`
 - Installer now backs up existing binary before upgrading
 
 ### Fixed
-
 - Improved installer reliability with better error handling and temp file cleanup
 - Fixed POSIX compatibility issues in installer color output
 
 ## [0.3.1] - 2025-12-16
 
 ### Added
-
 - ASCII art logo in installer
 
 ### Changed
-
 - Installer uses `sh` instead of `bash` for better compatibility
 
 ## [0.3.0] - 2025-12-16
 
 ### Added
-
 - `history` command with two-phase logging, status tracking, and `--status` filter
 - Cross-platform notifications for command/stage completion (macOS, Linux)
 - Claude settings validation and automatic permission configuration
@@ -339,7 +297,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Shell completion support (bash, zsh, fish)
 
 ### Changed
-
 - Renamed "phase" to "stage" throughout codebase for clarity
 - Dropped Windows support; WSL recommended
 - Long-running notification threshold: 30s -> 2 minutes
@@ -348,7 +305,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Improved error handling with context wrapping
 
 ### Fixed
-
 - Constitution requirement checks across all commands
 - Task status tracking during implementation
 - Artifact dependency validation
@@ -357,7 +313,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.2.0] - 2025-01-15
 
 ### Added
-
 - Workflow progress indicators with spinners
 - Command execution timeout support
 - Timeout configuration via `AUTOSPEC_TIMEOUT` environment variable
@@ -365,14 +320,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Configurable timeout in config files (0 for infinite, 1-604800 seconds)
 
 ### Changed
-
 - Enhanced workflow orchestration with better error handling
 - Improved phase execution with clearer status messages
 
 ## [0.1.0] - 2025-01-01
 
 ### Added
-
 - Initial Go binary implementation
 - CLI commands: `workflow`, `specify`, `plan`, `tasks`, `implement`, `status`, `init`, `config`, `doctor`, `version`
 - Cobra-based command structure with global flags
@@ -391,12 +344,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Cross-platform builds (Linux, macOS, Windows)
 
 ### Changed
-
 - Migrated from bash scripts to Go binary
 - Replaced manual validation with automated checks
 
 ### Deprecated
-
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
@@ -423,3 +374,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 [0.3.1]: https://github.com/ariel-frischer/autospec/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ariel-frischer/autospec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ariel-frischer/autospec/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ariel-frischer/autospec/releases/tag/v0.1.0

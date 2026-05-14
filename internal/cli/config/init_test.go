@@ -951,7 +951,7 @@ func TestConfigureSelectedAgents_NoAgentsSelected(t *testing.T) {
 	cfg := &config.Configuration{SpecsDir: "specs"}
 	tmpDir := t.TempDir()
 
-	_, _, err := configureSelectedAgents(&buf, []string{}, cfg, "config.yml", tmpDir, true)
+	_, _, err := configureSelectedAgents(&buf, []string{}, "", cfg, "config.yml", tmpDir, true)
 	require.NoError(t, err)
 
 	assert.Contains(t, buf.String(), "Warning")
@@ -970,7 +970,7 @@ func TestPersistAgentPreferences(t *testing.T) {
 	var buf bytes.Buffer
 	cfg := &config.Configuration{}
 
-	err = persistAgentPreferences(&buf, []string{"claude", "cline"}, cfg, configPath)
+	err = persistAgentPreferences(&buf, []string{"claude", "cline"}, "claude", cfg, configPath)
 	require.NoError(t, err)
 
 	// Verify file was updated
@@ -980,6 +980,30 @@ func TestPersistAgentPreferences(t *testing.T) {
 	assert.Contains(t, string(content), "claude")
 	assert.Contains(t, string(content), "cline")
 	assert.Contains(t, buf.String(), "Agent preferences saved")
+}
+
+func TestPersistAgentPreferences_WithDefaultAgent(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yml")
+
+	initialContent := "specs_dir: specs\nagent_preset: \"\"\ndefault_agents: []\ntimeout: 30m\n"
+	err := os.WriteFile(configPath, []byte(initialContent), 0o644)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	cfg := &config.Configuration{}
+
+	err = persistAgentPreferences(&buf, []string{"claude", "codex", "opencode"}, "codex", cfg, configPath)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(content), `default_agents: ["claude", "codex", "opencode"]`)
+	assert.Contains(t, string(content), "agent_preset: codex")
+	assert.Contains(t, buf.String(), "set as default for execution")
 }
 
 func TestPersistAgentPreferences_FileNotExists(t *testing.T) {
@@ -992,7 +1016,7 @@ func TestPersistAgentPreferences_FileNotExists(t *testing.T) {
 	cfg := &config.Configuration{}
 
 	// Should not error if file doesn't exist
-	err := persistAgentPreferences(&buf, []string{"claude"}, cfg, configPath)
+	err := persistAgentPreferences(&buf, []string{"claude"}, "claude", cfg, configPath)
 	require.NoError(t, err)
 }
 
@@ -1016,7 +1040,7 @@ func TestConfigureSelectedAgents_FilePermissionError(t *testing.T) {
 	_ = os.WriteFile(configPath, []byte("specs_dir: specs\ndefault_agents: []\n"), 0o644)
 
 	// Run configuration - even if one agent fails, others should complete
-	_, _, err := configureSelectedAgents(&buf, selected, cfg, configPath, tmpDir, true)
+	_, _, err := configureSelectedAgents(&buf, selected, "claude", cfg, configPath, tmpDir, true)
 	require.NoError(t, err)
 
 	// Verify output mentions Claude was configured (or tried to configure)
@@ -1041,7 +1065,7 @@ func TestConfigureSelectedAgents_PartialConfigContinues(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yml")
 	_ = os.WriteFile(configPath, []byte("default_agents: []\n"), 0o644)
 
-	_, _, err := configureSelectedAgents(&buf, selected, cfg, configPath, tmpDir, true)
+	_, _, err := configureSelectedAgents(&buf, selected, "claude", cfg, configPath, tmpDir, true)
 	require.NoError(t, err)
 
 	output := buf.String()
@@ -1146,7 +1170,7 @@ func TestPersistAgentPreferences_Idempotency(t *testing.T) {
 	// Run 3 times
 	for i := 0; i < 3; i++ {
 		var buf bytes.Buffer
-		err := persistAgentPreferences(&buf, agents, cfg, configPath)
+		err := persistAgentPreferences(&buf, agents, "claude", cfg, configPath)
 		require.NoError(t, err, "run %d failed", i+1)
 	}
 
@@ -1155,7 +1179,7 @@ func TestPersistAgentPreferences_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify format is exactly what we expect
-	expectedContent := "specs_dir: specs\ndefault_agents: [\"claude\", \"cline\"]\ntimeout: 30m\n"
+	expectedContent := "specs_dir: specs\nagent_preset: claude\ndefault_agents: [\"claude\", \"cline\"]\ntimeout: 30m\n"
 	assert.Equal(t, expectedContent, string(content))
 }
 
@@ -1206,7 +1230,7 @@ func TestFullIdempotencyFlow(t *testing.T) {
 	var finalOutput string
 	for i := 0; i < 3; i++ {
 		var buf bytes.Buffer
-		_, _, err := configureSelectedAgents(&buf, selected, cfg, configPath, tmpDir, true)
+		_, _, err := configureSelectedAgents(&buf, selected, "claude", cfg, configPath, tmpDir, true)
 		require.NoError(t, err, "run %d failed", i+1)
 		finalOutput = buf.String()
 	}
@@ -1426,6 +1450,37 @@ func TestConfigureSpecificAgents_Both(t *testing.T) {
 	opencodeJSON := filepath.Join(tempDir, "opencode.json")
 	_, err = os.Stat(opencodeJSON)
 	assert.NoError(t, err, "opencode.json should exist")
+}
+
+func TestConfigureSpecificAgents_MultipleAgentsUseFirstAsDefault(t *testing.T) {
+	// Cannot run in parallel: changes working directory
+	tempDir := t.TempDir()
+
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	defer func() { _ = os.Chdir(origDir) }()
+
+	configDir := filepath.Join(tempDir, ".autospec")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	configPath := filepath.Join(configDir, "config.yml")
+	require.NoError(t, os.WriteFile(configPath, []byte("specs_dir: specs\nagent_preset: opencode\ndefault_agents: []\n"), 0o644))
+
+	cmd := &cobra.Command{Use: "init"}
+	cmd.Flags().BoolP("project", "p", false, "")
+	cmd.Flags().BoolP("force", "f", false, "")
+	cmd.Flags().StringSlice("ai", nil, "")
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	_, _, err = configureSpecificAgents(cmd, &buf, true, []string{"codex", "opencode"})
+	require.NoError(t, err)
+
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(configContent), "agent_preset: codex")
 }
 
 // TestConfigureSpecificAgents_InvalidAgent tests that invalid agent names error.

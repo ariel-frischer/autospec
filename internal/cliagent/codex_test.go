@@ -48,6 +48,14 @@ func TestCodexBuildCommand(t *testing.T) {
 			opts:     ExecOptions{Autonomous: true},
 			wantArgs: []string{"exec", "fix tests", "--dangerously-bypass-approvals-and-sandbox"},
 		},
+		"json output command": {
+			opts:     ExecOptions{JSONOutput: true},
+			wantArgs: []string{"exec", "--json", "fix tests"},
+		},
+		"json output autonomous command": {
+			opts:     ExecOptions{JSONOutput: true, Autonomous: true},
+			wantArgs: []string{"exec", "--json", "fix tests", "--dangerously-bypass-approvals-and-sandbox"},
+		},
 		"interactive command": {
 			opts:     ExecOptions{Interactive: true},
 			wantArgs: []string{"fix tests"},

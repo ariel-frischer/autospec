@@ -580,9 +580,9 @@ Missing flags (use positive or negative form):
   - constitution creation: --constitution or --no-constitution
 ```
 
-**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. Claude and OpenCode install command templates for interactive use; Codex records project metadata but does not install command templates. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
+**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude and OpenCode install command templates for interactive use; Codex records project metadata and, in project-level init, installs project-local Codex skills. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
 
-> **Note**: `default_agents` only affects the init prompt. To set which agent actually runs commands, use `agent_preset` (defaults to `claude` when empty). See `docs/public/agents.md` for details.
+> **Note**: `default_agents` remembers init prompt selections. `agent_preset` controls which agent actually runs commands and defaults to `claude` when empty. See `docs/public/agents.md` for details.
 
 **Examples**:
 ```bash

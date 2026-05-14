@@ -72,6 +72,7 @@ func TestGetDefaults(t *testing.T) {
 		"notifications",
 		"max_history_entries",
 		"default_agents",
+		"codex_output",
 	}
 
 	for _, key := range requiredKeys {
@@ -122,5 +123,17 @@ func TestGetDefaults(t *testing.T) {
 
 	if notifications["on_error"] != true {
 		t.Errorf("notifications.on_error default = %v, want true", notifications["on_error"])
+	}
+
+	codexOutput, ok := defaults["codex_output"].(map[string]interface{})
+	if !ok {
+		t.Error("codex_output should be a map")
+		return
+	}
+	if codexOutput["mode"] != "compact" {
+		t.Errorf("codex_output.mode default = %v, want compact", codexOutput["mode"])
+	}
+	if codexOutput["max_lines_per_message"] != 40 {
+		t.Errorf("codex_output.max_lines_per_message default = %v, want 40", codexOutput["max_lines_per_message"])
 	}
 }

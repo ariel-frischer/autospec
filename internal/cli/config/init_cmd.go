@@ -275,10 +275,17 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 
 	// Run agent selection prompt
 	selected := promptAgentSelection(cmd.InOrStdin(), out, agents)
+	defaultAgent := defaultAgentForSelection(selected, cfg.AgentPreset)
+	if len(selected) > 1 {
+		defaultAgent = promptDefaultAgentSelection(cmd.InOrStdin(), out, selectedAgentOptions(agents, selected), cfg.AgentPreset)
+	}
 
 	// Show selected agents feedback
 	if len(selected) > 0 {
 		fmt.Fprintf(out, "%s %s: %s\n", cGreen("✓"), cBold("Selected"), strings.Join(selected, ", "))
+		if defaultAgent != "" {
+			fmt.Fprintf(out, "%s %s: %s\n", cGreen("✓"), cBold("Default agent"), defaultAgent)
+		}
 	} else {
 		fmt.Fprintf(out, "%s No agents selected\n", cYellow("⚠"))
 	}
@@ -286,7 +293,7 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 	// Configure selected agents and save preferences
 	// Use "." as project directory for real init command
 	// Pass project flag to determine whether to write to project-level or global config
-	sandboxPrompts, agentConfigs, err := configureSelectedAgents(out, selected, cfg, configPath, ".", project)
+	sandboxPrompts, agentConfigs, err := configureSelectedAgents(out, selected, defaultAgent, cfg, configPath, ".", project)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -399,8 +406,9 @@ func configureSpecificAgents(cmd *cobra.Command, out io.Writer, project bool, ai
 	}
 
 	// Save agent preferences
+	defaultAgent := configuredAgents[0]
 	cfg.DefaultAgents = configuredAgents
-	if err := persistAgentPreferences(out, configuredAgents, cfg, configPath); err != nil {
+	if err := persistAgentPreferences(out, configuredAgents, defaultAgent, cfg, configPath); err != nil {
 		fmt.Fprintf(out, "%s Failed to save agent preferences: %v\n", cYellow("⚠"), err)
 	}
 
@@ -479,7 +487,7 @@ type initResult struct {
 // and the configuration info for each agent (for init.yml creation).
 // projectDir specifies where to write agent config files (e.g., .claude/settings.local.json).
 // projectLevel determines whether to write to project-level config (true) or global config (false).
-func configureSelectedAgents(out io.Writer, selected []string, cfg *config.Configuration, configPath, projectDir string, projectLevel bool) ([]sandboxPromptInfo, []agentConfigInfo, error) {
+func configureSelectedAgents(out io.Writer, selected []string, defaultAgent string, cfg *config.Configuration, configPath, projectDir string, projectLevel bool) ([]sandboxPromptInfo, []agentConfigInfo, error) {
 	if len(selected) == 0 {
 		fmt.Fprintln(out, "⚠ Warning: No agents selected. You may need to configure agent permissions manually.")
 		return nil, nil, nil
@@ -537,7 +545,7 @@ func configureSelectedAgents(out io.Writer, selected []string, cfg *config.Confi
 	}
 
 	// Persist selected agents to config
-	if err := persistAgentPreferences(out, selected, cfg, configPath); err != nil {
+	if err := persistAgentPreferences(out, selected, defaultAgent, cfg, configPath); err != nil {
 		return nil, nil, err
 	}
 
@@ -1012,10 +1020,13 @@ func displayAgentConfigResult(out io.Writer, agentName string, result *cliagent.
 }
 
 // persistAgentPreferences saves the selected agents to config for future init runs.
-// Also updates agent_preset if only one agent is selected and agent_preset is currently empty.
-func persistAgentPreferences(out io.Writer, selected []string, cfg *config.Configuration, configPath string) error {
+// Also updates agent_preset when an execution default is provided.
+func persistAgentPreferences(out io.Writer, selected []string, defaultAgent string, cfg *config.Configuration, configPath string) error {
 	// Update config with new agent preferences
 	cfg.DefaultAgents = selected
+	if defaultAgent != "" && !containsAgent(selected, defaultAgent) {
+		defaultAgent = defaultAgentForSelection(selected, "")
+	}
 
 	// Read existing config file to preserve formatting and comments
 	existingContent, err := os.ReadFile(configPath)
@@ -1027,11 +1038,10 @@ func persistAgentPreferences(out io.Writer, selected []string, cfg *config.Confi
 	// Update the default_agents line in the config file
 	newContent := updateDefaultAgentsInConfig(string(existingContent), selected)
 
-	// If exactly one agent selected and agent_preset is empty, set it as the default
-	// This ensures the selected agent is used for execution, not just configuration
-	if len(selected) == 1 && cfg.AgentPreset == "" {
-		newContent = updateAgentPresetInConfig(newContent, selected[0])
-		fmt.Fprintf(out, "%s %s: %s %s\n", cGreen("✓"), cBold("agent_preset"), selected[0], cDim("(set as default for execution)"))
+	if defaultAgent != "" {
+		newContent = updateAgentPresetInConfig(newContent, defaultAgent)
+		cfg.AgentPreset = defaultAgent
+		fmt.Fprintf(out, "%s %s: %s %s\n", cGreen("✓"), cBold("agent_preset"), defaultAgent, cDim("(set as default for execution)"))
 	}
 
 	if err := os.WriteFile(configPath, []byte(newContent), 0o644); err != nil {
@@ -1113,6 +1123,18 @@ func containsAgent(agents []string, name string) bool {
 		}
 	}
 	return false
+}
+
+func defaultAgentForSelection(selected []string, currentDefault string) string {
+	if len(selected) == 0 {
+		return ""
+	}
+
+	if containsAgent(selected, currentDefault) {
+		return currentDefault
+	}
+
+	return selected[0]
 }
 
 // isTerminalFunc is a function variable for terminal detection, allowing test mocking.

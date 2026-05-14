@@ -90,7 +90,7 @@ These two config fields serve different purposes:
 | Field | Purpose | Used When |
 |-------|---------|-----------|
 | `agent_preset` | Selects which agent runs commands | Runtime (every command) |
-| `default_agents` | Pre-selects checkboxes in `autospec init` prompt | Initialization only |
+| `default_agents` | Pre-selects checkboxes in `autospec init` prompt | Initialization prompt defaults |
 
 **Example config:**
 
@@ -98,13 +98,13 @@ These two config fields serve different purposes:
 # This agent runs your commands:
 agent_preset: opencode
 
-# These are just remembered selections for next `autospec init`:
+# These are remembered selections for next `autospec init`:
 default_agents:
   - claude
   - opencode
 ```
 
-If `agent_preset` is empty, **claude is used regardless of what's in `default_agents`**.
+If `agent_preset` is empty, **claude is used regardless of what's in `default_agents`**. Interactive `autospec init` sets `agent_preset` automatically when one agent is selected, or asks which selected agent should be the execution default when multiple agents are selected. Non-interactive `autospec init --ai claude,codex,opencode` uses the first selected agent as the execution default.
 
 ## Environment Configuration
 

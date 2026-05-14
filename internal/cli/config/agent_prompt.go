@@ -270,6 +270,78 @@ func runTextBasedSelect(r io.Reader, w io.Writer, agents []AgentOption) []string
 	return getSelectedAgentNames(agents)
 }
 
+// promptDefaultAgentSelection asks which selected agent should be used for execution.
+func promptDefaultAgentSelection(r io.Reader, w io.Writer, agents []AgentOption, currentDefault string) string {
+	if len(agents) == 0 {
+		return ""
+	}
+
+	defaultIndex := defaultAgentIndex(agents, currentDefault)
+	scanner := bufio.NewScanner(r)
+
+	for {
+		displayDefaultAgentList(w, agents, defaultIndex)
+		fmt.Fprintf(w, "\nChoose default agent for execution [1-%d] (Enter for %d): ", len(agents), defaultIndex+1)
+
+		if !scanner.Scan() {
+			return agents[defaultIndex].Name
+		}
+
+		input := strings.TrimSpace(scanner.Text())
+		if input == "" {
+			return agents[defaultIndex].Name
+		}
+
+		num, err := strconv.Atoi(input)
+		if err != nil || num < 1 || num > len(agents) {
+			fmt.Fprintln(w, "Invalid selection.")
+			continue
+		}
+
+		return agents[num-1].Name
+	}
+}
+
+func displayDefaultAgentList(w io.Writer, agents []AgentOption, defaultIndex int) {
+	fmt.Fprintln(w, "\nChoose the default agent for autospec execution:")
+	fmt.Fprintln(w)
+
+	for i, agent := range agents {
+		marker := " "
+		if i == defaultIndex {
+			marker = "*"
+		}
+
+		fmt.Fprintf(w, "  [%d] %s %s\n", i+1, marker, agent.DisplayName)
+	}
+}
+
+func defaultAgentIndex(agents []AgentOption, currentDefault string) int {
+	for i, agent := range agents {
+		if agent.Name == currentDefault {
+			return i
+		}
+	}
+
+	return 0
+}
+
+func selectedAgentOptions(agents []AgentOption, selected []string) []AgentOption {
+	selectedSet := make(map[string]bool, len(selected))
+	for _, name := range selected {
+		selectedSet[name] = true
+	}
+
+	options := make([]AgentOption, 0, len(selected))
+	for _, agent := range agents {
+		if selectedSet[agent.Name] {
+			options = append(options, agent)
+		}
+	}
+
+	return options
+}
+
 // displayAgentList prints the numbered list of agents with selection state.
 func displayAgentList(w io.Writer, agents []AgentOption) {
 	fmt.Fprintln(w, "\nSelect AI coding agents to configure:")

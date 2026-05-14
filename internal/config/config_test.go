@@ -75,6 +75,79 @@ func TestLoad_EnvOverride(t *testing.T) {
 	assert.Equal(t, 7, cfg.MaxRetries)
 }
 
+func TestLoad_CodexOutputDefaults(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+
+	cfg, err := Load("")
+	require.NoError(t, err)
+
+	assert.Equal(t, "compact", cfg.CodexOutput.Mode)
+	assert.Equal(t, 40, cfg.CodexOutput.MaxLinesPerMessage)
+}
+
+func TestLoad_CodexOutputFromYAML(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yml")
+	configContent := `codex_output:
+  mode: full
+  max_lines_per_message: 80
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0o644))
+
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+
+	assert.Equal(t, "full", cfg.CodexOutput.Mode)
+	assert.Equal(t, 80, cfg.CodexOutput.MaxLinesPerMessage)
+}
+
+func TestLoad_CodexOutputFromEnv(t *testing.T) {
+	t.Setenv("AUTOSPEC_CODEX_OUTPUT_MODE", "full")
+	t.Setenv("AUTOSPEC_CODEX_OUTPUT_MAX_LINES_PER_MESSAGE", "12")
+
+	cfg, err := Load("")
+	require.NoError(t, err)
+
+	assert.Equal(t, "full", cfg.CodexOutput.Mode)
+	assert.Equal(t, 12, cfg.CodexOutput.MaxLinesPerMessage)
+}
+
+func TestLoad_CodexOutputInvalidValues(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		content string
+		field   string
+	}{
+		"invalid mode": {
+			content: "codex_output:\n  mode: verbose\n",
+			field:   "codex_output.mode",
+		},
+		"invalid max lines": {
+			content: "codex_output:\n  max_lines_per_message: 0\n",
+			field:   "codex_output.max_lines_per_message",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "config.yml")
+			require.NoError(t, os.WriteFile(configPath, []byte(tt.content), 0o644))
+
+			_, err := Load(configPath)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.field)
+		})
+	}
+}
+
 func TestLoad_ValidationError_MaxRetriesOutOfRange(t *testing.T) {
 	t.Parallel()
 

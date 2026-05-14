@@ -101,6 +101,50 @@ func TestClaudeExecutor_StreamCommand_WithAgent(t *testing.T) {
 	assert.Contains(t, stdout.String(), "test prompt")
 }
 
+func TestClaudeExecutor_StreamCommand_CodexCompactUsesJSONFormatter(t *testing.T) {
+	t.Parallel()
+
+	customAgent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Name:    "codex",
+		Command: "printf",
+		Args:    []string{`{"type":"item.completed","item":{"type":"agent_message","text":"hello from json"}}`},
+	})
+	require.NoError(t, err)
+
+	executor := &ClaudeExecutor{
+		Agent:       customAgent,
+		CodexOutput: config.CodexOutputConfig{Mode: "compact", MaxLinesPerMessage: 40},
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = executor.StreamCommand("test prompt", &stdout, &stderr)
+	require.NoError(t, err)
+	assert.Contains(t, stdout.String(), "Agent message")
+	assert.Contains(t, stdout.String(), "hello from json")
+}
+
+func TestClaudeExecutor_StreamCommand_CodexFullBypassesFormatter(t *testing.T) {
+	t.Parallel()
+
+	customAgent, err := cliagent.NewCustomAgentFromConfig(cliagent.CustomAgentConfig{
+		Name:    "codex",
+		Command: "printf",
+		Args:    []string{`{"type":"item.completed","item":{"type":"agent_message","text":"native output"}}`},
+	})
+	require.NoError(t, err)
+
+	executor := &ClaudeExecutor{
+		Agent:       customAgent,
+		CodexOutput: config.CodexOutputConfig{Mode: "full", MaxLinesPerMessage: 40},
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = executor.StreamCommand("test prompt", &stdout, &stderr)
+	require.NoError(t, err)
+	assert.NotContains(t, stdout.String(), "Agent message")
+	assert.Contains(t, stdout.String(), `"native output"`)
+}
+
 // TestClaudeExecutor_Timeout tests timeout enforcement
 func TestClaudeExecutor_Timeout(t *testing.T) {
 	t.Parallel()
