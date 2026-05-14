@@ -1367,8 +1367,20 @@ func TestConfigureSpecificAgents_Codex(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(tempDir, ".codex", "config.toml"))
 	assert.NoError(t, err, ".codex/config.toml should exist")
-	_, err = os.Stat(filepath.Join(tempDir, ".codex", "skills", "autospec", "SKILL.md"))
-	assert.NoError(t, err, ".codex/skills/autospec/SKILL.md should exist")
+	for _, skillName := range []string{
+		"autospec-specify",
+		"autospec-plan",
+		"autospec-tasks",
+		"autospec-implement",
+		"autospec-constitution",
+		"autospec-clarify",
+		"autospec-analyze",
+		"autospec-checklist",
+		"autospec-worktree-setup",
+	} {
+		_, err = os.Stat(filepath.Join(tempDir, ".codex", "skills", skillName, "SKILL.md"))
+		assert.NoError(t, err, ".codex/skills/%s/SKILL.md should exist", skillName)
+	}
 }
 
 // TestConfigureSpecificAgents_Both tests --ai claude,opencode configures both.

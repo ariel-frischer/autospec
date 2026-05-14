@@ -4,9 +4,10 @@ autospec uses a YAML-first approach for changelog management. `internal/changelo
 
 ## Workflow Overview
 
-1. **Edit**: Add entries to `internal/changelog/changelog.yaml`
-2. **Sync**: Run `make changelog-sync` to regenerate `CHANGELOG.md`
-3. **Commit**: Commit both files together
+1. **Add**: Run `chlog add <category> "Description"` to update `internal/changelog/changelog.yaml`
+2. **Sync**: Run `chlog sync` or `make changelog-sync` to regenerate `CHANGELOG.md`
+3. **Check**: Run `chlog check` or `make changelog-check`
+4. **Commit**: Commit the YAML source and generated markdown together
 
 Never edit `CHANGELOG.md` directly—it is auto-generated.
 
@@ -17,28 +18,26 @@ The changelog follows the [Keep a Changelog](https://keepachangelog.com/) format
 ```yaml
 project: autospec
 versions:
-  - version: unreleased
-    changes:
-      added:
-        - "New feature description"
-      fixed:
-        - "Bug fix description"
+  unreleased:
+    added:
+      - "New feature description"
+    fixed:
+      - "Bug fix description"
 
-  - version: 0.9.0
+  0.9.0:
     date: "2026-01-16"
-    changes:
-      added:
-        - "Feature added in this release"
-      changed:
-        - "Changed behavior description"
-      deprecated:
-        - "Feature being deprecated"
-      removed:
-        - "Removed feature"
-      fixed:
-        - "Bug fix"
-      security:
-        - "Security fix"
+    added:
+      - "Feature added in this release"
+    changed:
+      - "Changed behavior description"
+    deprecated:
+      - "Feature being deprecated"
+    removed:
+      - "Removed feature"
+    fixed:
+      - "Bug fix"
+    security:
+      - "Security fix"
 ```
 
 ### Categories
@@ -94,11 +93,18 @@ This outputs markdown suitable for use in CI/CD release workflows.
 ### Sync and Validate
 
 ```bash
+# Add a new unreleased entry
+chlog add changed "Describe the user-facing change"
+
 # Regenerate CHANGELOG.md from YAML
+chlog sync
+# or:
 autospec changelog sync
 # or: make changelog-sync
 
 # Validate CHANGELOG.md matches YAML
+chlog check
+# or:
 autospec changelog check
 # or: make changelog-check
 ```
@@ -112,6 +118,16 @@ The sync operation is idempotent—running it multiple times produces identical 
 | `make changelog-sync` | Regenerate CHANGELOG.md from YAML |
 | `make changelog-check` | Validate CHANGELOG.md matches YAML (used in CI) |
 
+## chlog Configuration
+
+This repository includes `.chlog.yaml` so `chlog` commands run from the repository root use:
+
+| Setting | Value |
+|---------|-------|
+| `changelog_file` | `internal/changelog/changelog.yaml` |
+| `public_file` | `CHANGELOG.md` |
+| `strict_categories` | `true` |
+
 ## Embedded Changelog
 
 The changelog is embedded in the autospec binary at build time using Go's `embed` directive. This allows:
@@ -122,18 +138,23 @@ The changelog is embedded in the autospec binary at build time using Go's `embed
 
 ## Adding a Changelog Entry
 
-1. Open `internal/changelog/changelog.yaml`
-2. Add your entry under the appropriate category in `unreleased`:
+1. Run `chlog add` with the appropriate category:
+
+```bash
+chlog add added "Your new feature description"
+chlog add fixed "Your bug fix description"
+```
+
+2. Confirm the entry appears under the appropriate category in `unreleased`:
 
 ```yaml
 versions:
-  - version: unreleased
-    changes:
-      added:
-        - "Your new feature description"
+  unreleased:
+    added:
+      - "Your new feature description"
 ```
 
-3. Run `make changelog-sync` to update `CHANGELOG.md`
+3. Run `chlog sync` or `make changelog-sync` to update `CHANGELOG.md`
 4. Commit both files
 
 ## Release Workflow

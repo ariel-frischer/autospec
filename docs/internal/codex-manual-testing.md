@@ -64,7 +64,7 @@ Expected result:
 - `agent_preset: codex` is set when Codex is the only selected agent.
 - `skip_permissions: true` is set for this disposable test repo.
 - `.codex/config.toml` is created or updated with safe project metadata and `skills.config`.
-- `.codex/skills/autospec/SKILL.md` is installed for interactive Codex `/autospec.*` routing.
+- `.codex/skills/autospec-*/SKILL.md` files are installed for interactive Codex skills.
 - No `.claude/commands/` directory is created for Codex-only setup.
 - No `.opencode/command/` directory is created for Codex-only setup.
 
@@ -73,13 +73,14 @@ Check the generated files:
 ```bash
 cat .autospec/config.yml
 cat .codex/config.toml
-cat .codex/skills/autospec/SKILL.md
-find . -maxdepth 3 -type f | sort
+cat .codex/skills/autospec-specify/SKILL.md
+cat .codex/skills/autospec-clarify/SKILL.md
+find . -maxdepth 4 -type f | sort
 ```
 
 `.codex/config.toml` must not force destructive defaults such as disabled approvals or unrestricted sandboxing. For this manual test, write access comes from autospec `skip_permissions: true`, which maps to Codex `--dangerously-bypass-approvals-and-sandbox` at runtime.
 
-The Codex skill should tell interactive Codex sessions to route `/autospec.specify "desc"` to `autospec specify "desc"` instead of hand-generating artifacts directly.
+The Codex skills should contain the actual prompt instructions from `internal/commands/autospec.*.md`. For example, `$autospec-specify "desc"` should load the specify prompt and `$autospec-clarify` should load the clarify prompt.
 
 ## Real Codex Smoke Test
 
