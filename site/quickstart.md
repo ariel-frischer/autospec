@@ -126,17 +126,19 @@ autospec init
 
 This command:
 1. Creates `~/.config/autospec/config.yml` with default settings
-2. Installs slash commands to `.claude/commands/`
-3. **Prompts to create project constitution** (say "yes" - required for autospec to work)
+2. Installs agent-native prompts for the selected agents
+3. Prompts for the default execution agent when multiple agents are selected
+4. **Prompts to create project constitution** (say "yes" - required for autospec to work)
 
 Default config:
 
 ```yaml
-claude_cmd: claude
+agent_preset: ""        # Empty falls back to claude; built-in: claude | codex | opencode
 max_retries: 0
 specs_dir: ./specs
 state_dir: ~/.autospec/state
-timeout: 0
+timeout: 2400           # 40 min default, 0 = no timeout
+skip_permissions: true  # Autonomous mode for supported agents
 ```
 
 See [Configuration Reference](/autospec/reference/configuration) for customization options.
@@ -166,9 +168,9 @@ On your first workflow run with autonomous mode enabled, you'll see a one-time s
 {: .note }
 > Suppress this notice: `autospec config set skip_permissions_notice_shown true` or `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
 
-`autospec init` installs slash commands for agents that support them, such as Claude Code (`.claude/commands/autospec.*.md`) and OpenCode (`.opencode/command/autospec.*.md`). Codex receives rendered prompt text directly and does not use command template files.
+`autospec init` installs agent-native prompts for interactive sessions. Claude Code receives project skills under `.claude/skills/autospec.*/`, preserving `/autospec.specify`-style invocation. Codex and OpenCode share skills under `.agents/skills/autospec-*/`. Codex and OpenCode workflow runs receive rendered prompt text directly through `codex exec` and `opencode run`; OpenCode init no longer creates `.opencode/command` files.
 
-| Command | Purpose |
+| Invocation | Purpose |
 |:--------|:--------|
 | `/autospec.specify` | Generate spec.yaml interactively |
 | `/autospec.plan` | Generate plan.yaml |
@@ -178,8 +180,10 @@ On your first workflow run with autonomous mode enabled, you'll see a one-time s
 | `/autospec.analyze` | Cross-artifact analysis |
 | `/autospec.checklist` | Generate quality checklist |
 | `/autospec.constitution` | Create project constitution |
+| `$autospec-specify "Add user auth"` | Codex/OpenCode shared skill syntax |
+| `$autospec-plan`, `$autospec-tasks`, `$autospec-implement` | Codex/OpenCode shared skill syntax |
 
-Use these in normal Claude Code or OpenCode sessions when you prefer chat-based iteration over autospec's automated mode.
+Use these in normal agent sessions when you prefer chat-based iteration over autospec's automated mode.
 
 ---
 
@@ -431,7 +435,7 @@ For more solutions, see the [full troubleshooting guide](/autospec/guides/troubl
 
 - [CLI Reference](/autospec/reference/): Complete command documentation
 - [Configuration](/autospec/reference/configuration): Customize autospec behavior
-- [Architecture](/autospec/architecture/): Understand system design
+- [Reference](/autospec/reference/): Complete command and configuration docs
 - [FAQ](/autospec/guides/faq): Common questions answered
 
 ---

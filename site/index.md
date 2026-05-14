@@ -28,6 +28,8 @@ autospec brings structure to AI coding: **spec → plan → tasks → implement*
 
 Built for CLI coding agents including Claude Code, Codex, and OpenCode, and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
 
+Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), and [OpenCode](https://opencode.ai).
+
 ```bash
 # Generate everything: spec → plan → tasks → implement
 autospec run -a "Add user authentication with OAuth"
@@ -137,7 +139,7 @@ Each artifact is validated before proceeding to the next stage, ensuring quality
 | [Quickstart](/autospec/quickstart) | Get up and running in 5 minutes |
 | [Reference](/autospec/reference/) | Complete CLI command reference |
 | [Guides](/autospec/guides/) | Configuration, troubleshooting, FAQ |
-| [Architecture](/autospec/architecture/) | System design and internals |
+| [FAQ](/autospec/guides/faq) | Common workflow and agent questions |
 
 ---
 

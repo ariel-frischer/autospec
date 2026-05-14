@@ -140,7 +140,7 @@ autospec automatically detects which feature spec you're working on. Detection p
 
 For example, if you're on branch `002-user-authentication`, autospec looks for `specs/002-user-authentication/`.
 
-See [Internals - Spec Detection](../architecture/internals#spec-detection) for more details.
+See [internals](https://github.com/ariel-frischer/autospec/blob/main/docs/internal/internals.md) for implementation details.
 
 ---
 
@@ -186,7 +186,7 @@ autospec documentation uses Jekyll with Just the Docs theme. To add a page:
    ```yaml
    ---
    title: My New Page
-   parent: Guides  # or Reference, Architecture
+   parent: Guides  # or Reference
    nav_order: 3    # controls position in navigation
    ---
 
@@ -198,7 +198,7 @@ autospec documentation uses Jekyll with Just the Docs theme. To add a page:
 2. Place it in the appropriate directory:
    - `site/guides/` for how-to guides
    - `site/reference/` for reference documentation
-   - `site/architecture/` for technical docs
+   - `docs/internal/` for technical docs that should live in the repository
 
 3. Build locally to test: `cd site && bundle exec jekyll serve`
 

@@ -21,6 +21,8 @@ Build features systematically with AI-powered specification workflows.
 Built with a **multi-agent architecture** and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation. These principles ensure reliable, performant, and maintainable software that developers 
 can trust for their critical development workflows.
 
+Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), and [OpenCode](https://opencode.ai).
+
 ## 📦 Installation
 
 ```bash
@@ -141,9 +143,10 @@ autospec run -tlzi
 # All core with skip confirmations (-y)
 autospec run -a -y "Feature description"
 
-# Use a specific agent (claude or opencode)
+# Use a specific agent (claude, codex, or opencode)
 autospec run -a --agent opencode "Add REST API endpoints"
 autospec run -a --agent claude "Add unit tests"
+autospec run -a --agent codex "Add CLI smoke tests"
 ```
 
 ### Shortcut Commands
@@ -289,7 +292,7 @@ Priority: Environment vars > Project config > User config > Defaults
 # .autospec/config.yml
 
 # Agent configuration
-agent_preset: claude                  # Built-in: claude | codex | opencode
+agent_preset: ""                      # Empty falls back to claude; built-in: claude | codex | opencode
 skip_permissions: true                # Autonomous mode for supported agents
 custom_agent_cmd: ""                  # Custom command template with {{PROMPT}} placeholder
 # custom_agent:                       # Structured agent config (alternative to custom_agent_cmd)
@@ -412,14 +415,17 @@ See [docs/public/troubleshooting.md](docs/public/troubleshooting.md) for common 
 `autospec init` installs agent-native prompts for interactive sessions. Claude Code receives project skills such as `.claude/skills/autospec.specify/SKILL.md`, preserving `/autospec.specify` invocation. Codex and OpenCode share `.agents/skills/autospec-*` skills for interactive `$autospec-specify` / `$autospec-clarify` usage. Codex and OpenCode CLI workflow runs receive rendered prompt text directly through `codex exec` and `opencode run`; OpenCode init no longer generates `.opencode/command` files.
 
 ```bash
-/autospec.specify    # Generate spec.yaml interactively
-/autospec.plan       # Generate plan.yaml
-/autospec.tasks      # Generate tasks.yaml
-/autospec.implement  # Execute implementation
-/autospec.clarify    # Refine specifications
-/autospec.analyze    # Cross-artifact analysis
-/autospec.checklist  # Generate quality checklist
-/autospec.constitution  # Create project constitution
+# Claude Code skill aliases
+/autospec.specify       # Generate spec.yaml interactively
+/autospec.plan          # Generate plan.yaml
+/autospec.tasks         # Generate tasks.yaml
+/autospec.implement     # Execute implementation
+
+# Codex/OpenCode shared skill names
+$autospec-specify "Add user auth"
+$autospec-plan
+$autospec-tasks
+$autospec-implement
 ```
 
 Use these when you prefer chat-based iteration over autospec's automated (`-p`) mode.
@@ -441,7 +447,7 @@ Use these when you prefer chat-based iteration over autospec's automated (`-p`) 
 
 ## 📥 Build from Source
 
-Requires Go 1.21+
+Requires Go 1.25+
 
 ```bash
 git clone https://github.com/ariel-frischer/autospec.git

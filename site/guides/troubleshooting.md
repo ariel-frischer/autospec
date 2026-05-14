@@ -793,4 +793,4 @@ AUTOSPEC_*                     # Environment variables
 - [FAQ](faq) - Frequently asked questions
 - [CLI Reference](/autospec/reference/cli) - Complete command documentation
 - [Configuration Reference](/autospec/reference/configuration) - All configuration options
-- [Architecture Internals](/autospec/architecture/internals) - How spec detection and retry work
+- [FAQ](faq) - How spec detection and retry work

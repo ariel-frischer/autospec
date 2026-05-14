@@ -831,4 +831,4 @@ Enable multiple hooks to customize behavior:
 - [CLI Commands](cli) - Complete command reference with flags and examples
 - [YAML Schemas](yaml-schemas) - Artifact structure and validation rules
 - [Troubleshooting](/autospec/guides/troubleshooting) - Configuration issues and solutions
-- [Architecture Internals](/autospec/architecture/internals) - Spec detection and retry systems
+- [FAQ](/autospec/guides/faq) - Spec detection and retry workflow notes
