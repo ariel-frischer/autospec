@@ -1,13 +1,9 @@
-//go:build !windows
-
 // Package uninstall provides functionality for completely removing autospec from a system.
 package uninstall
 
 import (
 	"os"
 	"path/filepath"
-
-	"golang.org/x/sys/unix"
 )
 
 // TargetType represents the type of an uninstall target
@@ -53,17 +49,6 @@ func DetectBinaryLocation() (string, error) {
 	}
 
 	return resolved, nil
-}
-
-// RequiresSudo checks if removing a file at the given path requires elevated privileges.
-// It returns true if the file is in a system directory where the current user
-// doesn't have write permission.
-func RequiresSudo(path string) bool {
-	// Check if we can write to the parent directory
-	dir := filepath.Dir(path)
-
-	// Use unix.Access to check write permission
-	return unix.Access(dir, unix.W_OK) != nil
 }
 
 // GetUninstallTargets returns all targets that should be removed during uninstall.
