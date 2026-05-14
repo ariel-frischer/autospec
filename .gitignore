@@ -73,6 +73,7 @@ tasks/
 .release/
 .grepai/
 .agents/skills/polish/
+.agents/skills/release/
 
 # Dolt database files (added by bd init)
 .dolt/
