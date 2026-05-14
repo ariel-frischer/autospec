@@ -116,7 +116,7 @@ func validateVersion(v *Version, index int) error {
 		}
 	}
 
-	if v.Changes.IsEmpty() {
+	if v.Changes.IsEmpty() && !v.IsUnreleased() {
 		return &ValidationError{
 			Field:   fmt.Sprintf("versions[%d].changes", index),
 			Message: "at least one change entry is required",
