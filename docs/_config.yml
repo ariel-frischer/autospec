@@ -1,6 +1,6 @@
 # Jekyll configuration for GitHub Pages
 title: AutoSpec
-description: Automated SpecKit workflow validation for Claude Code
+description: Automated SpecKit workflow validation for CLI coding agents
 theme: jekyll-theme-cayman
 baseurl: "/autospec"
 url: "https://ariel-frischer.github.io"

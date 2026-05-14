@@ -1,6 +1,6 @@
 # OpenCode Settings
 
-> **Verified with:** OpenCode v1.0.223 (2026-01-03)
+> **Verified with:** OpenCode 1.14.46 (2026-05-13)
 
 This document covers OpenCode configuration for use with autospec.
 
@@ -89,16 +89,16 @@ autospec init --ai claude,opencode
 
 **Default behavior:** Permissions write to global config so they apply across all projects. Use `--project` for project-specific overrides.
 
-## Command Directory Structure
+## Skill Directory Structure
 
-OpenCode stores command templates in a different location than Claude:
+Autospec installs shared Agent Skills for OpenCode:
 
-| Agent | Command Directory |
-|-------|-------------------|
-| Claude | `.claude/commands/` (plural) |
-| OpenCode | `.opencode/command/` (singular) |
+| Agent | Directory |
+|-------|-----------|
+| Claude | `.claude/skills/autospec.*/SKILL.md` |
+| OpenCode shared skills | `.agents/skills/autospec-*/SKILL.md` |
 
-When you run `autospec init --ai opencode`, templates are installed to `.opencode/command/autospec.*.md`.
+When you run `autospec init --ai opencode`, autospec installs shared skills to `.agents/skills/autospec-*/SKILL.md` for OpenCode skill-aware sessions. It no longer creates `.opencode/command/autospec.*.md`; workflow runs send rendered prompt text directly through `opencode run`.
 
 ## Automatic Package Installation Behavior
 
@@ -108,7 +108,6 @@ When OpenCode runs, it automatically installs npm packages into your project's `
 
 ```
 .opencode/
-├── command/           # autospec command templates (expected)
 ├── node_modules/      # npm packages (auto-created by OpenCode)
 ├── package.json       # depends on @opencode-ai/plugin (auto-created)
 ├── bun.lock           # Bun lockfile (auto-created)
@@ -176,23 +175,22 @@ OpenCode uses different invocation patterns for automated and interactive modes:
 ### Automated Mode (specify, plan, tasks, implement)
 
 ```bash
-opencode run "feature description" --command autospec.specify
+opencode run "<rendered autospec prompt>"
 ```
 
-Pattern: `opencode run <message> --command <command-name>`
+Pattern: `opencode run <message>`
 
 Key differences from Claude:
 - Uses `run` subcommand (not `-p` flag)
-- Command name is passed via `--command` flag at the end
 - Message is a positional argument
 
 ### Interactive Mode (clarify, analyze)
 
 ```bash
-opencode --prompt "/autospec.clarify"
+opencode --prompt '$autospec-clarify'
 ```
 
-Pattern: `opencode --prompt "<slash-command>"`
+Pattern: `opencode --prompt '<skill-reference>'`
 
 Key differences:
 - No `run` subcommand
@@ -324,8 +322,8 @@ If you see `"deny"`, change it to `"allow"`.
 
 Verify the command pattern:
 
-- **Automated**: `opencode run "message" --command autospec.specify`
-- **Interactive**: `opencode --prompt "/autospec.clarify"`
+- **Automated**: `opencode run "<rendered autospec prompt>"`
+- **Interactive**: `opencode --prompt '$autospec-clarify'`
 
 ### Model Not Found
 

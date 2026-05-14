@@ -51,7 +51,7 @@ var initCmd = &cobra.Command{
 	Long: `Initialize autospec with everything needed to get started.
 
 This command:
-  1. Installs command templates to .claude/commands/ (automatic)
+  1. Installs Claude skills to .claude/skills/ when Claude is selected
   2. Creates user-level configuration at ~/.config/autospec/config.yml
 
 If config already exists, it is left unchanged (use --force to overwrite).
@@ -185,6 +185,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	_ = newConfigCreated // Used for tracking first-time setup
 
+	if err := ensureAutospecGitignore("."); err != nil {
+		fmt.Fprintf(out, "%s Failed to save .autospec/.gitignore: %v\n", cYellow("⚠"), err)
+	}
+
 	// Handle agent selection and configuration
 	selectedAgents, agentConfigs, err := handleAgentConfiguration(cmd, out, project, noAgents, aiAgents)
 	if err != nil {
@@ -271,10 +275,17 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 
 	// Run agent selection prompt
 	selected := promptAgentSelection(cmd.InOrStdin(), out, agents)
+	defaultAgent := defaultAgentForSelection(selected, cfg.AgentPreset)
+	if len(selected) > 1 {
+		defaultAgent = promptDefaultAgentSelection(cmd.InOrStdin(), out, selectedAgentOptions(agents, selected), cfg.AgentPreset)
+	}
 
 	// Show selected agents feedback
 	if len(selected) > 0 {
 		fmt.Fprintf(out, "%s %s: %s\n", cGreen("✓"), cBold("Selected"), strings.Join(selected, ", "))
+		if defaultAgent != "" {
+			fmt.Fprintf(out, "%s %s: %s\n", cGreen("✓"), cBold("Default agent"), defaultAgent)
+		}
 	} else {
 		fmt.Fprintf(out, "%s No agents selected\n", cYellow("⚠"))
 	}
@@ -282,7 +293,7 @@ func handleAgentConfiguration(cmd *cobra.Command, out io.Writer, project, noAgen
 	// Configure selected agents and save preferences
 	// Use "." as project directory for real init command
 	// Pass project flag to determine whether to write to project-level or global config
-	sandboxPrompts, agentConfigs, err := configureSelectedAgents(out, selected, cfg, configPath, ".", project)
+	sandboxPrompts, agentConfigs, err := configureSelectedAgents(out, selected, defaultAgent, cfg, configPath, ".", project)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -395,8 +406,9 @@ func configureSpecificAgents(cmd *cobra.Command, out io.Writer, project bool, ai
 	}
 
 	// Save agent preferences
+	defaultAgent := configuredAgents[0]
 	cfg.DefaultAgents = configuredAgents
-	if err := persistAgentPreferences(out, configuredAgents, cfg, configPath); err != nil {
+	if err := persistAgentPreferences(out, configuredAgents, defaultAgent, cfg, configPath); err != nil {
 		fmt.Fprintf(out, "%s Failed to save agent preferences: %v\n", cYellow("⚠"), err)
 	}
 
@@ -445,6 +457,18 @@ type agentConfigInfo struct {
 	settingsFile string // path to settings file that was modified
 }
 
+const autospecGitignoreContent = `# Local autospec runtime files
+init.yml
+state/
+context/
+cache/
+tmp/
+
+# Legacy completion markers
+SPEC_DONE
+IMPLEMENTATION_DONE
+`
+
 // pendingActions holds all user choices collected during init prompts.
 // Changes are applied atomically after all questions are answered.
 type pendingActions struct {
@@ -463,7 +487,7 @@ type initResult struct {
 // and the configuration info for each agent (for init.yml creation).
 // projectDir specifies where to write agent config files (e.g., .claude/settings.local.json).
 // projectLevel determines whether to write to project-level config (true) or global config (false).
-func configureSelectedAgents(out io.Writer, selected []string, cfg *config.Configuration, configPath, projectDir string, projectLevel bool) ([]sandboxPromptInfo, []agentConfigInfo, error) {
+func configureSelectedAgents(out io.Writer, selected []string, defaultAgent string, cfg *config.Configuration, configPath, projectDir string, projectLevel bool) ([]sandboxPromptInfo, []agentConfigInfo, error) {
 	if len(selected) == 0 {
 		fmt.Fprintln(out, "⚠ Warning: No agents selected. You may need to configure agent permissions manually.")
 		return nil, nil, nil
@@ -521,7 +545,7 @@ func configureSelectedAgents(out io.Writer, selected []string, cfg *config.Confi
 	}
 
 	// Persist selected agents to config
-	if err := persistAgentPreferences(out, selected, cfg, configPath); err != nil {
+	if err := persistAgentPreferences(out, selected, defaultAgent, cfg, configPath); err != nil {
 		return nil, nil, err
 	}
 
@@ -566,7 +590,12 @@ func checkSandboxConfiguration(agentName string, agent cliagent.Agent, projectDi
 
 // handleSandboxConfiguration prompts for and applies sandbox configuration.
 func handleSandboxConfiguration(cmd *cobra.Command, out io.Writer, prompts []sandboxPromptInfo, projectDir, specsDir string) error {
-	if !sandboxPromptEnabled || len(prompts) == 0 {
+	if len(prompts) == 0 {
+		return nil
+	}
+
+	sandboxFlag := resolveBoolFlag(cmd, "sandbox", "no-sandbox")
+	if !sandboxPromptEnabled && sandboxFlag == nil {
 		return nil
 	}
 
@@ -862,7 +891,7 @@ func updateSkipPermissionsInConfig(configPath string, skipPermissions bool) erro
 // handleSkipPermissionsPrompt prompts the user about the skip_permissions setting.
 // This is only called when Claude is selected as an agent.
 // If --skip-permissions or --no-skip-permissions flag is set, bypasses the prompt.
-// In non-interactive mode without flags, it silently sets the default value (false) without prompting.
+// In non-interactive mode without flags, it silently sets the default value (true) without prompting.
 // If skip_permissions is already set to true, it just displays the value without prompting.
 // If skip_permissions is false or not set, it prompts the user.
 func handleSkipPermissionsPrompt(cmd *cobra.Command, out io.Writer, configPath string, project bool) {
@@ -903,11 +932,11 @@ func handleSkipPermissionsPrompt(cmd *cobra.Command, out io.Writer, configPath s
 			fmt.Fprintf(out, "%s skip_permissions: true %s\n",
 				cGreen("✓"), cDim("(already enabled)"))
 		} else {
-			// Use default value (false) without prompting
-			if err := updateSkipPermissionsInConfig(configPath, false); err != nil {
+			// Use default value (true) without prompting
+			if err := updateSkipPermissionsInConfig(configPath, true); err != nil {
 				fmt.Fprintf(out, "%s Failed to update skip_permissions: %v\n", cYellow("⚠"), err)
 			} else {
-				fmt.Fprintf(out, "%s skip_permissions: false %s\n",
+				fmt.Fprintf(out, "%s skip_permissions: true %s\n",
 					cGreen("✓"), cDim("(default, non-interactive)"))
 			}
 		}
@@ -991,10 +1020,13 @@ func displayAgentConfigResult(out io.Writer, agentName string, result *cliagent.
 }
 
 // persistAgentPreferences saves the selected agents to config for future init runs.
-// Also updates agent_preset if only one agent is selected and agent_preset is currently empty.
-func persistAgentPreferences(out io.Writer, selected []string, cfg *config.Configuration, configPath string) error {
+// Also updates agent_preset when an execution default is provided.
+func persistAgentPreferences(out io.Writer, selected []string, defaultAgent string, cfg *config.Configuration, configPath string) error {
 	// Update config with new agent preferences
 	cfg.DefaultAgents = selected
+	if defaultAgent != "" && !containsAgent(selected, defaultAgent) {
+		defaultAgent = defaultAgentForSelection(selected, "")
+	}
 
 	// Read existing config file to preserve formatting and comments
 	existingContent, err := os.ReadFile(configPath)
@@ -1006,11 +1038,10 @@ func persistAgentPreferences(out io.Writer, selected []string, cfg *config.Confi
 	// Update the default_agents line in the config file
 	newContent := updateDefaultAgentsInConfig(string(existingContent), selected)
 
-	// If exactly one agent selected and agent_preset is empty, set it as the default
-	// This ensures the selected agent is used for execution, not just configuration
-	if len(selected) == 1 && cfg.AgentPreset == "" {
-		newContent = updateAgentPresetInConfig(newContent, selected[0])
-		fmt.Fprintf(out, "%s %s: %s %s\n", cGreen("✓"), cBold("agent_preset"), selected[0], cDim("(set as default for execution)"))
+	if defaultAgent != "" {
+		newContent = updateAgentPresetInConfig(newContent, defaultAgent)
+		cfg.AgentPreset = defaultAgent
+		fmt.Fprintf(out, "%s %s: %s %s\n", cGreen("✓"), cBold("agent_preset"), defaultAgent, cDim("(set as default for execution)"))
 	}
 
 	if err := os.WriteFile(configPath, []byte(newContent), 0o644); err != nil {
@@ -1094,6 +1125,18 @@ func containsAgent(agents []string, name string) bool {
 	return false
 }
 
+func defaultAgentForSelection(selected []string, currentDefault string) string {
+	if len(selected) == 0 {
+		return ""
+	}
+
+	if containsAgent(selected, currentDefault) {
+		return currentDefault
+	}
+
+	return selected[0]
+}
+
 // isTerminalFunc is a function variable for terminal detection, allowing test mocking.
 var isTerminalFunc = func() bool {
 	return term.IsTerminal(int(os.Stdin.Fd()))
@@ -1170,7 +1213,7 @@ func initializeConfig(out io.Writer, project, force bool) (bool, error) {
 		return false, nil
 	}
 
-	if err := writeDefaultConfig(configPath); err != nil {
+	if err := writeDefaultConfigForScope(configPath, project); err != nil {
 		return false, fmt.Errorf("writing default config: %w", err)
 	}
 
@@ -1225,11 +1268,18 @@ func getConfigPath(project bool) (string, error) {
 
 // writeDefaultConfig writes the default configuration to the given path
 func writeDefaultConfig(configPath string) error {
+	return writeDefaultConfigForScope(configPath, false)
+}
+
+func writeDefaultConfigForScope(configPath string, project bool) error {
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	template := config.GetDefaultConfigTemplate()
+	if project {
+		template = strings.Replace(template, "state_dir: ~/.autospec/state", "state_dir: ./.autospec/state", 1)
+	}
 	if err := os.WriteFile(configPath, []byte(template), 0o644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
@@ -1460,6 +1510,38 @@ func addAutospecToGitignore(gitignorePath string) error {
 	return nil
 }
 
+func ensureAutospecGitignore(projectDir string) error {
+	gitignorePath := filepath.Join(projectDir, ".autospec", ".gitignore")
+	data, err := os.ReadFile(gitignorePath)
+	if err == nil {
+		content := string(data)
+		if strings.Contains(content, autospecGitignoreContent) {
+			return nil
+		}
+		if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		if content != "" {
+			content += "\n"
+		}
+		content += autospecGitignoreContent
+		if err := os.WriteFile(gitignorePath, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("writing .autospec/.gitignore: %w", err)
+		}
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("reading .autospec/.gitignore: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(gitignorePath), 0o755); err != nil {
+		return fmt.Errorf("creating .autospec directory: %w", err)
+	}
+	if err := os.WriteFile(gitignorePath, []byte(autospecGitignoreContent), 0o644); err != nil {
+		return fmt.Errorf("writing .autospec/.gitignore: %w", err)
+	}
+	return nil
+}
+
 // gitignoreNeedsUpdate checks if .autospec/ needs to be added to .gitignore.
 // Returns true if gitignore doesn't exist or doesn't contain .autospec/.
 func gitignoreNeedsUpdate() bool {
@@ -1485,7 +1567,7 @@ func handleGitignorePrompt(cmd *cobra.Command, out io.Writer) {
 
 	fmt.Fprintf(out, "\n💡 Add .autospec/ to .gitignore?\n")
 	fmt.Fprintf(out, "   → Recommended for shared/public/company repos (prevents config conflicts)\n")
-	fmt.Fprintf(out, "   → Personal projects can keep .autospec/ tracked for backup\n")
+	fmt.Fprintf(out, "   → Personal projects can leave it trackable for version history\n")
 
 	if promptYesNo(cmd, "Add .autospec/ to .gitignore?") {
 		if err := addAutospecToGitignore(gitignorePath); err != nil {
@@ -1544,8 +1626,8 @@ func collectGitignoreChoice(cmd *cobra.Command, out io.Writer) bool {
 
 	// Interactive prompt
 	fmt.Fprintf(out, "Add %s to .gitignore?\n", cBold(".autospec/"))
-	fmt.Fprintf(out, "  %s %s ignore (shared/public repos - prevents conflicts)\n", cGreen("y"), cDim("→"))
-	fmt.Fprintf(out, "  %s %s track in git (personal projects - enables backup)\n", cYellow("n"), cDim("→"))
+	fmt.Fprintf(out, "  %s %s ignore all autospec project files (public/local-only repos)\n", cGreen("y"), cDim("→"))
+	fmt.Fprintf(out, "  %s %s allow versioning of autospec project files\n", cYellow("n"), cDim("→"))
 	result := promptYesNo(cmd, "Add to .gitignore?")
 	fmt.Fprintf(out, "\n") // Visual separation before next question
 	return result
@@ -1584,7 +1666,7 @@ func collectConstitutionChoice(cmd *cobra.Command, out io.Writer, constitutionEx
 	fmt.Fprintf(out, "%s %s (one-time setup per project)\n", cMagenta("📜"), cBold("Constitution"))
 	fmt.Fprintf(out, "   %s Defines your project's coding standards and principles\n", cDim("→"))
 	fmt.Fprintf(out, "   %s Required before running any autospec workflows\n", cDim("→"))
-	fmt.Fprintf(out, "   %s Runs a Claude session to analyze your project\n", cDim("→"))
+	fmt.Fprintf(out, "   %s Runs the configured agent to analyze your project\n", cDim("→"))
 	return promptYesNoDefaultYes(cmd, "Create constitution?")
 }
 
@@ -1602,7 +1684,7 @@ func applyPendingActions(cmd *cobra.Command, out io.Writer, pending pendingActio
 		}
 	}
 
-	// Run constitution workflow (Claude session)
+	// Run constitution workflow with the configured agent.
 	if pending.createConstitution {
 		printSectionHeader(out, "Running: Constitution")
 		if runConstitutionFromInit(cmd, configPath) {

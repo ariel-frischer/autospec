@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ariel-frischer/autospec/internal/constitution"
 	"github.com/ariel-frischer/autospec/internal/git"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/version"
@@ -19,14 +20,15 @@ import (
 // These fields map to template variables in command markdown files:
 // {{.FeatureDir}}, {{.FeatureSpec}}, {{.ImplPlan}}, etc.
 type Context struct {
-	FeatureDir      string   // Path to the feature directory (e.g., specs/103-feature-name)
-	FeatureSpec     string   // Path to spec.yaml file
-	ImplPlan        string   // Path to plan.yaml file
-	TasksFile       string   // Path to tasks.yaml file
-	AutospecVersion string   // Current autospec version string (e.g., "autospec 0.9.0")
-	CreatedDate     string   // ISO 8601 timestamp for artifact creation
-	IsGitRepo       bool     // Whether current directory is in a git repository
-	AvailableDocs   []string // List of available artifact files in feature directory
+	FeatureDir       string   // Path to the feature directory (e.g., specs/103-feature-name)
+	FeatureSpec      string   // Path to spec.yaml file
+	ImplPlan         string   // Path to plan.yaml file
+	TasksFile        string   // Path to tasks.yaml file
+	ConstitutionFile string   // Path to project constitution file, when present
+	AutospecVersion  string   // Current autospec version string (e.g., "autospec 0.9.0")
+	CreatedDate      string   // ISO 8601 timestamp for artifact creation
+	IsGitRepo        bool     // Whether current directory is in a git repository
+	AvailableDocs    []string // List of available artifact files in feature directory
 }
 
 // Options configures the behavior of ComputeContext.
@@ -84,6 +86,9 @@ func buildContextFromMetadata(meta *spec.Metadata, hasGit bool) *Context {
 		ctx.FeatureSpec = filepath.Join(meta.Directory, "spec.yaml")
 		ctx.ImplPlan = filepath.Join(meta.Directory, "plan.yaml")
 		ctx.TasksFile = filepath.Join(meta.Directory, "tasks.yaml")
+	}
+	if path, ok := constitution.Find(); ok {
+		ctx.ConstitutionFile = path
 	}
 
 	return ctx

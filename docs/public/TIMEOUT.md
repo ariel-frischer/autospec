@@ -2,7 +2,7 @@
 
 ## Overview
 
-The autospec CLI supports configurable timeouts for Claude command execution to prevent indefinite hangs in automated workflows. When a command exceeds the configured timeout, it is automatically terminated and returns exit code 5.
+The autospec CLI supports configurable timeouts for configured agent command execution to prevent indefinite hangs in automated workflows. When a command exceeds the configured timeout, it is automatically terminated and returns exit code 5.
 
 ## Quick Start
 

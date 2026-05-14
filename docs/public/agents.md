@@ -8,8 +8,9 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 
 | Agent | Binary | Description | Status |
 |-------|--------|-------------|--------|
-| `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported |
-| `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported |
+| `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.139 |
+| `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.130.0 |
+| `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.14.46 |
 
 ### Experimental Agents (Untested)
 
@@ -17,7 +18,6 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 |-------|--------|-------------|--------|
 | `cline` | `cline` | Cline VSCode extension CLI | ⚠️ Untested |
 | `gemini` | `gemini` | Google Gemini CLI | ⚠️ Untested |
-| `codex` | `codex` | OpenAI Codex CLI | ⚠️ Untested |
 | `goose` | `goose` | Goose AI CLI | ⚠️ Untested |
 
 These agents have code-level support (agent abstraction, command building, doctor checks) but have not been tested with real binaries. They may require adjustments. Please [report issues](https://github.com/ariel-frischer/autospec/issues) if you try them.
@@ -63,8 +63,8 @@ Override the configured agent for a single command execution:
 # Use gemini for this run only
 autospec run -a "Add user auth" --agent gemini
 
-# Use codex for planning only
-autospec plan --agent codex
+# Use codex for a full run
+autospec run -a --agent codex "Add user auth"
 
 # Use cline for implementation
 autospec implement --agent cline
@@ -90,7 +90,7 @@ These two config fields serve different purposes:
 | Field | Purpose | Used When |
 |-------|---------|-----------|
 | `agent_preset` | Selects which agent runs commands | Runtime (every command) |
-| `default_agents` | Pre-selects checkboxes in `autospec init` prompt | Initialization only |
+| `default_agents` | Pre-selects checkboxes in `autospec init` prompt | Initialization prompt defaults |
 
 **Example config:**
 
@@ -98,13 +98,13 @@ These two config fields serve different purposes:
 # This agent runs your commands:
 agent_preset: opencode
 
-# These are just remembered selections for next `autospec init`:
+# These are remembered selections for next `autospec init`:
 default_agents:
   - claude
   - opencode
 ```
 
-If `agent_preset` is empty, **claude is used regardless of what's in `default_agents`**.
+If `agent_preset` is empty, **claude is used regardless of what's in `default_agents`**. Interactive `autospec init` sets `agent_preset` automatically when one agent is selected, or asks which selected agent should be the execution default when multiple agents are selected. Non-interactive `autospec init --ai claude,codex,opencode` uses the first selected agent as the execution default.
 
 ## Environment Configuration
 
@@ -240,10 +240,10 @@ Each agent has specific requirements:
 | Agent | Binary in PATH | Environment Variables | Status |
 |-------|----------------|----------------------|--------|
 | `claude` | `claude` | - (uses subscription by default) | ✅ Supported |
+| `codex` | `codex` | - (ChatGPT login or API auth via Codex CLI) | ✅ Supported |
 | `opencode` | `opencode` | - | ✅ Supported |
 | `cline` | `cline` | - | ⚠️ Untested |
 | `gemini` | `gemini` | `GEMINI_API_KEY` | ⚠️ Untested |
-| `codex` | `codex` | `OPENAI_API_KEY` | ⚠️ Untested |
 | `goose` | `goose` | - | ⚠️ Untested |
 
 Use `autospec doctor` to verify agent availability and configuration.
@@ -252,7 +252,7 @@ Use `autospec doctor` to verify agent availability and configuration.
 
 The `autospec doctor` command shows the status of available agents.
 
-**Production builds** only check production agents (claude, opencode):
+**Production builds** check supported agents (claude, codex, opencode):
 
 ```bash
 $ autospec doctor
@@ -263,6 +263,7 @@ $ autospec doctor
 
 CLI Agents:
   ✓ claude: installed (v2.0.76)
+  ✓ codex: installed (codex-cli 0.130.0; tested 0.130.0)
   ✓ opencode: installed (v1.0.223)
 ```
 
@@ -274,7 +275,7 @@ $ autospec doctor
 CLI Agents:
   ✓ claude: installed (v2.0.76)
   ○ cline: not found in PATH
-  ○ codex: missing OPENAI_API_KEY environment variable
+  ✓ codex: installed (codex-cli 0.130.0; tested 0.130.0)
   ○ gemini: not found in PATH
   ○ goose: not found in PATH
   ✓ opencode: installed (v1.0.223)
@@ -345,18 +346,63 @@ custom_agent_cmd: "ssh build-server 'claude -p {{PROMPT}}'"
 custom_agent_cmd: "docker run --rm ai-agent run {{PROMPT}}"
 ```
 
+## Codex Configuration
+
+Codex is a supported agent for autospec's non-interactive workflows.
+
+### Invocation Pattern
+
+autospec sends rendered prompt text to Codex using:
+
+```bash
+codex exec --json "<rendered autospec prompt>"
+```
+
+Use Codex for one command with:
+
+```bash
+autospec run -a --agent codex "Add user auth"
+autospec implement --agent codex
+```
+
+### Authentication
+
+Codex authentication is handled by the Codex CLI itself. autospec does not require `OPENAI_API_KEY`; Codex can use ChatGPT login or API credentials configured through Codex.
+
+Useful environment variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | Optional API authentication for Codex |
+| `OPENAI_BASE_URL` | Optional API-compatible base URL override |
+| `CODEX_HOME` | Optional Codex home/config directory override |
+
+### Settings
+
+Codex reads user config from `~/.codex/config.toml`. Project-level initialization with `autospec init --project --ai codex` creates `.codex/config.toml` as safe project metadata and registers project-local shared skills under `.agents/skills/autospec-*/SKILL.md`.
+
+Codex supports `--sandbox`, `--ask-for-approval`, and `--dangerously-bypass-approvals-and-sandbox` in `codex exec`. autospec maps `skip_permissions: true` to `--dangerously-bypass-approvals-and-sandbox`.
+
+autospec uses compact Codex output by default. It runs `codex exec --json`, parses Codex JSONL events, and shows color-coded concise summaries for agent messages, command executions, file changes, and useful reasoning/tool events. Set `codex_output.color: false` to disable ANSI color, or `codex_output.mode: full` to restore Codex's native terminal transcript. Codex can also write the final assistant message with `codex exec -o <file>`. autospec validates generated autospec artifacts after Codex exits.
+
+Codex and OpenCode do not use autospec command-template directories. Instead, autospec generates shared Agent Skills from each embedded `autospec.*` prompt. In interactive sessions, use `$autospec-specify "Add user auth"`, `$autospec-plan`, `$autospec-tasks`, `$autospec-implement`, `$autospec-constitution`, `$autospec-clarify`, `$autospec-checklist`, or `$autospec-analyze`.
+
+See [Codex Settings](./codex-settings.md) for details.
+
 ## OpenCode Configuration
 
 OpenCode is a fully supported agent with its own configuration patterns that differ from Claude Code.
 
-### Command Directory Structure
+### Skill Directory Structure
 
-| Agent | Command Directory | Note |
-|-------|-------------------|------|
-| Claude | `.claude/commands/` | Plural "commands" |
-| OpenCode | `.opencode/command/` | Singular "command" |
+| Agent | Directory | Note |
+|-------|-----------|------|
+| Claude | `.claude/skills/autospec.*/SKILL.md` | Claude skills preserve `/autospec.specify`-style invocation |
+| OpenCode | `.agents/skills/autospec-*/SKILL.md` | Shared skills for skill-aware sessions |
 
-When you run `autospec init --ai opencode`, command templates are installed to `.opencode/command/autospec.*.md`.
+When you run `autospec init --ai opencode`, shared skills are installed to `.agents/skills/autospec-*/SKILL.md`. OpenCode command files under `.opencode/command/` are no longer generated.
+
+When you run `autospec init --ai claude`, skills are installed to `.claude/skills/autospec.*/SKILL.md`. Legacy `.claude/commands/` files still work in Claude Code, but autospec init no longer creates them for Claude.
 
 ### Invocation Pattern
 
@@ -364,12 +410,12 @@ OpenCode uses a different command invocation pattern than Claude:
 
 | Agent | Invocation Pattern |
 |-------|-------------------|
-| Claude | `claude -p /autospec.specify "prompt"` |
-| OpenCode | `opencode run "prompt" --command autospec.specify` |
+| Claude | `claude -p "<rendered autospec prompt>"` |
+| Codex | `codex exec "<rendered autospec prompt>"` |
+| OpenCode | `opencode run "<rendered autospec prompt>"` |
 
 Key differences:
 - OpenCode uses `run` subcommand (not `-p` flag)
-- Command name is passed via `--command` flag at the end
 - Non-interactive execution is the default with `run`
 
 ### Model Configuration
@@ -493,11 +539,14 @@ export AUTOSPEC_AGENT_PRESET=opencode
 
 ### Multi-Agent Initialization
 
-Initialize a project for both Claude and OpenCode:
+Initialize a project for one or more supported agents:
 
 ```bash
-# Initialize for both agents
-autospec init --ai claude,opencode
+# Initialize for supported agents
+autospec init --ai claude,codex,opencode
+
+# Initialize for Codex only
+autospec init --ai codex
 
 # Initialize for OpenCode only
 autospec init --ai opencode
@@ -545,10 +594,9 @@ Some agents require API keys or configuration:
 ```bash
 # For Gemini
 export GEMINI_API_KEY=your-api-key
-
-# For Codex
-export OPENAI_API_KEY=your-api-key
 ```
+
+Codex does not require `OPENAI_API_KEY`; it can use ChatGPT login or API auth managed by the Codex CLI. `OPENAI_API_KEY` remains optional for API billing.
 
 ### Custom Agent Template Issues
 

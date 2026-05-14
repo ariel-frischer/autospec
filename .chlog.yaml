@@ -1,0 +1,4 @@
+repo_url: https://github.com/ariel-frischer/autospec
+changelog_file: internal/changelog/changelog.yaml
+public_file: CHANGELOG.md
+strict_categories: true

@@ -26,7 +26,9 @@ Stop AI slop. Build features systematically with AI-powered specification workfl
 
 autospec brings structure to AI coding: **spec → plan → tasks → implement** - all in one command.
 
-Built for Claude Code and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
+Built for CLI coding agents including Claude Code, Codex, and OpenCode, and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
+
+Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), and [OpenCode](https://opencode.ai).
 
 ```bash
 # Generate everything: spec → plan → tasks → implement
@@ -84,7 +86,7 @@ Creates `specs/<feature-name>/` with YAML artifacts at each stage:
 
 ### Prerequisites
 
-- [Claude Code CLI](https://code.claude.com/docs/en/setup) installed and configured
+- Claude Code, Codex CLI, or OpenCode installed and configured
 - Git
 
 ### Installation
@@ -137,7 +139,7 @@ Each artifact is validated before proceeding to the next stage, ensuring quality
 | [Quickstart](/autospec/quickstart) | Get up and running in 5 minutes |
 | [Reference](/autospec/reference/) | Complete CLI command reference |
 | [Guides](/autospec/guides/) | Configuration, troubleshooting, FAQ |
-| [Architecture](/autospec/architecture/) | System design and internals |
+| [FAQ](/autospec/guides/faq) | Common workflow and agent questions |
 
 ---
 
@@ -146,12 +148,12 @@ Each artifact is validated before proceeding to the next stage, ensuring quality
 | Feature | GitHub SpecKit | autospec |
 |:--------|:--------------|:---------|
 | Output Format | Markdown | **YAML** (machine-readable) |
-| Validation | Manual review | **Automatic** with retry logic |
-| Context Efficiency | Full prompt each time | **Smart YAML injection** + **phase-isolated sessions** |
-| Status Updates | Manual | **Auto-updates** spec.yaml & tasks.yaml |
-| Phase Orchestration | Manual | **Automated** with dependencies |
-| Session Isolation | Single session | **Per-phase/task** (80%+ cost savings) |
-| Implementation | Shell scripts | **Go** (type-safe, single binary) |
+| Workflow UX | Repetitive, non-composable command flow | **One-command end-to-end runs** (`autospec run -a`, `autospec prep`) |
+| Validation | Checklist/agent-driven review | **Programmatic validation** with retry logic |
+| Token Efficiency | Long implementation chats can accumulate large context | **Fresh bounded sessions per phase/task** (80%+ cost savings) |
+| Status Visibility | No built-in core status command | **Built-in phase/task progress** via `autospec st` |
+| Phase Orchestration | Agent-driven `/speckit.*` commands | **CLI-orchestrated** stages with dependency handling |
+| Workflow Engine | Prompt files + shell/PowerShell helpers | **Typed Go orchestration** in a single binary |
 
 ---
 

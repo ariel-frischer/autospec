@@ -33,8 +33,8 @@ Follow this execution flow:
 
      **Autospec-related (REQUIRED for autospec workflows):**
      - `.autospec/` - Contains constitution, config, memory, and generated scripts. The `constitution.yaml` is REQUIRED for all workflow stages (specify, plan, tasks, implement).
-     - `.claude/commands/` (if exists) - Slash commands for Claude Code agent. Required if using `agent_preset: claude`.
-     - `.opencode/command/` (if exists) - Slash commands for OpenCode agent (note: singular "command", not "commands"). Required if using `agent_preset: opencode`. Do NOT copy `.opencode/node_modules/`, `package.json`, or `bun.lock` - these are local dependencies.
+     - `.agents/skills/` (if exists) - Shared autospec skills for Codex and OpenCode skill-aware sessions.
+     - `.claude/skills/` (if exists) - Claude Code project skills. Required if using `agent_preset: claude`.
      - `opencode.json` (if exists) - OpenCode configuration file with permissions and model settings. Located at project root, not inside `.opencode/`.
 
      **IDE/Editor configuration:**
@@ -102,9 +102,9 @@ Follow this execution flow:
 
    # Copy essential configuration directories
    # Autospec-related (REQUIRED for autospec workflows)
-   copy_if_exists ".autospec"         # Constitution, config, memory, scripts
-   copy_if_exists ".claude/commands"  # Claude Code slash commands (plural)
-   copy_if_exists ".opencode/command" # OpenCode slash commands (singular, NOT .opencode/)
+   copy_if_exists ".autospec"       # Constitution, config, memory, scripts
+   copy_if_exists ".agents/skills"  # Shared Codex/OpenCode skills
+   copy_if_exists ".claude/skills"  # Claude Code project skills
 
    # Copy OpenCode config file if it exists
    if [ -f "$SOURCE_REPO/opencode.json" ]; then

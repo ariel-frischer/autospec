@@ -323,6 +323,26 @@ func TestWriteDefaultConfig(t *testing.T) {
 	assert.NotEmpty(t, content)
 }
 
+func TestInitializeProjectConfigUsesProjectLocalStateDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	previous, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(previous))
+	})
+
+	var out bytes.Buffer
+	created, err := initializeConfig(&out, true, false)
+	require.NoError(t, err)
+	require.True(t, created)
+
+	content, err := os.ReadFile(filepath.Join(tmpDir, ".autospec", "config.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "state_dir: ./.autospec/state")
+	assert.NotContains(t, string(content), "state_dir: ~/.autospec/state")
+}
+
 func TestWriteDefaultConfig_ErrorOnInvalidPath(t *testing.T) {
 	// Use a path that will fail (empty string would cause issues)
 	// On most systems, trying to write to root's protected areas would fail
@@ -633,6 +653,49 @@ func TestAddAutospecToGitignore_ExistingWithoutNewline(t *testing.T) {
 	assert.Equal(t, "node_modules/\n.autospec/\n", string(data))
 }
 
+func TestEnsureAutospecGitignore(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		existing string
+		want     string
+	}{
+		"creates file with local runtime ignores": {
+			want: autospecGitignoreContent,
+		},
+		"preserves existing content": {
+			existing: "# custom\nlogs/\n",
+			want:     "# custom\nlogs/\n\n" + autospecGitignoreContent,
+		},
+		"adds newline before autospec block": {
+			existing: "# custom",
+			want:     "# custom\n\n" + autospecGitignoreContent,
+		},
+		"is idempotent when autospec block exists": {
+			existing: autospecGitignoreContent,
+			want:     autospecGitignoreContent,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			if tt.existing != "" {
+				require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".autospec"), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".autospec", ".gitignore"), []byte(tt.existing), 0o644))
+			}
+
+			require.NoError(t, ensureAutospecGitignore(tmpDir))
+
+			data, err := os.ReadFile(filepath.Join(tmpDir, ".autospec", ".gitignore"))
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(data))
+		})
+	}
+}
+
 func TestPrintSummary_WithConstitution(t *testing.T) {
 	t.Parallel()
 
@@ -908,7 +971,7 @@ func TestConfigureSelectedAgents_NoAgentsSelected(t *testing.T) {
 	cfg := &config.Configuration{SpecsDir: "specs"}
 	tmpDir := t.TempDir()
 
-	_, _, err := configureSelectedAgents(&buf, []string{}, cfg, "config.yml", tmpDir, true)
+	_, _, err := configureSelectedAgents(&buf, []string{}, "", cfg, "config.yml", tmpDir, true)
 	require.NoError(t, err)
 
 	assert.Contains(t, buf.String(), "Warning")
@@ -927,7 +990,7 @@ func TestPersistAgentPreferences(t *testing.T) {
 	var buf bytes.Buffer
 	cfg := &config.Configuration{}
 
-	err = persistAgentPreferences(&buf, []string{"claude", "cline"}, cfg, configPath)
+	err = persistAgentPreferences(&buf, []string{"claude", "cline"}, "claude", cfg, configPath)
 	require.NoError(t, err)
 
 	// Verify file was updated
@@ -937,6 +1000,30 @@ func TestPersistAgentPreferences(t *testing.T) {
 	assert.Contains(t, string(content), "claude")
 	assert.Contains(t, string(content), "cline")
 	assert.Contains(t, buf.String(), "Agent preferences saved")
+}
+
+func TestPersistAgentPreferences_WithDefaultAgent(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yml")
+
+	initialContent := "specs_dir: specs\nagent_preset: \"\"\ndefault_agents: []\ntimeout: 30m\n"
+	err := os.WriteFile(configPath, []byte(initialContent), 0o644)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	cfg := &config.Configuration{}
+
+	err = persistAgentPreferences(&buf, []string{"claude", "codex", "opencode"}, "codex", cfg, configPath)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(content), `default_agents: ["claude", "codex", "opencode"]`)
+	assert.Contains(t, string(content), "agent_preset: codex")
+	assert.Contains(t, buf.String(), "set as default for execution")
 }
 
 func TestPersistAgentPreferences_FileNotExists(t *testing.T) {
@@ -949,7 +1036,7 @@ func TestPersistAgentPreferences_FileNotExists(t *testing.T) {
 	cfg := &config.Configuration{}
 
 	// Should not error if file doesn't exist
-	err := persistAgentPreferences(&buf, []string{"claude"}, cfg, configPath)
+	err := persistAgentPreferences(&buf, []string{"claude"}, "claude", cfg, configPath)
 	require.NoError(t, err)
 }
 
@@ -973,7 +1060,7 @@ func TestConfigureSelectedAgents_FilePermissionError(t *testing.T) {
 	_ = os.WriteFile(configPath, []byte("specs_dir: specs\ndefault_agents: []\n"), 0o644)
 
 	// Run configuration - even if one agent fails, others should complete
-	_, _, err := configureSelectedAgents(&buf, selected, cfg, configPath, tmpDir, true)
+	_, _, err := configureSelectedAgents(&buf, selected, "claude", cfg, configPath, tmpDir, true)
 	require.NoError(t, err)
 
 	// Verify output mentions Claude was configured (or tried to configure)
@@ -998,7 +1085,7 @@ func TestConfigureSelectedAgents_PartialConfigContinues(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yml")
 	_ = os.WriteFile(configPath, []byte("default_agents: []\n"), 0o644)
 
-	_, _, err := configureSelectedAgents(&buf, selected, cfg, configPath, tmpDir, true)
+	_, _, err := configureSelectedAgents(&buf, selected, "claude", cfg, configPath, tmpDir, true)
 	require.NoError(t, err)
 
 	output := buf.String()
@@ -1103,7 +1190,7 @@ func TestPersistAgentPreferences_Idempotency(t *testing.T) {
 	// Run 3 times
 	for i := 0; i < 3; i++ {
 		var buf bytes.Buffer
-		err := persistAgentPreferences(&buf, agents, cfg, configPath)
+		err := persistAgentPreferences(&buf, agents, "claude", cfg, configPath)
 		require.NoError(t, err, "run %d failed", i+1)
 	}
 
@@ -1112,7 +1199,7 @@ func TestPersistAgentPreferences_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify format is exactly what we expect
-	expectedContent := "specs_dir: specs\ndefault_agents: [\"claude\", \"cline\"]\ntimeout: 30m\n"
+	expectedContent := "specs_dir: specs\nagent_preset: claude\ndefault_agents: [\"claude\", \"cline\"]\ntimeout: 30m\n"
 	assert.Equal(t, expectedContent, string(content))
 }
 
@@ -1163,7 +1250,7 @@ func TestFullIdempotencyFlow(t *testing.T) {
 	var finalOutput string
 	for i := 0; i < 3; i++ {
 		var buf bytes.Buffer
-		_, _, err := configureSelectedAgents(&buf, selected, cfg, configPath, tmpDir, true)
+		_, _, err := configureSelectedAgents(&buf, selected, "claude", cfg, configPath, tmpDir, true)
 		require.NoError(t, err, "run %d failed", i+1)
 		finalOutput = buf.String()
 	}
@@ -1233,6 +1320,12 @@ func TestConfigureSpecificAgents_Claude(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, string(data), "Bash(autospec:*)")
 
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "skills", "autospec.specify", "SKILL.md"))
+	assert.NoError(t, err, ".claude/skills/autospec.specify/SKILL.md should exist")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "commands", "autospec.specify.md"))
+	assert.True(t, os.IsNotExist(err), ".claude/commands/autospec.specify.md should not be installed")
+
 	// Verify OpenCode is NOT configured
 	opencodeCmdDir := filepath.Join(tempDir, ".opencode", "command")
 	_, err = os.Stat(opencodeCmdDir)
@@ -1269,16 +1362,76 @@ func TestConfigureSpecificAgents_OpenCode(t *testing.T) {
 	_, _, err = configureSpecificAgents(cmd, &buf, true, []string{"opencode"})
 	assert.NoError(t, err)
 
-	// Verify OpenCode commands dir exists (OpenCode.ConfigureProject installs commands)
-	opencodeCmdDir := filepath.Join(tempDir, ".opencode", "command")
-	_, err = os.Stat(opencodeCmdDir)
-	assert.NoError(t, err, ".opencode/command should exist")
+	_, err = os.Stat(filepath.Join(tempDir, ".opencode"))
+	assert.True(t, os.IsNotExist(err), ".opencode should not be created")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".agents", "skills", "autospec-specify", "SKILL.md"))
+	assert.NoError(t, err, ".agents/skills/autospec-specify/SKILL.md should exist")
 
 	// Verify opencode.json has permission
 	data, err := os.ReadFile(filepath.Join(tempDir, "opencode.json"))
 	assert.NoError(t, err)
 	assert.Contains(t, string(data), "autospec *")
 	assert.Contains(t, string(data), "allow")
+}
+
+// TestConfigureSpecificAgents_Codex tests --ai codex records Codex and installs its project skill.
+func TestConfigureSpecificAgents_Codex(t *testing.T) {
+	// Cannot run in parallel: changes working directory
+	tempDir := t.TempDir()
+
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	defer func() { _ = os.Chdir(origDir) }()
+
+	configDir := filepath.Join(tempDir, ".autospec")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	configPath := filepath.Join(configDir, "config.yml")
+	require.NoError(t, os.WriteFile(configPath, []byte("specs_dir: specs\nagent_preset: \"\"\ndefault_agents: []\n"), 0o644))
+
+	cmd := &cobra.Command{Use: "init"}
+	cmd.Flags().BoolP("project", "p", false, "")
+	cmd.Flags().BoolP("force", "f", false, "")
+	cmd.Flags().StringSlice("ai", nil, "")
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	configured, agentConfigs, err := configureSpecificAgents(cmd, &buf, true, []string{"codex"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"codex"}, configured)
+	require.Len(t, agentConfigs, 1)
+	assert.Equal(t, "codex", agentConfigs[0].name)
+	assert.True(t, agentConfigs[0].configured)
+
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(configContent), `default_agents: ["codex"]`)
+	assert.Contains(t, string(configContent), "agent_preset: codex")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "commands"))
+	assert.True(t, os.IsNotExist(err), ".claude/commands should not exist for codex")
+	_, err = os.Stat(filepath.Join(tempDir, ".opencode", "command"))
+	assert.True(t, os.IsNotExist(err), ".opencode/command should not exist for codex")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".codex", "config.toml"))
+	assert.NoError(t, err, ".codex/config.toml should exist")
+	for _, skillName := range []string{
+		"autospec-specify",
+		"autospec-plan",
+		"autospec-tasks",
+		"autospec-implement",
+		"autospec-constitution",
+		"autospec-clarify",
+		"autospec-analyze",
+		"autospec-checklist",
+		"autospec-worktree-setup",
+	} {
+		_, err = os.Stat(filepath.Join(tempDir, ".agents", "skills", skillName, "SKILL.md"))
+		assert.NoError(t, err, ".agents/skills/%s/SKILL.md should exist", skillName)
+	}
 }
 
 // TestConfigureSpecificAgents_Both tests --ai claude,opencode configures both.
@@ -1316,14 +1469,46 @@ func TestConfigureSpecificAgents_Both(t *testing.T) {
 	_, err = os.Stat(claudeSettings)
 	assert.NoError(t, err, ".claude/settings.local.json should exist")
 
-	// Verify OpenCode command dir and permissions exist
-	opencodeCmdDir := filepath.Join(tempDir, ".opencode", "command")
-	_, err = os.Stat(opencodeCmdDir)
-	assert.NoError(t, err, ".opencode/command should exist")
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "skills", "autospec.specify", "SKILL.md"))
+	assert.NoError(t, err, ".claude/skills/autospec.specify/SKILL.md should exist")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".opencode"))
+	assert.True(t, os.IsNotExist(err), ".opencode should not be created")
 
 	opencodeJSON := filepath.Join(tempDir, "opencode.json")
 	_, err = os.Stat(opencodeJSON)
 	assert.NoError(t, err, "opencode.json should exist")
+}
+
+func TestConfigureSpecificAgents_MultipleAgentsUseFirstAsDefault(t *testing.T) {
+	// Cannot run in parallel: changes working directory
+	tempDir := t.TempDir()
+
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	defer func() { _ = os.Chdir(origDir) }()
+
+	configDir := filepath.Join(tempDir, ".autospec")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	configPath := filepath.Join(configDir, "config.yml")
+	require.NoError(t, os.WriteFile(configPath, []byte("specs_dir: specs\nagent_preset: opencode\ndefault_agents: []\n"), 0o644))
+
+	cmd := &cobra.Command{Use: "init"}
+	cmd.Flags().BoolP("project", "p", false, "")
+	cmd.Flags().BoolP("force", "f", false, "")
+	cmd.Flags().StringSlice("ai", nil, "")
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	_, _, err = configureSpecificAgents(cmd, &buf, true, []string{"codex", "opencode"})
+	require.NoError(t, err)
+
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(configContent), "agent_preset: codex")
 }
 
 // TestConfigureSpecificAgents_InvalidAgent tests that invalid agent names error.
@@ -1397,8 +1582,9 @@ func TestProductionAgents(t *testing.T) {
 
 	agents := build.ProductionAgents()
 	assert.Contains(t, agents, "claude")
+	assert.Contains(t, agents, "codex")
 	assert.Contains(t, agents, "opencode")
-	assert.Len(t, agents, 2)
+	assert.Len(t, agents, 3)
 }
 
 // ============================================================================
@@ -1461,6 +1647,10 @@ func TestRunInit_WithPathArgument(t *testing.T) {
 	info, err := os.Stat(targetDir)
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
+
+	autospecGitignore, err := os.ReadFile(filepath.Join(targetDir, ".autospec", ".gitignore"))
+	require.NoError(t, err)
+	assert.Equal(t, autospecGitignoreContent, string(autospecGitignore))
 
 	// Verify we're back in original working directory
 	cwd, err := os.Getwd()
@@ -1990,9 +2180,9 @@ func TestHandleSkipPermissionsPrompt_ExistingDisabled(t *testing.T) {
 }
 
 // TestHandleSkipPermissionsPrompt_NonInteractiveUsesDefault tests that non-interactive mode
-// uses the default value (false) without prompting.
+// uses the default value (true) without prompting.
 // T008 acceptance criteria:
-// - Non-interactive mode uses default (false)
+// - Non-interactive mode uses default (true)
 // - No prompt displayed in non-interactive mode
 // - Config still updated with default value
 func TestHandleSkipPermissionsPrompt_NonInteractiveUsesDefault(t *testing.T) {
@@ -2021,10 +2211,10 @@ func TestHandleSkipPermissionsPrompt_NonInteractiveUsesDefault(t *testing.T) {
 	// Should show non-interactive feedback
 	assert.Contains(t, output, "non-interactive")
 
-	// Config should be updated with default value (false)
+	// Config should be updated with default value (true)
 	content, err := os.ReadFile(configPath)
 	require.NoError(t, err)
-	assert.Contains(t, string(content), "skip_permissions: false")
+	assert.Contains(t, string(content), "skip_permissions: true")
 }
 
 // TestHandleSkipPermissionsPrompt_DefaultEmpty tests that empty input defaults to Yes (recommended).
@@ -2777,6 +2967,36 @@ func TestPromptAndConfigureSandbox_FlagBehavior(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandleSandboxConfiguration_ExplicitSandboxFlagRunsWhenPromptDisabled(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("sandbox", false, "")
+	cmd.Flags().Bool("no-sandbox", false, "")
+	require.NoError(t, cmd.ParseFlags([]string{"--sandbox"}))
+
+	var buf bytes.Buffer
+	info := sandboxPromptInfo{
+		agentName:   "claude",
+		displayName: "Claude Code",
+		pathsToAdd:  []string{".autospec", "specs"},
+		needsEnable: true,
+	}
+
+	err := handleSandboxConfiguration(cmd, &buf, []sandboxPromptInfo{info}, projectDir, "specs")
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "Configuring sandbox")
+	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
+	settingsContent, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(settingsContent), `"enabled": true`)
+	assert.Contains(t, string(settingsContent), `"additionalAllowWritePaths"`)
+	assert.Contains(t, string(settingsContent), `".autospec"`)
+	assert.Contains(t, string(settingsContent), `"specs"`)
 }
 
 // TestSandboxFlagsMutualExclusivity tests that --sandbox and --no-sandbox cannot be used together.
@@ -3571,6 +3791,29 @@ func TestCollectConstitutionChoice_FlagBehavior(t *testing.T) {
 			assert.Equal(t, tt.wantResult, result)
 		})
 	}
+}
+
+// TestCollectConstitutionChoice_InteractivePromptIsAgentAgnostic verifies init copy
+// does not imply the constitution workflow always runs Claude.
+func TestCollectConstitutionChoice_InteractivePromptIsAgentAgnostic(t *testing.T) {
+	// Cannot run in parallel: modifies global isTerminalFunc.
+	originalIsTerminal := isTerminalFunc
+	isTerminalFunc = func() bool { return true }
+	defer func() { isTerminalFunc = originalIsTerminal }()
+
+	cmd := &cobra.Command{Use: "test"}
+	var buf bytes.Buffer
+	cmd.Flags().Bool("constitution", false, "")
+	cmd.Flags().Bool("no-constitution", false, "")
+	cmd.SetOut(&buf)
+	cmd.SetIn(bytes.NewBufferString("n\n"))
+
+	result := collectConstitutionChoice(cmd, &buf, false)
+
+	output := buf.String()
+	assert.False(t, result)
+	assert.Contains(t, output, "Runs the configured agent to analyze your project")
+	assert.NotContains(t, output, "Runs a Claude session to analyze your project")
 }
 
 // TestCollectGitignoreChoice_NonInteractive tests non-interactive mode behavior.

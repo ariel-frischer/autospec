@@ -16,17 +16,24 @@ tests/temp/
 # macOS
 .DS_Store
 
+# Windows
+Thumbs.db
+
 # Linux
 *~
 
 # Editor files
 *.swp
 *.swo
+*.tmp
 .vscode/
 .idea/
 
 # Logs
 *.log
+
+# Local environment
+.env*
 
 # Node modules (if using npm for bats)
 node_modules/
@@ -46,6 +53,8 @@ package-lock.json
 /autospec-extract
 bin/
 dist/
+vendor/
+*.exe
 *.test
 *.out
 coverage.txt
@@ -63,3 +72,12 @@ install-dev.sh
 tasks/
 .release/
 .grepai/
+.agents/skills/polish/
+.agents/skills/release/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
+
+# Demo assets (WIP)
+assets/

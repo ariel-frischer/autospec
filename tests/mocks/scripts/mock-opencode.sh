@@ -432,14 +432,14 @@ generate_artifact() {
 
     # Check for both /autospec.X and autospec.X patterns to support
     # both claude (-m "/autospec.X") and opencode (--command autospec.X) formats
-    if [[ "$command" == *"autospec.specify"* ]]; then
+    if [[ "$command" == *"autospec.specify"* ]] || [[ "$command" == *"Generate spec.yaml"* ]]; then
         generate_spec "$spec_dir"
-    elif [[ "$command" == *"autospec.plan"* ]]; then
+    elif [[ "$command" == *"autospec.plan"* ]] || [[ "$command" == *"Generate plan.yaml"* ]]; then
         generate_plan "$spec_dir"
-    elif [[ "$command" == *"autospec.tasks"* ]]; then
-        generate_tasks "$spec_dir"
-    elif [[ "$command" == *"autospec.implement"* ]]; then
+    elif [[ "$command" == *"autospec.implement"* ]] || [[ "$command" == *"Execution Boundaries"* ]]; then
         mark_tasks_completed "$spec_dir"
+    elif [[ "$command" == *"autospec.tasks"* ]] || [[ "$command" == *"Generate tasks.yaml"* ]]; then
+        generate_tasks "$spec_dir"
     elif [[ "$command" == *"autospec.constitution"* ]]; then
         generate_constitution
     elif [[ "$command" == *"autospec.clarify"* ]]; then

@@ -36,16 +36,22 @@ func TestFindAutospecFiles_AllTargets(t *testing.T) {
 	// Create specs directory
 	require.NoError(t, os.MkdirAll("specs", 0o755))
 
-	// Create .claude/commands directory with autospec files
+	// Create .claude/commands directory with legacy autospec files
 	require.NoError(t, os.MkdirAll(".claude/commands", 0o755))
 	require.NoError(t, os.WriteFile(".claude/commands/autospec.plan.md", []byte("test"), 0o644))
 	require.NoError(t, os.WriteFile(".claude/commands/autospec.tasks.md", []byte("test"), 0o644))
 
+	// Create .claude/skills directory with autospec skills
+	require.NoError(t, os.MkdirAll(".claude/skills/autospec.plan", 0o755))
+	require.NoError(t, os.WriteFile(".claude/skills/autospec.plan/SKILL.md", []byte("test"), 0o644))
+	require.NoError(t, os.MkdirAll(".claude/skills/autospec.tasks", 0o755))
+	require.NoError(t, os.WriteFile(".claude/skills/autospec.tasks/SKILL.md", []byte("test"), 0o644))
+
 	targets, err := FindAutospecFiles(false)
 	require.NoError(t, err)
 
-	// Should find 4 targets: .autospec, specs, and 2 command files
-	assert.Len(t, targets, 4)
+	// Should find 6 targets: .autospec, specs, 2 command files, and 2 skill dirs
+	assert.Len(t, targets, 6)
 
 	// Verify target types
 	var dirs, files int
@@ -56,7 +62,7 @@ func TestFindAutospecFiles_AllTargets(t *testing.T) {
 			files++
 		}
 	}
-	assert.Equal(t, 2, dirs, "should have 2 directories")
+	assert.Equal(t, 4, dirs, "should have 4 directories")
 	assert.Equal(t, 2, files, "should have 2 files")
 }
 
@@ -136,6 +142,29 @@ func TestFindAutospecFiles_OnlyCommandFiles(t *testing.T) {
 	}
 }
 
+func TestFindAutospecFiles_OnlyClaudeSkills(t *testing.T) {
+	tmpDir := t.TempDir()
+	origWd, _ := os.Getwd()
+	defer os.Chdir(origWd)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	require.NoError(t, os.MkdirAll(".claude/skills/autospec.plan", 0o755))
+	require.NoError(t, os.WriteFile(".claude/skills/autospec.plan/SKILL.md", []byte("test"), 0o644))
+	require.NoError(t, os.MkdirAll(".claude/skills/autospec.implement", 0o755))
+	require.NoError(t, os.WriteFile(".claude/skills/autospec.implement/SKILL.md", []byte("test"), 0o644))
+	require.NoError(t, os.MkdirAll(".claude/skills/custom", 0o755))
+	require.NoError(t, os.WriteFile(".claude/skills/custom/SKILL.md", []byte("test"), 0o644))
+
+	targets, err := FindAutospecFiles(false)
+	require.NoError(t, err)
+
+	assert.Len(t, targets, 2)
+	for _, target := range targets {
+		assert.Contains(t, target.Path, filepath.Join(".claude", "skills", "autospec."))
+		assert.Equal(t, TypeDirectory, target.Type)
+	}
+}
+
 func TestRemoveFiles_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 	origWd, _ := os.Getwd()
@@ -147,15 +176,18 @@ func TestRemoveFiles_Success(t *testing.T) {
 	require.NoError(t, os.WriteFile(".autospec/config.yml", []byte("test"), 0o644))
 	require.NoError(t, os.MkdirAll(".claude/commands", 0o755))
 	require.NoError(t, os.WriteFile(".claude/commands/autospec.plan.md", []byte("test"), 0o644))
+	require.NoError(t, os.MkdirAll(".claude/skills/autospec.plan", 0o755))
+	require.NoError(t, os.WriteFile(".claude/skills/autospec.plan/SKILL.md", []byte("test"), 0o644))
 
 	targets := []CleanTarget{
 		{Path: ".autospec", Type: TypeDirectory, Description: "test"},
 		{Path: ".claude/commands/autospec.plan.md", Type: TypeFile, Description: "test"},
+		{Path: ".claude/skills/autospec.plan", Type: TypeDirectory, Description: "test"},
 	}
 
 	results := RemoveFiles(targets)
 
-	assert.Len(t, results, 2)
+	assert.Len(t, results, 3)
 	for _, result := range results {
 		assert.True(t, result.Success)
 		assert.Nil(t, result.Error)
@@ -166,6 +198,9 @@ func TestRemoveFiles_Success(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	_, err = os.Stat(".claude/commands/autospec.plan.md")
+	assert.True(t, os.IsNotExist(err))
+
+	_, err = os.Stat(".claude/skills/autospec.plan")
 	assert.True(t, os.IsNotExist(err))
 }
 

@@ -22,6 +22,10 @@ type ExecOptions struct {
 	// ExtraArgs are additional CLI arguments appended after standard args.
 	ExtraArgs []string
 
+	// JSONOutput requests machine-readable JSON output when the agent supports it.
+	// Unsupported agents should ignore this unless their command builder opts in.
+	JSONOutput bool
+
 	// Env contains additional environment variables.
 	// Merged with the process environment; these values take precedence.
 	Env map[string]string

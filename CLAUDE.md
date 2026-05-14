@@ -2,9 +2,9 @@
 
 Guidance for Claude Code when working with this repository.
 
-## Slash Commands vs Skills (CRITICAL)
+## Autospec Claude Skills
 
-Files in `.claude/commands/` (e.g., `autospec.plan.md`, `speckit.specify.md`) are **slash commands**, NOT skills. **DO NOT use the Skill tool to invoke them.** They are user-invoked via `/autospec.plan` syntax, not model-invoked.
+`autospec init --ai claude` installs Claude project skills in `.claude/skills/autospec.*/SKILL.md`. They preserve existing slash-style invocation such as `/autospec.plan` and set `disable-model-invocation: true` so agents do not invoke them automatically.
 
 ## Prerequisites
 
@@ -34,6 +34,10 @@ autospec st                              # Show status and task progress
 autospec doctor                          # Check dependencies
 ```
 
+## Post-Change Polish (REQUIRED)
+
+After significant code changes, automatically invoke the repo-local `polish` skill before final handoff. Use it to update changelog/docs and run the required validation targets. Do not wait for an explicit `/polish` request unless the change is trivial or docs-only.
+
 ## Core Workflow
 
 ### Stage Dependencies (MUST follow this order)
@@ -57,7 +61,7 @@ constitution.yaml spec.yaml plan.yaml tasks.yaml
 ### What `autospec init` Does
 
 1. Creates config (`~/.config/autospec/config.yml` or `.autospec/config.yml`)
-2. Installs slash commands to agent's command directory (e.g., `.claude/commands/`)
+2. Installs agent-native prompts (Claude skills in `.claude/skills/`, shared Codex/OpenCode skills in `.agents/skills/`)
 3. Configures agent permissions and sandbox settings
 4. Prompts for constitution creation (one-time per project)
 
@@ -106,7 +110,7 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
   - `internal/cli/admin/`: Admin commands (commands, completion, uninstall)
   - `internal/cli/worktree/`: Worktree management commands (create, list, remove, prune)
   - `internal/cli/shared/`: Shared types and constants
-- `internal/workflow/`: Workflow orchestration and Claude execution
+- `internal/workflow/`: Workflow orchestration and agent execution
 - `internal/config/`: Hierarchical config (env > project > user > defaults)
 - `internal/validation/`: Artifact validation (<10ms performance contract)
 - `internal/retry/`: Persistent retry state
@@ -114,7 +118,6 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
 - `internal/agent/`: Agent abstraction (Claude, Gemini, Cline, etc.)
 - `internal/cliagent/`: CLI agent integration and Configurator interface
 - `internal/worktree/`: Git worktree management logic
-- `internal/taskgraph/`: Task dependency graph for parallel execution waves
 
 ### Configuration
 

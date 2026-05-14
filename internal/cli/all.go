@@ -40,10 +40,13 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
 
   # Skip preflight checks for faster execution
   autospec all "Add API endpoints" --skip-preflight`,
-	Args: cobra.ExactArgs(1),
+	Args: validatePrepArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true // Don't show help for execution errors
-		featureDescription := args[0]
+		featureDescription := ""
+		if len(args) > 0 {
+			featureDescription = args[0]
+		}
 
 		// Get flags
 		configPath, _ := cmd.Flags().GetString("config")
@@ -51,6 +54,7 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
 		maxRetries, _ := cmd.Flags().GetInt("max-retries")
 		resume, _ := cmd.Flags().GetBool("resume")
 		debug, _ := cmd.Flags().GetBool("debug")
+		specName, _ := cmd.Flags().GetString("spec")
 
 		// Load configuration
 		cfg, err := config.Load(configPath)
@@ -118,6 +122,26 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
 				fmt.Printf("[DEBUG] Config: %+v\n", cfg)
 			}
 
+			if specName != "" {
+				activeFeature, err := resolvePrepFeature(cfg, specName)
+				if err != nil {
+					return err
+				}
+				PrintSpecInfo(activeFeature.Metadata)
+				fmt.Printf("  active feature: %s (source: %s)\n", activeFeature.Metadata.Directory, activeFeature.Source)
+				resolvedName := fmt.Sprintf("%s-%s", activeFeature.Metadata.Number, activeFeature.Metadata.Name)
+				if err := orchestrator.ExecutePlan(resolvedName, featureDescription); err != nil {
+					return fmt.Errorf("all plan stage failed: %w", err)
+				}
+				if err := orchestrator.ExecuteTasks(resolvedName, featureDescription); err != nil {
+					return fmt.Errorf("all tasks stage failed: %w", err)
+				}
+				if err := orchestrator.ExecuteImplement(resolvedName, "", resume, workflow.PhaseExecutionOptions{}); err != nil {
+					return fmt.Errorf("all implement stage failed: %w", err)
+				}
+				return nil
+			}
+
 			// Run full workflow
 			if err := orchestrator.RunFullWorkflow(featureDescription, resume); err != nil {
 				return fmt.Errorf("full workflow failed: %w", err)
@@ -134,6 +158,7 @@ func init() {
 
 	allCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (overrides config when set)")
 	allCmd.Flags().Bool("resume", false, "Resume implementation from where it left off")
+	allCmd.Flags().String("spec", "", "Specify which spec to run (overrides branch detection)")
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(allCmd)

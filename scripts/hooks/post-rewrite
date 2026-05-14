@@ -9,7 +9,6 @@ if [ "$COMMAND" = "rebase" ] && [ "$BRANCH" = "dev" ]; then
         rm -rf .dev
         cp -r .git/.dev-backup .dev
         rm -rf .git/.dev-backup
-        git add .dev/
-        echo "🔧 Restored .dev/ directory on dev branch"
+        echo "Restored local .dev/ directory on dev branch"
     fi
 fi

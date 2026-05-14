@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/build"
 	"github.com/ariel-frischer/autospec/internal/claude"
@@ -148,7 +149,7 @@ func FormatReport(report *HealthReport) string {
 func FormatAgentStatus(status cliagent.AgentStatus) string {
 	if status.Valid {
 		if status.Version != "" {
-			return fmt.Sprintf("  ✓ %s: installed (v%s)\n", status.Name, status.Version)
+			return fmt.Sprintf("  ✓ %s: installed (%s)\n", status.Name, formatAgentVersion(status))
 		}
 		return fmt.Sprintf("  ✓ %s: installed\n", status.Name)
 	}
@@ -156,6 +157,17 @@ func FormatAgentStatus(status cliagent.AgentStatus) string {
 		return fmt.Sprintf("  ○ %s: %s\n", status.Name, status.Error)
 	}
 	return fmt.Sprintf("  ○ %s: not available\n", status.Name)
+}
+
+func formatAgentVersion(status cliagent.AgentStatus) string {
+	version := status.Version
+	if !strings.HasPrefix(version, "v") && !strings.Contains(version, " ") {
+		version = fmt.Sprintf("v%s", version)
+	}
+	if status.TestedVersion == "" {
+		return version
+	}
+	return fmt.Sprintf("%s; tested %s", version, status.TestedVersion)
 }
 
 // CheckClaudeSettings validates Claude Code settings configuration.

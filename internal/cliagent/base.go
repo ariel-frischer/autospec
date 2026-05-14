@@ -117,12 +117,16 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 		case PromptMethodPositional:
 			args = append(args, prompt)
 		case PromptMethodSubcommand:
-			args = append(args, pd.Flag, prompt)
+			args = append(args, pd.Flag)
+			if opts.JSONOutput {
+				args = append(args, "--json")
+			}
+			args = append(args, prompt)
 		case PromptMethodSubcommandArg:
 			args = append(args, pd.Flag, pd.PromptFlag, prompt)
 		case PromptMethodSubcommandWithFlag:
 			// Pattern: <agent> <subcommand> <prompt> [-f <file>] <command-flag> <command-name>
-			// Example: opencode run "fix bug" -f context.yaml --command autospec.specify
+			// Example: agent run "fix bug" -f context.yaml --command agent.task
 			// Parse slash commands to extract command name, context file, and actual prompt
 			parts := parseSlashCommandFull(prompt)
 

@@ -9,7 +9,7 @@ func GetDefaultConfigTemplate() string {
 # See 'autospec config -h' for commands, 'autospec config keys' for all options
 
 # Agent settings
-agent_preset: ""                      # Built-in agent: claude | opencode
+agent_preset: ""                      # Built-in agent: claude | codex | opencode
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
 
 # Workflow settings
@@ -40,6 +40,7 @@ worktree:
   track_status: true                  # Persist worktree state
   copy_dirs:                          # Non-tracked dirs to copy
     - .autospec
+    - .agents
     - .claude
   setup_timeout: 5m                   # Max setup script duration (e.g., '5m', '30s')
 
@@ -60,8 +61,14 @@ cclean:
   line_numbers: false                 # Show line numbers in formatted output (-n)
   style: default                      # Output style: default | compact | minimal | plain (-s)
 
+# Codex automated output formatting
+codex_output:
+  mode: compact                       # compact | full
+  max_lines_per_message: 40           # Max displayed lines per compact output block
+  color: true                         # Colorize compact Codex output
+
 # Autonomous execution
-skip_permissions: false               # Enable Claude --dangerously-skip-permissions flag
+skip_permissions: true                # Enable autonomous mode for supported agents
 
 # Verification settings
 verification:
@@ -73,18 +80,6 @@ verification:
   mutation_threshold: 0.8             # Minimum mutation score (0.0-1.0)
   coverage_threshold: 0.85            # Minimum code coverage (0.0-1.0)
   complexity_max: 10                  # Maximum cyclomatic complexity
-
-# DAG execution settings
-dag:
-  on_conflict: manual                 # Merge conflict handling: manual | agent
-  base_branch: ""                     # Target branch for merging (empty = repo default)
-  max_spec_retries: 0                 # Max auto-retry per spec (0 = manual only)
-  max_log_size: "50MB"                # Max log file size per spec (e.g., 50MB, 100MB)
-  # log_dir: ""                       # Custom log directory (empty = XDG cache default)
-  autocommit: true                    # Enable post-execution commit verification
-  # autocommit_cmd: ""                # Custom commit command (empty = agent session)
-  autocommit_retries: 1               # Commit retry attempts (0-10)
-  automerge: true                     # Auto-merge specs into staging branch after commit
 `
 }
 
@@ -101,7 +96,7 @@ func GetDefaults() map[string]interface{} {
 		"timeout":            2400,  // 40 minutes default
 		"skip_confirmations": false, // Confirmation prompts enabled by default
 		// implement_method: Default to "phases" for cost-efficient execution with context isolation.
-		// This changes the legacy behavior (single-session) to run each phase in a separate Claude session.
+		// This changes the legacy behavior (single-session) to run each phase in a separate agent session.
 		// Valid values: "single-session", "phases", "tasks"
 		"implement_method": "phases",
 		// notifications: Notification settings for command and stage completion.
@@ -128,13 +123,13 @@ func GetDefaults() map[string]interface{} {
 		// worktree: Configuration for git worktree management.
 		// Used by 'autospec worktree' command for creating and managing worktrees.
 		"worktree": map[string]interface{}{
-			"base_dir":      "",                               // Parent directory for new worktrees
-			"prefix":        "",                               // Directory name prefix
-			"setup_script":  "",                               // Path to setup script relative to repo
-			"auto_setup":    true,                             // Run setup automatically on create
-			"track_status":  true,                             // Persist worktree state
-			"copy_dirs":     []string{".autospec", ".claude"}, // Non-tracked dirs to copy
-			"setup_timeout": (5 * time.Minute).String(),       // Max setup script duration (5m default)
+			"base_dir":      "",                                          // Parent directory for new worktrees
+			"prefix":        "",                                          // Directory name prefix
+			"setup_script":  "",                                          // Path to setup script relative to repo
+			"auto_setup":    true,                                        // Run setup automatically on create
+			"track_status":  true,                                        // Persist worktree state
+			"copy_dirs":     []string{".autospec", ".agents", ".claude"}, // Non-tracked dirs to copy
+			"setup_timeout": (5 * time.Minute).String(),                  // Max setup script duration (5m default)
 		},
 		// auto_commit: Enable automatic git commit creation after workflow completion.
 		// When true, instructions are injected to update .gitignore, stage files, and create commits.
@@ -156,10 +151,19 @@ func GetDefaults() map[string]interface{} {
 			"line_numbers": false,     // Show line numbers in formatted output (-n flag)
 			"style":        "default", // Output style: default, compact, minimal, plain (-s flag)
 		},
-		// skip_permissions: Enable Claude autonomous mode (--dangerously-skip-permissions).
-		// When true, Claude runs without user confirmations for file edits and commands.
-		// Default: false (opt-in for security). Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
-		"skip_permissions": false,
+		// codex_output: Output handling for automated Codex CLI runs.
+		// compact uses `codex exec --json` and summarizes JSONL events; full
+		// preserves Codex's native transcript.
+		"codex_output": map[string]interface{}{
+			"mode":                  CodexOutputModeCompact,
+			"max_lines_per_message": 40,
+			"color":                 true,
+		},
+		// skip_permissions: Enable autonomous mode for supported agents.
+		// Claude uses --dangerously-skip-permissions; Codex uses
+		// --dangerously-bypass-approvals-and-sandbox.
+		// Default: true for unattended autospec runs. Can be set via AUTOSPEC_SKIP_PERMISSIONS env var.
+		"skip_permissions": true,
 		// verification: Configuration for verification depth and feature toggles.
 		// Controls verification level (basic, enhanced, full), individual feature toggles,
 		// and quality thresholds. Environment variable support via AUTOSPEC_VERIFICATION_* prefix.
@@ -168,20 +172,6 @@ func GetDefaults() map[string]interface{} {
 			"mutation_threshold": 0.8,     // 80% mutation score threshold
 			"coverage_threshold": 0.85,    // 85% code coverage threshold
 			"complexity_max":     10,      // Max cyclomatic complexity
-		},
-		// dag: Configuration for DAG execution settings.
-		// Controls conflict handling, base branch, retry limits, and log size limits.
-		// Environment variable support via AUTOSPEC_DAG_* prefix.
-		"dag": map[string]interface{}{
-			"on_conflict":        "manual", // Default to manual conflict resolution
-			"base_branch":        "",       // Empty means use repo default branch
-			"max_spec_retries":   0,        // 0 means manual retry only
-			"max_log_size":       "50MB",   // Default 50MB max log size per spec
-			"log_dir":            "",       // Empty means XDG cache default
-			"autocommit":         true,     // Enable post-execution commit verification
-			"autocommit_cmd":     "",       // Empty means agent session
-			"autocommit_retries": 1,        // Default 1 retry attempt
-			"automerge":          true,     // Auto-merge specs into staging after commit
 		},
 	}
 }

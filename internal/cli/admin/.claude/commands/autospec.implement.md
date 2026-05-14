@@ -16,7 +16,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 | Flag | Behavior |
 |------|----------|
 | `--phase N` | Execute ONLY phase N tasks. After completion, output "Phase N complete." and TERMINATE. Do NOT proceed to other phases. |
-| `--context-file` | Use ONLY the bundled tasks from context file. Do NOT read full tasks.yaml. |
+| `--context-file` | Use bundled artifacts from context file. Do NOT separately read files listed in `_context_meta.skip_reads`. |
 | (no flags) | Execute all phases sequentially. |
 
 ## Pre-computed Context
@@ -25,6 +25,7 @@ The following paths have been pre-computed and are available for use:
 
 - **FEATURE_DIR**: `{{.FeatureDir}}`
 - **TASKS_FILE**: `{{.TasksFile}}`
+- **CONSTITUTION_FILE**: `{{if .ConstitutionFile}}{{.ConstitutionFile}}{{else}}not found{{end}}`
 - **IS_GIT_REPO**: `{{.IsGitRepo}}`
 
 ## Outline
@@ -35,7 +36,11 @@ The following paths have been pre-computed and are available for use:
 
    **`_context_meta` Fields**:
    - `phase_artifacts_bundled: true` - Indicates that spec.yaml, plan.yaml, and tasks.yaml (phase-filtered) are already bundled in this context file
-   - `bundled_artifacts` - Lists the artifacts included: `["spec.yaml", "plan.yaml", "tasks.yaml (phase-filtered)"]`
+   - `bundled_artifacts` - Lists the artifacts included, such as `["spec.yaml", "plan.yaml", "tasks.yaml (phase-filtered)", "constitution.yaml"]`
+   - `has_governance` - Boolean indicating whether project governance is bundled in the `governance:` section
+     - If `true`: Use the bundled `governance:` data as the constitution/governance source of truth
+     - If `false`: No constitution was bundled; do not search for a governance file during context-file execution
+   - `governance_file` - Path to the constitution file when governance is bundled
    - `has_checklists` - Boolean indicating whether a `checklists/` directory exists for this feature
      - If `false`: **DO NOT** check for, scan, or read from the checklists directory - it doesn't exist, skip step 3 entirely
      - If `true`: Checklists directory exists, proceed to step 3
@@ -45,6 +50,7 @@ The following paths have been pre-computed and are available for use:
    ```
    DO NOT read files listed in skip_reads when _context_meta.phase_artifacts_bundled is true.
    DO NOT check for checklists directory when _context_meta.has_checklists is false.
+   DO NOT separately read _context_meta.governance_file when it appears in skip_reads; use the bundled governance section instead.
    ```
 
    **Example `_context_meta` section**:
@@ -55,11 +61,15 @@ The following paths have been pre-computed and are available for use:
        - spec.yaml
        - plan.yaml
        - tasks.yaml (phase-filtered)
+       - constitution.yaml
+     has_governance: true
+     governance_file: .autospec/constitution.yaml
      has_checklists: false
      skip_reads:
        - specs/my-feature/spec.yaml
        - specs/my-feature/plan.yaml
        - specs/my-feature/tasks.yaml
+       - .autospec/constitution.yaml
    ```
 
 3. **Check checklists status** (SKIP if `_context_meta.has_checklists: false`):
@@ -95,8 +105,9 @@ The following paths have been pre-computed and are available for use:
 
 4. **Load and analyze the implementation context** (if NOT using `--context-file`):
 
-   **Note**: If you are using `--context-file`, the spec, plan, and tasks are already loaded from the context file. Skip reading these files individually and use the bundled data from the `spec:`, `plan:`, and `tasks:` sections of the context file instead.
+   **Note**: If you are using `--context-file`, the spec, plan, tasks, and possibly governance are already loaded from the context file. Skip reading files listed in `_context_meta.skip_reads` and use the bundled data from the `spec:`, `plan:`, `tasks:`, and `governance:` sections of the context file instead.
 
+   {{if .ConstitutionFile}}- **REQUIRED GOVERNANCE**: Read `{{.ConstitutionFile}}` for project principles, non-negotiable constraints, quality standards, and validation requirements before modifying code. Treat these governance rules as binding during implementation.{{else}}- **GOVERNANCE**: No constitution file was detected in a supported path. Continue using spec, plan, tasks, and local agent instructions.{{end}}
    - **REQUIRED**: Read tasks.yaml for the complete task list and execution plan
    - **REQUIRED**: Read plan.yaml for:
      - `technical_context`: tech stack, dependencies, constraints
@@ -162,6 +173,7 @@ The following paths have been pre-computed and are available for use:
    - **Validation checkpoints**: Verify each phase completion before proceeding
 
 8. **Implementation execution rules**:
+   - **Governance first**: Apply constitution principles and governance constraints to all code, tests, docs, and validation decisions
    - **Setup first**: Initialize project structure, dependencies, configuration
    - **Foundational next**: Complete blocking prerequisites before user stories
    - **User stories in order**: Complete each story phase before the next

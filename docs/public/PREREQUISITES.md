@@ -2,16 +2,22 @@
 
 ## Required Dependencies
 
-### 1. Claude Code CLI (Required)
+### 1. Supported CLI Coding Agent (Required)
 
-Claude Code CLI is essential - autospec orchestrates feature development workflows using Claude Code commands.
+autospec orchestrates feature development workflows using a supported CLI coding agent. Production-supported agents are Claude Code, Codex, and OpenCode.
 
 **Installation:**
-See: https://claude.ai/download
+- Claude Code: https://claude.ai/download
+- Codex CLI: https://developers.openai.com/codex/cli/reference
+- OpenCode: https://opencode.ai
 
 **Verify installation:**
 ```bash
 claude --version
+# or
+codex --version
+# or
+opencode --version
 ```
 
 ### 2. Git (Required)
@@ -45,8 +51,12 @@ autospec doctor
 Or verify manually:
 
 ```bash
-# Verify Claude Code CLI
+# Verify your CLI agent
 claude --version
+# or
+codex --version
+# or
+opencode --version
 
 # Verify Git
 git --version
@@ -54,10 +64,10 @@ git --version
 
 ## Installing Missing Dependencies
 
-### Claude Code CLI
+### CLI Coding Agent
 
 **Installation guide:**
-See: https://claude.ai/download
+See the installation links above for Claude Code, Codex CLI, or OpenCode.
 
 ### Git
 

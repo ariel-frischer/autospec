@@ -10,7 +10,6 @@
 package workflow
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,7 +17,6 @@ import (
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/output"
 	"github.com/ariel-frischer/autospec/internal/spec"
-	"github.com/ariel-frischer/autospec/internal/taskgraph"
 	"github.com/ariel-frischer/autospec/internal/validation"
 	"github.com/ariel-frischer/autospec/internal/verification"
 )
@@ -344,6 +342,9 @@ func (w *WorkflowOrchestrator) ExecuteSpecify(featureDescription string) (string
 	if err != nil {
 		return "", err
 	}
+	if _, err := spec.SaveActiveFeatureState(w.Config.StateDir, specName, "specify"); err != nil {
+		return "", fmt.Errorf("persisting active feature after specify: %w", err)
+	}
 
 	output.PrintStageSuccess(os.Stdout, fmt.Sprintf("Created specs/%s/spec.yaml (schema valid)", specName))
 	fmt.Println("Next: autospec plan")
@@ -424,8 +425,6 @@ func (w *WorkflowOrchestrator) ExecuteImplement(specNameArg string, prompt strin
 
 	// Dispatch to appropriate execution mode based on phase options
 	switch phaseOpts.Mode() {
-	case ModeParallel:
-		return w.ExecuteImplementParallel(specName, metadata, prompt, phaseOpts)
 	case ModeAllTasks:
 		return w.ExecuteImplementWithTasks(specName, metadata, prompt, phaseOpts.FromTask)
 	case ModeAllPhases:
@@ -520,160 +519,6 @@ func (w *WorkflowOrchestrator) ExecuteImplementWithTasks(specName string, metada
 	return w.taskExecutor.ExecuteTaskLoop(specName, tasksPath, orderedTasks, startIdx, totalTasks, prompt)
 }
 
-// ExecuteImplementParallel runs tasks concurrently using DAG-based wave scheduling.
-// Independent tasks within each wave run in parallel, respecting the max-parallel limit.
-func (w *WorkflowOrchestrator) ExecuteImplementParallel(specName string, metadata *spec.Metadata, prompt string, phaseOpts PhaseExecutionOptions) error {
-	specDir := filepath.Join(w.SpecsDir, specName)
-	tasksPath := validation.GetTasksFilePath(specDir)
-
-	// Load tasks
-	tasks, err := validation.GetAllTasks(tasksPath)
-	if err != nil {
-		return fmt.Errorf("loading tasks: %w", err)
-	}
-
-	// Build dependency graph
-	graph, err := taskgraph.BuildFromTasks(tasks)
-	if err != nil {
-		return fmt.Errorf("building dependency graph: %w", err)
-	}
-
-	// Compute waves
-	_, err = graph.ComputeWaves()
-	if err != nil {
-		return fmt.Errorf("computing execution waves: %w", err)
-	}
-
-	// Handle dry-run mode
-	if phaseOpts.DryRun {
-		return w.printDryRunPlan(graph)
-	}
-
-	// Check if parallel execution has tasks that could conflict
-	// Show warning if not using worktrees and there are parallel opportunities
-	if !phaseOpts.UseWorktrees && !phaseOpts.SkipConfirmation {
-		if err := w.promptWorktreeWarning(graph); err != nil {
-			return err
-		}
-	}
-
-	// Create parallel executor
-	opts := []ParallelExecutorOption{
-		WithMaxParallel(phaseOpts.MaxParallel),
-		WithParallelDebug(w.Debug),
-		WithProgressCallback(w.defaultProgressCallback),
-	}
-
-	// Add worktree support when --worktrees is set
-	if phaseOpts.UseWorktrees {
-		// TODO: Create worktree manager and add it
-		// worktreeConfig := worktree.DefaultConfig()
-		// wm := worktree.NewManager(worktreeConfig, w.Config.StateDir, metadata.Directory)
-		// opts = append(opts, WithWorktreeManager(wm), WithRepoRoot(metadata.Directory))
-		fmt.Println("Note: Worktree isolation enabled (each task runs in isolated worktree)")
-	}
-
-	executor := NewParallelExecutor(graph, opts...)
-
-	// Execute waves
-	fmt.Printf("Executing %d tasks in parallel (max %d concurrent)\n", graph.Size(), phaseOpts.MaxParallel)
-	fmt.Printf("Wave structure: %s\n\n", graph.RenderCompact())
-
-	results, err := executor.ExecuteWaves(context.Background(), specName, tasksPath)
-	if err != nil {
-		return fmt.Errorf("parallel execution failed: %w", err)
-	}
-
-	// Print summary
-	return w.printParallelSummary(results, executor)
-}
-
-// defaultProgressCallback prints single-line progress updates.
-func (w *WorkflowOrchestrator) defaultProgressCallback(waveNum int, taskID string, status taskgraph.TaskStatus, progressLine string) {
-	// Print carriage return to overwrite previous line, then the progress
-	fmt.Printf("\r%s", progressLine)
-	// If task completed or failed, print newline to preserve the line
-	if status == taskgraph.StatusCompleted || status == taskgraph.StatusFailed || status == taskgraph.StatusSkipped {
-		fmt.Println()
-	}
-}
-
-// promptWorktreeWarning shows a warning prompt when running parallel without worktrees.
-func (w *WorkflowOrchestrator) promptWorktreeWarning(graph *taskgraph.DependencyGraph) error {
-	stats := graph.GetWaveStats()
-	if stats.MaxWaveSize <= 1 {
-		// No parallel execution opportunity, no warning needed
-		return nil
-	}
-
-	fmt.Println("⚠️  Running without worktree isolation; file conflicts possible.")
-	fmt.Println("   Recommend using --worktrees for parallel execution safety.")
-	fmt.Print("   Continue anyway? [y/N] ")
-
-	var response string
-	if _, err := fmt.Scanln(&response); err != nil || response == "" {
-		response = "n" // Default to No
-	}
-
-	if response != "y" && response != "Y" && response != "yes" && response != "Yes" {
-		return fmt.Errorf("aborted by user; use --worktrees or --yes to proceed")
-	}
-
-	return nil
-}
-
-// printDryRunPlan outputs the execution plan without running any tasks.
-func (w *WorkflowOrchestrator) printDryRunPlan(graph *taskgraph.DependencyGraph) error {
-	fmt.Println("Execution Plan (dry-run):")
-	fmt.Println("==========================")
-	fmt.Println(graph.RenderASCII())
-
-	stats := graph.GetWaveStats()
-	fmt.Printf("Total waves: %d\n", stats.TotalWaves)
-	fmt.Printf("Total tasks: %d\n", stats.TotalTasks)
-	fmt.Printf("Max wave size: %d\n", stats.MaxWaveSize)
-
-	return nil
-}
-
-// printParallelSummary outputs execution results summary.
-func (w *WorkflowOrchestrator) printParallelSummary(results []WaveResult, executor *ParallelExecutor) error {
-	fmt.Println("\nExecution Summary:")
-	fmt.Println("==================")
-
-	totalTasks := 0
-	successCount := 0
-	failedCount := 0
-	skippedCount := 0
-
-	for _, wave := range results {
-		fmt.Printf("Wave %d: %s\n", wave.WaveNumber, wave.Status)
-		for taskID, result := range wave.Results {
-			totalTasks++
-			switch {
-			case result.Skipped:
-				skippedCount++
-				fmt.Printf("  [SKIP] %s - %s\n", taskID, result.SkipReason)
-			case result.Success:
-				successCount++
-				fmt.Printf("  [OK]   %s (%v)\n", taskID, result.Duration.Round(100))
-			default:
-				failedCount++
-				fmt.Printf("  [FAIL] %s - %v\n", taskID, result.Error)
-			}
-		}
-	}
-
-	fmt.Printf("\nTotal: %d tasks, %d succeeded, %d failed, %d skipped\n",
-		totalTasks, successCount, failedCount, skippedCount)
-
-	if failedCount > 0 {
-		return fmt.Errorf("%d tasks failed", failedCount)
-	}
-
-	return nil
-}
-
 // markSpecCompletedAndPrint marks the spec as completed and prints the result.
 // This is a package-level function used by executors for consistent completion marking.
 func markSpecCompletedAndPrint(specDir string) {
@@ -733,6 +578,7 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 		return &ClaudeExecutor{
 			Timeout:         cfg.Timeout,
 			CcleanConfig:    cfg.Cclean,
+			CodexOutput:     cfg.CodexOutput,
 			UseSubscription: cfg.UseSubscription,
 			SkipPermissions: cfg.SkipPermissions,
 		}
@@ -742,6 +588,7 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 		Agent:                        agent,
 		Timeout:                      cfg.Timeout,
 		CcleanConfig:                 cfg.Cclean,
+		CodexOutput:                  cfg.CodexOutput,
 		UseSubscription:              cfg.UseSubscription,
 		SkipPermissions:              cfg.SkipPermissions,
 		ReplaceProcessForInteractive: true, // Default: replace process for full terminal control

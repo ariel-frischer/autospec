@@ -90,11 +90,12 @@ func init() {
 
 // artifactArgs represents parsed artifact command arguments.
 type artifactArgs struct {
-	artType      validation.ArtifactType
-	filePath     string
-	specMetadata *spec.Metadata // Detected spec metadata (for display)
-	isPathArg    bool           // Whether first arg was a path (type inferred)
-	isTypeOnly   bool           // Whether only type was provided (path auto-detected)
+	artType         validation.ArtifactType
+	filePath        string
+	specMetadata    *spec.Metadata // Detected spec metadata (for display)
+	selectionSource spec.SelectionSource
+	isPathArg       bool // Whether first arg was a path (type inferred)
+	isTypeOnly      bool // Whether only type was provided (path auto-detected)
 }
 
 // parseArtifactArgs parses the command arguments and determines the artifact type and path.
@@ -102,7 +103,7 @@ type artifactArgs struct {
 //   - Type only: autospec artifact plan → auto-detects path from spec directory
 //   - Path only: autospec artifact specs/001/plan.yaml → infers type from filename
 //   - Explicit: autospec artifact plan specs/001/plan.yaml → backward compatible
-func parseArtifactArgs(args []string, specsDir string) (*artifactArgs, error) {
+func parseArtifactArgs(args []string, specsDir, stateDir string) (*artifactArgs, error) {
 	result := &artifactArgs{}
 
 	if len(args) == 0 {
@@ -143,13 +144,14 @@ func parseArtifactArgs(args []string, specsDir string) (*artifactArgs, error) {
 	// Type-only invocation: auto-detect path from spec directory
 	result.isTypeOnly = true
 
-	resolvedPath, specMeta, err := resolveArtifactPath(artType, specsDir)
+	resolvedPath, specMeta, source, err := resolveArtifactPath(artType, specsDir, stateDir)
 	if err != nil {
 		return nil, err
 	}
 
 	result.filePath = resolvedPath
 	result.specMetadata = specMeta
+	result.selectionSource = source
 
 	return result, nil
 }
@@ -157,17 +159,21 @@ func parseArtifactArgs(args []string, specsDir string) (*artifactArgs, error) {
 // resolveArtifactPath resolves the artifact path from the current spec directory.
 // It uses DetectCurrentSpec to find the spec directory and constructs the artifact path.
 // Returns the path, spec metadata, and any error.
-func resolveArtifactPath(artType validation.ArtifactType, specsDir string) (string, *spec.Metadata, error) {
-	metadata, err := spec.DetectCurrentSpec(specsDir)
+func resolveArtifactPath(artType validation.ArtifactType, specsDir, stateDir string) (string, *spec.Metadata, spec.SelectionSource, error) {
+	artifactFilename := string(artType) + ".yaml"
+	result, err := spec.ResolveActiveFeature(spec.ActiveFeatureRequest{
+		SpecsDir:         specsDir,
+		StateDir:         stateDir,
+		RequiredArtifact: artifactFilename,
+	})
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to detect spec: %w\nHint: Run from a spec branch or specify the path explicitly", err)
+		return "", nil, "", fmt.Errorf("failed to detect spec: %w\nHint: Run from a spec branch or specify the path explicitly", err)
 	}
 
-	// Construct path to artifact
-	artifactFilename := string(artType) + ".yaml"
+	metadata := result.Metadata
 	artifactPath := filepath.Join(metadata.Directory, artifactFilename)
 
-	return artifactPath, metadata, nil
+	return artifactPath, metadata, result.Source, nil
 }
 
 // runArtifactCommand executes the artifact validation command.
@@ -180,7 +186,7 @@ func runArtifactCommand(args []string, configPath string, out, errOut io.Writer)
 	}
 
 	// Parse arguments
-	parsed, err := parseArtifactArgs(args, cfg.SpecsDir)
+	parsed, err := parseArtifactArgs(args, cfg.SpecsDir, cfg.StateDir)
 	if err != nil {
 		fmt.Fprintf(errOut, "Error: %v\n", err)
 		if strings.Contains(err.Error(), "invalid artifact type") {
@@ -239,6 +245,9 @@ func printSpecIdentification(parsed *artifactArgs, out io.Writer) {
 	}
 
 	fmt.Fprintln(out, parsed.specMetadata.FormatInfo())
+	if parsed.selectionSource != "" {
+		fmt.Fprintf(out, "  active feature: %s (source: %s)\n", parsed.specMetadata.Directory, parsed.selectionSource)
+	}
 }
 
 // printSchema prints the schema for an artifact type.

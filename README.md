@@ -21,6 +21,8 @@ Build features systematically with AI-powered specification workflows.
 Built with a **multi-agent architecture** and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation. These principles ensure reliable, performant, and maintainable software that developers 
 can trust for their critical development workflows.
 
+Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), and [OpenCode](https://opencode.ai).
+
 ## 📦 Installation
 
 ```bash
@@ -41,17 +43,17 @@ curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/instal
 
 ## ✨ What Makes Autospec Different?
 
-Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec is now a **fully standalone tool** with its own embedded commands and workflows.
+Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec is a standalone Go CLI focused on YAML-native artifacts, programmatic validation, and context-efficient implementation execution.
 
 | Feature | GitHub SpecKit | Autospec |
 |---------|---------------|----------|
 | Output Format | Markdown | **YAML** (machine-readable) |
-| Validation | Manual review | **Automatic** with retry logic |
-| Context Efficiency | Full prompt each time | **Smart YAML injection** + **phase-isolated sessions** |
-| Status Updates | Manual | **Auto-updates** spec.yaml & tasks.yaml |
-| Phase Orchestration | Manual | **Automated** with dependencies |
-| Session Isolation | Single session | **Per-phase/task** (80%+ cost savings) |
-| Implementation | Shell scripts | **Go** (type-safe, single binary) |
+| Workflow UX | Repetitive, non-composable command flow | **One-command end-to-end runs** (`autospec run -a`, `autospec prep`) |
+| Validation | Checklist/agent-driven review | **Programmatic validation** with retry logic |
+| Token Efficiency | Long implementation chats can accumulate large context | **Fresh bounded sessions per phase/task** (80%+ cost savings) |
+| Status Visibility | No built-in core status command | **Built-in phase/task progress** via `autospec st` |
+| Phase Orchestration | Agent-driven `/speckit.*` commands | **CLI-orchestrated** stages with dependency handling |
+| Workflow Engine | Prompt files + shell/PowerShell helpers | **Typed Go orchestration** in a single binary |
 
 ## 🚀 Quick Start
 
@@ -59,7 +61,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
 
 ### Prerequisites
 
-- [Claude Code](https://claude.ai/code) or [OpenCode](https://opencode.ai)
+- [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), or [OpenCode](https://opencode.ai)
 - Git
 
 ### Initialize Your Project
@@ -73,13 +75,14 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
    ```bash
    autospec init                    # Interactive agent selection
    autospec init ~/projects/myapp   # Initialize at specific path
+   autospec init --ai codex         # Configure Codex
    autospec init --ai opencode      # Configure specific agent
-   autospec init --ai claude,opencode  # Configure multiple agents
+   autospec init --ai claude,codex,opencode  # Configure multiple agents
    autospec init --project          # Project-level permissions (default: global)
    ```
-   > Permissions write to global config by default: `~/.claude/settings.json` (Claude) or `~/.config/opencode/opencode.json` (OpenCode). Use `--project` for project-level config.
+   > Permissions write to global config by default where supported. Codex project metadata is written to `.codex/config.toml` only with `--project`.
 
-3. Create project constitution (once per project, triggers Claude session):
+3. Create project constitution (once per project, triggers the configured agent):
    ```bash
    autospec constitution
    ```
@@ -140,9 +143,10 @@ autospec run -tlzi
 # All core with skip confirmations (-y)
 autospec run -a -y "Feature description"
 
-# Use a specific agent (claude or opencode)
+# Use a specific agent (claude, codex, or opencode)
 autospec run -a --agent opencode "Add REST API endpoints"
 autospec run -a --agent claude "Add unit tests"
+autospec run -a --agent codex "Add CLI smoke tests"
 ```
 
 ### Shortcut Commands
@@ -288,8 +292,8 @@ Priority: Environment vars > Project config > User config > Defaults
 # .autospec/config.yml
 
 # Agent configuration
-agent_preset: claude                  # Built-in: claude | opencode
-skip_permissions: false               # Add --dangerously-skip-permissions flag (Claude only)
+agent_preset: ""                      # Empty falls back to claude; built-in: claude | codex | opencode
+skip_permissions: true                # Autonomous mode for supported agents
 custom_agent_cmd: ""                  # Custom command template with {{PROMPT}} placeholder
 # custom_agent:                       # Structured agent config (alternative to custom_agent_cmd)
 #   command: claude
@@ -317,6 +321,12 @@ cclean:
   style: default                      # Output style: default | minimal | detailed
   verbose: false                      # Show verbose output
   linenumbers: false                  # Show line numbers in output
+
+# Codex automated output formatting
+codex_output:
+  mode: compact                       # compact | full
+  max_lines_per_message: 40           # Max displayed lines per compact block
+  color: true                         # Colorize compact Codex output
 
 # Notifications (all platforms)
 notifications:
@@ -402,17 +412,20 @@ See [docs/public/troubleshooting.md](docs/public/troubleshooting.md) for common 
 
 ## 📝 Slash Commands for Interactive Sessions
 
-`autospec init` installs slash commands to `.claude/commands/autospec.*.md` for use in normal Claude Code sessions:
+`autospec init` installs agent-native prompts for interactive sessions. Claude Code receives project skills such as `.claude/skills/autospec.specify/SKILL.md`, preserving `/autospec.specify` invocation. Codex and OpenCode share `.agents/skills/autospec-*` skills for interactive `$autospec-specify` / `$autospec-clarify` usage. Codex and OpenCode CLI workflow runs receive rendered prompt text directly through `codex exec` and `opencode run`; OpenCode init no longer generates `.opencode/command` files.
 
 ```bash
-/autospec.specify    # Generate spec.yaml interactively
-/autospec.plan       # Generate plan.yaml
-/autospec.tasks      # Generate tasks.yaml
-/autospec.implement  # Execute implementation
-/autospec.clarify    # Refine specifications
-/autospec.analyze    # Cross-artifact analysis
-/autospec.checklist  # Generate quality checklist
-/autospec.constitution  # Create project constitution
+# Claude Code skill aliases
+/autospec.specify       # Generate spec.yaml interactively
+/autospec.plan          # Generate plan.yaml
+/autospec.tasks         # Generate tasks.yaml
+/autospec.implement     # Execute implementation
+
+# Codex/OpenCode shared skill names
+$autospec-specify "Add user auth"
+$autospec-plan
+$autospec-tasks
+$autospec-implement
 ```
 
 Use these when you prefer chat-based iteration over autospec's automated (`-p`) mode.
@@ -425,15 +438,16 @@ Use these when you prefer chat-based iteration over autospec's automated (`-p`) 
 |----------|-------------|
 | [Quickstart Guide](docs/public/quickstart.md) | Complete your first workflow in 10 minutes |
 | [CLI Reference](docs/public/reference.md) | Full command reference with all flags and options |
-| [Agent Configuration](docs/public/agents.md) | Agent configuration (in development, Claude only) |
+| [Agent Configuration](docs/public/agents.md) | Claude, Codex, OpenCode, and custom agent configuration |
 | [Worktree Management](docs/public/worktree.md) | Run multiple features in parallel with git worktrees |
 | [Claude Settings](docs/public/claude-settings.md) | Sandboxing, permissions, and Claude Code configuration |
+| [Codex Settings](docs/public/codex-settings.md) | Codex CLI auth, sandboxing, and yolo mode |
 | [Troubleshooting](docs/public/troubleshooting.md) | Common issues and solutions |
 | [FAQ](docs/public/faq.md) | Frequently asked questions |
 
 ## 📥 Build from Source
 
-Requires Go 1.21+
+Requires Go 1.25+
 
 ```bash
 git clone https://github.com/ariel-frischer/autospec.git

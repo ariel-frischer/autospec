@@ -256,3 +256,41 @@ func TestRegistry_ConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestTestedVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agentName string
+		want      string
+	}{
+		"claude": {
+			agentName: "claude",
+			want:      "2.1.139",
+		},
+		"opencode": {
+			agentName: "opencode",
+			want:      "1.14.46",
+		},
+		"codex": {
+			agentName: "codex",
+			want:      "0.130.0",
+		},
+		"unknown agent": {
+			agentName: "unknown",
+			want:      "",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := TestedVersion(tt.agentName)
+
+			if got != tt.want {
+				t.Errorf("TestedVersion(%q) = %q, want %q", tt.agentName, got, tt.want)
+			}
+		})
+	}
+}
