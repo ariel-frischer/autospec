@@ -328,6 +328,19 @@ func TestValidate_UnreleasedNoDateRequired(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidate_EmptyUnreleasedAllowed(t *testing.T) {
+	changelog := &Changelog{
+		Project: "myproject",
+		Versions: []Version{
+			{Version: "unreleased", Changes: Changes{}},
+			{Version: "1.0.0", Date: "2024-01-15", Changes: Changes{Added: []string{"Initial release"}}},
+		},
+	}
+
+	err := Validate(changelog)
+	assert.NoError(t, err)
+}
+
 func TestValidate_UnreleasedWithDateAllowed(t *testing.T) {
 	changelog := &Changelog{
 		Project: "myproject",
