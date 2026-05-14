@@ -281,7 +281,7 @@ phases:
       tasks:
         - id: "T021"
           title: "Document active feature resolution in docs/public/worktree.md"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -293,7 +293,7 @@ phases:
             - "Include recovery guidance for stale or invalid persisted state."
         - id: "T022"
           title: "Update command reference in docs/public/reference.md"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -305,7 +305,7 @@ phases:
             - "Avoid documenting unsupported same-branch multi-worktree behavior."
         - id: "T023"
           title: "Create manual testing plan in .dev/tasks/128-persist-feature-directory.md"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: true
           story_id: null
@@ -317,7 +317,7 @@ phases:
             - "Do not execute the manual tests as part of this task."
         - id: "T024"
           title: "Update changelog and run full validation"
-          status: "Pending"
+          status: "Completed"
           type: "documentation"
           parallel: false
           story_id: null

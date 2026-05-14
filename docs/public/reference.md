@@ -81,7 +81,7 @@ Run selected workflow stages with flexible stage selection
 - `-z, --analyze`: Include analyze stage
 
 **Other Flags**:
-- `--spec <name>`: Target a specific spec (overrides branch detection)
+- `--spec <name>`: Target a specific spec for this invocation. This explicit selection overrides persisted active feature state and branch detection.
 - `-y, --yes`: Skip confirmation prompts
 - `--resume`: Resume implementation from where it left off
 - `--dry-run`: Preview what stages would run without executing
@@ -90,6 +90,8 @@ Run selected workflow stages with flexible stage selection
 - `--auto-commit` / `--no-auto-commit`: Override auto-commit config
 
 **Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
+
+**Feature Selection**: When a workflow command needs an existing feature directory, autospec resolves it in this order: explicit command selection (`--spec` or positional spec argument), persisted project-local active feature state, then branch-prefix fallback. Commands that create or select a feature may update the persisted active feature so later `plan`, `tasks`, `implement`, `status`, `prereqs`, and artifact lookups can target the same directory from a differently named branch.
 
 **Examples**:
 ```bash
@@ -149,6 +151,8 @@ Generate technical implementation plan from specification
 
 **Flags**: Same as `autospec all` (including `--auto-commit` and `--no-auto-commit`)
 
+When no explicit spec is provided, `autospec plan` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback.
+
 **Examples**:
 ```bash
 autospec plan
@@ -170,6 +174,8 @@ Generate task breakdown from implementation plan
 **Description**: Break down plan into ordered, actionable tasks with dependencies.
 
 **Flags**: Same as `autospec all` (including `--auto-commit` and `--no-auto-commit`)
+
+When no explicit spec is provided, `autospec tasks` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback.
 
 **Examples**:
 ```bash
@@ -201,6 +207,8 @@ Execute implementation phase using tasks breakdown
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
 - Plus all flags from `autospec all`
+
+When no positional spec is provided, `autospec implement` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback. A positional spec argument is explicit selection and takes precedence over persisted state.
 
 **Execution Modes**:
 
@@ -415,6 +423,8 @@ Check current feature status and progress
 **Alias**: `autospec st`
 
 **Description**: Display detected spec, which artifact files exist (spec.yaml, plan.yaml, tasks.yaml), task completion progress, and risk summary (if plan.yaml contains risks).
+
+Without a `spec-name`, status reports the currently resolved active feature. Resolution uses persisted project-local active feature state before falling back to the current branch prefix. A `spec-name` argument is explicit selection and overrides persisted state.
 
 **Flags**:
 - `-v, --verbose`: Show phase-by-phase breakdown
@@ -668,6 +678,8 @@ Validate YAML artifacts against their schemas
 
 **Description**: Validates artifacts against their schemas, checking required fields, types, enums, and cross-references (e.g., task dependencies).
 
+Path-based validation uses the path you provide. Type-only lookup, such as printing a schema or resolving a current artifact type without a path, uses the same active feature resolution order as workflow commands: explicit selection, persisted active feature, then branch-prefix fallback.
+
 **Supported Types**:
 - `spec` - Feature specification (spec.yaml)
 - `plan` - Implementation plan (plan.yaml)
@@ -862,6 +874,8 @@ Check prerequisites for workflow stages
 **Syntax**: `autospec prereqs [flags]`
 
 **Description**: Validate that required artifacts exist for the current spec before running workflow stages.
+
+When no explicit feature is provided, `autospec prereqs` checks the persisted active feature first and then falls back to branch-prefix detection.
 
 **Flags**:
 - `--json`: Output as JSON

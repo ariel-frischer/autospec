@@ -11,9 +11,31 @@ When running `autospec run -a`, the agent creates and checks out a new feature b
 
 Git worktrees solve this by giving each agent its own complete working directory, all sharing the same repository.
 
+Git still prevents the same branch from being checked out in more than one worktree at a time. Use separate branch names for separate worktrees, even when those branches are collaborating on the same autospec feature directory.
+
 **The problem:** Standard `git worktree add` doesn't copy non-tracked directories (`.autospec/`, `.claude/`, `.codex/`, `.opencode/`) or run project setup (npm install, etc.).
 
 **The solution:** `autospec worktree create` handles everything automatically.
+
+## Active Feature Resolution
+
+Autospec workflow commands choose the active feature directory in a fixed order:
+
+1. **Explicit selection**: a command argument or `--spec <feature>` wins for that invocation.
+2. **Persisted active feature**: project-local state under `.autospec/state/` can remember the selected feature directory across later commands.
+3. **Branch-prefix fallback**: when no explicit or persisted feature is available, autospec falls back to the existing branch-prefix lookup such as `128-my-feature` → `specs/128-*`.
+
+This lets a worktree on `feat/refactor-active-feature` continue work on `specs/128-persist-feature-directory` after that feature has been selected or created, without requiring the branch suffix to match the spec directory name. It does not bypass Git's same-branch worktree restriction; each worktree still needs a branch Git can check out independently.
+
+Use `--spec` when automation must target a specific feature regardless of saved state:
+
+```bash
+autospec run -ti --spec 128-persist-feature-directory
+autospec implement 128-persist-feature-directory
+autospec status 128-persist-feature-directory
+```
+
+If persisted state points at a deleted or invalid directory, autospec reports the selected directory and why it cannot be used. Recover by selecting an existing feature explicitly with `--spec`, running from a matching feature branch so branch-prefix fallback can resolve a valid spec, or removing the stale project-local active feature state from `.autospec/state/` before retrying.
 
 ## Quick Start
 

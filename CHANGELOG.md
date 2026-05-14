@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `autospec init` now creates `.autospec/.gitignore` so local runtime files stay ignored when project autospec files are versioned
 - `autospec init --project --ai codex` now generates project-local Codex skills for every embedded `autospec.*` command prompt
 - `autospec init` now prompts for the default execution agent when multiple agents are selected
+- Autospec workflow commands now document active feature resolution across explicit `--spec` selection, persisted project state, and branch-prefix fallback
 
 ### Removed
 - Removed the experimental DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode
