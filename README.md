@@ -43,17 +43,17 @@ curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/instal
 
 ## ✨ What Makes Autospec Different?
 
-Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec is now a **fully standalone tool** with its own embedded commands and workflows.
+Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec is a standalone Go CLI focused on YAML-native artifacts, programmatic validation, and context-efficient implementation execution.
 
 | Feature | GitHub SpecKit | Autospec |
 |---------|---------------|----------|
 | Output Format | Markdown | **YAML** (machine-readable) |
-| Validation | Manual review | **Automatic** with retry logic |
-| Context Efficiency | Full prompt each time | **Smart YAML injection** + **phase-isolated sessions** |
-| Status Updates | Manual | **Auto-updates** spec.yaml & tasks.yaml |
-| Phase Orchestration | Manual | **Automated** with dependencies |
-| Session Isolation | Single session | **Per-phase/task** (80%+ cost savings) |
-| Implementation | Shell scripts | **Go** (type-safe, single binary) |
+| Workflow UX | Repetitive, non-composable command flow | **One-command end-to-end runs** (`autospec run -a`, `autospec prep`) |
+| Validation | Checklist/agent-driven review | **Programmatic validation** with retry logic |
+| Token Efficiency | Long implementation chats can accumulate large context | **Fresh bounded sessions per phase/task** (80%+ cost savings) |
+| Status Visibility | No structured status view | **Exact phase/task progress** via `autospec st` |
+| Phase Orchestration | Agent-driven `/speckit.*` commands | **CLI-orchestrated** stages with dependency handling |
+| Implementation | Python CLI + shell/PowerShell scripts | **Go** (type-safe, single binary) |
 
 ## 🚀 Quick Start
 
