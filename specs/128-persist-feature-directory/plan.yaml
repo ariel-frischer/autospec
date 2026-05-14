@@ -1,0 +1,287 @@
+plan:
+  branch: "128-persist-feature-directory"
+  created: "2026-05-14"
+  spec_path: "specs/128-persist-feature-directory/spec.yaml"
+
+summary: |
+  Implement active feature directory persistence as project-local workflow state, layered into the existing spec resolution path without replacing branch-prefix or --spec behavior. The resolver should apply a deterministic precedence order: explicit command selection, persisted active feature directory, then existing branch-prefix detection and current fallback behavior.
+
+  The change should stay close to the current Go CLI architecture: add focused state and resolver helpers under internal/spec or an adjacent state package, wire shared command entry points through that resolver, and update user-facing docs so multi-worktree users understand that autospec can share one feature directory across differently named branches while Git still prevents checking out the same branch in multiple worktrees.
+
+technical_context:
+  language: "Go 1.25.1 module, currently tested with Go 1.26.1"
+  framework: "Cobra CLI v1.10.1"
+  primary_dependencies:
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "Parse and write project-local YAML state while matching existing artifact/config conventions."
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "Expose explicit feature selection flags or arguments across workflow commands."
+    - name: "github.com/stretchr/testify"
+      version: "v1.11.1"
+      purpose: "Focused assertions for map-based table tests."
+  storage: "Project-local YAML state under .autospec/state, likely .autospec/state/active-feature.yaml"
+  testing:
+    framework: "Go testing with testify"
+    approach: "Test-first unit coverage for resolver precedence and state persistence, plus CLI command tests for --spec and persisted-state behavior."
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Spec resolution remains filesystem-only and comfortably below the repository's <10ms validation-state performance target."
+  constraints:
+    - "Preserve existing --spec override behavior as the highest-priority user selection."
+    - "Fall back to existing branch-prefix detection when no explicit or persisted selection exists."
+    - "Persist active feature state per project, not as a global user preference."
+    - "Do not change spec.yaml, plan.yaml, or tasks.yaml artifact schemas."
+    - "Keep new and changed production functions under 40 lines with contextual error wrapping."
+    - "Document Git's unchanged same-branch worktree restriction."
+  scale_scope: "One active feature selection per project worktree, resolving among the existing specs directory entries."
+
+constitution_check:
+  constitution_path: ".autospec/constitution.yaml"
+  gates:
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Plan preserves stage prerequisite checks and requires artifact validation for generated plan/tasks outputs."
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Implementation starts with resolver/state tests and observable CLI command tests before production wiring."
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Resolution uses bounded local filesystem checks and a small YAML state file, with tests guarding fast deterministic behavior."
+    - name: "Idempotency and Retry Safety"
+      status: "PASS"
+      notes: "Persisting the same active feature repeatedly should be safe and should not corrupt existing specs or retry state."
+    - name: "Command Template Independence"
+      status: "PASS"
+      notes: "No command template changes are required; if templates are touched, they remain agent-neutral and receive explicit injected context."
+    - name: "Configuration Consistency"
+      status: "PASS"
+      notes: "The active feature is runtime project state rather than a new user-configurable field, so config schema/default updates are not required unless the implementation chooses a configurable path."
+    - name: "Workflow Lifecycle and Auditability"
+      status: "PASS"
+      notes: "Workflow commands keep lifecycle.RunWithHistory wrappers, and task generation must include manual testing and changelog tasks."
+
+research_findings:
+  decisions:
+    - topic: "Active feature resolution precedence"
+      decision: "Use explicit command selection first, persisted active feature state second, and existing branch-prefix/recent fallback last."
+      rationale: "This satisfies explicit automation needs while preserving current behavior for users who never persist a feature."
+      alternatives_considered:
+        - "Make persisted state override --spec, which would surprise scripts and existing users."
+        - "Replace branch detection entirely, which would break established feature-branch workflows."
+    - topic: "State location"
+      decision: "Store active feature selection in project-local .autospec/state rather than global config."
+      rationale: "The spec states this is project scope; the existing repository already uses .autospec/state for worktree state and runtime notices."
+      alternatives_considered:
+        - "Add a config field, which would drift into user preference semantics and require schema/default documentation updates."
+        - "Use only environment variables, which would not persist across later invocations."
+    - topic: "Resolver implementation boundary"
+      decision: "Introduce a focused resolver API around internal/spec instead of duplicating precedence logic in each Cobra command."
+      rationale: "Centralizing resolution keeps plan/tasks/status/artifact behavior consistent and makes selection-source reporting testable."
+      alternatives_considered:
+        - "Patch each command independently, which risks inconsistent precedence and error messages."
+        - "Move all CLI workflow logic into spec, which would over-couple domain lookup with Cobra command behavior."
+    - topic: "State format"
+      decision: "Use a small YAML document with feature_directory, selection_source, and updated_at fields."
+      rationale: "YAML matches autospec artifact/config conventions and is easy for users to inspect when debugging."
+      alternatives_considered:
+        - "JSON state, which is used for legacy config but is less aligned with current YAML-first project direction."
+        - "Plain text path only, which would not preserve source or timestamp for explainable status output."
+
+data_model:
+  entities:
+    - name: "Active Feature Directory"
+      description: "The spec directory selected for workflow commands."
+      fields:
+        - name: "directory"
+          type: "string"
+          description: "Path to a feature directory under the configured specs_dir."
+          constraints: "Must exist, be a directory, and contain required artifacts for the requested stage."
+        - name: "number"
+          type: "string"
+          description: "Three-digit feature prefix parsed from the directory basename."
+          constraints: "Matches ^[0-9]{3}$."
+        - name: "name"
+          type: "string"
+          description: "Feature slug parsed from the directory basename."
+          constraints: "Non-empty slug matching existing spec directory naming."
+        - name: "selection_source"
+          type: "enum"
+          description: "Where the active feature selection came from."
+          constraints: "One of explicit, persisted, git_branch, fallback, env_var if retained."
+      relationships:
+        - target: "Persisted Feature State"
+          type: "one-to-one"
+          description: "Persisted state records the active feature directory for later resolution."
+    - name: "Persisted Feature State"
+      description: "Project-local state file recording the active feature directory."
+      fields:
+        - name: "feature_directory"
+          type: "string"
+          description: "Relative feature directory path or basename to resolve under specs_dir."
+          constraints: "Must not escape specs_dir; invalid values produce actionable errors."
+        - name: "updated_at"
+          type: "timestamp"
+          description: "UTC timestamp for the last state update."
+          constraints: "ISO 8601 string."
+        - name: "source"
+          type: "string"
+          description: "Operation that persisted the selection."
+          constraints: "Human-readable source such as specify, select, or explicit."
+      relationships:
+        - target: "Active Feature Directory"
+          type: "one-to-one"
+          description: "State resolves to exactly one active feature directory."
+    - name: "Feature Selection Override"
+      description: "An explicit user request to target a specific feature for one invocation."
+      fields:
+        - name: "identifier"
+          type: "string"
+          description: "Feature number, slug, or full directory basename accepted by existing spec lookup."
+          constraints: "Validated through existing GetSpecMetadata/GetSpecDirectory behavior."
+        - name: "scope"
+          type: "string"
+          description: "Whether the override is one-shot or should update persisted state."
+          constraints: "Default one-shot unless an explicit select/persist action is used."
+      relationships:
+        - target: "Active Feature Directory"
+          type: "many-to-one"
+          description: "Many possible override identifiers can resolve to one feature directory."
+
+api_contracts:
+  endpoints: []
+  cli_commands:
+    - command: "autospec run --spec <feature>"
+      description: "Existing explicit selection remains higher priority than persisted active feature state."
+      request:
+        arguments:
+          - name: "feature"
+            type: "string"
+            required: true
+      response:
+        success: "Targets the requested feature and reports explicit selection."
+        errors:
+          - code: 3
+            description: "Requested feature is missing, ambiguous, or lacks required artifacts."
+    - command: "autospec status [feature]"
+      description: "Shows the resolved active feature and selection source, using persisted state when no argument is provided."
+      request:
+        arguments:
+          - name: "feature"
+            type: "string"
+            required: false
+      response:
+        success: "Displays artifacts, task summary, and active feature source."
+        errors:
+          - code: 3
+            description: "Persisted state is invalid or no feature can be resolved."
+
+project_structure:
+  documentation:
+    - path: "docs/public/worktree.md"
+      description: "Document active feature resolution order and multi-worktree limitations."
+    - path: "docs/public/reference.md"
+      description: "Update relevant command reference entries for explicit/persisted feature selection."
+    - path: "internal/changelog/changelog.yaml"
+      description: "Add user-facing release notes for persisted active feature selection."
+    - path: ".dev/tasks/128-persist-feature-directory.md"
+      description: "Manual testing plan created during task generation."
+  source_code:
+    - path: "internal/spec/"
+      description: "Spec metadata, branch fallback, active feature resolver, and persisted state helpers."
+    - path: "internal/cli/stages/*.go"
+      description: "Workflow stage commands resolve specs through the shared active feature resolver."
+    - path: "internal/cli/run.go"
+      description: "Flexible workflow resolution, explicit --spec precedence, and persistence after new feature creation or selection."
+    - path: "internal/cli/util/status.go"
+      description: "Status output reports active feature directory and selection source."
+    - path: "internal/cli/artifact.go"
+      description: "Type-only artifact resolution uses the same active feature resolver."
+  tests:
+    - path: "internal/spec/*_test.go"
+      description: "Map-based table tests for resolver precedence, state load/save, invalid state, and branch fallback."
+    - path: "internal/cli/*_test.go"
+      description: "CLI behavior tests for --spec override, persisted active feature use, and actionable errors."
+    - path: "internal/cli/stages/*_test.go"
+      description: "Stage command tests for persisted resolution while preserving lifecycle/history behavior."
+    - path: "docs/public/*"
+      description: "Documentation-only changes verified by review and existing docs tooling if available."
+
+implementation_phases:
+  - phase: 1
+    name: "Resolver Contract and Tests"
+    goal: "Define and test active feature resolution behavior before production changes."
+    deliverables:
+      - "Map-based table tests for explicit, persisted, branch-derived, and fallback resolution."
+      - "Tests for missing directory, missing spec.yaml, ambiguous feature identifier, and deleted persisted state."
+      - "Selection-source expectations for status/error output."
+  - phase: 2
+    name: "Persisted State and Shared Resolver"
+    goal: "Implement project-local active feature state and centralize precedence logic."
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Small YAML state type with load, save, clear, and validate helpers."
+      - "Resolver API that returns spec.Metadata plus selection source and actionable errors."
+      - "Persistence after creating or explicitly selecting a feature where appropriate."
+  - phase: 3
+    name: "Command Integration"
+    goal: "Route affected commands through the shared resolver while preserving current command lifecycle wrappers."
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "run, plan, tasks, implement, status, and artifact type-only lookup use the shared resolver."
+      - "--spec and positional explicit selections keep higher precedence than persisted state."
+      - "Output identifies the active feature directory and selection source."
+  - phase: 4
+    name: "Documentation and Release Notes"
+    goal: "Explain the feature for users and make it visible in release artifacts."
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Public docs covering resolution order, explicit selection, persisted state, branch fallback, and worktree limitations."
+      - "Changelog YAML entry and regenerated CHANGELOG.md."
+      - "Manual testing plan under .dev/tasks/."
+  - phase: 5
+    name: "Validation"
+    goal: "Run required project validation and fix regressions."
+    dependencies:
+      - "Phase 4"
+    deliverables:
+      - "make fmt exits 0."
+      - "make test exits 0."
+      - "make lint exits 0."
+      - "make build exits 0."
+
+risks:
+  - id: "RISK-001"
+    risk: "Persisted state may unexpectedly override a user's current branch if stale."
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Always report selection source and make invalid persisted state produce clear corrective guidance."
+  - id: "RISK-002"
+    risk: "Resolution logic may diverge across commands if each command handles precedence separately."
+    likelihood: "medium"
+    impact: "high"
+    mitigation: "Use a shared resolver API and command-level regression tests for representative entry points."
+  - id: "RISK-003"
+    risk: "Persisted paths could escape specs_dir or reference deleted directories."
+    likelihood: "low"
+    impact: "high"
+    mitigation: "Normalize and validate persisted values against specs_dir before returning metadata."
+
+open_questions:
+  - question: "Should explicit --spec update persisted active feature state or remain strictly one-shot?"
+    context: "The spec says explicit selection wins, but persistence semantics for every explicit invocation could surprise users."
+    proposed_resolution: "Keep --spec one-shot by default and persist only after feature creation or an explicit select/persist action, unless existing command behavior clearly implies selection should become active."
+  - question: "Should there be a dedicated command for setting or clearing the active feature?"
+    context: "Users may need to recover from stale persisted state without editing YAML by hand."
+    proposed_resolution: "Prefer a small command or flag such as autospec feature select/clear if it fits existing command structure; otherwise document the state file and provide actionable error hints."
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-05-14T01:42:44Z"
+  artifact_type: "plan"
