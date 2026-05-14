@@ -15,6 +15,9 @@ type CodexOutputConfig struct {
 
 	// MaxLinesPerMessage caps each displayed compact output block.
 	MaxLinesPerMessage int `koanf:"max_lines_per_message" yaml:"max_lines_per_message"`
+
+	// Color controls ANSI color in compact Codex output.
+	Color bool `koanf:"color" yaml:"color"`
 }
 
 func (c CodexOutputConfig) CompactEnabled() bool {

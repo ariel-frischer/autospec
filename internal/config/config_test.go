@@ -85,6 +85,7 @@ func TestLoad_CodexOutputDefaults(t *testing.T) {
 
 	assert.Equal(t, "compact", cfg.CodexOutput.Mode)
 	assert.Equal(t, 40, cfg.CodexOutput.MaxLinesPerMessage)
+	assert.True(t, cfg.CodexOutput.Color)
 }
 
 func TestLoad_CodexOutputFromYAML(t *testing.T) {
@@ -95,6 +96,7 @@ func TestLoad_CodexOutputFromYAML(t *testing.T) {
 	configContent := `codex_output:
   mode: full
   max_lines_per_message: 80
+  color: false
 `
 	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0o644))
 
@@ -103,17 +105,20 @@ func TestLoad_CodexOutputFromYAML(t *testing.T) {
 
 	assert.Equal(t, "full", cfg.CodexOutput.Mode)
 	assert.Equal(t, 80, cfg.CodexOutput.MaxLinesPerMessage)
+	assert.False(t, cfg.CodexOutput.Color)
 }
 
 func TestLoad_CodexOutputFromEnv(t *testing.T) {
 	t.Setenv("AUTOSPEC_CODEX_OUTPUT_MODE", "full")
 	t.Setenv("AUTOSPEC_CODEX_OUTPUT_MAX_LINES_PER_MESSAGE", "12")
+	t.Setenv("AUTOSPEC_CODEX_OUTPUT_COLOR", "false")
 
 	cfg, err := Load("")
 	require.NoError(t, err)
 
 	assert.Equal(t, "full", cfg.CodexOutput.Mode)
 	assert.Equal(t, 12, cfg.CodexOutput.MaxLinesPerMessage)
+	assert.False(t, cfg.CodexOutput.Color)
 }
 
 func TestLoad_CodexOutputInvalidValues(t *testing.T) {

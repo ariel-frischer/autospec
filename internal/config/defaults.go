@@ -64,6 +64,7 @@ cclean:
 codex_output:
   mode: compact                       # compact | full
   max_lines_per_message: 40           # Max displayed lines per compact output block
+  color: true                         # Colorize compact Codex output
 
 # Autonomous execution
 skip_permissions: true                # Enable autonomous mode for supported agents
@@ -155,6 +156,7 @@ func GetDefaults() map[string]interface{} {
 		"codex_output": map[string]interface{}{
 			"mode":                  CodexOutputModeCompact,
 			"max_lines_per_message": 40,
+			"color":                 true,
 		},
 		// skip_permissions: Enable autonomous mode for supported agents.
 		// Claude uses --dangerously-skip-permissions; Codex uses

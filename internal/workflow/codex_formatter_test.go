@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/fatih/color"
 )
 
 func TestCodexFormatterProcessLine(t *testing.T) {
@@ -82,6 +84,62 @@ func TestCodexFormatterWriterFlushesPartialLine(t *testing.T) {
 	got := out.String()
 	if !strings.Contains(got, "Reasoning:") || !strings.Contains(got, "checked config") {
 		t.Fatalf("output = %q, want reasoning summary", got)
+	}
+}
+
+func TestCodexFormatterUsesColorForParsedBlocks(t *testing.T) {
+	t.Cleanup(func() { color.NoColor = false })
+	color.NoColor = false
+
+	tests := map[string]struct {
+		line     string
+		wantANSI bool
+	}{
+		"agent message is colored": {
+			line:     `{"type":"item.completed","item":{"type":"agent_message","text":"hello"}}`,
+			wantANSI: true,
+		},
+		"command execution is colored": {
+			line:     `{"type":"item.completed","item":{"type":"command_execution","command":"go test ./...","status":"completed"}}`,
+			wantANSI: true,
+		},
+		"malformed JSON remains raw": {
+			line:     `{not json`,
+			wantANSI: false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			formatter := NewCodexFormatter(40, &out)
+			formatter.ProcessLine(tt.line)
+
+			gotANSI := strings.Contains(out.String(), "\x1b[")
+			if gotANSI != tt.wantANSI {
+				t.Fatalf("ANSI presence = %v, want %v; output = %q", gotANSI, tt.wantANSI, out.String())
+			}
+		})
+	}
+}
+
+func TestCodexFormatterCanDisableColor(t *testing.T) {
+	t.Cleanup(func() { color.NoColor = false })
+	color.NoColor = false
+
+	var out bytes.Buffer
+	formatter := NewCodexFormatterWithOptions(CodexFormatterOptions{
+		MaxLines:     40,
+		ColorEnabled: false,
+		Writer:       &out,
+	})
+	formatter.ProcessLine(`{"type":"item.completed","item":{"type":"agent_message","text":"hello"}}`)
+
+	if strings.Contains(out.String(), "\x1b[") {
+		t.Fatalf("output should not contain ANSI when color is disabled: %q", out.String())
+	}
+	if !strings.Contains(out.String(), "Agent message") {
+		t.Fatalf("output = %q, want agent message label", out.String())
 	}
 }
 

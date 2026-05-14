@@ -136,4 +136,7 @@ func TestGetDefaults(t *testing.T) {
 	if codexOutput["max_lines_per_message"] != 40 {
 		t.Errorf("codex_output.max_lines_per_message default = %v, want 40", codexOutput["max_lines_per_message"])
 	}
+	if codexOutput["color"] != true {
+		t.Errorf("codex_output.color default = %v, want true", codexOutput["color"])
+	}
 }

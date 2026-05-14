@@ -1351,6 +1351,14 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 
 **Environment**: `AUTOSPEC_CODEX_OUTPUT_MAX_LINES_PER_MESSAGE`
 
+#### codex_output.color
+
+**Type**: boolean
+**Default**: `true`
+**Description**: Enable ANSI color in compact Codex output.
+
+**Environment**: `AUTOSPEC_CODEX_OUTPUT_COLOR`
+
 ### worktree
 
 **Type**: object

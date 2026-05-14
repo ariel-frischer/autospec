@@ -265,6 +265,12 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description: "Maximum displayed lines per compact Codex output block",
 		Default:     40,
 	},
+	"codex_output.color": {
+		Path:        "codex_output.color",
+		Type:        TypeBool,
+		Description: "Enable ANSI color in compact Codex output",
+		Default:     true,
+	},
 	"skip_permissions": {
 		Path:        "skip_permissions",
 		Type:        TypeBool,

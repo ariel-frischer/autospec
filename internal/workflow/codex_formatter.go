@@ -6,18 +6,39 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 type CodexFormatter struct {
-	maxLines int
-	writer   io.Writer
+	maxLines     int
+	writer       io.Writer
+	colorEnabled bool
+}
+
+type CodexFormatterOptions struct {
+	MaxLines     int
+	ColorEnabled bool
+	Writer       io.Writer
 }
 
 func NewCodexFormatter(maxLines int, writer io.Writer) *CodexFormatter {
-	if maxLines < 1 {
-		maxLines = 40
+	return NewCodexFormatterWithOptions(CodexFormatterOptions{
+		MaxLines:     maxLines,
+		ColorEnabled: true,
+		Writer:       writer,
+	})
+}
+
+func NewCodexFormatterWithOptions(opts CodexFormatterOptions) *CodexFormatter {
+	if opts.MaxLines < 1 {
+		opts.MaxLines = 40
 	}
-	return &CodexFormatter{maxLines: maxLines, writer: writer}
+	return &CodexFormatter{
+		maxLines:     opts.MaxLines,
+		writer:       opts.Writer,
+		colorEnabled: opts.ColorEnabled,
+	}
 }
 
 func (f *CodexFormatter) ProcessLine(line string) {
@@ -51,9 +72,9 @@ func (f *CodexFormatter) writeEvent(event map[string]interface{}) {
 
 	switch {
 	case eventType == "error":
-		f.writeBlock("Error", firstText(event, "message", "error"))
+		f.writeBlock(errorLabel, "Error", firstText(event, "message", "error"))
 	case eventType == "item.completed" && itemType == "agent_message":
-		f.writeBlock("Agent message", firstText(item, "text", "content"))
+		f.writeBlock(agentLabel, "Agent message", firstText(item, "text", "content"))
 	case eventType == "item.completed" && itemType == "command_execution":
 		f.writeCommand(item)
 	case eventType == "item.completed" && itemType == "file_change":
@@ -61,7 +82,7 @@ func (f *CodexFormatter) writeEvent(event map[string]interface{}) {
 	case eventType == "item.completed" && itemType == "reasoning":
 		f.writeReasoning(item)
 	case eventType == "item.completed" && usefulItemType(itemType):
-		f.writeLine(titleFor(itemType))
+		f.writeLine(f.colorize(toolLabel, titleFor(itemType)))
 	case strings.HasPrefix(eventType, "turn.") || strings.HasPrefix(eventType, "thread."):
 		return
 	}
@@ -71,10 +92,10 @@ func (f *CodexFormatter) writeCommand(item map[string]interface{}) {
 	command := firstText(item, "command", "cmd")
 	status := firstText(item, "status")
 	if command != "" {
-		f.writeLine("Command: " + command)
+		f.writeLine(f.colorize(commandLabel, "Command:") + " " + f.colorize(commandText, command))
 	}
 	if status != "" {
-		f.writeLine("Status: " + status)
+		f.writeLine(f.colorize(statusLabel, "Status:") + " " + f.colorize(statusText(status), status))
 	}
 	f.writeNamedOutput("stdout", firstText(item, "stdout", "output"))
 	f.writeNamedOutput("stderr", firstText(item, "stderr"))
@@ -87,35 +108,35 @@ func (f *CodexFormatter) writeFileChange(item map[string]interface{}) {
 		action = "changed"
 	}
 	if path == "" {
-		f.writeLine("File change: " + action)
+		f.writeLine(f.colorize(fileLabel, "File change:") + " " + action)
 		return
 	}
-	f.writeLine(fmt.Sprintf("File change: %s %s", action, path))
+	f.writeLine(fmt.Sprintf("%s %s %s", f.colorize(fileLabel, "File change:"), action, f.colorize(filePathText, path)))
 }
 
 func (f *CodexFormatter) writeReasoning(item map[string]interface{}) {
 	summary := firstText(item, "summary", "text")
 	if summary == "" {
-		f.writeLine("Reasoning")
+		f.writeLine(f.colorize(reasoningLabel, "Reasoning"))
 		return
 	}
-	f.writeBlock("Reasoning", summary)
+	f.writeBlock(reasoningLabel, "Reasoning", summary)
 }
 
 func (f *CodexFormatter) writeNamedOutput(name, text string) {
 	if strings.TrimSpace(text) == "" {
 		return
 	}
-	f.writeLine(name + ":")
+	f.writeLine(f.colorize(outputLabel(name), name+":"))
 	f.writeLimited(text)
 }
 
-func (f *CodexFormatter) writeBlock(title, text string) {
+func (f *CodexFormatter) writeBlock(style *color.Color, title, text string) {
 	if strings.TrimSpace(text) == "" {
-		f.writeLine(title)
+		f.writeLine(f.colorize(style, title))
 		return
 	}
-	f.writeLine(title + ":")
+	f.writeLine(f.colorize(style, title+":"))
 	f.writeLimited(text)
 }
 
@@ -126,8 +147,15 @@ func (f *CodexFormatter) writeLimited(text string) {
 		f.writeLine(line)
 	}
 	if omitted := len(lines) - limit; omitted > 0 {
-		f.writeLine(fmt.Sprintf("... truncated %d lines; set codex_output.mode: full for complete Codex output", omitted))
+		f.writeLine(f.colorize(truncationText, fmt.Sprintf("... truncated %d lines; set codex_output.mode: full for complete Codex output", omitted)))
 	}
+}
+
+func (f *CodexFormatter) colorize(style *color.Color, text string) string {
+	if !f.colorEnabled {
+		return text
+	}
+	return style.Sprint(text)
 }
 
 func (f *CodexFormatter) writeLine(line string) {
@@ -143,8 +171,16 @@ type CodexFormatterWriter struct {
 }
 
 func NewCodexFormatterWriter(maxLines int, output io.Writer) *CodexFormatterWriter {
+	return NewCodexFormatterWriterWithOptions(CodexFormatterOptions{
+		MaxLines:     maxLines,
+		ColorEnabled: true,
+		Writer:       output,
+	})
+}
+
+func NewCodexFormatterWriterWithOptions(opts CodexFormatterOptions) *CodexFormatterWriter {
 	return &CodexFormatterWriter{
-		formatter: NewCodexFormatter(maxLines, output),
+		formatter: NewCodexFormatterWithOptions(opts),
 		buffer:    make([]byte, 0, 4096),
 	}
 }
@@ -230,4 +266,37 @@ func usefulItemType(itemType string) bool {
 
 func titleFor(itemType string) string {
 	return strings.ReplaceAll(itemType, "_", " ")
+}
+
+var (
+	agentLabel     = color.New(color.FgCyan, color.Bold)
+	commandLabel   = color.New(color.FgMagenta, color.Bold)
+	commandText    = color.New(color.FgWhite)
+	errorLabel     = color.New(color.FgRed, color.Bold)
+	fileLabel      = color.New(color.FgGreen, color.Bold)
+	filePathText   = color.New(color.FgCyan)
+	reasoningLabel = color.New(color.FgBlue, color.Bold)
+	stderrLabel    = color.New(color.FgRed, color.Bold)
+	stdoutLabel    = color.New(color.FgHiBlack, color.Bold)
+	statusLabel    = color.New(color.FgYellow, color.Bold)
+	statusOK       = color.New(color.FgGreen)
+	statusWarn     = color.New(color.FgYellow)
+	toolLabel      = color.New(color.FgBlue)
+	truncationText = color.New(color.FgYellow, color.Faint)
+)
+
+func outputLabel(name string) *color.Color {
+	if name == "stderr" {
+		return stderrLabel
+	}
+	return stdoutLabel
+}
+
+func statusText(status string) *color.Color {
+	switch strings.ToLower(status) {
+	case "completed", "success", "succeeded":
+		return statusOK
+	default:
+		return statusWarn
+	}
 }

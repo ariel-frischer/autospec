@@ -91,9 +91,10 @@ Codex `exec` is the non-interactive CLI mode. autospec uses compact output by de
 codex_output:
   mode: compact
   max_lines_per_message: 40
+  color: true
 ```
 
-In compact mode autospec runs `codex exec --json`, parses the JSONL event stream, and displays concise agent messages, command summaries, file-change summaries, and useful reasoning/tool labels. Each displayed block is capped by `max_lines_per_message`; truncated blocks include a hint to switch to full mode.
+In compact mode autospec runs `codex exec --json`, parses the JSONL event stream, and displays color-coded concise agent messages, command summaries, file-change summaries, and useful reasoning/tool labels. Each displayed block is capped by `max_lines_per_message`; truncated blocks include a hint to switch to full mode. Set `codex_output.color: false` to disable ANSI color.
 
 To restore Codex's native terminal transcript:
 

@@ -323,6 +323,7 @@ cclean:
 codex_output:
   mode: compact                       # compact | full
   max_lines_per_message: 40           # Max displayed lines per compact block
+  color: true                         # Colorize compact Codex output
 
 # Notifications (all platforms)
 notifications:

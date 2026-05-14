@@ -185,7 +185,11 @@ func (c *ClaudeExecutor) StreamCommand(prompt string, stdout, stderr io.Writer) 
 // Otherwise, returns the original writer unchanged.
 func (c *ClaudeExecutor) getFormattedStdout(w io.Writer) io.Writer {
 	if c.codexCompactOutputEnabled() {
-		return NewCodexFormatterWriter(c.CodexOutput.LineLimit(), w)
+		return NewCodexFormatterWriterWithOptions(CodexFormatterOptions{
+			MaxLines:     c.CodexOutput.LineLimit(),
+			ColorEnabled: c.CodexOutput.Color,
+			Writer:       w,
+		})
 	}
 
 	// Skip formatting if style is raw
