@@ -575,6 +575,7 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 		return &ClaudeExecutor{
 			Timeout:         cfg.Timeout,
 			CcleanConfig:    cfg.Cclean,
+			CodexOutput:     cfg.CodexOutput,
 			UseSubscription: cfg.UseSubscription,
 			SkipPermissions: cfg.SkipPermissions,
 		}
@@ -584,6 +585,7 @@ func newClaudeExecutorFromConfig(cfg *config.Configuration) *ClaudeExecutor {
 		Agent:                        agent,
 		Timeout:                      cfg.Timeout,
 		CcleanConfig:                 cfg.Cclean,
+		CodexOutput:                  cfg.CodexOutput,
 		UseSubscription:              cfg.UseSubscription,
 		SkipPermissions:              cfg.SkipPermissions,
 		ReplaceProcessForInteractive: true, // Default: replace process for full terminal control

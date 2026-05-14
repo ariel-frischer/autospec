@@ -133,6 +133,10 @@ type Configuration struct {
 	// Environment variable support via AUTOSPEC_CCLEAN_* prefix.
 	Cclean CcleanConfig `koanf:"cclean"`
 
+	// CodexOutput configures compact output for automated Codex CLI runs.
+	// Environment variable support via AUTOSPEC_CODEX_OUTPUT_* prefix.
+	CodexOutput CodexOutputConfig `koanf:"codex_output"`
+
 	// Verification configures verification depth and feature toggles.
 	// Controls verification level (basic, enhanced, full), individual feature toggles,
 	// and quality thresholds for mutation testing, coverage, and complexity.
@@ -414,7 +418,7 @@ func envTransform(s string) string {
 
 	// Known nested config prefixes that need dot notation.
 	// Order matters: longer prefixes must come first to avoid partial matches.
-	nestedPrefixes := []string{"custom_agent_", "notifications_", "verification_", "worktree_", "cclean_"}
+	nestedPrefixes := []string{"custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_"}
 	for _, prefix := range nestedPrefixes {
 		if strings.HasPrefix(key, prefix) {
 			// Replace the trailing underscore of the prefix with a dot

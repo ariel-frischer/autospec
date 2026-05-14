@@ -1329,6 +1329,28 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 **Values**: `"default"` | `"compact"` | `"minimal"` | `"plain"`
 **Description**: Output formatting style for cclean (`-s` flag)
 
+### codex_output
+
+**Type**: object
+**Description**: Configuration for automated Codex output formatting. Applies only to built-in Codex non-interactive runs.
+
+#### codex_output.mode
+
+**Type**: string (enum)
+**Default**: `"compact"`
+**Values**: `"compact"` | `"full"`
+**Description**: `compact` runs `codex exec --json` and displays concise JSONL event summaries. `full` preserves Codex's native terminal output.
+
+**Environment**: `AUTOSPEC_CODEX_OUTPUT_MODE`
+
+#### codex_output.max_lines_per_message
+
+**Type**: integer
+**Default**: `40`
+**Description**: Maximum lines shown for each compact Codex output block before autospec prints a truncation marker.
+
+**Environment**: `AUTOSPEC_CODEX_OUTPUT_MAX_LINES_PER_MESSAGE`
+
 ### worktree
 
 **Type**: object

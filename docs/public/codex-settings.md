@@ -3,7 +3,7 @@
 autospec supports Codex through the non-interactive Codex CLI command:
 
 ```bash
-codex exec "<rendered autospec prompt>"
+codex exec --json "<rendered autospec prompt>"
 ```
 
 ## Authentication
@@ -85,7 +85,24 @@ Each skill is generated from the matching `internal/commands/autospec.*.md` prom
 
 ## Output
 
-Codex `exec` is the non-interactive CLI mode. It writes formatted terminal output by default, which is useful for humans watching a run.
+Codex `exec` is the non-interactive CLI mode. autospec uses compact output by default for automated Codex runs:
+
+```yaml
+codex_output:
+  mode: compact
+  max_lines_per_message: 40
+```
+
+In compact mode autospec runs `codex exec --json`, parses the JSONL event stream, and displays concise agent messages, command summaries, file-change summaries, and useful reasoning/tool labels. Each displayed block is capped by `max_lines_per_message`; truncated blocks include a hint to switch to full mode.
+
+To restore Codex's native terminal transcript:
+
+```yaml
+codex_output:
+  mode: full
+```
+
+Full mode runs `codex exec "<rendered autospec prompt>"` without `--json`. Interactive Codex sessions are unchanged.
 
 For script parsing, Codex supports JSON Lines output:
 
@@ -101,7 +118,7 @@ If only the final assistant message is needed, Codex can also write it to a file
 codex exec -o codex-final.txt "summarize the repo structure"
 ```
 
-autospec currently relies on Codex process exit status plus generated workflow artifacts (`spec.yaml`, `plan.yaml`, `tasks.yaml`) rather than parsing Codex JSONL events.
+autospec still relies on Codex process exit status plus generated workflow artifacts (`spec.yaml`, `plan.yaml`, `tasks.yaml`) for workflow validation; compact output only changes what is shown while Codex runs.
 
 ## References
 

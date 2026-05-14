@@ -319,6 +319,11 @@ cclean:
   verbose: false                      # Show verbose output
   linenumbers: false                  # Show line numbers in output
 
+# Codex automated output formatting
+codex_output:
+  mode: compact                       # compact | full
+  max_lines_per_message: 40           # Max displayed lines per compact block
+
 # Notifications (all platforms)
 notifications:
   enabled: false                      # Enable notifications (opt-in)

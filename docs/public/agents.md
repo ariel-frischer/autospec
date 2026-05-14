@@ -355,7 +355,7 @@ Codex is a supported agent for autospec's non-interactive workflows.
 autospec sends rendered prompt text to Codex using:
 
 ```bash
-codex exec "<rendered autospec prompt>"
+codex exec --json "<rendered autospec prompt>"
 ```
 
 Use Codex for one command with:
@@ -383,7 +383,7 @@ Codex reads user config from `~/.codex/config.toml`. Project-level initializatio
 
 Codex supports `--sandbox`, `--ask-for-approval`, and `--dangerously-bypass-approvals-and-sandbox` in `codex exec`. autospec maps `skip_permissions: true` to `--dangerously-bypass-approvals-and-sandbox`.
 
-Codex `exec` prints formatted terminal output by default. For machine-readable streams, Codex supports `codex exec --json`, which emits JSONL events for lifecycle updates, messages, reasoning summaries, command executions, file changes, and tool calls. Codex can also write the final assistant message with `codex exec -o <file>`. autospec does not currently parse those events; it validates generated autospec artifacts after Codex exits.
+autospec uses compact Codex output by default. It runs `codex exec --json`, parses Codex JSONL events, and shows concise summaries for agent messages, command executions, file changes, and useful reasoning/tool events. Set `codex_output.mode: full` to restore Codex's native terminal transcript. Codex can also write the final assistant message with `codex exec -o <file>`. autospec validates generated autospec artifacts after Codex exits.
 
 Codex does not support autospec's Claude/OpenCode command-template directories. Instead, autospec generates Codex-native skills from each embedded `autospec.*` prompt. In interactive Codex, use `$autospec-specify "Add user auth"`, `$autospec-plan`, `$autospec-tasks`, `$autospec-implement`, `$autospec-constitution`, `$autospec-clarify`, `$autospec-checklist`, or `$autospec-analyze`.
 

@@ -60,6 +60,11 @@ cclean:
   line_numbers: false                 # Show line numbers in formatted output (-n)
   style: default                      # Output style: default | compact | minimal | plain (-s)
 
+# Codex automated output formatting
+codex_output:
+  mode: compact                       # compact | full
+  max_lines_per_message: 40           # Max displayed lines per compact output block
+
 # Autonomous execution
 skip_permissions: true                # Enable autonomous mode for supported agents
 
@@ -143,6 +148,13 @@ func GetDefaults() map[string]interface{} {
 			"verbose":      false,     // Verbose output with usage stats and tool IDs (-V flag)
 			"line_numbers": false,     // Show line numbers in formatted output (-n flag)
 			"style":        "default", // Output style: default, compact, minimal, plain (-s flag)
+		},
+		// codex_output: Output handling for automated Codex CLI runs.
+		// compact uses `codex exec --json` and summarizes JSONL events; full
+		// preserves Codex's native transcript.
+		"codex_output": map[string]interface{}{
+			"mode":                  CodexOutputModeCompact,
+			"max_lines_per_message": 40,
 		},
 		// skip_permissions: Enable autonomous mode for supported agents.
 		// Claude uses --dangerously-skip-permissions; Codex uses

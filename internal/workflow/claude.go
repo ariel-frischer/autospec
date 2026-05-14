@@ -24,6 +24,9 @@ type ClaudeExecutor struct {
 	// Style field controls output formatting: default, compact, minimal, plain, raw.
 	CcleanConfig config.CcleanConfig
 
+	// CodexOutput controls output handling for automated Codex CLI runs.
+	CodexOutput config.CodexOutputConfig
+
 	// UseSubscription forces subscription mode (Pro/Max) instead of API credits.
 	// When true, ANTHROPIC_API_KEY is set to empty string in the execution environment.
 	UseSubscription bool
@@ -81,6 +84,7 @@ func (c *ClaudeExecutor) executeWithAgent(prompt string, interactive bool) error
 		Autonomous:      c.SkipPermissions,
 		Interactive:     interactive,
 		ReplaceProcess:  interactive && c.ReplaceProcessForInteractive,
+		JSONOutput:      !interactive && c.codexCompactOutputEnabled(),
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)
@@ -153,6 +157,7 @@ func (c *ClaudeExecutor) StreamCommand(prompt string, stdout, stderr io.Writer) 
 		Timeout:         time.Duration(c.Timeout) * time.Second,
 		UseSubscription: c.UseSubscription,
 		Autonomous:      c.SkipPermissions,
+		JSONOutput:      c.codexCompactOutputEnabled(),
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)
@@ -179,6 +184,10 @@ func (c *ClaudeExecutor) StreamCommand(prompt string, stdout, stderr io.Writer) 
 // - Stream-json mode with headless flag is detected
 // Otherwise, returns the original writer unchanged.
 func (c *ClaudeExecutor) getFormattedStdout(w io.Writer) io.Writer {
+	if c.codexCompactOutputEnabled() {
+		return NewCodexFormatterWriter(c.CodexOutput.LineLimit(), w)
+	}
+
 	// Skip formatting if style is raw
 	style, _ := config.NormalizeOutputStyle(c.CcleanConfig.Style)
 	if style.IsRaw() {
@@ -214,6 +223,13 @@ func (c *ClaudeExecutor) flushFormatter(w io.Writer) {
 	if fw, ok := w.(*FormatterWriter); ok {
 		fw.Flush()
 	}
+	if fw, ok := w.(*CodexFormatterWriter); ok {
+		fw.Flush()
+	}
+}
+
+func (c *ClaudeExecutor) codexCompactOutputEnabled() bool {
+	return c.Agent != nil && c.Agent.Name() == "codex" && c.CodexOutput.CompactEnabled()
 }
 
 // detectStreamJsonMode checks if the agent command is configured for stream-json output

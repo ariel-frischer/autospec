@@ -174,6 +174,10 @@ func ValidateConfigValues(cfg *Configuration, filePath string) error {
 		}
 	}
 
+	if err := validateCodexOutputConfig(cfg.CodexOutput, filePath); err != nil {
+		return err
+	}
+
 	// Validate verification config
 	if err := validateVerificationConfig(&cfg.Verification, filePath); err != nil {
 		return err

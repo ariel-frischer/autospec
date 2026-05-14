@@ -252,6 +252,19 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description:   "Output formatting style for cclean (-s flag)",
 		Default:       "default",
 	},
+	"codex_output.mode": {
+		Path:          "codex_output.mode",
+		Type:          TypeEnum,
+		AllowedValues: []string{"compact", "full"},
+		Description:   "Output mode for automated Codex runs",
+		Default:       "compact",
+	},
+	"codex_output.max_lines_per_message": {
+		Path:        "codex_output.max_lines_per_message",
+		Type:        TypeInt,
+		Description: "Maximum displayed lines per compact Codex output block",
+		Default:     40,
+	},
 	"skip_permissions": {
 		Path:        "skip_permissions",
 		Type:        TypeBool,

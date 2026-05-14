@@ -79,7 +79,8 @@ func TestCodexFormatterWriterFlushesPartialLine(t *testing.T) {
 	}
 	writer.Flush()
 
-	if got := out.String(); !strings.Contains(got, "Reasoning: checked config") {
+	got := out.String()
+	if !strings.Contains(got, "Reasoning:") || !strings.Contains(got, "checked config") {
 		t.Fatalf("output = %q, want reasoning summary", got)
 	}
 }

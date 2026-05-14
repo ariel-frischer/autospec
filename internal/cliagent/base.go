@@ -117,7 +117,11 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 		case PromptMethodPositional:
 			args = append(args, prompt)
 		case PromptMethodSubcommand:
-			args = append(args, pd.Flag, prompt)
+			args = append(args, pd.Flag)
+			if opts.JSONOutput {
+				args = append(args, "--json")
+			}
+			args = append(args, prompt)
 		case PromptMethodSubcommandArg:
 			args = append(args, pd.Flag, pd.PromptFlag, prompt)
 		case PromptMethodSubcommandWithFlag:
