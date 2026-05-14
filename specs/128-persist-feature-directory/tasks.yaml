@@ -43,7 +43,7 @@ phases:
       tasks:
         - id: "T003"
           title: "Add resolver precedence tests in internal/spec/active_feature_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: null
@@ -55,7 +55,7 @@ phases:
             - "Assert the resolver returns the selected feature directory and a selection source."
         - id: "T004"
           title: "Add persisted state tests in internal/spec/active_feature_state_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -67,7 +67,7 @@ phases:
             - "Verify invalid persisted values produce contextual, actionable errors."
         - id: "T005"
           title: "Implement project-local persisted active feature state in internal/spec/active_feature_state.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -79,7 +79,7 @@ phases:
             - "Reject persisted paths that escape the configured specs directory."
         - id: "T006"
           title: "Implement shared active feature resolver in internal/spec/active_feature.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -91,7 +91,7 @@ phases:
             - "Return deterministic selection source details for status and error output."
         - id: "T007"
           title: "Add CLI-level resolver fixture helpers in internal/cli/active_feature_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null

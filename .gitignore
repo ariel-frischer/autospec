@@ -16,17 +16,24 @@ tests/temp/
 # macOS
 .DS_Store
 
+# Windows
+Thumbs.db
+
 # Linux
 *~
 
 # Editor files
 *.swp
 *.swo
+*.tmp
 .vscode/
 .idea/
 
 # Logs
 *.log
+
+# Local environment
+.env*
 
 # Node modules (if using npm for bats)
 node_modules/

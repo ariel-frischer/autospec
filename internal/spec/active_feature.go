@@ -1,5 +1,11 @@
 package spec
 
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
 // SelectionSource identifies why a feature directory was chosen.
 type SelectionSource string
 
@@ -28,11 +34,82 @@ type ActiveFeatureResult struct {
 	Source   SelectionSource
 }
 
-// Active feature resolution should reuse existing lookup entry points:
-// GetSpecMetadata handles explicit --spec and positional identifiers,
-// DetectCurrentSpec handles git-branch and recent-directory fallback, and
-// GetSpecDirectory provides exact, number, and slug matching.
-//
-// Current command-level lookup callers to centralize in later phases include:
-// run --spec, status [spec-name], implement [spec-name-or-prompt],
-// plan/tasks/implement stage auto-detection, and artifact type-only lookup.
+// ResolveActiveFeature resolves a feature directory using explicit, persisted,
+// then current branch or fallback selection.
+func ResolveActiveFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, error) {
+	if req.SpecsDir == "" {
+		return nil, fmt.Errorf("resolving active feature: specs directory is required")
+	}
+	if req.ExplicitIdentifier != "" {
+		return resolveExplicitFeature(req)
+	}
+	if req.StateDir != "" {
+		if result, found, err := resolvePersistedFeature(req); err != nil || found {
+			return result, err
+		}
+	}
+	return resolveCurrentFeature(req)
+}
+
+func resolveExplicitFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, error) {
+	metadata, err := GetSpecMetadata(req.SpecsDir, req.ExplicitIdentifier)
+	if err != nil {
+		return nil, fmt.Errorf("resolving active feature from explicit selection %q: %w", req.ExplicitIdentifier, err)
+	}
+	metadata.Detection = DetectionExplicit
+	if err := requireArtifact(metadata.Directory, req.RequiredArtifact); err != nil {
+		return nil, fmt.Errorf("resolving active feature from explicit selection %q: %w", req.ExplicitIdentifier, err)
+	}
+	return &ActiveFeatureResult{Metadata: metadata, Source: SelectionSourceExplicit}, nil
+}
+
+func resolvePersistedFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, bool, error) {
+	state, found, err := LoadActiveFeatureState(req.StateDir)
+	if err != nil {
+		return nil, false, fmt.Errorf("resolving active feature from persisted state: %w", err)
+	}
+	if !found {
+		return nil, false, nil
+	}
+	metadata, err := ValidateActiveFeatureState(req.SpecsDir, state)
+	if err != nil {
+		return nil, true, fmt.Errorf("resolving active feature from persisted state: %w", err)
+	}
+	if err := requireArtifact(metadata.Directory, req.RequiredArtifact); err != nil {
+		return nil, true, fmt.Errorf("resolving active feature from persisted state: %w", err)
+	}
+	return &ActiveFeatureResult{Metadata: metadata, Source: SelectionSourcePersisted}, true, nil
+}
+
+func resolveCurrentFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, error) {
+	metadata, err := DetectCurrentSpec(req.SpecsDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving active feature from branch or fallback: %w", err)
+	}
+	if err := requireArtifact(metadata.Directory, req.RequiredArtifact); err != nil {
+		return nil, fmt.Errorf("resolving active feature from branch or fallback: %w", err)
+	}
+	return &ActiveFeatureResult{Metadata: metadata, Source: sourceFromDetection(metadata.Detection)}, nil
+}
+
+func sourceFromDetection(detection DetectionMethod) SelectionSource {
+	if detection == DetectionGitBranch {
+		return SelectionSourceGitBranch
+	}
+	return SelectionSourceFallback
+}
+
+func requireArtifact(featureDir, artifact string) error {
+	if artifact == "" {
+		return nil
+	}
+	artifactPath := filepath.Join(featureDir, artifact)
+	info, err := os.Stat(artifactPath)
+	if err != nil {
+		return fmt.Errorf("missing required artifact %s in %s: %w", artifact, featureDir, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("missing required artifact %s in %s: path is a directory", artifact, featureDir)
+	}
+	return nil
+}
