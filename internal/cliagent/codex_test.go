@@ -186,10 +186,10 @@ func TestCodexConfigureProject(t *testing.T) {
 		"autospec-checklist",
 		"autospec-worktree-setup",
 	} {
-		if !strings.Contains(string(configContent), `path = ".codex/skills/`+skillName+`"`) {
+		if !strings.Contains(string(configContent), `path = ".agents/skills/`+skillName+`"`) {
 			t.Errorf("codex config missing %s registration:\n%s", skillName, string(configContent))
 		}
-		skillPath := filepath.Join(projectDir, ".codex", "skills", skillName, "SKILL.md")
+		skillPath := filepath.Join(projectDir, ".agents", "skills", skillName, "SKILL.md")
 		skillContent, err := os.ReadFile(skillPath)
 		if err != nil {
 			t.Fatalf("expected codex skill %s to exist: %v", skillName, err)
@@ -199,7 +199,7 @@ func TestCodexConfigureProject(t *testing.T) {
 		}
 	}
 
-	specifyPath := filepath.Join(projectDir, ".codex", "skills", "autospec-specify", "SKILL.md")
+	specifyPath := filepath.Join(projectDir, ".agents", "skills", "autospec-specify", "SKILL.md")
 	specifyContent, err := os.ReadFile(specifyPath)
 	if err != nil {
 		t.Fatalf("reading specify skill: %v", err)
@@ -215,7 +215,7 @@ func TestCodexConfigureProject(t *testing.T) {
 		}
 	}
 
-	clarifyPath := filepath.Join(projectDir, ".codex", "skills", "autospec-clarify", "SKILL.md")
+	clarifyPath := filepath.Join(projectDir, ".agents", "skills", "autospec-clarify", "SKILL.md")
 	clarifyContent, err := os.ReadFile(clarifyPath)
 	if err != nil {
 		t.Fatalf("reading clarify skill: %v", err)
@@ -244,7 +244,7 @@ func TestCodexConfigureProjectRefreshesExistingSkill(t *testing.T) {
 	t.Parallel()
 
 	projectDir := t.TempDir()
-	skillPath := filepath.Join(projectDir, ".codex", "skills", "autospec-specify", "SKILL.md")
+	skillPath := filepath.Join(projectDir, ".agents", "skills", "autospec-specify", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {
 		t.Fatalf("creating stale skill dir: %v", err)
 	}

@@ -98,7 +98,7 @@ OpenCode stores command templates in a different location than Claude:
 | Claude | `.claude/commands/` (plural) |
 | OpenCode | `.opencode/command/` (singular) |
 
-When you run `autospec init --ai opencode`, templates are installed to `.opencode/command/autospec.*.md`.
+When you run `autospec init --ai opencode`, templates are installed to `.opencode/command/autospec.*.md`. autospec also installs shared skills to `.agents/skills/autospec-*/SKILL.md` for OpenCode skill-aware sessions; command files remain because autospec runtime still invokes `opencode run --command autospec.*`.
 
 ## Automatic Package Installation Behavior
 

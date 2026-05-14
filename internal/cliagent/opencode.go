@@ -54,6 +54,9 @@ func (o *OpenCode) ConfigureProject(projectDir, specsDir string, projectLevel bo
 	if _, err := commands.InstallTemplatesForAgent("opencode", projectDir); err != nil {
 		return ConfigResult{}, fmt.Errorf("installing opencode commands: %w", err)
 	}
+	if _, _, err := commands.InstallAgentSkills(projectDir, specsDir); err != nil {
+		return ConfigResult{}, fmt.Errorf("installing shared autospec skills: %w", err)
+	}
 
 	// Configure opencode.json permissions
 	var settings *opencode.Settings

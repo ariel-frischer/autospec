@@ -40,7 +40,10 @@ worktree:
   track_status: true                  # Persist worktree state
   copy_dirs:                          # Non-tracked dirs to copy
     - .autospec
+    - .agents
     - .claude
+    - .codex
+    - .opencode
   setup_timeout: 5m                   # Max setup script duration (e.g., '5m', '30s')
 
 # Notifications (all platforms)
@@ -122,13 +125,13 @@ func GetDefaults() map[string]interface{} {
 		// worktree: Configuration for git worktree management.
 		// Used by 'autospec worktree' command for creating and managing worktrees.
 		"worktree": map[string]interface{}{
-			"base_dir":      "",                               // Parent directory for new worktrees
-			"prefix":        "",                               // Directory name prefix
-			"setup_script":  "",                               // Path to setup script relative to repo
-			"auto_setup":    true,                             // Run setup automatically on create
-			"track_status":  true,                             // Persist worktree state
-			"copy_dirs":     []string{".autospec", ".claude"}, // Non-tracked dirs to copy
-			"setup_timeout": (5 * time.Minute).String(),       // Max setup script duration (5m default)
+			"base_dir":      "",                                                                 // Parent directory for new worktrees
+			"prefix":        "",                                                                 // Directory name prefix
+			"setup_script":  "",                                                                 // Path to setup script relative to repo
+			"auto_setup":    true,                                                               // Run setup automatically on create
+			"track_status":  true,                                                               // Persist worktree state
+			"copy_dirs":     []string{".autospec", ".agents", ".claude", ".codex", ".opencode"}, // Non-tracked dirs to copy
+			"setup_timeout": (5 * time.Minute).String(),                                         // Max setup script duration (5m default)
 		},
 		// auto_commit: Enable automatic git commit creation after workflow completion.
 		// When true, instructions are injected to update .gitignore, stage files, and create commits.

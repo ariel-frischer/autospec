@@ -129,7 +129,7 @@ func TestWorktreeConfig_Defaults(t *testing.T) {
 	assert.Equal(t, "", cfg.SetupScript)
 	assert.True(t, cfg.AutoSetup)
 	assert.True(t, cfg.TrackStatus)
-	assert.Equal(t, []string{".autospec", ".claude"}, cfg.CopyDirs)
+	assert.Equal(t, []string{".autospec", ".agents", ".claude", ".codex", ".opencode"}, cfg.CopyDirs)
 }
 
 func TestWorktreeConfig_YAMLMarshal(t *testing.T) {

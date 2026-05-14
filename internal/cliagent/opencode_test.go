@@ -315,6 +315,7 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 		wantPermissionsLen   int // Now expects 2: 1 bash + 1 edit (string, not patterns)
 		wantWarning          bool
 		wantCommandsDirExist bool
+		wantSkillsDirExist   bool
 	}{
 		"fresh project without opencode.json": {
 			existingJSON:         "",
@@ -323,6 +324,7 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantPermissionsLen:   2, // Bash(autospec *) + Edit(allow)
 			wantWarning:          false,
 			wantCommandsDirExist: true,
+			wantSkillsDirExist:   true,
 		},
 		"project with empty opencode.json": {
 			existingJSON:         "{}",
@@ -331,6 +333,7 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantPermissionsLen:   2,
 			wantWarning:          false,
 			wantCommandsDirExist: true,
+			wantSkillsDirExist:   true,
 		},
 		"project with existing unrelated permissions": {
 			existingJSON:         `{"permission": {"bash": {"npm *": "allow"}}}`,
@@ -339,6 +342,7 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantPermissionsLen:   2,
 			wantWarning:          false,
 			wantCommandsDirExist: true,
+			wantSkillsDirExist:   true,
 		},
 		"project already configured": {
 			// Now requires both bash AND edit: "allow" to be considered already configured
@@ -348,6 +352,7 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantPermissionsLen:   0,
 			wantWarning:          false,
 			wantCommandsDirExist: true,
+			wantSkillsDirExist:   true,
 		},
 		"project with only bash permission": {
 			// Bash only is no longer sufficient - needs edit: "allow" too
@@ -357,6 +362,7 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantPermissionsLen:   2,
 			wantWarning:          false,
 			wantCommandsDirExist: true,
+			wantSkillsDirExist:   true,
 		},
 		"project with denied permission": {
 			existingJSON:         `{"permission": {"bash": {"autospec *": "deny"}}}`,
@@ -365,6 +371,7 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantPermissionsLen:   2,
 			wantWarning:          true,
 			wantCommandsDirExist: true,
+			wantSkillsDirExist:   true,
 		},
 	}
 
@@ -414,6 +421,13 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			if exists != tt.wantCommandsDirExist {
 				t.Errorf("commands dir exists = %v, want %v", exists, tt.wantCommandsDirExist)
 			}
+
+			skillsDir := filepath.Join(tempDir, ".agents", "skills")
+			_, err = os.Stat(skillsDir)
+			exists = err == nil
+			if exists != tt.wantSkillsDirExist {
+				t.Errorf("skills dir exists = %v, want %v", exists, tt.wantSkillsDirExist)
+			}
 		})
 	}
 }
@@ -448,6 +462,30 @@ func TestOpenCode_ConfigureProject_CommandsInstalled(t *testing.T) {
 	}
 	if !foundAutospec {
 		t.Error("no autospec.*.md files found in .opencode/command/")
+	}
+}
+
+func TestOpenCode_ConfigureProject_SkillsInstalled(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	agent := NewOpenCode()
+
+	_, err := agent.ConfigureProject(tempDir, "specs", true)
+	if err != nil {
+		t.Fatalf("ConfigureProject() error = %v", err)
+	}
+
+	for _, skillName := range []string{
+		"autospec-specify",
+		"autospec-plan",
+		"autospec-tasks",
+		"autospec-implement",
+	} {
+		skillPath := filepath.Join(tempDir, ".agents", "skills", skillName, "SKILL.md")
+		if _, err := os.Stat(skillPath); err != nil {
+			t.Fatalf("expected shared skill %s to exist: %v", skillName, err)
+		}
 	}
 }
 

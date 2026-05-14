@@ -379,13 +379,13 @@ Useful environment variables:
 
 ### Settings
 
-Codex reads user config from `~/.codex/config.toml`. Project-level initialization with `autospec init --project --ai codex` creates `.codex/config.toml` as safe project metadata and registers project-local Codex skills under `.codex/skills/autospec-*/SKILL.md`.
+Codex reads user config from `~/.codex/config.toml`. Project-level initialization with `autospec init --project --ai codex` creates `.codex/config.toml` as safe project metadata and registers project-local shared skills under `.agents/skills/autospec-*/SKILL.md`.
 
 Codex supports `--sandbox`, `--ask-for-approval`, and `--dangerously-bypass-approvals-and-sandbox` in `codex exec`. autospec maps `skip_permissions: true` to `--dangerously-bypass-approvals-and-sandbox`.
 
 autospec uses compact Codex output by default. It runs `codex exec --json`, parses Codex JSONL events, and shows color-coded concise summaries for agent messages, command executions, file changes, and useful reasoning/tool events. Set `codex_output.color: false` to disable ANSI color, or `codex_output.mode: full` to restore Codex's native terminal transcript. Codex can also write the final assistant message with `codex exec -o <file>`. autospec validates generated autospec artifacts after Codex exits.
 
-Codex does not support autospec's Claude/OpenCode command-template directories. Instead, autospec generates Codex-native skills from each embedded `autospec.*` prompt. In interactive Codex, use `$autospec-specify "Add user auth"`, `$autospec-plan`, `$autospec-tasks`, `$autospec-implement`, `$autospec-constitution`, `$autospec-clarify`, `$autospec-checklist`, or `$autospec-analyze`.
+Codex does not support autospec's Claude/OpenCode command-template directories. Instead, autospec generates shared Agent Skills from each embedded `autospec.*` prompt. In interactive Codex, use `$autospec-specify "Add user auth"`, `$autospec-plan`, `$autospec-tasks`, `$autospec-implement`, `$autospec-constitution`, `$autospec-clarify`, `$autospec-checklist`, or `$autospec-analyze`.
 
 See [Codex Settings](./codex-settings.md) for details.
 
@@ -400,7 +400,7 @@ OpenCode is a fully supported agent with its own configuration patterns that dif
 | Claude | `.claude/commands/` | Plural "commands" |
 | OpenCode | `.opencode/command/` | Singular "command" |
 
-When you run `autospec init --ai opencode`, command templates are installed to `.opencode/command/autospec.*.md`.
+When you run `autospec init --ai opencode`, command templates are installed to `.opencode/command/autospec.*.md` and shared skills are installed to `.agents/skills/autospec-*/SKILL.md`.
 
 ### Invocation Pattern
 

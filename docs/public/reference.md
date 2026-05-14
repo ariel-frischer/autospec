@@ -540,7 +540,7 @@ Initialize configuration files and directories
 **Syntax**: `autospec init [path] [flags]`
 
 **Description**: Set up autospec with everything needed to get started:
-1. Installs command templates to `.claude/commands/` (automatic)
+1. Installs agent-specific command templates and shared skills for selected agents
 2. Creates configuration at `~/.config/autospec/config.yml`
 3. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version)
 4. Creates `.autospec/.gitignore` for local runtime files
@@ -590,7 +590,7 @@ Missing flags (use positive or negative form):
   - constitution creation: --constitution or --no-constitution
 ```
 
-**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude and OpenCode install command templates for interactive use; Codex records project metadata and, in project-level init, installs project-local Codex skills. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
+**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude installs command templates under `.claude/commands/`. OpenCode installs command templates under `.opencode/command/` for autospec's `opencode run --command autospec.*` path and shared skills under `.agents/skills/`. Codex records project metadata in `.codex/config.toml` and registers shared skills under `.agents/skills/`. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
 
 > **Note**: `default_agents` remembers init prompt selections. `agent_preset` controls which agent actually runs commands and defaults to `claude` when empty. See `docs/public/agents.md` for details.
 
@@ -1019,7 +1019,7 @@ Manage git worktrees with project-aware setup automation
 
 **Syntax**: `autospec worktree <subcommand> [flags]`
 
-**Description**: Create and manage git worktrees with automatic copying of non-tracked directories (`.autospec/`, `.claude/`) and execution of project-specific setup scripts.
+**Description**: Create and manage git worktrees with automatic copying of non-tracked directories (`.autospec/`, `.agents/`, `.claude/`, `.codex/`, `.opencode/`) and execution of project-specific setup scripts.
 
 **Subcommands**:
 - `create <name> --branch <branch> [--path <path>]`: Create new worktree
@@ -1411,8 +1411,8 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 #### worktree.copy_dirs
 
 **Type**: list
-**Default**: `[]`
-**Description**: Non-tracked directories to copy to new worktrees (e.g., `.autospec/`, `.claude/`)
+**Default**: `[.autospec, .agents, .claude, .codex, .opencode]`
+**Description**: Non-tracked directories to copy to new worktrees (for example, autospec state and agent configuration directories)
 
 #### worktree.setup_timeout
 

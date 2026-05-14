@@ -1,198 +1,169 @@
 feature:
-  branch: "128-persist-feature-directory"
-  created: "2026-05-14"
-  status: "Draft"
-  input: "work on bead 'autospec-anh' use beads-cli"
-
+    branch: "128-persist-feature-directory"
+    created: "2026-05-14"
+    status: "Completed"
+    completed_at: 2026-05-14T02:29:39Z
+    input: "work on bead 'autospec-anh' use beads-cli"
 user_stories:
-  - id: "US-001"
-    title: "Use persisted active feature directory"
-    priority: "P1"
-    as_a: "developer working across feature branches"
-    i_want: "autospec to remember the active feature directory independently from the current git branch name"
-    so_that: "I can continue workflow stages against the intended spec without renaming or checking out a matching branch"
-    why_this_priority: "The bead acceptance criteria requires decoupling active spec lookup from exact branch names while retaining current workflows."
-    independent_test: "Create or select a feature directory, switch to a differently named branch, and verify autospec still resolves the selected spec."
-    acceptance_scenarios:
-      - given: "a project has a persisted active feature directory for an existing spec"
-        when: "I run a workflow command from a branch whose name does not exactly match that spec"
-        then: "autospec targets the persisted feature directory"
-      - given: "a project has multiple branches sharing the same numeric feature prefix"
-        when: "I run a workflow command from any of those branches"
-        then: "autospec can target the same feature directory without requiring the branch suffix to match"
-
-  - id: "US-002"
-    title: "Override active feature explicitly"
-    priority: "P1"
-    as_a: "developer automating autospec workflows"
-    i_want: "to explicitly select a feature directory for a command invocation"
-    so_that: "scripts, agents, and worktrees can run against the intended spec without relying on ambient branch state"
-    why_this_priority: "Explicit selection prevents ambiguous automation behavior and is part of the upstream-inspired resolution model."
-    independent_test: "Set an explicit feature directory while another feature is persisted and verify the explicit selection wins."
-    acceptance_scenarios:
-      - given: "a persisted active feature directory exists"
-        when: "I provide an explicit feature directory for a workflow command"
-        then: "autospec targets the explicitly selected directory"
-      - given: "the explicit feature directory does not contain a valid spec"
-        when: "I run a workflow command"
-        then: "autospec reports a clear validation error and does not silently fall back to another feature"
-
-  - id: "US-003"
-    title: "Preserve existing spec selection behavior"
-    priority: "P1"
-    as_a: "current autospec user"
-    i_want: "existing branch-prefix and --spec based selection to keep working"
-    so_that: "my established workflows are not broken by the new selection state"
-    why_this_priority: "Backward compatibility is explicitly required by the bead acceptance criteria."
-    independent_test: "Run existing status and workflow commands with branch-prefix selection and --spec override after adding persisted state support."
-    acceptance_scenarios:
-      - given: "no explicit or persisted feature directory is available"
-        when: "I run a command from a correctly prefixed feature branch"
-        then: "autospec resolves the spec using the existing branch-prefix behavior"
-      - given: "a persisted active feature directory exists"
-        when: "I run a command with a --spec override"
-        then: "autospec targets the --spec selection"
-
+    - id: "US-001"
+      title: "Use persisted active feature directory"
+      priority: "P1"
+      as_a: "developer working across feature branches"
+      i_want: "autospec to remember the active feature directory independently from the current git branch name"
+      so_that: "I can continue workflow stages against the intended spec without renaming or checking out a matching branch"
+      why_this_priority: "The bead acceptance criteria requires decoupling active spec lookup from exact branch names while retaining current workflows."
+      independent_test: "Create or select a feature directory, switch to a differently named branch, and verify autospec still resolves the selected spec."
+      acceptance_scenarios:
+        - given: "a project has a persisted active feature directory for an existing spec"
+          when: "I run a workflow command from a branch whose name does not exactly match that spec"
+          then: "autospec targets the persisted feature directory"
+        - given: "a project has multiple branches sharing the same numeric feature prefix"
+          when: "I run a workflow command from any of those branches"
+          then: "autospec can target the same feature directory without requiring the branch suffix to match"
+    - id: "US-002"
+      title: "Override active feature explicitly"
+      priority: "P1"
+      as_a: "developer automating autospec workflows"
+      i_want: "to explicitly select a feature directory for a command invocation"
+      so_that: "scripts, agents, and worktrees can run against the intended spec without relying on ambient branch state"
+      why_this_priority: "Explicit selection prevents ambiguous automation behavior and is part of the upstream-inspired resolution model."
+      independent_test: "Set an explicit feature directory while another feature is persisted and verify the explicit selection wins."
+      acceptance_scenarios:
+        - given: "a persisted active feature directory exists"
+          when: "I provide an explicit feature directory for a workflow command"
+          then: "autospec targets the explicitly selected directory"
+        - given: "the explicit feature directory does not contain a valid spec"
+          when: "I run a workflow command"
+          then: "autospec reports a clear validation error and does not silently fall back to another feature"
+    - id: "US-003"
+      title: "Preserve existing spec selection behavior"
+      priority: "P1"
+      as_a: "current autospec user"
+      i_want: "existing branch-prefix and --spec based selection to keep working"
+      so_that: "my established workflows are not broken by the new selection state"
+      why_this_priority: "Backward compatibility is explicitly required by the bead acceptance criteria."
+      independent_test: "Run existing status and workflow commands with branch-prefix selection and --spec override after adding persisted state support."
+      acceptance_scenarios:
+        - given: "no explicit or persisted feature directory is available"
+          when: "I run a command from a correctly prefixed feature branch"
+          then: "autospec resolves the spec using the existing branch-prefix behavior"
+        - given: "a persisted active feature directory exists"
+          when: "I run a command with a --spec override"
+          then: "autospec targets the --spec selection"
 requirements:
-  functional:
-    - id: "FR-001"
-      description: "MUST resolve the active feature using explicit feature directory selection before any persisted state or branch-derived fallback."
-      testable: true
-      acceptance_criteria: "When explicit feature directory selection is provided, commands target that directory regardless of current branch name or persisted state."
-
-    - id: "FR-002"
-      description: "MUST persist the selected active feature directory for later autospec workflow commands."
-      testable: true
-      acceptance_criteria: "After creating or selecting a feature, subsequent commands can resolve the same feature directory without requiring a matching branch suffix."
-
-    - id: "FR-003"
-      description: "MUST fall back to existing branch-prefix spec detection when no explicit or persisted feature directory is available."
-      testable: true
-      acceptance_criteria: "Existing branch-based workflows continue to find the same specs they found before this change."
-
-    - id: "FR-004"
-      description: "MUST preserve --spec override behavior as a higher-priority user selection than persisted feature directory state."
-      testable: true
-      acceptance_criteria: "Commands with --spec target the requested spec even when persisted state points to a different feature directory."
-
-    - id: "FR-005"
-      description: "MUST report actionable errors when the resolved feature directory is missing, invalid, or lacks the required spec artifact."
-      testable: true
-      acceptance_criteria: "Invalid resolution states produce clear messages identifying the selected directory and the validation problem."
-
-    - id: "FR-006"
-      description: "MUST document the active feature resolution order and its limitations for multi-worktree usage."
-      testable: true
-      acceptance_criteria: "User-facing documentation explains explicit selection, persisted state, branch fallback, --spec behavior, and that Git still prevents checking out the same branch in multiple worktrees."
-
-    - id: "FR-007"
-      description: "MUST require make test, make fmt, make lint, and make build to exit 0 before completion."
-      testable: true
-      acceptance_criteria: "The final validation report shows successful completion of make test, make fmt, make lint, and make build."
-
-  non_functional:
-    - id: "NFR-001"
-      category: "reliability"
-      description: "Active feature resolution must be deterministic and explainable."
-      measurable_target: "For the same inputs and project state, 100% of commands resolve the same feature directory and can report the source of that selection."
-
-    - id: "NFR-002"
-      category: "usability"
-      description: "Errors and status output must help users understand which feature is active."
-      measurable_target: "Resolution failures identify the attempted feature directory and next corrective action in one command response."
-
-    - id: "NFR-003"
-      category: "code_quality"
-      description: "Functions must stay under 40 lines unless a focused exception is justified."
-      measurable_target: "New or changed production functions are under 40 lines."
-
-    - id: "NFR-004"
-      category: "code_quality"
-      description: "Errors must be wrapped with context."
-      measurable_target: "New or changed error returns use contextual wrapping except pass-through helpers and tests."
-
-    - id: "NFR-005"
-      category: "code_quality"
-      description: "Tests must use map-based table tests."
-      measurable_target: "New table tests are declared as map[string]struct."
-
-    - id: "NFR-006"
-      category: "code_quality"
-      description: "Interfaces should be accepted and concrete types returned when doing so reduces coupling."
-      measurable_target: "New abstractions follow accept-interfaces-return-concrete guidance where applicable."
-
+    functional:
+        - id: "FR-001"
+          description: "MUST resolve the active feature using explicit feature directory selection before any persisted state or branch-derived fallback."
+          testable: true
+          acceptance_criteria: "When explicit feature directory selection is provided, commands target that directory regardless of current branch name or persisted state."
+        - id: "FR-002"
+          description: "MUST persist the selected active feature directory for later autospec workflow commands."
+          testable: true
+          acceptance_criteria: "After creating or selecting a feature, subsequent commands can resolve the same feature directory without requiring a matching branch suffix."
+        - id: "FR-003"
+          description: "MUST fall back to existing branch-prefix spec detection when no explicit or persisted feature directory is available."
+          testable: true
+          acceptance_criteria: "Existing branch-based workflows continue to find the same specs they found before this change."
+        - id: "FR-004"
+          description: "MUST preserve --spec override behavior as a higher-priority user selection than persisted feature directory state."
+          testable: true
+          acceptance_criteria: "Commands with --spec target the requested spec even when persisted state points to a different feature directory."
+        - id: "FR-005"
+          description: "MUST report actionable errors when the resolved feature directory is missing, invalid, or lacks the required spec artifact."
+          testable: true
+          acceptance_criteria: "Invalid resolution states produce clear messages identifying the selected directory and the validation problem."
+        - id: "FR-006"
+          description: "MUST document the active feature resolution order and its limitations for multi-worktree usage."
+          testable: true
+          acceptance_criteria: "User-facing documentation explains explicit selection, persisted state, branch fallback, --spec behavior, and that Git still prevents checking out the same branch in multiple worktrees."
+        - id: "FR-007"
+          description: "MUST require make test, make fmt, make lint, and make build to exit 0 before completion."
+          testable: true
+          acceptance_criteria: "The final validation report shows successful completion of make test, make fmt, make lint, and make build."
+    non_functional:
+        - id: "NFR-001"
+          category: "reliability"
+          description: "Active feature resolution must be deterministic and explainable."
+          measurable_target: "For the same inputs and project state, 100% of commands resolve the same feature directory and can report the source of that selection."
+        - id: "NFR-002"
+          category: "usability"
+          description: "Errors and status output must help users understand which feature is active."
+          measurable_target: "Resolution failures identify the attempted feature directory and next corrective action in one command response."
+        - id: "NFR-003"
+          category: "code_quality"
+          description: "Functions must stay under 40 lines unless a focused exception is justified."
+          measurable_target: "New or changed production functions are under 40 lines."
+        - id: "NFR-004"
+          category: "code_quality"
+          description: "Errors must be wrapped with context."
+          measurable_target: "New or changed error returns use contextual wrapping except pass-through helpers and tests."
+        - id: "NFR-005"
+          category: "code_quality"
+          description: "Tests must use map-based table tests."
+          measurable_target: "New table tests are declared as map[string]struct."
+        - id: "NFR-006"
+          category: "code_quality"
+          description: "Interfaces should be accepted and concrete types returned when doing so reduces coupling."
+          measurable_target: "New abstractions follow accept-interfaces-return-concrete guidance where applicable."
 success_criteria:
-  measurable_outcomes:
-    - id: "SC-001"
-      description: "Developers can continue a workflow from a branch whose suffix differs from the feature directory."
-      metric: "Successful command completion rate in branch-mismatch scenarios"
-      target: "100% for valid persisted feature directories"
-
-    - id: "SC-002"
-      description: "Existing branch-based workflows remain usable without additional configuration."
-      metric: "Backward compatibility pass rate"
-      target: "100% of existing branch-prefix selection tests pass"
-
-    - id: "SC-003"
-      description: "Users can understand which feature directory will be used before making changes."
-      metric: "Resolution visibility"
-      target: "Status or error output identifies the resolved feature directory and selection source"
-
+    measurable_outcomes:
+        - id: "SC-001"
+          description: "Developers can continue a workflow from a branch whose suffix differs from the feature directory."
+          metric: "Successful command completion rate in branch-mismatch scenarios"
+          target: "100% for valid persisted feature directories"
+        - id: "SC-002"
+          description: "Existing branch-based workflows remain usable without additional configuration."
+          metric: "Backward compatibility pass rate"
+          target: "100% of existing branch-prefix selection tests pass"
+        - id: "SC-003"
+          description: "Users can understand which feature directory will be used before making changes."
+          metric: "Resolution visibility"
+          target: "Status or error output identifies the resolved feature directory and selection source"
 key_entities:
-  - name: "Active Feature Directory"
-    description: "The feature directory selected for autospec workflow commands."
-    attributes:
-      - "path within the specs directory"
-      - "selection source"
-      - "required spec artifact"
-
-  - name: "Persisted Feature State"
-    description: "Project-local state recording the active feature directory for later command invocations."
-    attributes:
-      - "feature directory"
-      - "created or updated timestamp"
-      - "project scope"
-
-  - name: "Feature Selection Override"
-    description: "An explicit user or automation request to target a specific feature instead of ambient project state."
-    attributes:
-      - "requested feature identifier or directory"
-      - "precedence over persisted state"
-      - "validation result"
-
+    - name: "Active Feature Directory"
+      description: "The feature directory selected for autospec workflow commands."
+      attributes:
+        - "path within the specs directory"
+        - "selection source"
+        - "required spec artifact"
+    - name: "Persisted Feature State"
+      description: "Project-local state recording the active feature directory for later command invocations."
+      attributes:
+        - "feature directory"
+        - "created or updated timestamp"
+        - "project scope"
+    - name: "Feature Selection Override"
+      description: "An explicit user or automation request to target a specific feature instead of ambient project state."
+      attributes:
+        - "requested feature identifier or directory"
+        - "precedence over persisted state"
+        - "validation result"
 edge_cases:
-  - scenario: "Persisted feature directory points to a deleted directory"
-    expected_behavior: "Autospec reports the missing directory and falls back only when the resolution rules explicitly allow fallback."
-
-  - scenario: "Persisted feature directory exists but has no spec.yaml"
-    expected_behavior: "Autospec reports that the selected feature is incomplete or invalid."
-
-  - scenario: "Multiple feature directories share the same numeric prefix"
-    expected_behavior: "Explicit or persisted selection chooses the intended directory; branch fallback remains deterministic."
-
-  - scenario: "A user runs a command outside a git feature branch"
-    expected_behavior: "Autospec uses explicit or persisted feature directory state when available and reports a clear error otherwise."
-
+    - scenario: "Persisted feature directory points to a deleted directory"
+      expected_behavior: "Autospec reports the missing directory and falls back only when the resolution rules explicitly allow fallback."
+    - scenario: "Persisted feature directory exists but has no spec.yaml"
+      expected_behavior: "Autospec reports that the selected feature is incomplete or invalid."
+    - scenario: "Multiple feature directories share the same numeric prefix"
+      expected_behavior: "Explicit or persisted selection chooses the intended directory; branch fallback remains deterministic."
+    - scenario: "A user runs a command outside a git feature branch"
+      expected_behavior: "Autospec uses explicit or persisted feature directory state when available and reports a clear error otherwise."
 assumptions:
-  - "The bead title and comment provide the intended feature scope beyond the literal slash-command input."
-  - "Persisted feature directory state is project-local and should not be treated as a global user preference."
-  - "Existing --spec behavior is user-visible and must retain its current precedence."
-  - "This feature does not change Git's restriction against checking out the exact same branch in multiple worktrees."
-
+    - "The bead title and comment provide the intended feature scope beyond the literal slash-command input."
+    - "Persisted feature directory state is project-local and should not be treated as a global user preference."
+    - "Existing --spec behavior is user-visible and must retain its current precedence."
+    - "This feature does not change Git's restriction against checking out the exact same branch in multiple worktrees."
 constraints:
-  - "Must preserve existing autospec workflow command behavior unless the user explicitly selects or persists a feature directory."
-  - "Must keep feature selection understandable for both interactive users and automation."
-  - "Must remain compatible with current specs directory layout."
-
+    - "Must preserve existing autospec workflow command behavior unless the user explicitly selects or persists a feature directory."
+    - "Must keep feature selection understandable for both interactive users and automation."
+    - "Must remain compatible with current specs directory layout."
 out_of_scope:
-  - "Allowing the same git branch to be checked out in multiple worktrees."
-  - "Changing the artifact schema for spec.yaml, plan.yaml, or tasks.yaml."
-  - "Replacing branch-prefix fallback behavior."
-  - "Adding a full multi-worktree orchestration system."
-
+    - "Allowing the same git branch to be checked out in multiple worktrees."
+    - "Changing the artifact schema for spec.yaml, plan.yaml, or tasks.yaml."
+    - "Replacing branch-prefix fallback behavior."
+    - "Adding a full multi-worktree orchestration system."
 _meta:
-  version: "1.0.0"
-  generator: "autospec"
-  generator_version: "autospec dev"
-  created: "2026-05-14T01:21:00Z"
-  artifact_type: "spec"
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2026-05-14T01:21:00Z"
+    artifact_type: "spec"

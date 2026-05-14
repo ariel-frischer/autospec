@@ -64,7 +64,7 @@ Expected result:
 - `agent_preset: codex` is set when Codex is the only selected agent.
 - `skip_permissions: true` is set for this disposable test repo.
 - `.codex/config.toml` is created or updated with safe project metadata and `skills.config`.
-- `.codex/skills/autospec-*/SKILL.md` files are installed for interactive Codex skills.
+- `.agents/skills/autospec-*/SKILL.md` files are installed for interactive Codex skills.
 - No `.claude/commands/` directory is created for Codex-only setup.
 - No `.opencode/command/` directory is created for Codex-only setup.
 
@@ -73,8 +73,8 @@ Check the generated files:
 ```bash
 cat .autospec/config.yml
 cat .codex/config.toml
-cat .codex/skills/autospec-specify/SKILL.md
-cat .codex/skills/autospec-clarify/SKILL.md
+cat .agents/skills/autospec-specify/SKILL.md
+cat .agents/skills/autospec-clarify/SKILL.md
 find . -maxdepth 4 -type f | sort
 ```
 
@@ -209,6 +209,7 @@ find . -maxdepth 4 -type f | sort
 Expected result:
 
 - OpenCode command files are installed under `.opencode/command/`.
+- Shared autospec skills are installed under `.agents/skills/`.
 - OpenCode automation still relies on its run mode and configured permissions.
 
 ## Report Summaries

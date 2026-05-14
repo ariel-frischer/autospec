@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/commands"
@@ -62,14 +60,14 @@ func (c *Codex) ConfigureProject(projectDir, specsDir string, projectLevel bool)
 		}
 	}
 
-	skillNames, allSkillsExisted, err := installCodexCommandSkills(projectDir, specsDir)
+	skillNames, allSkillsExisted, err := commands.InstallAgentSkills(projectDir, specsDir)
 	if err != nil {
 		return ConfigResult{}, err
 	}
 	if err := ensureCodexSkillsRegistered(configPath, skillNames); err != nil {
 		return ConfigResult{}, fmt.Errorf("registering codex autospec skills: %w", err)
 	}
-	cleanupObsoleteCodexAutospecRouter(projectDir)
+	cleanupObsoleteCodexSkills(projectDir, skillNames)
 
 	return ConfigResult{
 		AlreadyConfigured: configExisted && allSkillsExisted,
@@ -88,87 +86,6 @@ func codexProjectConfigContent(specsDir string) string {
 `, specsDir)
 }
 
-func installCodexCommandSkills(projectDir, specsDir string) ([]string, bool, error) {
-	templates, err := commands.ListTemplates()
-	if err != nil {
-		return nil, false, fmt.Errorf("listing autospec templates: %w", err)
-	}
-
-	allExisted := true
-	var skillNames []string
-	for _, tpl := range templates {
-		if !strings.HasPrefix(tpl.Name, "autospec.") {
-			continue
-		}
-		skillName := codexSkillName(tpl.Name)
-		skillNames = append(skillNames, skillName)
-		skillPath := filepath.Join(projectDir, ".codex", "skills", skillName, "SKILL.md")
-		if !fileExists(skillPath) {
-			allExisted = false
-		}
-		if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {
-			return nil, false, fmt.Errorf("creating codex skill directory: %w", err)
-		}
-		content := codexCommandSkillContent(tpl, specsDir)
-		if err := os.WriteFile(skillPath, []byte(content), 0o644); err != nil {
-			return nil, false, fmt.Errorf("writing codex skill %s: %w", skillName, err)
-		}
-	}
-	sort.Strings(skillNames)
-	return skillNames, allExisted, nil
-}
-
-func codexSkillName(commandName string) string {
-	return strings.ReplaceAll(commandName, ".", "-")
-}
-
-func codexCommandSkillContent(tpl commands.CommandTemplate, specsDir string) string {
-	description := strings.TrimSpace(tpl.Description)
-	if description == "" {
-		description = "Run the " + tpl.Name + " autospec workflow prompt."
-	}
-	skillName := codexSkillName(tpl.Name)
-	body := string(commands.StripFrontmatter(tpl.Content))
-	body = rewriteAutospecSlashCommandsForCodexSkills(body)
-
-	return fmt.Sprintf(`---
-name: %s
-description: %s
----
-
-# %s
-
-This Codex skill is generated from %s. When the user invokes "$%s" or "%s",
-load and follow these instructions directly. Treat the text after the skill or
-command name as "$ARGUMENTS". Do not route back through "autospec %s"; this skill
-is the prompt for the stage.
-
-Project specs directory: %s
-
-%s`, skillName, strconv.Quote(description), skillName, tpl.Name, skillName, "/"+tpl.Name, strings.TrimPrefix(tpl.Name, "autospec."), specsDir, body)
-}
-
-func rewriteAutospecSlashCommandsForCodexSkills(body string) string {
-	for _, commandName := range autospecCommandSkillNames() {
-		body = strings.ReplaceAll(body, "/"+commandName, "$"+codexSkillName(commandName))
-	}
-	return body
-}
-
-func autospecCommandSkillNames() []string {
-	return []string{
-		"autospec.analyze",
-		"autospec.checklist",
-		"autospec.clarify",
-		"autospec.constitution",
-		"autospec.implement",
-		"autospec.plan",
-		"autospec.specify",
-		"autospec.tasks",
-		"autospec.worktree-setup",
-	}
-}
-
 func ensureCodexSkillsRegistered(configPath string, skillNames []string) error {
 	content, err := os.ReadFile(configPath)
 	if err != nil {
@@ -181,7 +98,7 @@ func ensureCodexSkillsRegistered(configPath string, skillNames []string) error {
 	for _, skillName := range skillNames {
 		text += fmt.Sprintf(`
 [[skills.config]]
-path = ".codex/skills/%s"
+path = ".agents/skills/%s"
 enabled = true
 `, skillName)
 	}
@@ -197,6 +114,7 @@ func removeGeneratedCodexSkillBlocks(text string, skillNames []string) string {
 	}
 	for _, skillName := range skillNames {
 		generatedPaths[`.codex/skills/`+skillName] = true
+		generatedPaths[`.agents/skills/`+skillName] = true
 	}
 
 	lines := strings.Split(text, "\n")
@@ -232,6 +150,13 @@ func codexSkillBlockUsesGeneratedPath(block string, generatedPaths map[string]bo
 	return false
 }
 
+func cleanupObsoleteCodexSkills(projectDir string, skillNames []string) {
+	cleanupObsoleteCodexAutospecRouter(projectDir)
+	for _, skillName := range skillNames {
+		cleanupObsoleteCodexCommandSkill(projectDir, skillName)
+	}
+}
+
 func cleanupObsoleteCodexAutospecRouter(projectDir string) {
 	path := filepath.Join(projectDir, ".codex", "skills", "autospec", "SKILL.md")
 	content, err := os.ReadFile(path)
@@ -241,6 +166,20 @@ func cleanupObsoleteCodexAutospecRouter(projectDir string) {
 	text := string(content)
 	if strings.Contains(text, "name: autospec-commands") &&
 		strings.Contains(text, "## Command Routing") {
+		_ = os.Remove(path)
+		_ = os.Remove(filepath.Dir(path))
+	}
+}
+
+func cleanupObsoleteCodexCommandSkill(projectDir, skillName string) {
+	path := filepath.Join(projectDir, ".codex", "skills", skillName, "SKILL.md")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	text := string(content)
+	if strings.Contains(text, "This Codex skill is generated from autospec.") &&
+		strings.Contains(text, "Do not route back through") {
 		_ = os.Remove(path)
 		_ = os.Remove(filepath.Dir(path))
 	}

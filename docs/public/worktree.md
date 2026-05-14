@@ -13,7 +13,7 @@ Git worktrees solve this by giving each agent its own complete working directory
 
 Git still prevents the same branch from being checked out in more than one worktree at a time. Use separate branch names for separate worktrees, even when those branches are collaborating on the same autospec feature directory.
 
-**The problem:** Standard `git worktree add` doesn't copy non-tracked directories (`.autospec/`, `.claude/`, `.codex/`, `.opencode/`) or run project setup (npm install, etc.).
+**The problem:** Standard `git worktree add` doesn't copy non-tracked directories (`.autospec/`, `.agents/`, `.claude/`, `.codex/`, `.opencode/`) or run project setup (npm install, etc.).
 
 **The solution:** `autospec worktree create` handles everything automatically.
 
@@ -222,6 +222,7 @@ worktree:
   # Non-tracked directories to copy
   copy_dirs:
     - .autospec
+    - .agents
     - .claude
     - .codex
     - .opencode

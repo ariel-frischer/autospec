@@ -67,18 +67,18 @@ autospec init --project --ai codex
 
 Codex does not use Claude/OpenCode slash-command files, so autospec does not install command templates for Codex. Workflow stages started through the autospec CLI send rendered prompt text directly to `codex exec`.
 
-For interactive Codex sessions, project-level init installs one Codex skill per autospec command template:
+For interactive Codex sessions, project-level init installs one shared Agent Skill per autospec command template:
 
 ```text
-.codex/skills/autospec-specify/SKILL.md
-.codex/skills/autospec-plan/SKILL.md
-.codex/skills/autospec-tasks/SKILL.md
-.codex/skills/autospec-implement/SKILL.md
-.codex/skills/autospec-constitution/SKILL.md
-.codex/skills/autospec-clarify/SKILL.md
-.codex/skills/autospec-checklist/SKILL.md
-.codex/skills/autospec-analyze/SKILL.md
-.codex/skills/autospec-worktree-setup/SKILL.md
+.agents/skills/autospec-specify/SKILL.md
+.agents/skills/autospec-plan/SKILL.md
+.agents/skills/autospec-tasks/SKILL.md
+.agents/skills/autospec-implement/SKILL.md
+.agents/skills/autospec-constitution/SKILL.md
+.agents/skills/autospec-clarify/SKILL.md
+.agents/skills/autospec-checklist/SKILL.md
+.agents/skills/autospec-analyze/SKILL.md
+.agents/skills/autospec-worktree-setup/SKILL.md
 ```
 
 Each skill is generated from the matching `internal/commands/autospec.*.md` prompt and registered in `.codex/config.toml` with `skills.config`. Use Codex-native skill syntax such as `$autospec-specify "Add user auth"` or `$autospec-clarify`; slash-style text such as `/autospec.specify "Add user auth"` is also described in the relevant skill for compatibility, but it is not a Codex-native slash command.

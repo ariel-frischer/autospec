@@ -1341,6 +1341,9 @@ func TestConfigureSpecificAgents_OpenCode(t *testing.T) {
 	_, err = os.Stat(opencodeCmdDir)
 	assert.NoError(t, err, ".opencode/command should exist")
 
+	_, err = os.Stat(filepath.Join(tempDir, ".agents", "skills", "autospec-specify", "SKILL.md"))
+	assert.NoError(t, err, ".agents/skills/autospec-specify/SKILL.md should exist")
+
 	// Verify opencode.json has permission
 	data, err := os.ReadFile(filepath.Join(tempDir, "opencode.json"))
 	assert.NoError(t, err)
@@ -1402,8 +1405,8 @@ func TestConfigureSpecificAgents_Codex(t *testing.T) {
 		"autospec-checklist",
 		"autospec-worktree-setup",
 	} {
-		_, err = os.Stat(filepath.Join(tempDir, ".codex", "skills", skillName, "SKILL.md"))
-		assert.NoError(t, err, ".codex/skills/%s/SKILL.md should exist", skillName)
+		_, err = os.Stat(filepath.Join(tempDir, ".agents", "skills", skillName, "SKILL.md"))
+		assert.NoError(t, err, ".agents/skills/%s/SKILL.md should exist", skillName)
 	}
 }
 
