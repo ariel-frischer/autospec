@@ -34,6 +34,10 @@ autospec st                              # Show status and task progress
 autospec doctor                          # Check dependencies
 ```
 
+## Post-Change Polish (REQUIRED)
+
+After significant code changes, automatically invoke the repo-local `polish` skill before final handoff. Use it to update changelog/docs and run the required validation targets. Do not wait for an explicit `/polish` request unless the change is trivial or docs-only.
+
 ## Core Workflow
 
 ### Stage Dependencies (MUST follow this order)

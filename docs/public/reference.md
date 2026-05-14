@@ -1019,7 +1019,7 @@ Manage git worktrees with project-aware setup automation
 
 **Syntax**: `autospec worktree <subcommand> [flags]`
 
-**Description**: Create and manage git worktrees with automatic copying of non-tracked directories (`.autospec/`, `.agents/`, `.claude/`, `.codex/`, `.opencode/`) and execution of project-specific setup scripts.
+**Description**: Create and manage git worktrees with automatic copying of non-tracked directories (`.autospec/`, `.agents/`, `.claude/`) and execution of project-specific setup scripts.
 
 **Subcommands**:
 - `create <name> --branch <branch> [--path <path>]`: Create new worktree
@@ -1411,7 +1411,7 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 #### worktree.copy_dirs
 
 **Type**: list
-**Default**: `[.autospec, .agents, .claude, .codex, .opencode]`
+**Default**: `[.autospec, .agents, .claude]`
 **Description**: Non-tracked directories to copy to new worktrees (for example, autospec state and agent configuration directories)
 
 #### worktree.setup_timeout

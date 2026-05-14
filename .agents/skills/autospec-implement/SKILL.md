@@ -1,7 +1,16 @@
 ---
-description: Execute the implementation plan by processing tasks defined in tasks.yaml.
-version: "1.0.0"
+name: autospec-implement
+description: "Execute the implementation plan by processing tasks defined in tasks.yaml."
 ---
+
+# autospec-implement
+
+This Agent Skill is generated from autospec.implement. When the user invokes "$autospec-implement" or "/autospec.implement",
+load and follow these instructions directly. Treat the text after the skill or
+command name as "$ARGUMENTS". Do not route back through "autospec implement"; this skill
+is the prompt for the stage.
+
+Project specs directory: ./specs
 
 ## User Input
 
@@ -288,4 +297,4 @@ The following paths have been pre-computed and are available for use:
 
 Context for implementation: $ARGUMENTS
 
-Note: This command assumes tasks.yaml exists with a complete task breakdown. If tasks are incomplete or missing, suggest running `/autospec.tasks` first to generate the task list.
+Note: This command assumes tasks.yaml exists with a complete task breakdown. If tasks are incomplete or missing, suggest running `$autospec-tasks` first to generate the task list.

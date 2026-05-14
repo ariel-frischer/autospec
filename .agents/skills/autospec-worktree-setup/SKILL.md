@@ -1,7 +1,16 @@
 ---
-description: Generate project-specific worktree setup script based on project analysis.
-version: "1.0.0"
+name: autospec-worktree-setup
+description: "Generate project-specific worktree setup script based on project analysis."
 ---
+
+# autospec-worktree-setup
+
+This Agent Skill is generated from autospec.worktree-setup. When the user invokes "$autospec-worktree-setup" or "/autospec.worktree-setup",
+load and follow these instructions directly. Treat the text after the skill or
+command name as "$ARGUMENTS". Do not route back through "autospec worktree-setup"; this skill
+is the prompt for the stage.
+
+Project specs directory: ./specs
 
 ## User Input
 

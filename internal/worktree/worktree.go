@@ -104,7 +104,7 @@ func DefaultConfig() *WorktreeConfig {
 		SetupScript:  "",
 		AutoSetup:    true,
 		TrackStatus:  true,
-		CopyDirs:     []string{".autospec", ".agents", ".claude", ".codex", ".opencode"},
+		CopyDirs:     []string{".autospec", ".agents", ".claude"},
 		SetupTimeout: 5 * time.Minute,
 	}
 }

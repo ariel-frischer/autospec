@@ -17,7 +17,7 @@ When running `autospec run -a`, the agent creates and checks out a new feature b
 
 Git worktrees solve this by giving each agent its own complete working directory, all sharing the same repository.
 
-**The problem:** Standard `git worktree add` doesn't copy non-tracked directories (`.autospec/`, `.claude/`, `.codex/`, `.opencode/`) or run project setup (npm install, etc.).
+**The problem:** Standard `git worktree add` doesn't copy non-tracked directories (`.autospec/`, `.agents/`, `.claude/`) or run project setup (npm install, etc.).
 
 **The solution:** `autospec worktree create` handles everything automatically.
 
@@ -54,7 +54,7 @@ autospec worktree create <name> --branch <branch> [--path <path>]
 
 **What it does:**
 1. Creates a new git worktree using `git worktree add`
-2. Copies configured directories (for example `.autospec/`, `.claude/`, `.codex/`, `.opencode/`) to the new worktree
+2. Copies configured directories (for example `.autospec/`, `.agents/`, `.claude/`) to the new worktree
 3. Runs the project setup script if configured
 4. Tracks the worktree in `.autospec/state/worktrees.yaml`
 
@@ -203,9 +203,8 @@ worktree:
   # Non-tracked directories to copy
   copy_dirs:
     - .autospec
+    - .agents
     - .claude
-    - .codex
-    - .opencode
 ```
 
 ### Environment Variables

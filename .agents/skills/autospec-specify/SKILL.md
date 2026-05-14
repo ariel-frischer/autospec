@@ -1,0 +1,228 @@
+---
+name: autospec-specify
+description: "Generate YAML feature specification from natural language description."
+---
+
+# autospec-specify
+
+This Agent Skill is generated from autospec.specify. When the user invokes "$autospec-specify" or "/autospec.specify",
+load and follow these instructions directly. Treat the text after the skill or
+command name as "$ARGUMENTS". Do not route back through "autospec specify"; this skill
+is the prompt for the stage.
+
+Project specs directory: ./specs
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+## Outline
+
+The text the user typed after `$autospec-specify` in the triggering message **is** the feature description. Assume you always have it available in this conversation even if `$ARGUMENTS` appears literally below. Do not ask the user to repeat it unless they provided an empty command.
+
+Given that feature description, do this:
+
+1. **Generate a concise short name** (2-4 words) for the branch:
+   - Analyze the feature description and extract the most meaningful keywords
+   - Create a 2-4 word short name that captures the essence of the feature
+   - Use action-noun format when possible (e.g., "add-user-auth", "fix-payment-bug")
+   - Preserve technical terms and acronyms (OAuth2, API, JWT, etc.)
+   - Keep it concise but descriptive enough to understand the feature at a glance
+   - Examples:
+     - "I want to add user authentication" → "user-auth"
+     - "Implement OAuth2 integration for the API" → "oauth2-api-integration"
+     - "Create a dashboard for analytics" → "analytics-dashboard"
+     - "Fix payment processing timeout bug" → "fix-payment-timeout"
+
+2. **Create feature branch and directory**: Run the Go command with your generated short-name:
+
+   ```bash
+   autospec new-feature --json --short-name "<short-name>" "$ARGUMENTS"
+   ```
+
+   Parse the JSON output for:
+   - `BRANCH_NAME`: The full branch name (e.g., "008-user-auth")
+   - `SPEC_FILE`: Path to the spec file (ignore - we'll create spec.yaml instead)
+   - `FEATURE_NUM`: The feature number
+   - `AUTOSPEC_VERSION`: The autospec version (for _meta section)
+   - `CREATED_DATE`: ISO 8601 timestamp (for _meta section)
+
+   Set `FEATURE_DIR` to `specs/<BRANCH_NAME>/`
+
+3. **Generate spec.yaml**: Create the YAML specification file with this **exact structure**.
+
+   **Schema reference**: Run `autospec artifact spec --schema` to see the full schema if unsure.
+
+   ```yaml
+   # ============ REQUIRED SECTIONS ============
+
+   feature:                    # REQUIRED section
+     branch: "<branch name from step 2>"      # REQUIRED
+     created: "<today's date YYYY-MM-DD>"     # REQUIRED
+     status: "Draft"           # REQUIRED enum: Draft|Review|Approved|Completed
+     input: "<original user description verbatim>"  # optional
+
+   user_stories:               # REQUIRED section (array, at least one item)
+     - id: "US-001"            # REQUIRED
+       title: "<story title>"  # REQUIRED
+       priority: "P1"          # REQUIRED enum: P0|P1|P2|P3 (P0=critical, P1=must-have, P2=should-have, P3=nice-to-have)
+       as_a: "<role/actor>"    # REQUIRED
+       i_want: "<action/capability>"   # REQUIRED
+       so_that: "<benefit/value>"      # REQUIRED
+       why_this_priority: "<justification for priority level>"  # optional
+       independent_test: "<how this story can be tested in isolation>"  # optional
+       acceptance_scenarios:   # optional (but recommended)
+         - given: "<precondition/context>"
+           when: "<action taken>"
+           then: "<expected outcome>"
+
+   requirements:               # REQUIRED section
+     functional:               # REQUIRED (array)
+       - id: "FR-001"
+         description: "<MUST/SHOULD/MAY + requirement>"
+         testable: true
+         acceptance_criteria: "<how to verify this>"
+     non_functional:           # optional (array)
+       - id: "NFR-001"
+         category: "<performance|security|usability|reliability|code_quality>"
+         description: "<requirement>"
+         measurable_target: "<specific metric>"
+
+   # ============ OPTIONAL SECTIONS ============
+
+   success_criteria:           # optional
+     measurable_outcomes:
+       - id: "SC-001"
+         description: "<user-focused, measurable outcome>"
+         metric: "<how to measure>"
+         target: "<specific value or threshold>"
+
+   key_entities:               # optional
+     - name: "<entity name>"
+       description: "<what this entity represents>"
+       attributes:
+         - "<key attribute 1>"
+         - "<key attribute 2>"
+
+   edge_cases:                 # optional
+     - scenario: "<edge case description>"
+       expected_behavior: "<what should happen>"
+
+   assumptions:                # optional
+     - "<assumption 1>"
+     - "<assumption 2>"
+
+   constraints:                # optional
+     - "<constraint 1>"
+     - "<constraint 2>"
+
+   out_of_scope:               # optional
+     - "<explicitly excluded item 1>"
+     - "<explicitly excluded item 2>"
+
+   _meta:                      # optional (but recommended)
+     version: "1.0.0"
+     generator: "autospec"
+     generator_version: "<AUTOSPEC_VERSION from step 2>"
+     created: "<CREATED_DATE from step 2>"
+     artifact_type: "spec"
+   ```
+
+4. **Follow this execution flow**:
+
+   1. Parse user description from Input
+      If empty: ERROR "No feature description provided"
+   2. Extract key concepts from description
+      Identify: actors, actions, data, constraints
+   3. For unclear aspects:
+      - Make informed guesses based on context and industry standards
+      - Only mark with `clarification_needed: "<specific question>"` if:
+        - The choice significantly impacts feature scope or user experience
+        - Multiple reasonable interpretations exist with different implications
+        - No reasonable default exists
+      - **LIMIT: Maximum 3 clarification_needed markers total**
+      - Prioritize clarifications by impact: scope > security/privacy > user experience > technical details
+   4. Fill user_stories section
+      If no clear user flow: ERROR "Cannot determine user scenarios"
+   5. Generate functional requirements
+      Each requirement must be testable
+      Use reasonable defaults for unspecified details (document in assumptions)
+   6. Define success_criteria
+      Create measurable, technology-agnostic outcomes
+      Include both quantitative metrics (time, performance, volume) and qualitative measures
+      Each criterion must be verifiable without implementation details
+   7. Identify key_entities (if data involved)
+   8. Document edge_cases, assumptions, constraints, out_of_scope
+
+5. **Write the specification** to `FEATURE_DIR/spec.yaml`
+
+6. **⚠️ MANDATORY: Validate the artifact** (skipping this WILL cause task failure and retry):
+
+   ```bash
+   autospec artifact FEATURE_DIR/spec.yaml
+   ```
+
+   - **If validation fails**: Read the error output carefully. Fix ALL schema errors (missing required fields, wrong enum values, invalid types) and re-run validation until it passes.
+   - **If validation passes**: Proceed to report.
+   - **Do NOT skip this step** - post-execution validation will catch errors and force a full retry.
+
+   Common validation errors:
+   - Missing required field (e.g., `user_stories[0].priority`) → add the field
+   - Invalid enum value (e.g., `priority: "High"`) → use valid value (`P0`, `P1`, `P2`, `P3`)
+   - Wrong type (e.g., `user_stories` is object instead of array) → fix structure
+
+7. **Report**: Output:
+   - Branch name created
+   - Full path to spec.yaml
+   - Summary of user stories and requirements count
+   - Any clarification_needed items found
+   - Readiness for `$autospec-plan`
+
+## Quick Guidelines
+
+- Focus on **WHAT** users need and **WHY**
+- Avoid HOW to implement (no tech stack, APIs, code structure)
+- Written for business stakeholders, not developers
+- All YAML output must be syntactically valid
+
+### For AI Generation
+
+When creating this spec from a user prompt:
+
+1. **Make informed guesses**: Use context, industry standards, and common patterns to fill gaps
+2. **Document assumptions**: Record reasonable defaults in the assumptions section
+3. **Limit clarifications**: Maximum 3 clarification_needed fields - use only for critical decisions that:
+   - Significantly impact feature scope or user experience
+   - Have multiple reasonable interpretations with different implications
+   - Lack any reasonable default
+4. **Prioritize clarifications**: scope > security/privacy > user experience > technical details
+5. **Think like a tester**: Every vague requirement should be made specific and measurable
+
+**Examples of reasonable defaults** (don't ask about these):
+- Data retention: Industry-standard practices for the domain
+- Performance targets: Standard web/mobile app expectations unless specified
+- Error handling: User-friendly messages with appropriate fallbacks
+- Authentication method: Standard session-based or OAuth2 for web apps
+- Integration patterns: RESTful APIs unless specified otherwise
+
+### Success Criteria Guidelines
+
+Success criteria must be:
+1. **Measurable**: Include specific metrics (time, percentage, count, rate)
+2. **Technology-agnostic**: No mention of frameworks, languages, databases, or tools
+3. **User-focused**: Describe outcomes from user/business perspective, not system internals
+4. **Verifiable**: Can be tested/validated without knowing implementation details
+
+**Good examples**:
+- "Users can complete checkout in under 3 minutes"
+- "System supports 10,000 concurrent users"
+- "95% of searches return results in under 1 second"
+
+**Bad examples** (implementation-focused):
+- "API response time is under 200ms" (too technical)
+- "Database can handle 1000 TPS" (implementation detail)
+- "React components render efficiently" (framework-specific)

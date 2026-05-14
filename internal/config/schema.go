@@ -225,7 +225,7 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Path:        "worktree.copy_dirs",
 		Type:        TypeString, // Actually a list, but we handle as string for simplicity
 		Description: "Non-tracked directories to copy to worktrees",
-		Default:     ".autospec,.agents,.claude,.codex,.opencode",
+		Default:     ".autospec,.agents,.claude",
 	},
 	"worktree.setup_timeout": {
 		Path:        "worktree.setup_timeout",

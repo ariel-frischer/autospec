@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ariel-frischer/autospec/internal/constitution"
 	"github.com/ariel-frischer/autospec/internal/git"
 )
 
@@ -440,16 +441,6 @@ func containsArtifact(artifacts []string, artifact string) bool {
 	return false
 }
 
-// ConstitutionPaths contains all valid paths for the autospec constitution file (in priority order)
-var ConstitutionPaths = []string{
-	".autospec/constitution.yaml",        // default
-	".autospec/constitution.yml",         // default (alt extension)
-	".autospec/memory/constitution.yaml", // legacy
-	".autospec/memory/constitution.yml",  // legacy
-	".specify/memory/constitution.yaml",  // legacy
-	".specify/memory/constitution.yml",   // legacy
-}
-
 // ConstitutionCheckResult contains the result of constitution validation
 type ConstitutionCheckResult struct {
 	Exists       bool
@@ -460,17 +451,16 @@ type ConstitutionCheckResult struct {
 // CheckConstitutionExists checks if the constitution file exists.
 // This is a required project-level artifact that must exist before
 // running any workflow stages (specify, plan, tasks, implement).
-// Checks paths in ConstitutionPaths order (.yaml and .yml extensions supported)
+// Checks supported constitution paths in priority order (.yaml and .yml
+// extensions supported).
 func CheckConstitutionExists() *ConstitutionCheckResult {
 	result := &ConstitutionCheckResult{}
 
 	// Check all valid constitution paths in priority order
-	for _, path := range ConstitutionPaths {
-		if _, err := os.Stat(path); err == nil {
-			result.Exists = true
-			result.Path = path
-			return result
-		}
+	if path, ok := constitution.Find(); ok {
+		result.Exists = true
+		result.Path = path
+		return result
 	}
 
 	// Constitution not found

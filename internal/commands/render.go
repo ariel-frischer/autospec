@@ -15,7 +15,7 @@ var RequiredVars = map[string][]string{
 	"autospec.specify":      {},                                                                          // No prereqs required
 	"autospec.plan":         {"FeatureDir", "FeatureSpec", "AutospecVersion", "CreatedDate"},             // Needs spec
 	"autospec.tasks":        {"FeatureDir", "FeatureSpec", "ImplPlan", "AutospecVersion", "CreatedDate"}, // Needs plan
-	"autospec.implement":    {"FeatureDir", "TasksFile"},                                                 // Needs tasks
+	"autospec.implement":    {"FeatureDir", "TasksFile"},                                                 // Needs tasks; constitution is optional
 	"autospec.checklist":    {"FeatureDir", "FeatureSpec"},                                               // Needs spec
 	"autospec.clarify":      {"FeatureDir", "FeatureSpec"},                                               // Needs spec
 	"autospec.analyze":      {"FeatureDir", "FeatureSpec"},                                               // Needs spec
@@ -94,6 +94,8 @@ func hasContextField(ctx *prereqs.Context, field string) bool {
 		return ctx.ImplPlan != ""
 	case "TasksFile":
 		return ctx.TasksFile != ""
+	case "ConstitutionFile":
+		return ctx.ConstitutionFile != ""
 	case "AutospecVersion":
 		return ctx.AutospecVersion != ""
 	case "CreatedDate":

@@ -72,6 +72,7 @@ install-dev.sh
 tasks/
 .release/
 .grepai/
+.agents/skills/polish/
 
 # Dolt database files (added by bd init)
 .dolt/

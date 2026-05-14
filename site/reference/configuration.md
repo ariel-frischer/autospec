@@ -460,12 +460,13 @@ Non-tracked directories to copy to new worktrees.
 | Property | Value |
 |:---------|:------|
 | Type | string array |
-| Default | `[".autospec", ".claude"]` |
+| Default | `[".autospec", ".agents", ".claude"]` |
 
 ```yaml
 worktree:
   copy_dirs:
     - .autospec
+    - .agents
     - .claude
     - node_modules
 ```
@@ -722,6 +723,7 @@ worktree:
   track_status: true
   copy_dirs:
     - .autospec
+    - .agents
     - .claude
 
 # Notifications
