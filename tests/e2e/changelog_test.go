@@ -43,7 +43,7 @@ func TestE2E_ChangelogCommand(t *testing.T) {
 			args:         []string{"changelog", "--plain"},
 			wantExitCode: shared.ExitSuccess,
 			wantOutSubstr: []string{
-				"Added", // Category names appear in plain mode too
+				"Added", "Changed", "Fixed", // Category names appear in plain mode too
 			},
 		},
 		"changelog with specific version": {

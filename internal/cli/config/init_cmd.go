@@ -1213,7 +1213,7 @@ func initializeConfig(out io.Writer, project, force bool) (bool, error) {
 		return false, nil
 	}
 
-	if err := writeDefaultConfig(configPath); err != nil {
+	if err := writeDefaultConfigForScope(configPath, project); err != nil {
 		return false, fmt.Errorf("writing default config: %w", err)
 	}
 
@@ -1268,11 +1268,18 @@ func getConfigPath(project bool) (string, error) {
 
 // writeDefaultConfig writes the default configuration to the given path
 func writeDefaultConfig(configPath string) error {
+	return writeDefaultConfigForScope(configPath, false)
+}
+
+func writeDefaultConfigForScope(configPath string, project bool) error {
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	template := config.GetDefaultConfigTemplate()
+	if project {
+		template = strings.Replace(template, "state_dir: ~/.autospec/state", "state_dir: ./.autospec/state", 1)
+	}
 	if err := os.WriteFile(configPath, []byte(template), 0o644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}

@@ -323,6 +323,26 @@ func TestWriteDefaultConfig(t *testing.T) {
 	assert.NotEmpty(t, content)
 }
 
+func TestInitializeProjectConfigUsesProjectLocalStateDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	previous, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(previous))
+	})
+
+	var out bytes.Buffer
+	created, err := initializeConfig(&out, true, false)
+	require.NoError(t, err)
+	require.True(t, created)
+
+	content, err := os.ReadFile(filepath.Join(tmpDir, ".autospec", "config.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "state_dir: ./.autospec/state")
+	assert.NotContains(t, string(content), "state_dir: ~/.autospec/state")
+}
+
 func TestWriteDefaultConfig_ErrorOnInvalidPath(t *testing.T) {
 	// Use a path that will fail (empty string would cause issues)
 	// On most systems, trying to write to root's protected areas would fail

@@ -342,6 +342,9 @@ func (w *WorkflowOrchestrator) ExecuteSpecify(featureDescription string) (string
 	if err != nil {
 		return "", err
 	}
+	if _, err := spec.SaveActiveFeatureState(w.Config.StateDir, specName, "specify"); err != nil {
+		return "", fmt.Errorf("persisting active feature after specify: %w", err)
+	}
 
 	output.PrintStageSuccess(os.Stdout, fmt.Sprintf("Created specs/%s/spec.yaml (schema valid)", specName))
 	fmt.Println("Next: autospec plan")

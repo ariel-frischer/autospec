@@ -384,9 +384,6 @@ func (ctx *stageExecutionContext) executeSpecify() error {
 	}
 	ctx.specName = name
 	ctx.specDir = filepath.Join(ctx.orchestrator.SpecsDir, name)
-	if _, err := spec.SaveActiveFeatureState(ctx.orchestrator.Config.StateDir, name, "specify"); err != nil {
-		return fmt.Errorf("persisting active feature after specify: %w", err)
-	}
 	return nil
 }
 
