@@ -53,6 +53,8 @@ package-lock.json
 /autospec-extract
 bin/
 dist/
+vendor/
+*.exe
 *.test
 *.out
 coverage.txt

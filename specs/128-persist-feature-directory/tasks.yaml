@@ -109,7 +109,7 @@ phases:
       tasks:
         - id: "T008"
           title: "Add persisted selection workflow tests in internal/cli/stages/stages_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: false
           story_id: "US-001"
@@ -121,7 +121,7 @@ phases:
             - "Assert missing persisted artifacts produce clear validation errors."
         - id: "T009"
           title: "Persist feature state after feature creation or selection in internal/cli/run.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -133,7 +133,7 @@ phases:
             - "Wrap persistence errors with command context and avoid corrupting generated spec artifacts."
         - id: "T010"
           title: "Route stage commands through active feature resolver in internal/cli/stages"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -145,7 +145,7 @@ phases:
             - "Keep branch-prefix fallback behavior unchanged when no persisted state exists."
         - id: "T011"
           title: "Route status command through active feature resolver in internal/cli/util/status.go"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-001"
@@ -157,7 +157,7 @@ phases:
             - "Return actionable errors for deleted persisted directories or missing spec.yaml."
         - id: "T012"
           title: "Add branch-mismatch status tests in internal/cli/util/status_test.go"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-001"

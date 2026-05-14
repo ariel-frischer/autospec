@@ -102,7 +102,7 @@ type artifactArgs struct {
 //   - Type only: autospec artifact plan → auto-detects path from spec directory
 //   - Path only: autospec artifact specs/001/plan.yaml → infers type from filename
 //   - Explicit: autospec artifact plan specs/001/plan.yaml → backward compatible
-func parseArtifactArgs(args []string, specsDir string) (*artifactArgs, error) {
+func parseArtifactArgs(args []string, specsDir, stateDir string) (*artifactArgs, error) {
 	result := &artifactArgs{}
 
 	if len(args) == 0 {
@@ -143,7 +143,7 @@ func parseArtifactArgs(args []string, specsDir string) (*artifactArgs, error) {
 	// Type-only invocation: auto-detect path from spec directory
 	result.isTypeOnly = true
 
-	resolvedPath, specMeta, err := resolveArtifactPath(artType, specsDir)
+	resolvedPath, specMeta, err := resolveArtifactPath(artType, specsDir, stateDir)
 	if err != nil {
 		return nil, err
 	}
@@ -157,14 +157,18 @@ func parseArtifactArgs(args []string, specsDir string) (*artifactArgs, error) {
 // resolveArtifactPath resolves the artifact path from the current spec directory.
 // It uses DetectCurrentSpec to find the spec directory and constructs the artifact path.
 // Returns the path, spec metadata, and any error.
-func resolveArtifactPath(artType validation.ArtifactType, specsDir string) (string, *spec.Metadata, error) {
-	metadata, err := spec.DetectCurrentSpec(specsDir)
+func resolveArtifactPath(artType validation.ArtifactType, specsDir, stateDir string) (string, *spec.Metadata, error) {
+	artifactFilename := string(artType) + ".yaml"
+	result, err := spec.ResolveActiveFeature(spec.ActiveFeatureRequest{
+		SpecsDir:         specsDir,
+		StateDir:         stateDir,
+		RequiredArtifact: artifactFilename,
+	})
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to detect spec: %w\nHint: Run from a spec branch or specify the path explicitly", err)
 	}
 
-	// Construct path to artifact
-	artifactFilename := string(artType) + ".yaml"
+	metadata := result.Metadata
 	artifactPath := filepath.Join(metadata.Directory, artifactFilename)
 
 	return artifactPath, metadata, nil
@@ -180,7 +184,7 @@ func runArtifactCommand(args []string, configPath string, out, errOut io.Writer)
 	}
 
 	// Parse arguments
-	parsed, err := parseArtifactArgs(args, cfg.SpecsDir)
+	parsed, err := parseArtifactArgs(args, cfg.SpecsDir, cfg.StateDir)
 	if err != nil {
 		fmt.Fprintf(errOut, "Error: %v\n", err)
 		if strings.Contains(err.Error(), "invalid artifact type") {

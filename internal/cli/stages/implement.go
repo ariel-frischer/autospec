@@ -13,7 +13,6 @@ import (
 	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
-	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/workflow"
 	"github.com/spf13/cobra"
 )
@@ -187,12 +186,13 @@ The --tasks mode provides maximum context isolation:
 			return shared.NewExitError(shared.ExitInvalidArguments)
 		}
 
-		// Auto-detect spec directory for prerequisite validation
-		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+		// Resolve spec directory for prerequisite validation
+		activeFeature, err := resolveStageFeature(cfg, specName, "tasks.yaml")
 		if err != nil {
-			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
+			return fmt.Errorf("%w\n\nRun 'autospec specify' to create a new spec first", err)
 		}
-		shared.PrintSpecInfo(metadata)
+		metadata := activeFeature.Metadata
+		printActiveFeature(activeFeature)
 
 		// Validate tasks.yaml exists (required for implement stage)
 		prereqResult := workflow.ValidateStagePrerequisites(workflow.StageImplement, metadata.Directory)

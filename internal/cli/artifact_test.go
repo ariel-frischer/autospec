@@ -347,7 +347,7 @@ func TestParseArtifactArgs(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, err := parseArtifactArgs(tt.args, tt.specsDir)
+			got, err := parseArtifactArgs(tt.args, tt.specsDir, "")
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseArtifactArgs() error = %v, wantErr %v", err, tt.wantErr)
