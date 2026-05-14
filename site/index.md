@@ -151,9 +151,9 @@ Each artifact is validated before proceeding to the next stage, ensuring quality
 | Workflow UX | Repetitive, non-composable command flow | **One-command end-to-end runs** (`autospec run -a`, `autospec prep`) |
 | Validation | Checklist/agent-driven review | **Programmatic validation** with retry logic |
 | Token Efficiency | Long implementation chats can accumulate large context | **Fresh bounded sessions per phase/task** (80%+ cost savings) |
-| Status Visibility | No structured status view | **Exact phase/task progress** via `autospec st` |
+| Status Visibility | No built-in core status command | **Built-in phase/task progress** via `autospec st` |
 | Phase Orchestration | Agent-driven `/speckit.*` commands | **CLI-orchestrated** stages with dependency handling |
-| Implementation | Python CLI + shell/PowerShell scripts | **Go** (type-safe, single binary) |
+| Workflow Engine | Prompt files + shell/PowerShell helpers | **Typed Go orchestration** in a single binary |
 
 ---
 
