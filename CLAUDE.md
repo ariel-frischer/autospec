@@ -2,9 +2,9 @@
 
 Guidance for Claude Code when working with this repository.
 
-## Slash Commands vs Skills (CRITICAL)
+## Autospec Claude Skills
 
-Files in `.claude/commands/` (e.g., `autospec.plan.md`, `speckit.specify.md`) are **slash commands**, NOT skills. **DO NOT use the Skill tool to invoke them.** They are user-invoked via `/autospec.plan` syntax, not model-invoked.
+`autospec init --ai claude` installs Claude project skills in `.claude/skills/autospec.*/SKILL.md`. They preserve existing slash-style invocation such as `/autospec.plan` and set `disable-model-invocation: true` so agents do not invoke them automatically.
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ constitution.yaml spec.yaml plan.yaml tasks.yaml
 ### What `autospec init` Does
 
 1. Creates config (`~/.config/autospec/config.yml` or `.autospec/config.yml`)
-2. Installs slash commands to agent's command directory (e.g., `.claude/commands/`)
+2. Installs agent-native prompts (Claude skills in `.claude/skills/`, OpenCode commands in `.opencode/command/`, shared skills in `.agents/skills/`)
 3. Configures agent permissions and sandbox settings
 4. Prompts for constitution creation (one-time per project)
 

@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `autospec init --project --ai codex` now generates project-local Codex skills for every embedded `autospec.*` command prompt
 - `autospec init` now prompts for the default execution agent when multiple agents are selected
 - Autospec workflow commands now document active feature resolution across explicit `--spec` selection, persisted project state, and branch-prefix fallback
+- `autospec init` now installs shared `.agents/skills/autospec-*` skills for Codex and OpenCode while preserving OpenCode command files
+- `autospec init --ai claude` now installs Claude project skills under `.claude/skills/autospec.*/` instead of generating new `.claude/commands/autospec.*.md` files
+- Worktree creation now copies `.agents`, `.codex`, and `.opencode` agent configuration directories by default
 
 ### Removed
 - Removed the experimental DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode

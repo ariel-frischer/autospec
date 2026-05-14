@@ -171,7 +171,7 @@ Real-time feedback (internal/progress/display.go:1): Spinner indicators for long
 
 ### 10. Embedded Commands (internal/commands/)
 
-Slash command templates embedded in binary (internal/commands/embed.go:1): Install to `.claude/commands/` during `autospec init`
+Slash command templates embedded in binary (internal/commands/embed.go:1): converted to Claude skills in `.claude/skills/autospec.*/` during `autospec init`
 
 ## System Architecture
 

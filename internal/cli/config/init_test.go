@@ -1300,6 +1300,12 @@ func TestConfigureSpecificAgents_Claude(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, string(data), "Bash(autospec:*)")
 
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "skills", "autospec.specify", "SKILL.md"))
+	assert.NoError(t, err, ".claude/skills/autospec.specify/SKILL.md should exist")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "commands", "autospec.specify.md"))
+	assert.True(t, os.IsNotExist(err), ".claude/commands/autospec.specify.md should not be installed")
+
 	// Verify OpenCode is NOT configured
 	opencodeCmdDir := filepath.Join(tempDir, ".opencode", "command")
 	_, err = os.Stat(opencodeCmdDir)
@@ -1444,6 +1450,9 @@ func TestConfigureSpecificAgents_Both(t *testing.T) {
 	claudeSettings := filepath.Join(tempDir, ".claude", "settings.local.json")
 	_, err = os.Stat(claudeSettings)
 	assert.NoError(t, err, ".claude/settings.local.json should exist")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "skills", "autospec.specify", "SKILL.md"))
+	assert.NoError(t, err, ".claude/skills/autospec.specify/SKILL.md should exist")
 
 	// Verify OpenCode command dir and permissions exist
 	opencodeCmdDir := filepath.Join(tempDir, ".opencode", "command")

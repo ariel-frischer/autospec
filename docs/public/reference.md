@@ -590,7 +590,7 @@ Missing flags (use positive or negative form):
   - constitution creation: --constitution or --no-constitution
 ```
 
-**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude installs command templates under `.claude/commands/`. OpenCode installs command templates under `.opencode/command/` for autospec's `opencode run --command autospec.*` path and shared skills under `.agents/skills/`. Codex records project metadata in `.codex/config.toml` and registers shared skills under `.agents/skills/`. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
+**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude installs project skills under `.claude/skills/autospec.*/` so existing `/autospec.specify`-style invocations continue to work. OpenCode installs command templates under `.opencode/command/` for autospec's `opencode run --command autospec.*` path and shared skills under `.agents/skills/`. Codex records project metadata in `.codex/config.toml` and registers shared skills under `.agents/skills/`. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
 
 > **Note**: `default_agents` remembers init prompt selections. `agent_preset` controls which agent actually runs commands and defaults to `claude` when empty. See `docs/public/agents.md` for details.
 

@@ -124,3 +124,44 @@ func TestInstallAgentSkills(t *testing.T) {
 		t.Fatalf("skill was not refreshed:\n%s", string(refreshed))
 	}
 }
+
+func TestInstallClaudeSkills(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	skillNames, allExisted, err := InstallClaudeSkills(projectDir, "specs")
+	if err != nil {
+		t.Fatalf("InstallClaudeSkills() error = %v", err)
+	}
+	if allExisted {
+		t.Fatal("first install allExisted = true, want false")
+	}
+	if len(skillNames) == 0 {
+		t.Fatal("InstallClaudeSkills() returned no skill names")
+	}
+
+	skillPath := filepath.Join(projectDir, ".claude", "skills", "autospec.specify", "SKILL.md")
+	content, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("expected Claude specify skill to exist: %v", err)
+	}
+	for _, want := range []string{
+		"name: autospec-specify",
+		"disable-model-invocation: true",
+		`"/autospec.specify"`,
+		"Project specs directory: specs",
+	} {
+		if !strings.Contains(string(content), want) {
+			t.Errorf("Claude skill missing %q:\n%s", want, string(content))
+		}
+	}
+
+	_, allExisted, err = InstallClaudeSkills(projectDir, "specs")
+	if err != nil {
+		t.Fatalf("second InstallClaudeSkills() error = %v", err)
+	}
+	if !allExisted {
+		t.Fatal("second install allExisted = false, want true")
+	}
+}

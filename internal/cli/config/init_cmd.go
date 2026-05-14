@@ -51,7 +51,7 @@ var initCmd = &cobra.Command{
 	Long: `Initialize autospec with everything needed to get started.
 
 This command:
-  1. Installs command templates to .claude/commands/ (automatic)
+  1. Installs Claude skills to .claude/skills/ when Claude is selected
   2. Creates user-level configuration at ~/.config/autospec/config.yml
 
 If config already exists, it is left unchanged (use --force to overwrite).

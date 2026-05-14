@@ -409,7 +409,7 @@ See [docs/public/troubleshooting.md](docs/public/troubleshooting.md) for common 
 
 ## 📝 Slash Commands for Interactive Sessions
 
-`autospec init` installs slash commands for agents that support them, including `.claude/commands/autospec.*.md` for Claude Code and `.opencode/command/autospec.*.md` for OpenCode. Codex receives rendered prompt text directly through `codex exec` for autospec CLI runs; project-level Codex init also installs native skills like `.codex/skills/autospec-specify/SKILL.md` and `.codex/skills/autospec-clarify/SKILL.md` for interactive `$autospec-specify` / `$autospec-clarify` usage. Codex `exec` is non-interactive; it prints formatted output by default and can emit JSONL with `--json`.
+`autospec init` installs agent-native prompts for interactive sessions. Claude Code receives project skills such as `.claude/skills/autospec.specify/SKILL.md`, preserving `/autospec.specify` invocation. OpenCode keeps command files under `.opencode/command/autospec.*.md` for `opencode run --command autospec.*`, and Codex/OpenCode share `.agents/skills/autospec-*` skills. Codex receives rendered prompt text directly through `codex exec` for autospec CLI runs; project-level Codex init registers shared skills for interactive `$autospec-specify` / `$autospec-clarify` usage.
 
 ```bash
 /autospec.specify    # Generate spec.yaml interactively

@@ -393,14 +393,17 @@ See [Codex Settings](./codex-settings.md) for details.
 
 OpenCode is a fully supported agent with its own configuration patterns that differ from Claude Code.
 
-### Command Directory Structure
+### Command And Skill Directory Structure
 
-| Agent | Command Directory | Note |
-|-------|-------------------|------|
-| Claude | `.claude/commands/` | Plural "commands" |
-| OpenCode | `.opencode/command/` | Singular "command" |
+| Agent | Directory | Note |
+|-------|-----------|------|
+| Claude | `.claude/skills/autospec.*/SKILL.md` | Claude skills preserve `/autospec.specify`-style invocation |
+| OpenCode | `.opencode/command/` | Singular "command"; required for `opencode run --command autospec.*` |
+| OpenCode | `.agents/skills/autospec-*/SKILL.md` | Shared skills for skill-aware sessions |
 
 When you run `autospec init --ai opencode`, command templates are installed to `.opencode/command/autospec.*.md` and shared skills are installed to `.agents/skills/autospec-*/SKILL.md`.
+
+When you run `autospec init --ai claude`, skills are installed to `.claude/skills/autospec.*/SKILL.md`. Legacy `.claude/commands/` files still work in Claude Code, but autospec init no longer creates them for Claude.
 
 ### Invocation Pattern
 

@@ -551,9 +551,9 @@ Blocked tasks should NOT be automatically retried - they need human intervention
 
 ### Claude Code Known Issues
 
-#### Slash commands treated as skills (v2.0.73 - v2.0.75+)
+#### Legacy slash commands treated as skills (v2.0.73 - v2.0.75+)
 
-**Problem**: When running `autospec run` or any stage command, Claude tries to invoke the slash command via the `Skill` tool and fails.
+**Problem**: In projects initialized by older autospec versions, Claude may try to invoke a `.claude/commands/` slash command via the `Skill` tool and fail.
 
 **Symptoms**:
 ```
@@ -568,20 +568,14 @@ Blocked tasks should NOT be automatically retried - they need human intervention
 
 **Cause**: This is a **known Claude Code regression** (tracked in GitHub issues [#14851](https://github.com/anthropics/claude-code/issues/14851), [#11459](https://github.com/anthropics/claude-code/issues/11459), [#14733](https://github.com/anthropics/claude-code/issues/14733)).
 
-Claude Code incorrectly promotes `.claude/commands/` slash commands to `available_skills` in the system prompt, then fails when the Skill tool tries to invoke them in non-interactive (`-p`) mode.
+Older autospec versions installed Claude prompts as `.claude/commands/autospec.*.md`. Some Claude Code versions promoted those command files to `available_skills` in the system prompt, then failed when the Skill tool tried to invoke them in non-interactive (`-p`) mode.
 
-**Affected versions**: v2.0.73 - v2.0.75 (and possibly later)
+**Affected versions**: v2.0.73 - v2.0.75-era projects with legacy `.claude/commands/autospec.*.md` files.
 
 **Workarounds**:
-1. **Wait for official fix** - track the GitHub issues above
-2. **Run interactively** - use `claude` then type `/autospec.plan` manually
-3. **Downgrade Claude Code** - if possible, use a version before v2.0.73
-
-**Note**: The intended separation is:
-- **Slash commands** (`.claude/commands/`) - user-invoked with `/command`
-- **Skills** (`.claude/skills/`) - model-invoked automatically
-
-Claude Code is currently conflating these two systems.
+1. Re-run `autospec init --ai claude --project` to install Claude skills under `.claude/skills/autospec.*/`.
+2. Remove stale autospec command files with `autospec clean` if they are no longer needed.
+3. Run interactively with the skill name, for example `/autospec.plan`.
 
 ### Performance Issues
 
@@ -753,8 +747,8 @@ echo "test" | claude
 # Test config loading
 autospec config show
 
-# Verify commands are installed
-ls .claude/commands/autospec.*.md
+# Verify Claude skills are installed
+ls .claude/skills/autospec.*/SKILL.md
 ```
 
 ### Capture Full Output

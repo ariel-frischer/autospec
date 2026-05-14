@@ -198,7 +198,7 @@ find . -maxdepth 4 -type f | sort
 
 Expected result:
 
-- Claude command templates are installed under `.claude/commands/`.
+- Claude skills are installed under `.claude/skills/autospec.*/`.
 - Claude settings behavior remains unchanged.
 
 ```bash

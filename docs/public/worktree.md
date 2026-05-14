@@ -66,7 +66,7 @@ autospec worktree create <name> --branch <branch> [--path <path>]
 
 **What it does:**
 1. Creates a new git worktree using `git worktree add`
-2. Copies configured directories (for example `.autospec/`, `.claude/`, `.codex/`, `.opencode/`) to the new worktree
+2. Copies configured directories (for example `.autospec/`, `.agents/`, `.claude/`, `.codex/`, `.opencode/`) to the new worktree
 3. Runs the project setup script if configured
 4. Tracks the worktree in `.autospec/state/worktrees.yaml`
 
