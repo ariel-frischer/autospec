@@ -68,6 +68,10 @@ func ClearActiveFeatureState(stateDir string) error {
 
 // ValidateActiveFeatureState resolves and validates persisted active feature state.
 func ValidateActiveFeatureState(specsDir string, state *ActiveFeatureState) (*Metadata, error) {
+	return validateActiveFeatureState(specsDir, state, true)
+}
+
+func validateActiveFeatureState(specsDir string, state *ActiveFeatureState, requireSpec bool) (*Metadata, error) {
 	if state == nil {
 		return nil, fmt.Errorf("active feature state is nil")
 	}
@@ -75,7 +79,7 @@ func ValidateActiveFeatureState(specsDir string, state *ActiveFeatureState) (*Me
 	if err != nil {
 		return nil, err
 	}
-	if err := validateFeatureDirectory(directory); err != nil {
+	if err := validateFeatureDirectory(directory, requireSpec); err != nil {
 		return nil, err
 	}
 	return metadataFromDirectory(directory)
@@ -122,7 +126,7 @@ func ensureWithinSpecsDir(specsDir, candidate, value string) error {
 	return nil
 }
 
-func validateFeatureDirectory(directory string) error {
+func validateFeatureDirectory(directory string, requireSpec bool) error {
 	info, err := os.Stat(directory)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("%w: %s: %w", errPersistedFeatureDirectoryNotExist, directory, err)
@@ -132,6 +136,9 @@ func validateFeatureDirectory(directory string) error {
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("persisted active feature path is not a directory: %s", directory)
+	}
+	if !requireSpec {
+		return nil
 	}
 	if _, err := os.Stat(filepath.Join(directory, "spec.yaml")); err != nil {
 		return fmt.Errorf("persisted active feature directory missing spec.yaml: %w", err)

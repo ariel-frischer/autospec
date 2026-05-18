@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Workflow, status, artifact, prereq, agent-context, and task helper commands now consistently use the resolved active feature and fall back to the current branch when persisted active-feature state points at a deleted spec directory
+- `autospec status` now reports in-progress feature directories even before `spec.yaml` has been written
 
 ## [0.11.0] - 2026-05-14
 

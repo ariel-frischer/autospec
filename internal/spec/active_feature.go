@@ -27,6 +27,7 @@ type ActiveFeatureRequest struct {
 	ExplicitIdentifier string
 	StateDir           string
 	RequiredArtifact   string
+	AllowMissingSpec   bool
 }
 
 // ActiveFeatureResult reports the resolved feature and the source that selected it.
@@ -72,7 +73,7 @@ func resolvePersistedFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, bo
 	if !found {
 		return nil, false, nil
 	}
-	metadata, err := ValidateActiveFeatureState(req.SpecsDir, state)
+	metadata, err := validateActiveFeatureState(req.SpecsDir, state, !req.AllowMissingSpec)
 	if err != nil {
 		if errors.Is(err, errPersistedFeatureDirectoryNotExist) {
 			return nil, false, nil
