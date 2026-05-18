@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -73,6 +74,9 @@ func resolvePersistedFeature(req ActiveFeatureRequest) (*ActiveFeatureResult, bo
 	}
 	metadata, err := ValidateActiveFeatureState(req.SpecsDir, state)
 	if err != nil {
+		if errors.Is(err, errPersistedFeatureDirectoryNotExist) {
+			return nil, false, nil
+		}
 		return nil, true, fmt.Errorf("resolving active feature from persisted state: %w", err)
 	}
 	if err := requireArtifact(metadata.Directory, req.RequiredArtifact); err != nil {

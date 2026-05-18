@@ -35,7 +35,7 @@ autospec implement 128-persist-feature-directory
 autospec status 128-persist-feature-directory
 ```
 
-If persisted state points at a deleted or invalid directory, autospec reports the selected directory and why it cannot be used. Recover by selecting an existing feature explicitly with `--spec`, running from a matching feature branch so branch-prefix fallback can resolve a valid spec, or removing the stale project-local active feature state from `.autospec/state/` before retrying.
+If persisted state points at a deleted directory, autospec ignores that stale selection and continues to branch-prefix fallback. If persisted state points at an existing but invalid directory, autospec reports the selected directory and why it cannot be used. Recover by selecting an existing feature explicitly with `--spec`, fixing the invalid spec directory, or removing the stale project-local active feature state from `.autospec/state/` before retrying.
 
 ## Quick Start
 

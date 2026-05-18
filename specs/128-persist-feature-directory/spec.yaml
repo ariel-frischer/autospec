@@ -3,7 +3,7 @@ feature:
     created: "2026-05-14"
     status: "Completed"
     completed_at: 2026-05-14T02:29:39Z
-    input: "work on bead 'autospec-anh' use beads-cli"
+    input: "work on bead 'autospec-anh' use beads"
 user_stories:
     - id: "US-001"
       title: "Use persisted active feature directory"
