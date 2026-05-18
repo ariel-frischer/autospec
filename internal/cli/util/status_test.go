@@ -6,6 +6,7 @@ package util
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -108,7 +109,7 @@ func TestResolveStatusFeatureUsesPersistedState(t *testing.T) {
 		"stale persisted feature reports clear error": {
 			persistedDir: "128-persisted-status",
 			removeSpec:   true,
-			wantErr:      "persisted active feature directory missing spec.yaml",
+			wantSource:   spec.SelectionSourcePersisted,
 		},
 	}
 
@@ -145,6 +146,22 @@ func TestResolveStatusFeatureExplicitSelectionWins(t *testing.T) {
 	require.Equal(t, filepath.Join(cfg.SpecsDir, "129-explicit-status"), got.Metadata.Directory)
 }
 
+func TestResolveStatusFeatureAllowsEmptyBranchFeatureDirectory(t *testing.T) {
+	root := newStatusGitFixture(t, "026-manual-listing-packets")
+	cfg := &config.Configuration{
+		SpecsDir: filepath.Join(root, "specs"),
+		StateDir: filepath.Join(root, ".autospec", "state"),
+	}
+	featureDir := filepath.Join(cfg.SpecsDir, "026-manual-listing-packets")
+	require.NoError(t, os.MkdirAll(featureDir, 0o755))
+
+	got, err := resolveStatusFeature(cfg, nil)
+
+	require.NoError(t, err)
+	require.Equal(t, spec.SelectionSourceGitBranch, got.Source)
+	require.Equal(t, featureDir, got.Metadata.Directory)
+}
+
 func setupStatusFeature(t *testing.T, persistedDir string) *config.Configuration {
 	t.Helper()
 
@@ -166,4 +183,39 @@ func writeStatusFeature(t *testing.T, specsDir, name string) {
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "spec.yaml"), []byte("feature:\n  branch: "+name+"\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "tasks.yaml"), []byte("tasks:\n  branch: "+name+"\n"), 0o644))
+}
+
+func newStatusGitFixture(t *testing.T, branch string) string {
+	t.Helper()
+
+	root := t.TempDir()
+	runStatusGit(t, root, "init")
+	runStatusGit(t, root, "config", "user.email", "test@example.com")
+	runStatusGit(t, root, "config", "user.name", "Test User")
+	require.NoError(t, os.WriteFile(filepath.Join(root, "README.md"), []byte("test\n"), 0o644))
+	runStatusGit(t, root, "add", "README.md")
+	runStatusGit(t, root, "commit", "-m", "initial")
+	runStatusGit(t, root, "checkout", "-b", branch)
+	chdirStatusFixture(t, root)
+	return root
+}
+
+func runStatusGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
+}
+
+func chdirStatusFixture(t *testing.T, dir string) {
+	t.Helper()
+
+	previous, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(previous))
+	})
 }

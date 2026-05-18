@@ -106,7 +106,7 @@ func resolveStatusFeature(cfg *config.Configuration, args []string) (*spec.Activ
 		SpecsDir:           cfg.SpecsDir,
 		StateDir:           cfg.StateDir,
 		ExplicitIdentifier: explicit,
-		RequiredArtifact:   "spec.yaml",
+		AllowMissingSpec:   true,
 	})
 }
 
