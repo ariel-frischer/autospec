@@ -1,8 +1,8 @@
 constitution:
   project_name: "autospec"
-  version: "1.0.0"
+  version: "1.1.0"
   ratified: "2026-05-14"
-  last_amended: "2026-05-14"
+  last_amended: "2026-05-18"
 
 preamble: |
   Autospec automates spec-driven development through structured YAML artifacts,
@@ -105,8 +105,9 @@ principles:
     priority: "MUST"
     description: |
       Adding, changing, or removing configuration fields requires synchronized
-      updates to schema validation, defaults YAML, runtime defaults, and relevant
-      public documentation.
+      updates to the Configuration struct, schema validation, defaults YAML,
+      runtime defaults, validation rules when needed, and relevant public
+      documentation.
     rationale: "Split configuration definitions must not drift or create hidden runtime behavior."
     enforcement:
       - mechanism: "Config tests"
@@ -123,17 +124,38 @@ principles:
     description: |
       Workflow commands must use lifecycle.RunWithHistory or
       lifecycle.RunWithHistoryContext so notifications, timing, and history are
-      recorded consistently. Generated tasks must include a manual testing plan
-      and a YAML-first changelog update for user-visible changes.
+      recorded consistently. Autospec's own feature task lists must include
+      final/polish tasks for manual validation notes and YAML-first changelog
+      updates for user-visible changes, followed by make changelog-sync.
     rationale: "Users need consistent execution history and release notes for generated workflow work."
     enforcement:
       - mechanism: "Regression tests"
         description: "TestAllCommandsHaveNotificationSupport covers lifecycle wrapper usage."
       - mechanism: "Task generation requirements"
-        description: "Final tasks require .dev manual testing plans and changelog YAML updates."
+        description: "Project-local task generation guidance requires manual validation notes and changelog YAML updates."
     exceptions:
       - "Read-only utility commands that are not workflow stages"
       - "Internal test helpers"
+
+  - name: "Deterministic Agent-Safe Testing"
+    id: "PRIN-008"
+    category: "quality"
+    priority: "MUST"
+    description: |
+      Unit, package integration, and workflow tests must be deterministic by
+      default. Tests covering agent execution, git state, and workflow
+      orchestration must use mock executors, temporary directories, and git
+      isolation rather than invoking real agent CLIs, external AI APIs, or the
+      developer's working repository.
+    rationale: "Deterministic tests protect users from network cost, flaky agent behavior, and accidental workspace mutation."
+    enforcement:
+      - mechanism: "Mock testing infrastructure"
+        description: "Workflow and agent tests use testutil.MockExecutor, E2EEnv, and GitIsolation helpers."
+      - mechanism: "Code review"
+        description: "Reviewers reject default test paths that call real agents or mutate the active repository."
+    exceptions:
+      - "Explicit e2e tests that use a mock binary or isolated environment"
+      - "Documented manual testing plans for real agent smoke tests"
 
 sections:
   - name: "Code Quality"
@@ -142,7 +164,19 @@ sections:
       commit. Functions should stay under 40 lines by extracting validation,
       core logic, and output formatting helpers. Errors must be wrapped with
       context except in pass-through helpers and tests. Prefer interfaces at
-      boundaries and concrete return types for implementation values.
+      boundaries and concrete return types for implementation values. Workflow,
+      agent, and git behavior must be tested with mocks, temporary directories,
+      and git isolation by default.
+
+  - name: "Architecture Boundaries"
+    content: |
+      CLI command packages should stay thin: parse flags, load configuration,
+      resolve active feature context, and delegate behavior to internal domain
+      packages. Business logic belongs in focused internal packages, workflow
+      orchestration should depend on executor/config/validation interfaces where
+      useful, and agent-specific coupling should remain inside the agent
+      integration layers. Avoid circular dependencies and broad cross-package
+      helpers that hide ownership boundaries.
 
   - name: "YAML Artifact Standards"
     content: |
@@ -200,19 +234,19 @@ governance:
     - "The constitution must pass autospec artifact validation after every amendment."
 
 sync_impact:
-  version_change: "0.0.0 -> 1.0.0"
-  modified_principles: []
+  version_change: "1.0.0 -> 1.1.0"
+  modified_principles:
+    - "PRIN-006"
+    - "PRIN-007"
+    - "PRIN-008"
   added_sections:
-    - "Code Quality"
-    - "YAML Artifact Standards"
-    - "Documentation and Changelog"
-    - "Security"
+    - "Architecture Boundaries"
   removed_sections: []
   templates_requiring_updates: []
   follow_up_todos: []
 
 _meta:
-  version: "1.0.0"
+  version: "1.1.0"
   generator: "autospec"
   generator_version: "autospec dev"
   created: "2026-05-14T01:17:11Z"

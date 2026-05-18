@@ -160,9 +160,11 @@ From `.autospec/constitution.yaml`:
 ## Config Changes (REQUIRED)
 
 When adding, changing, or removing config fields, update **ALL** locations:
-1. `internal/config/schema.go` - Add to `KnownKeys` map
-2. `internal/config/defaults.go` - Add to YAML template AND `GetDefaults()` function
-3. `internal/config/validate.go` - Add validation if needed
+1. `internal/config/config.go` - Add field to `Configuration` with `koanf` tag
+2. `internal/config/schema.go` - Add to `KnownKeys` map
+3. `internal/config/defaults.go` - Add to YAML template AND `GetDefaults()` function
+4. `internal/config/validate.go` - Add validation if needed
+5. Relevant public docs - Update user-facing defaults and examples
 
 ## Coding Standards
 
@@ -234,6 +236,13 @@ func TestValidateSpecFile(t *testing.T) {
     }
 }
 ```
+
+### Deterministic Agent/Workflow Tests
+
+Default unit, package integration, and workflow tests MUST NOT call real agent
+CLIs or external AI APIs. Use `testutil.MockExecutor` for agent execution,
+`testutil.E2EEnv` for compiled CLI tests, and `testutil.GitIsolation` or
+`t.TempDir()` for git/repository state.
 
 ### CLI Command Lifecycle Wrapper (REQUIRED)
 
