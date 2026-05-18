@@ -1,11 +1,15 @@
 project: autospec
 versions:
     unreleased: {}
+    0.11.2:
+        date: 2026-05-18
+        fixed:
+            - '`autospec status` now reports in-progress feature directories even before `spec.yaml` has been written'
+            - GitHub release publishing now installs `chlog` in CI and verifies generated release notes include curated changelog entries before GoReleaser runs
     0.11.1:
         date: 2026-05-18
         fixed:
             - Workflow, status, artifact, prereq, agent-context, and task helper commands now consistently use the resolved active feature and fall back to the current branch when persisted active-feature state points at a deleted spec directory
-            - '`autospec status` now reports in-progress feature directories even before `spec.yaml` has been written'
     0.11.0:
         date: 2026-05-14
         changed:

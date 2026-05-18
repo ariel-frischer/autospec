@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-05-18
+
+### Fixed
+- `autospec status` now reports in-progress feature directories even before `spec.yaml` has been written
+- GitHub release publishing now installs `chlog` in CI and verifies generated release notes include curated changelog entries before GoReleaser runs
+
 ## [0.11.1] - 2026-05-18
 
 ### Fixed
 - Workflow, status, artifact, prereq, agent-context, and task helper commands now consistently use the resolved active feature and fall back to the current branch when persisted active-feature state points at a deleted spec directory
-- `autospec status` now reports in-progress feature directories even before `spec.yaml` has been written
 
 ## [0.11.0] - 2026-05-14
 
@@ -366,7 +371,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/ariel-frischer/autospec/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/ariel-frischer/autospec/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/ariel-frischer/autospec/compare/v0.10.5...v0.11.0
 [0.10.5]: https://github.com/ariel-frischer/autospec/compare/v0.10.4...v0.10.5

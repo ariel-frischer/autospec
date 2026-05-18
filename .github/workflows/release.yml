@@ -62,19 +62,63 @@ jobs:
           go-version: "1.25.1"
           cache: true
 
-      - name: Build autospec for release notes extraction
-        run: go build -o ./autospec-extract ./cmd/autospec
+      - name: Install chlog
+        run: go install github.com/ariel-frischer/chlog/cmd/chlog@v0.3.0
 
       - name: Extract release notes from CHANGELOG.yaml
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          RAW_VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${RAW_VERSION#v}"
+          TAG="v${VERSION}"
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          if [[ -z "$PREVIOUS_TAG" ]]; then
+            PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -v "^${TAG}$" | head -1)"
+          fi
+
           echo "Extracting changelog for version: $VERSION"
           mkdir -p .release
-          ./autospec-extract changelog extract "$VERSION" > .release/notes.md
-          if [[ ! -s .release/notes.md ]]; then
-            echo "Warning: No changelog content found for version $VERSION"
-            echo "No changelog entry for this version." > .release/notes.md
+
+          {
+            echo "## autospec ${VERSION}"
+            echo
+            echo "**Release Date:** $(date -u +%Y-%m-%d)"
+            echo
+            chlog extract "$VERSION" -f internal/changelog/changelog.yaml
+            echo
+            echo "### Installation"
+            echo
+            echo "#### Using install script (recommended):"
+            echo '```bash'
+            echo "curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/install.sh | sh"
+            echo '```'
+            echo
+            echo "#### Manual installation:"
+            echo "Download the appropriate binary for your platform from the assets below and extract it to your PATH."
+            echo
+            echo "### Checksums"
+            echo "Verify your download using the checksums provided below."
+            echo
+            if [[ -n "$PREVIOUS_TAG" ]]; then
+              echo "---"
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREVIOUS_TAG}...${TAG}"
+              echo
+            fi
+            echo "### Reporting Issues"
+            echo "Found a bug or have a feature request? Please [open an issue](https://github.com/${GITHUB_REPOSITORY}/issues/new/choose)."
+          } > .release/notes.md
+
+          if ! grep -Fq "## [${VERSION}]" .release/notes.md; then
+            echo "Release notes do not contain the chlog entry for version $VERSION"
+            cat .release/notes.md
+            exit 1
           fi
+
+          if ! grep -Eq "^### (Added|Changed|Deprecated|Removed|Fixed|Security)$" .release/notes.md; then
+            echo "Release notes do not contain changelog categories for version $VERSION"
+            cat .release/notes.md
+            exit 1
+          fi
+
           echo "Release notes written to: .release/notes.md"
           cat .release/notes.md
 
