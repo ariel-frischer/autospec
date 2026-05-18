@@ -6,7 +6,7 @@
 .opencode/
 opencode.json
 # .claude/
-# specs/
+specs/
 
 # Test results and temporary files
 tests/results/
