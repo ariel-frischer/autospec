@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-05-18
+
+### Fixed
+- Workflow, status, artifact, prereq, agent-context, and task helper commands now consistently use the resolved active feature and fall back to the current branch when persisted active-feature state points at a deleted spec directory
+
+## [0.11.0] - 2026-05-14
+
 ### Changed
 - CI now runs lint, test, and build on pull requests (previously only on push to main)
 - `autospec doctor` now reports the latest Claude Code and OpenCode versions smoke-tested with autospec
@@ -29,7 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `autospec init --sandbox` now applies Claude sandbox settings even while the interactive sandbox prompt is disabled
 - `skip_permissions` now maps to Codex yolo mode without requiring `OPENAI_API_KEY`
 - `autospec specify` now persists the active feature, and project init stores active-feature state under `.autospec/state` by default
-- Workflow, status, artifact, prereq, agent-context, and task helper commands now consistently use the resolved active feature and fall back to the current branch when persisted active-feature state points at a deleted spec directory
 
 ### Security
 - Bumped `github.com/go-git/go-git/v5` from v5.16.5 to v5.17.1
@@ -359,7 +365,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.10.5...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/ariel-frischer/autospec/compare/v0.11.0...v0.11.1
+[0.11.0]: https://github.com/ariel-frischer/autospec/compare/v0.10.5...v0.11.0
 [0.10.5]: https://github.com/ariel-frischer/autospec/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/ariel-frischer/autospec/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/ariel-frischer/autospec/compare/v0.10.2...v0.10.3
