@@ -350,6 +350,36 @@ func TestStageCommandsKeepLifecycleHistoryWrappers(t *testing.T) {
 	}
 }
 
+func TestStageCommandsPassResolvedFeatureToOrchestrator(t *testing.T) {
+	tests := map[string]struct {
+		path string
+		want string
+	}{
+		"plan": {
+			path: "plan.go",
+			want: "orch.ExecutePlan(specName, prompt)",
+		},
+		"tasks": {
+			path: "tasks.go",
+			want: "orch.ExecuteTasks(specName, prompt)",
+		},
+		"implement": {
+			path: "implement.go",
+			want: "orch.ExecuteImplement(historySpecName, prompt, resume, phaseOpts)",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, currentFile, _, ok := runtime.Caller(0)
+			require.True(t, ok)
+			data, err := os.ReadFile(filepath.Join(filepath.Dir(currentFile), tt.path))
+			require.NoError(t, err)
+			require.Contains(t, string(data), tt.want)
+		})
+	}
+}
+
 func setupPersistedStageFeature(t *testing.T) *config.Configuration {
 	t.Helper()
 

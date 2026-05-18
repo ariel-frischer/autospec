@@ -11,7 +11,6 @@ import (
 	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
-	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/workflow"
 	"github.com/spf13/cobra"
 )
@@ -71,13 +70,14 @@ Prerequisites:
 			return NewExitError(ExitInvalidArguments)
 		}
 
-		// Auto-detect current spec and verify spec.yaml exists
-		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+		// Resolve current spec and verify spec.yaml exists
+		activeFeature, err := resolveCLIActiveFeature(cfg, "spec.yaml")
 		if err != nil {
 			cmd.SilenceUsage = true
-			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
+			return fmt.Errorf("%w\n\nRun 'autospec specify' to create a new spec first", err)
 		}
-		PrintSpecInfo(metadata)
+		metadata := activeFeature.Metadata
+		printCLIActiveFeature(activeFeature)
 
 		// Validate spec.yaml exists (required for clarify stage)
 		prereqResult := workflow.ValidateStagePrerequisites(workflow.StageClarify, metadata.Directory)

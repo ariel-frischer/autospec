@@ -117,7 +117,7 @@ You can optionally provide a prompt to guide the task generation.`,
 			shared.ApplyOutputStyle(cmd, orch)
 
 			// Execute tasks stage
-			if err := orch.ExecuteTasks("", prompt); err != nil {
+			if err := orch.ExecuteTasks(specName, prompt); err != nil {
 				return fmt.Errorf("tasks stage failed: %w", err)
 			}
 

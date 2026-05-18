@@ -117,7 +117,7 @@ You can optionally provide a prompt to guide the planning process.`,
 			shared.ApplyOutputStyle(cmd, orch)
 
 			// Execute plan stage
-			if err := orch.ExecutePlan("", prompt); err != nil {
+			if err := orch.ExecutePlan(specName, prompt); err != nil {
 				return fmt.Errorf("plan stage failed: %w", err)
 			}
 

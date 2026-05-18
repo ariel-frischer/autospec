@@ -130,3 +130,21 @@ func TestResolveActiveFeatureReportsSelectionSource(t *testing.T) {
 	require.NotEmpty(t, got.Metadata.Directory)
 	require.True(t, strings.HasPrefix(string(got.Source), "explicit"))
 }
+
+func TestResolveActiveFeatureFallsBackWhenPersistedDirectoryIsDeleted(t *testing.T) {
+	root := newGitFixture(t, "026-telnyx-phone-sms")
+	specsDir := filepath.Join(root, "specs")
+	stateDir := filepath.Join(root, ".autospec", "state")
+	createActiveFeatureSpec(t, specsDir, "026-telnyx-phone-sms")
+	_, err := SaveActiveFeatureState(stateDir, "001-workflow-artifacts", "test")
+	require.NoError(t, err)
+
+	got, err := ResolveActiveFeature(ActiveFeatureRequest{
+		SpecsDir: specsDir,
+		StateDir: stateDir,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, SelectionSourceGitBranch, got.Source)
+	require.Equal(t, filepath.Join(specsDir, "026-telnyx-phone-sms"), got.Metadata.Directory)
+}

@@ -91,7 +91,7 @@ Run selected workflow stages with flexible stage selection
 
 **Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
 
-**Feature Selection**: When a workflow command needs an existing feature directory, autospec resolves it in this order: explicit command selection (`--spec` or positional spec argument), persisted project-local active feature state, then branch-prefix fallback. Commands that create or select a feature may update the persisted active feature so later `plan`, `tasks`, `implement`, `status`, `prereqs`, and artifact lookups can target the same directory from a differently named branch.
+**Feature Selection**: When a workflow command needs an existing feature directory, autospec resolves it in this order: explicit command selection (`--spec` or positional spec argument), persisted project-local active feature state, then branch-prefix fallback. Commands that create or select a feature may update the persisted active feature so later `plan`, `tasks`, `implement`, `status`, `prereqs`, and artifact lookups can target the same directory from a differently named branch. If persisted state points at a deleted spec directory, autospec ignores that stale selection and continues to branch-prefix fallback.
 
 **Examples**:
 ```bash
@@ -208,7 +208,7 @@ Execute implementation phase using tasks breakdown
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
 - Plus all flags from `autospec all`
 
-When no positional spec is provided, `autospec implement` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback. A positional spec argument is explicit selection and takes precedence over persisted state.
+When no positional spec is provided, `autospec implement` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback. If persisted state points at a deleted spec directory, branch-prefix fallback is used. A positional spec argument is explicit selection and takes precedence over persisted state.
 
 **Execution Modes**:
 
@@ -875,7 +875,7 @@ Check prerequisites for workflow stages
 
 **Description**: Validate that required artifacts exist for the current spec before running workflow stages.
 
-When no explicit feature is provided, `autospec prereqs` checks the persisted active feature first and then falls back to branch-prefix detection.
+When no explicit feature is provided, `autospec prereqs` checks the persisted active feature first and then falls back to branch-prefix detection. If persisted state points at a deleted spec directory, branch-prefix fallback is used.
 
 **Flags**:
 - `--json`: Output as JSON

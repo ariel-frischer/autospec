@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,8 @@ import (
 )
 
 const activeFeatureStateFilename = "active-feature.yaml"
+
+var errPersistedFeatureDirectoryNotExist = errors.New("persisted active feature directory does not exist")
 
 // ActiveFeatureState is the project-local persisted feature selection.
 type ActiveFeatureState struct {
@@ -122,7 +125,7 @@ func ensureWithinSpecsDir(specsDir, candidate, value string) error {
 func validateFeatureDirectory(directory string) error {
 	info, err := os.Stat(directory)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("persisted active feature directory does not exist: %s", directory)
+		return fmt.Errorf("%w: %s: %w", errPersistedFeatureDirectoryNotExist, directory, err)
 	}
 	if err != nil {
 		return fmt.Errorf("checking persisted active feature directory: %w", err)

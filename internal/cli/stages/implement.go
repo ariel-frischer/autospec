@@ -229,7 +229,7 @@ The --tasks mode provides maximum context isolation:
 			}
 
 			// Execute implement stage with optional prompt and phase options
-			if err := orch.ExecuteImplement(specName, prompt, resume, phaseOpts); err != nil {
+			if err := orch.ExecuteImplement(historySpecName, prompt, resume, phaseOpts); err != nil {
 				return fmt.Errorf("implement stage failed: %w", err)
 			}
 

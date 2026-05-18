@@ -133,7 +133,7 @@ func (p *PhaseExecutor) executeSinglePhaseSession(specName string, phaseNumber i
 	EnsureContextDirGitignored()
 
 	// Build and execute command
-	command, err := p.buildPhaseCommand(phaseNumber, contextFilePath, prompt)
+	command, err := p.buildPhaseCommand(specName, phaseNumber, contextFilePath, prompt)
 	if err != nil {
 		return fmt.Errorf("building phase command: %w", err)
 	}
@@ -200,8 +200,8 @@ func (p *PhaseExecutor) buildAndWritePhaseContext(specDir string, phaseNumber, t
 }
 
 // buildPhaseCommand renders the implement template and appends phase flags.
-func (p *PhaseExecutor) buildPhaseCommand(phaseNumber int, contextFilePath, prompt string) (string, error) {
-	rendered, err := p.computeAndRenderImplementCommand()
+func (p *PhaseExecutor) buildPhaseCommand(specName string, phaseNumber int, contextFilePath, prompt string) (string, error) {
+	rendered, err := p.computeAndRenderImplementCommand(specName)
 	if err != nil {
 		return "", err
 	}
@@ -213,15 +213,19 @@ func (p *PhaseExecutor) buildPhaseCommand(phaseNumber int, contextFilePath, prom
 }
 
 // computeAndRenderImplementCommand gets and renders the implement template.
-func (p *PhaseExecutor) computeAndRenderImplementCommand() (string, error) {
+func (p *PhaseExecutor) computeAndRenderImplementCommand(specName string) (string, error) {
 	content, err := commands.GetTemplate("autospec.implement")
 	if err != nil {
 		return "", fmt.Errorf("loading template autospec.implement: %w", err)
 	}
 
 	opts := prereqs.Options{
-		SpecsDir:     p.specsDir,
-		RequireTasks: true,
+		SpecsDir:          p.specsDir,
+		FeatureIdentifier: specName,
+		RequireTasks:      true,
+	}
+	if p.executor != nil {
+		opts.StateDir = p.executor.StateDir
 	}
 	ctx, err := prereqs.ComputeContext(opts)
 	if err != nil {
@@ -323,7 +327,7 @@ func (p *PhaseExecutor) ExecuteDefault(specName, specDir, prompt string, resume 
 	fmt.Printf("Progress: checking tasks...\n\n")
 
 	// Build command with optional prompt and resume flag
-	command, err := p.buildDefaultCommand(prompt, resume)
+	command, err := p.buildDefaultCommand(specName, prompt, resume)
 	if err != nil {
 		return fmt.Errorf("building implement command: %w", err)
 	}
@@ -361,8 +365,8 @@ func (p *PhaseExecutor) ExecuteDefault(specName, specDir, prompt string, resume 
 }
 
 // buildDefaultCommand renders the implement template for default mode.
-func (p *PhaseExecutor) buildDefaultCommand(prompt string, resume bool) (string, error) {
-	rendered, err := p.computeAndRenderImplementCommand()
+func (p *PhaseExecutor) buildDefaultCommand(specName, prompt string, resume bool) (string, error) {
+	rendered, err := p.computeAndRenderImplementCommand(specName)
 	if err != nil {
 		return "", err
 	}

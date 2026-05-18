@@ -6,7 +6,6 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
-	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/validation"
 	"github.com/spf13/cobra"
 )
@@ -84,11 +83,12 @@ func loadTasksConfig(cmd *cobra.Command) (*config.Configuration, string, error) 
 		return nil, "", cliErr
 	}
 
-	metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+	activeFeature, err := resolveCLIActiveFeature(cfg, "tasks.yaml")
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to detect spec: %w", err)
+		return nil, "", err
 	}
-	PrintSpecInfo(metadata)
+	metadata := activeFeature.Metadata
+	printCLIActiveFeature(activeFeature)
 
 	tasksPath := validation.GetTasksFilePath(metadata.Directory)
 	return cfg, tasksPath, nil
