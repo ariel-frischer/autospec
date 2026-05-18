@@ -131,6 +131,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publish generated release notes
+        run: |
+          RAW_VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG="$RAW_VERSION"
+          if [[ "$TAG" != v* ]]; then
+            TAG="v${TAG}"
+          fi
+          VERSION="${TAG#v}"
+
+          gh release edit "$TAG" --notes-file .release/notes.md
+          gh release view "$TAG" --json body --jq '.body' > .release/published-notes.md
+
+          if ! grep -Fq "## [${VERSION}]" .release/published-notes.md; then
+            echo "Published release notes do not contain the chlog entry for version $VERSION"
+            cat .release/published-notes.md
+            exit 1
+          fi
+
+          if ! grep -Eq "^### (Added|Changed|Deprecated|Removed|Fixed|Security)$" .release/published-notes.md; then
+            echo "Published release notes do not contain changelog categories for version $VERSION"
+            cat .release/published-notes.md
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
