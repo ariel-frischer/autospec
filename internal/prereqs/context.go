@@ -33,12 +33,14 @@ type Context struct {
 
 // Options configures the behavior of ComputeContext.
 type Options struct {
-	SpecsDir     string // Directory containing spec folders (default: "./specs")
-	RequireSpec  bool   // Require spec.yaml to exist
-	RequirePlan  bool   // Require plan.yaml to exist
-	RequireTasks bool   // Require tasks.yaml to exist
-	IncludeTasks bool   // Include tasks.yaml in AvailableDocs
-	PathsOnly    bool   // Only compute paths, skip validation
+	SpecsDir          string // Directory containing spec folders (default: "./specs")
+	StateDir          string // Directory containing active-feature state
+	FeatureIdentifier string // Explicit feature identifier to resolve before persisted or branch fallback
+	RequireSpec       bool   // Require spec.yaml to exist
+	RequirePlan       bool   // Require plan.yaml to exist
+	RequireTasks      bool   // Require tasks.yaml to exist
+	IncludeTasks      bool   // Include tasks.yaml in AvailableDocs
+	PathsOnly         bool   // Only compute paths, skip validation
 }
 
 // ComputeContext computes prereqs context from the current environment.
@@ -52,7 +54,7 @@ func ComputeContext(opts Options) (*Context, error) {
 
 	hasGit := git.IsGitRepository()
 
-	specMeta, err := detectFeature(specsDir, hasGit)
+	specMeta, err := detectFeature(specsDir, opts.StateDir, opts.FeatureIdentifier, hasGit)
 	if err != nil && !opts.PathsOnly {
 		return nil, fmt.Errorf("detecting current feature: %w", err)
 	}
@@ -157,7 +159,15 @@ func computeAvailableDocs(ctx *Context, includeTasks bool) []string {
 }
 
 // detectFeature attempts to detect the current feature from environment, git, or spec directories.
-func detectFeature(specsDir string, hasGit bool) (*spec.Metadata, error) {
+func detectFeature(specsDir, stateDir, featureIdentifier string, hasGit bool) (*spec.Metadata, error) {
+	if featureIdentifier != "" {
+		meta, err := spec.GetSpecMetadata(specsDir, featureIdentifier)
+		if err != nil {
+			return nil, err
+		}
+		meta.Detection = spec.DetectionExplicit
+		return meta, nil
+	}
 	if envFeature := os.Getenv("SPECIFY_FEATURE"); envFeature != "" {
 		// Use GetSpecMetadata to properly parse number and name from spec identifier
 		meta, err := spec.GetSpecMetadata(specsDir, envFeature)
@@ -166,6 +176,17 @@ func detectFeature(specsDir string, hasGit bool) (*spec.Metadata, error) {
 			return meta, nil
 		}
 		// Fall through to other detection methods if env var spec not found
+	}
+
+	if stateDir != "" {
+		result, err := spec.ResolveActiveFeature(spec.ActiveFeatureRequest{
+			SpecsDir: specsDir,
+			StateDir: stateDir,
+		})
+		if err == nil {
+			return result.Metadata, nil
+		}
+		return nil, err
 	}
 
 	meta, err := spec.DetectCurrentSpec(specsDir)

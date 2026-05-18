@@ -174,7 +174,7 @@ func TestPhaseExecutor_BuildPhaseCommand(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			pe := NewPhaseExecutor(&Executor{SpecsDir: specsDir}, specsDir, false)
-			result, err := pe.buildPhaseCommand(tt.phaseNumber, tt.contextFilePath, tt.prompt)
+			result, err := pe.buildPhaseCommand("001-test-feature", tt.phaseNumber, tt.contextFilePath, tt.prompt)
 
 			if err != nil {
 				t.Fatalf("buildPhaseCommand returned unexpected error: %v", err)

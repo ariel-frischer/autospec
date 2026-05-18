@@ -113,7 +113,7 @@ func (te *TaskExecutor) executeAndVerifyTask(specName, tasksPath string, task va
 func (te *TaskExecutor) executeSingleTaskSession(specName, taskID, taskTitle, prompt string) error {
 	te.debugLog("executeSingleTaskSession: taskID=%s, taskTitle=%s", taskID, taskTitle)
 
-	command, err := te.buildTaskCommand(taskID, prompt)
+	command, err := te.buildTaskCommand(specName, taskID, prompt)
 	if err != nil {
 		return fmt.Errorf("building task command: %w", err)
 	}
@@ -123,8 +123,8 @@ func (te *TaskExecutor) executeSingleTaskSession(specName, taskID, taskTitle, pr
 }
 
 // buildTaskCommand renders the implement template and appends task flag.
-func (te *TaskExecutor) buildTaskCommand(taskID, prompt string) (string, error) {
-	rendered, err := te.computeAndRenderImplementCommand()
+func (te *TaskExecutor) buildTaskCommand(specName, taskID, prompt string) (string, error) {
+	rendered, err := te.computeAndRenderImplementCommand(specName)
 	if err != nil {
 		return "", err
 	}
@@ -136,15 +136,19 @@ func (te *TaskExecutor) buildTaskCommand(taskID, prompt string) (string, error) 
 }
 
 // computeAndRenderImplementCommand gets and renders the implement template.
-func (te *TaskExecutor) computeAndRenderImplementCommand() (string, error) {
+func (te *TaskExecutor) computeAndRenderImplementCommand(specName string) (string, error) {
 	content, err := commands.GetTemplate("autospec.implement")
 	if err != nil {
 		return "", fmt.Errorf("loading template autospec.implement: %w", err)
 	}
 
 	opts := prereqs.Options{
-		SpecsDir:     te.specsDir,
-		RequireTasks: true,
+		SpecsDir:          te.specsDir,
+		FeatureIdentifier: specName,
+		RequireTasks:      true,
+	}
+	if te.executor != nil {
+		opts.StateDir = te.executor.StateDir
 	}
 	ctx, err := prereqs.ComputeContext(opts)
 	if err != nil {
