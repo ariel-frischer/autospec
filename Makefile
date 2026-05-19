@@ -180,7 +180,7 @@ lint-go: fmt vet ## Lint Go code (fmt + vet)
 
 lint-bash: ## Lint bash scripts with shellcheck
 	@echo "Linting bash scripts..."
-	@find . -name '*.sh' -type f -not -path './.specify/*' -not -path '*/.autospec/*' | xargs shellcheck -x --severity=warning
+	@find . -name '*.sh' -type f -not -path '*/.autospec/*' | xargs shellcheck -x --severity=warning
 	@echo "Bash linting complete."
 
 lint: lint-go lint-bash ## Run all linters
@@ -250,20 +250,28 @@ worktree: ## Create a new worktree (make worktree BRANCH=feature-name)
 	@if [ -z "$(BRANCH)" ]; then \
 		echo "Usage: make worktree BRANCH=feature-name"; \
 		echo ""; \
-		echo "This creates a new worktree at ../autospec-<branch>"; \
+		echo "This creates a new worktree under .worktrees/<branch>"; \
 		exit 1; \
 	fi
-	@WORKTREE_PATH="../autospec-$(BRANCH)"; \
 	ORIG_DIR="$$(pwd)"; \
+	WORKTREE_PATH="$$ORIG_DIR/.worktrees/$(BRANCH)"; \
+	if ! grep -qxF ".worktrees/" .gitignore; then \
+		printf "\n.worktrees/\n" >> .gitignore; \
+	fi; \
 	if [ -d "$$WORKTREE_PATH" ]; then \
 		echo "Worktree already exists at $$WORKTREE_PATH"; \
 		echo ""; \
 		echo "To enter it, run:"; \
 		echo "  cd $$WORKTREE_PATH"; \
 	else \
+		mkdir -p "$$(dirname "$$WORKTREE_PATH")"; \
 		echo "Creating worktree for branch '$(BRANCH)' at $$WORKTREE_PATH..."; \
 		git worktree add "$$WORKTREE_PATH" -b "$(BRANCH)" 2>/dev/null || \
 		git worktree add "$$WORKTREE_PATH" "$(BRANCH)"; \
+		if [ -e "$$ORIG_DIR/.beads" ] && [ ! -e "$$WORKTREE_PATH/.beads" ] && [ ! -L "$$WORKTREE_PATH/.beads" ]; then \
+			ln -s "$$ORIG_DIR/.beads" "$$WORKTREE_PATH/.beads"; \
+			echo "✓ Linked canonical .beads/"; \
+		fi; \
 		echo ""; \
 		echo "✓ Worktree created at $$WORKTREE_PATH"; \
 		echo ""; \
@@ -294,7 +302,7 @@ worktree-remove: ## Remove a worktree (make worktree-remove BRANCH=feature-name)
 		echo "Usage: make worktree-remove BRANCH=feature-name"; \
 		exit 1; \
 	fi
-	@WORKTREE_PATH="../autospec-$(BRANCH)"; \
+	@WORKTREE_PATH="$$(pwd)/.worktrees/$(BRANCH)"; \
 	git worktree remove --force "$$WORKTREE_PATH" && \
 	echo "✓ Removed worktree at $$WORKTREE_PATH"
 

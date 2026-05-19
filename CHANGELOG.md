@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Project governance now requires deterministic mock-based agent/workflow tests and explicit architecture boundary guidance in the autospec constitution
 - Task generation guidance now keeps shipped prompts project-agnostic while allowing project governance to request validation, documentation, or release-note tasks
+- `autospec setup-plan` now looks for plan templates under `.autospec/templates` instead of `.specify/templates`
+- Constitution discovery no longer treats `.specify/memory` files as autospec project governance
 
 ## [0.11.2] - 2026-05-18
 

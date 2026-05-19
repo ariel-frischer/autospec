@@ -13,8 +13,6 @@ var Paths = []string{
 	".autospec/constitution.yml",
 	".autospec/memory/constitution.yaml",
 	".autospec/memory/constitution.yml",
-	".specify/memory/constitution.yaml",
-	".specify/memory/constitution.yml",
 }
 
 // Find returns the first constitution path that exists.

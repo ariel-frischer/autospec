@@ -74,6 +74,7 @@ tasks/
 .grepai/
 .agents/skills/polish/
 .agents/skills/release/
+.worktrees/
 
 # Dolt database files (added by bd init)
 .dolt/

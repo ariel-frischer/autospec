@@ -34,8 +34,8 @@ This command:
 3. Creates the feature directory if it doesn't exist
 
 The template is searched for in the following order:
-1. .specify/templates/plan-template.yaml
-2. .specify/templates/plan-template.md
+1. .autospec/templates/plan-template.yaml
+2. .autospec/templates/plan-template.md
 3. If no template exists, an empty plan.yaml is created with a warning`,
 	Example: `  # Initialize plan from template
   autospec setup-plan
@@ -99,10 +99,7 @@ func runSetupPlan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Look for plan template
-	templatePaths := []string{
-		filepath.Join(repoRoot, ".specify", "templates", "plan-template.yaml"),
-		filepath.Join(repoRoot, ".specify", "templates", "plan-template.md"),
-	}
+	templatePaths := setupPlanTemplatePaths(repoRoot)
 
 	var templateFound bool
 	for _, templatePath := range templatePaths {
@@ -148,6 +145,13 @@ func runSetupPlan(cmd *cobra.Command, args []string) error {
 	fmt.Printf("HAS_GIT: %s\n", output.HasGit)
 
 	return nil
+}
+
+func setupPlanTemplatePaths(repoRoot string) []string {
+	return []string{
+		filepath.Join(repoRoot, ".autospec", "templates", "plan-template.yaml"),
+		filepath.Join(repoRoot, ".autospec", "templates", "plan-template.md"),
+	}
 }
 
 // copyFile copies a file from src to dst

@@ -82,8 +82,8 @@ func TestSetupPlanCmd_TemplateCopying(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	// Create .specify/templates directory
-	templateDir := filepath.Join(tmpDir, ".specify", "templates")
+	// Create .autospec/templates directory
+	templateDir := filepath.Join(tmpDir, ".autospec", "templates")
 	err = os.MkdirAll(templateDir, 0o755)
 	require.NoError(t, err)
 
@@ -96,6 +96,33 @@ func TestSetupPlanCmd_TemplateCopying(t *testing.T) {
 	// Verify template exists
 	_, err = os.Stat(templatePath)
 	assert.NoError(t, err)
+}
+
+func TestSetupPlanCmd_IgnoresSpecifyTemplateDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	autospecTemplateDir := filepath.Join(tmpDir, ".autospec", "templates")
+	require.NoError(t, os.MkdirAll(autospecTemplateDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(autospecTemplateDir, "plan-template.yaml"),
+		[]byte("plan:\n  summary: autospec template\n"),
+		0o644,
+	))
+
+	specifyTemplateDir := filepath.Join(tmpDir, ".specify", "templates")
+	require.NoError(t, os.MkdirAll(specifyTemplateDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(specifyTemplateDir, "plan-template.yaml"),
+		[]byte("plan:\n  summary: specify template\n"),
+		0o644,
+	))
+
+	templatePaths := setupPlanTemplatePaths(tmpDir)
+
+	require.Len(t, templatePaths, 2)
+	assert.Equal(t, filepath.Join(autospecTemplateDir, "plan-template.yaml"), templatePaths[0])
+	assert.Equal(t, filepath.Join(autospecTemplateDir, "plan-template.md"), templatePaths[1])
+	assert.NotContains(t, templatePaths, filepath.Join(specifyTemplateDir, "plan-template.yaml"))
 }
 
 func TestSetupPlanCmd_FeatureDirectory(t *testing.T) {
