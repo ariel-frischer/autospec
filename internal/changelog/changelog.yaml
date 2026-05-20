@@ -1,6 +1,8 @@
 project: autospec
 versions:
-    unreleased:
+    unreleased: {}
+    0.11.3:
+        date: 2026-05-20
         changed:
             - Project governance now requires deterministic mock-based agent/workflow tests and explicit architecture boundary guidance in the autospec constitution
             - Task generation guidance now keeps shipped prompts project-agnostic while allowing project governance to request validation, documentation, or release-note tasks
