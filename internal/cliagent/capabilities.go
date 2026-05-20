@@ -25,8 +25,8 @@ const (
 	PromptMethodTemplate PromptMethod = "template"
 
 	// PromptMethodSubcommandWithFlag uses a subcommand with prompt as positional,
-	// followed by a trailing flag for the command name.
-	// Example: opencode run "fix the bug" --command autospec.specify
+	// followed by a trailing flag for a command name.
+	// Example: agent run "fix the bug" --command agent.task
 	// Pattern: <agent> <subcommand> <prompt> <command-flag> <command-name>
 	PromptMethodSubcommandWithFlag PromptMethod = "subcommand-with-flag"
 )
@@ -46,7 +46,7 @@ type PromptDelivery struct {
 	PromptFlag string
 
 	// CommandFlag is the trailing flag for specifying a command name after the prompt.
-	// Only used with PromptMethodSubcommandWithFlag (e.g., "--command" for OpenCode).
+	// Only used with PromptMethodSubcommandWithFlag.
 	// Pattern: <agent> <subcommand> <prompt> <CommandFlag> <command-name>
 	CommandFlag string
 
@@ -57,7 +57,7 @@ type PromptDelivery struct {
 	InteractiveFlag string
 
 	// ContextFileFlag is the flag for attaching context files.
-	// Only used with PromptMethodSubcommandWithFlag (e.g., "-f" for OpenCode).
+	// Only used with PromptMethodSubcommandWithFlag.
 	// When set, --context-file arguments are transformed to this flag.
 	// Pattern: <agent> <subcommand> <prompt> <ContextFileFlag> <file> <CommandFlag> <command-name>
 	ContextFileFlag string

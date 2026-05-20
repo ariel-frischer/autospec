@@ -1,6 +1,8 @@
 # Claude Code Settings & Sandboxing
 
-*Last updated: 2025-12-16*
+*Last updated: 2026-05-13*
+
+> **Verified with:** Claude Code 2.1.139 (2026-05-13)
 
 Configuration guide for Claude Code settings relevant to autospec workflows.
 
@@ -150,11 +152,12 @@ autospec doctor
 }
 ```
 
-2. Enable `skip_permissions` in your config:
+2. Keep `skip_permissions` enabled in your config:
 
 ```bash
-autospec config toggle skip_permissions
-# or: autospec config set skip_permissions true
+autospec config get skip_permissions
+# re-enable if needed:
+autospec config set skip_permissions true
 ```
 
 The sandbox provides OS-level isolation even when permission prompts are bypassed.

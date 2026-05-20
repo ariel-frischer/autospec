@@ -7,7 +7,6 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
-	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -63,12 +62,12 @@ func runTaskUnblock(cmd *cobra.Command, args []string) error {
 		return cliErr
 	}
 
-	// Detect current spec
-	metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+	activeFeature, err := resolveCLIActiveFeature(cfg, "tasks.yaml")
 	if err != nil {
-		return fmt.Errorf("detecting spec: %w", err)
+		return err
 	}
-	PrintSpecInfo(metadata)
+	metadata := activeFeature.Metadata
+	printCLIActiveFeature(activeFeature)
 
 	// Find tasks.yaml
 	tasksPath := filepath.Join(metadata.Directory, "tasks.yaml")

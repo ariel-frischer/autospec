@@ -32,7 +32,7 @@ This is intentional behavior, not an error.
 
 **The Problem with Single-Session Execution:**
 
-When running all tasks in one Claude session (GitHub SpecKit's approach), Claude:
+When running all tasks in one long agent session (GitHub SpecKit's approach), the agent:
 
 1. Reads the full `tasks.yaml`, `plan.yaml`, and `spec.yaml` on startup
 2. Accumulates conversation context as it works through tasks
@@ -42,7 +42,7 @@ When running all tasks in one Claude session (GitHub SpecKit's approach), Claude
 This leads to:
 - **Context pollution**: Earlier task discussions "contaminate" later task reasoning
 - **LLM degradation**: Performance measurably decreases as context accumulates (see [research](research/claude-opus-4.5-context-performance.md))
-- **Increased errors**: Claude may confuse similar tasks or forget earlier decisions
+- **Increased errors**: The agent may confuse similar tasks or forget earlier decisions
 - **Harder debugging**: When something fails, the entire session's context is involved
 
 **How Phase/Task Isolation Helps:**
@@ -58,7 +58,7 @@ autospec implement --tasks
 | Benefit | Impact |
 |---------|--------|
 | **Fresh context** | Each session starts clean, no accumulated state |
-| **Focused scope** | Claude sees only relevant tasks, not entire backlog |
+| **Focused scope** | The agent sees only relevant tasks, not entire backlog |
 | **Faster startup** | ~15-30 seconds saved per phase from fewer file reads |
 | **Better accuracy** | No confusion from earlier task discussions |
 | **Easier debugging** | Failures isolated to specific phase/task |

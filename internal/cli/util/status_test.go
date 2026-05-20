@@ -6,9 +6,12 @@ package util
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -90,4 +93,129 @@ func TestDisplayBlockedTasks_EmptyBlockedReason(t *testing.T) {
 	// Call displayBlockedTasks
 	// Should handle empty blocked_reason gracefully
 	displayBlockedTasks(tasksPath)
+}
+
+func TestResolveStatusFeatureUsesPersistedState(t *testing.T) {
+	tests := map[string]struct {
+		persistedDir string
+		removeSpec   bool
+		wantSource   spec.SelectionSource
+		wantErr      string
+	}{
+		"persisted feature resolves without positional argument": {
+			persistedDir: "128-persisted-status",
+			wantSource:   spec.SelectionSourcePersisted,
+		},
+		"stale persisted feature reports clear error": {
+			persistedDir: "128-persisted-status",
+			removeSpec:   true,
+			wantSource:   spec.SelectionSourcePersisted,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cfg := setupStatusFeature(t, tt.persistedDir)
+			if tt.removeSpec {
+				path := filepath.Join(cfg.SpecsDir, tt.persistedDir, "spec.yaml")
+				require.NoError(t, os.Remove(path))
+			}
+
+			got, err := resolveStatusFeature(cfg, nil)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantSource, got.Source)
+			require.Equal(t, filepath.Join(cfg.SpecsDir, tt.persistedDir), got.Metadata.Directory)
+		})
+	}
+}
+
+func TestResolveStatusFeatureExplicitSelectionWins(t *testing.T) {
+	cfg := setupStatusFeature(t, "128-persisted-status")
+	writeStatusFeature(t, cfg.SpecsDir, "129-explicit-status")
+
+	got, err := resolveStatusFeature(cfg, []string{"129-explicit-status"})
+
+	require.NoError(t, err)
+	require.Equal(t, spec.SelectionSourceExplicit, got.Source)
+	require.Equal(t, filepath.Join(cfg.SpecsDir, "129-explicit-status"), got.Metadata.Directory)
+}
+
+func TestResolveStatusFeatureAllowsEmptyBranchFeatureDirectory(t *testing.T) {
+	root := newStatusGitFixture(t, "026-manual-listing-packets")
+	cfg := &config.Configuration{
+		SpecsDir: filepath.Join(root, "specs"),
+		StateDir: filepath.Join(root, ".autospec", "state"),
+	}
+	featureDir := filepath.Join(cfg.SpecsDir, "026-manual-listing-packets")
+	require.NoError(t, os.MkdirAll(featureDir, 0o755))
+
+	got, err := resolveStatusFeature(cfg, nil)
+
+	require.NoError(t, err)
+	require.Equal(t, spec.SelectionSourceGitBranch, got.Source)
+	require.Equal(t, featureDir, got.Metadata.Directory)
+}
+
+func setupStatusFeature(t *testing.T, persistedDir string) *config.Configuration {
+	t.Helper()
+
+	root := t.TempDir()
+	cfg := &config.Configuration{
+		SpecsDir: filepath.Join(root, "specs"),
+		StateDir: filepath.Join(root, ".autospec", "state"),
+	}
+	writeStatusFeature(t, cfg.SpecsDir, persistedDir)
+	_, err := spec.SaveActiveFeatureState(cfg.StateDir, persistedDir, "test")
+	require.NoError(t, err)
+	return cfg
+}
+
+func writeStatusFeature(t *testing.T, specsDir, name string) {
+	t.Helper()
+
+	dir := filepath.Join(specsDir, name)
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "spec.yaml"), []byte("feature:\n  branch: "+name+"\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "tasks.yaml"), []byte("tasks:\n  branch: "+name+"\n"), 0o644))
+}
+
+func newStatusGitFixture(t *testing.T, branch string) string {
+	t.Helper()
+
+	root := t.TempDir()
+	runStatusGit(t, root, "init")
+	runStatusGit(t, root, "config", "user.email", "test@example.com")
+	runStatusGit(t, root, "config", "user.name", "Test User")
+	require.NoError(t, os.WriteFile(filepath.Join(root, "README.md"), []byte("test\n"), 0o644))
+	runStatusGit(t, root, "add", "README.md")
+	runStatusGit(t, root, "commit", "-m", "initial")
+	runStatusGit(t, root, "checkout", "-b", branch)
+	chdirStatusFixture(t, root)
+	return root
+}
+
+func runStatusGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
+}
+
+func chdirStatusFixture(t *testing.T, dir string) {
+	t.Helper()
+
+	previous, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(previous))
+	})
 }

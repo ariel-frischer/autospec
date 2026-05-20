@@ -82,7 +82,7 @@ Run selected workflow stages with flexible stage selection
 - `-z, --analyze`: Include analyze stage
 
 **Other Flags**:
-- `--spec <name>`: Target a specific spec (overrides branch detection)
+- `--spec <name>`: Target a specific spec for this invocation. This explicit selection overrides persisted active feature state and branch detection.
 - `-y, --yes`: Skip confirmation prompts
 - `--resume`: Resume implementation from where it left off
 - `--dry-run`: Preview what stages would run without executing
@@ -92,6 +92,8 @@ Run selected workflow stages with flexible stage selection
 - `--auto-commit` / `--no-auto-commit`: Override auto-commit config
 
 **Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
+
+**Feature Selection**: When a workflow command needs an existing feature directory, autospec resolves it in this order: explicit command selection (`--spec` or positional spec argument), persisted project-local active feature state, then branch-prefix fallback. Commands that create or select a feature may update the persisted active feature so later `plan`, `tasks`, `implement`, `status`, `prereqs`, and artifact lookups can target the same directory from a differently named branch. If persisted state points at a deleted spec directory, autospec ignores that stale selection and continues to branch-prefix fallback.
 
 **Examples**:
 ```bash
@@ -151,6 +153,8 @@ Generate technical implementation plan from specification
 
 **Flags**: Same as `autospec all` (including `--auto-commit` and `--no-auto-commit`)
 
+When no explicit spec is provided, `autospec plan` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback.
+
 **Examples**:
 ```bash
 autospec plan
@@ -173,6 +177,8 @@ Generate task breakdown from implementation plan
 
 **Flags**: Same as `autospec all` (including `--auto-commit` and `--no-auto-commit`)
 
+When no explicit spec is provided, `autospec tasks` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback.
+
 **Examples**:
 ```bash
 autospec tasks
@@ -190,21 +196,23 @@ Execute implementation phase using tasks breakdown
 
 **Alias**: `autospec impl`, `autospec i`
 
-**Description**: Execute tasks with Claude's assistance, validating progress. Supports multiple execution modes for context isolation.
+**Description**: Execute tasks with the configured agent, validating progress. Supports multiple execution modes for context isolation.
 
 **Flags**:
-- `--phases`: Run each phase in a separate Claude session (fresh context per phase)
+- `--phases`: Run each phase in a separate agent session (fresh context per phase)
 - `--phase <N>`: Run only the specified phase number
 - `--from-phase <N>`: Run phases N and onwards, each in separate session
-- `--tasks`: Run each task in a separate Claude session (maximum context isolation)
+- `--tasks`: Run each task in a separate agent session (maximum context isolation)
 - `--from-task <ID>`: Resume from specific task ID
 - `--resume`: Resume implementation from where it left off
-- `--single-session`: Run all tasks in one Claude session (legacy mode)
+- `--single-session`: Run all tasks in one agent session (legacy mode)
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
 - `--agent <name>`: Override agent for this run
 - `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`)
 - Plus all flags from `autospec all`
+
+When no positional spec is provided, `autospec implement` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback. If persisted state points at a deleted spec directory, branch-prefix fallback is used. A positional spec argument is explicit selection and takes precedence over persisted state.
 
 **Execution Modes**:
 
@@ -325,7 +333,7 @@ Run health checks and verify dependencies
 
 **Alias**: `autospec doc`
 
-**Description**: Verify Claude CLI installed, authenticated, and directories accessible. When `.autospec/init.yml` indicates global scope was used during init, doctor checks global agent settings instead of project-level ones.
+**Description**: Verify configured CLI agents, authentication/configuration, and directories are accessible. When `.autospec/init.yml` indicates global scope was used during init, doctor checks global agent settings instead of project-level ones.
 
 **Flags**: None (uses global flags only)
 
@@ -419,6 +427,8 @@ Check current feature status and progress
 **Alias**: `autospec st`
 
 **Description**: Display detected spec, which artifact files exist (spec.yaml, plan.yaml, tasks.yaml), task completion progress, and risk summary (if plan.yaml contains risks).
+
+Without a `spec-name`, status reports the currently resolved active feature. Resolution uses persisted project-local active feature state before falling back to the current branch prefix. A `spec-name` argument is explicit selection and overrides persisted state.
 
 **Flags**:
 - `-v, --verbose`: Show phase-by-phase breakdown
@@ -534,12 +544,13 @@ Initialize configuration files and directories
 **Syntax**: `autospec init [path] [flags]`
 
 **Description**: Set up autospec with everything needed to get started:
-1. Installs command templates to `.claude/commands/` (automatic)
+1. Installs agent-specific skills for selected agents
 2. Creates configuration at `~/.config/autospec/config.yml`
 3. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version)
-4. Prompts for agent selection and configuration
-5. Optionally creates project constitution
-6. Optionally generates worktree setup script
+4. Creates `.autospec/.gitignore` for local runtime files
+5. Prompts for agent selection and configuration
+6. Optionally creates project constitution
+7. Optionally generates worktree setup script
 
 If config already exists, it is left unchanged (use `--force` to overwrite).
 
@@ -554,7 +565,7 @@ If config already exists, it is left unchanged (use `--force` to overwrite).
 - `--force, -f`: Overwrite existing configuration with defaults
 - `--no-agents`: Skip agent configuration prompt (for non-interactive environments)
 - `--here`: Initialize in current directory (same as `init .`)
-- `--ai <agents>`: Configure specific agent(s), comma-separated (e.g., `--ai claude,opencode`)
+- `--ai <agents>`: Configure specific agent(s), comma-separated (e.g., `--ai claude,codex,opencode`)
 
 **Non-Interactive Flags** (for CI/CD and automation):
 
@@ -563,7 +574,7 @@ If config already exists, it is left unchanged (use `--force` to overwrite).
 | Sandbox | `--sandbox` | `--no-sandbox` | Enable/skip Claude sandbox configuration |
 | Billing | `--use-subscription` | `--no-use-subscription` | Use subscription billing vs API key |
 | Permissions | `--skip-permissions` | `--no-skip-permissions` | Enable/disable autonomous mode |
-| Gitignore | `--gitignore` | `--no-gitignore` | Add/skip adding .autospec/ to .gitignore |
+| Gitignore | `--gitignore` | `--no-gitignore` | Add/skip adding .autospec/ to root .gitignore |
 | Constitution | `--constitution` | `--no-constitution` | Create/skip project constitution |
 
 **Mutual Exclusivity**: Each positive/negative flag pair is mutually exclusive. Using both (e.g., `--sandbox --no-sandbox`) returns an error:
@@ -583,9 +594,9 @@ Missing flags (use positive or negative form):
   - constitution creation: --constitution or --no-constitution
 ```
 
-**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. Selected agents will have their command templates installed to your project. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
+**Agent Selection**: During initialization, you'll be prompted to select which CLI agents to configure. If you select more than one agent, init prompts for the default execution agent and saves it to `agent_preset`. Claude installs project skills under `.claude/skills/autospec.*/` so existing `/autospec.specify`-style invocations continue to work. OpenCode installs shared skills under `.agents/skills/` and configures `opencode.json` permissions; autospec workflow runs send rendered prompt text through `opencode run`. Codex records project metadata in `.codex/config.toml` and registers shared skills under `.agents/skills/`. Your selections are saved to `default_agents` in config to pre-select checkboxes in future `autospec init` runs.
 
-> **Note**: `default_agents` only affects the init prompt. To set which agent actually runs commands, use `agent_preset` (defaults to `claude` when empty). See `docs/public/agents.md` for details.
+> **Note**: `default_agents` remembers init prompt selections. `agent_preset` controls which agent actually runs commands and defaults to `claude` when empty. See `docs/public/agents.md` for details.
 
 **Examples**:
 ```bash
@@ -607,6 +618,13 @@ autospec init --no-agents            # Skip agent prompts
 autospec init --ai claude \
   --sandbox \
   --no-use-subscription \
+  --skip-permissions \
+  --gitignore \
+  --constitution
+
+# Codex setup
+autospec init --ai codex \
+  --no-sandbox \
   --skip-permissions \
   --gitignore \
   --constitution
@@ -663,6 +681,8 @@ Validate YAML artifacts against their schemas
 **Syntax**: `autospec artifact <path>` or `autospec artifact <type> <path>`
 
 **Description**: Validates artifacts against their schemas, checking required fields, types, enums, and cross-references (e.g., task dependencies).
+
+Path-based validation uses the path you provide. Type-only lookup, such as printing a schema or resolving a current artifact type without a path, uses the same active feature resolution order as workflow commands: explicit selection, persisted active feature, then branch-prefix fallback.
 
 **Supported Types**:
 - `spec` - Feature specification (spec.yaml)
@@ -859,6 +879,8 @@ Check prerequisites for workflow stages
 
 **Description**: Validate that required artifacts exist for the current spec before running workflow stages.
 
+When no explicit feature is provided, `autospec prereqs` checks the persisted active feature first and then falls back to branch-prefix detection. If persisted state points at a deleted spec directory, branch-prefix fallback is used.
+
 **Flags**:
 - `--json`: Output as JSON
 - `--require-spec`: Check for spec.yaml
@@ -874,17 +896,6 @@ autospec prereqs --require-plan --json
 ```
 
 **Exit Codes**: 0 (success), 1 (prerequisites missing)
-
-### autospec setup-plan
-
-Initialize plan file from template
-
-**Syntax**: `autospec setup-plan [flags]`
-
-**Flags**:
-- `--json`: Output as JSON
-
-**Exit Codes**: 0 (success), 1 (failed)
 
 ### autospec clean
 
@@ -975,6 +986,9 @@ autospec plan --agent cline
 
 # Use codex for implementation
 autospec implement --agent codex
+
+# Use codex for a complete workflow
+autospec run -a --agent codex "Add caching"
 ```
 
 ### Agent Status
@@ -998,7 +1012,7 @@ Manage git worktrees with project-aware setup automation
 
 **Syntax**: `autospec worktree <subcommand> [flags]`
 
-**Description**: Create and manage git worktrees with automatic copying of non-tracked directories (`.autospec/`, `.claude/`) and execution of project-specific setup scripts.
+**Description**: Create and manage git worktrees with automatic copying of non-tracked directories (`.autospec/`, `.agents/`, `.claude/`) and execution of project-specific setup scripts.
 
 **Subcommands**:
 - `create <name> --branch <branch> [--path <path>]`: Create new worktree
@@ -1035,113 +1049,6 @@ autospec worktree prune
 **Exit Codes**: 0 (success), 1 (operation failed), 3 (invalid args)
 
 See [docs/worktree.md](worktree.md) for detailed documentation.
-
-### autospec dag
-
-DAG multi-spec orchestration commands for running multiple autospec workflows in parallel across git worktrees.
-
-**Syntax**: `autospec dag <subcommand> [flags]`
-
-**Subcommands**: `validate`, `visualize`, `run`, `status`, `watch`, `logs`, `list`, `commit`, `merge`, `cleanup`, `clean-logs`, `migrate-state`
-
-See [DAG Orchestration](dag-orchestration.md) for detailed documentation.
-
-#### dag run
-
-Execute specs in dependency order. Resumes automatically if interrupted.
-
-**Syntax**: `autospec dag run <workflow-file> [flags]`
-
-**Key Flags**:
-- `--parallel`: Execute specs concurrently (default: sequential)
-- `--fresh`: Discard existing state and start fresh
-- `--only <specs>`: Run only specified specs (comma-separated)
-- `--autocommit` / `--no-autocommit`: Override autocommit setting
-- `--automerge` / `--no-automerge`: Override layer staging automerge setting
-- `--no-layer-staging`: Disable layer staging (all specs branch from base)
-- `--merge`: Auto-merge after successful completion (for CI)
-- `--no-merge-prompt`: Skip the post-run merge prompt
-
-**Examples**:
-```bash
-autospec dag run .autospec/dags/my-workflow.yaml --parallel
-autospec dag run .autospec/dags/my-workflow.yaml --merge  # CI mode
-```
-
-**Exit Codes**: 0 (success), 1 (failed), 3 (invalid args)
-
-#### dag commit
-
-Commit uncommitted changes in DAG worktrees.
-
-**Syntax**: `autospec dag commit <workflow-file> [flags]`
-
-**Flags**: `--only <spec-id>`, `--dry-run`, `--cmd <command>`
-
-**Example**: `autospec dag commit .autospec/dags/my-workflow.yaml --dry-run`
-
-#### dag merge
-
-Merge completed specs to target branch with pre-flight verification.
-
-**Syntax**: `autospec dag merge <workflow-file> [flags]`
-
-**Key Flags**:
-- `--skip-no-commits`: Skip specs with no commits ahead of target
-- `--skip-failed`: Skip specs that failed to merge
-- `--force`: Bypass pre-flight verification
-- `--cleanup`: Remove worktrees after merge
-
-**Examples**:
-```bash
-autospec dag merge .autospec/dags/my-workflow.yaml
-autospec dag merge .autospec/dags/my-workflow.yaml --skip-no-commits
-```
-
-**Exit Codes**: 0 (success), 1 (failed), 3 (invalid args)
-
-See [DAG Commit Verification](dag-commit-verification.md) for commit verification details.
-
-#### dag cleanup
-
-Remove worktrees and optionally logs for a DAG workflow.
-
-**Syntax**: `autospec dag cleanup <workflow-file> [flags]`
-
-**Key Flags**:
-- `--force`: Force cleanup, bypassing safety checks
-- `--keep-state`: Remove worktrees but preserve state in dag.yaml
-- `--logs`: Delete logs without prompting
-- `--no-logs`: Keep logs without prompting
-- `--logs-only`: Delete only logs (keep worktrees and state)
-
-**Examples**:
-```bash
-autospec dag cleanup .autospec/dags/my-workflow.yaml
-autospec dag cleanup .autospec/dags/my-workflow.yaml --logs
-autospec dag cleanup .autospec/dags/my-workflow.yaml --logs-only
-```
-
-**Exit Codes**: 0 (success), 1 (failed), 3 (invalid args)
-
-#### dag clean-logs
-
-Bulk cleanup of DAG log files.
-
-**Syntax**: `autospec dag clean-logs [flags]`
-
-**Flags**:
-- `--all`: Clean logs for all projects (not just current)
-
-**Examples**:
-```bash
-autospec dag clean-logs           # Clean logs for current project
-autospec dag clean-logs --all     # Clean logs for all projects
-```
-
-Logs are stored in `~/.cache/autospec/dag-logs/` (XDG cache directory).
-
-**Exit Codes**: 0 (success), 1 (failed)
 
 ## Configuration Options
 
@@ -1186,18 +1093,18 @@ use_subscription: false
 ### skip_permissions
 
 **Type**: boolean
-**Default**: `false`
-**Description**: Add `--dangerously-skip-permissions` flag for Claude runs, enabling unattended automation without permission prompts. Only applies to Claude agent; does not modify Claude settings files.
+**Default**: `true`
+**Description**: Enable autonomous mode for supported agents. Claude receives `--dangerously-skip-permissions`; Codex receives `--dangerously-bypass-approvals-and-sandbox`; OpenCode continues to rely on its `run` mode and configured permissions.
 
 **Example**:
 ```bash
-autospec config toggle skip_permissions
-# or: autospec config set skip_permissions true
+autospec config set skip_permissions false  # require agent approvals/sandbox behavior
+autospec config set skip_permissions true   # restore unattended autonomous mode
 ```
 
 **Environment**: `AUTOSPEC_SKIP_PERMISSIONS`
 
-**Note**: `autospec init` prompts to configure this setting (recommended: Yes). Enable Claude's sandbox first (`/sandbox` in Claude Code) for OS-level isolation. See [Claude Settings](./claude-settings.md) for security details.
+**Note**: `autospec init` defaults this setting to enabled for unattended workflow execution. For Claude, enable Claude's sandbox first (`/sandbox` in Claude Code) for OS-level isolation. For Codex, this maps to yolo mode (`--dangerously-bypass-approvals-and-sandbox`); set `skip_permissions: false` if you want Codex sandbox and approval behavior controlled by Codex config. See [Claude Settings](./claude-settings.md) and [Codex Settings](./codex-settings.md) for security details.
 
 ### custom_agent_cmd
 
@@ -1293,7 +1200,7 @@ skip_preflight: true
 
 **Example**:
 ```yaml
-implement_method: tasks  # Each task in separate Claude session
+implement_method: tasks  # Each task in separate agent session
 ```
 
 **Environment**: `AUTOSPEC_IMPLEMENT_METHOD`
@@ -1301,7 +1208,7 @@ implement_method: tasks  # Each task in separate Claude session
 **Behavior**:
 - `phases`: Each phase runs in separate session (fresh context per phase) — **default**
 - `tasks`: Each task runs in separate session (maximum context isolation)
-- `single-session`: All tasks in single Claude session (legacy)
+- `single-session`: All tasks in single agent session (legacy)
 
 **Note**: CLI flags (`--phases`, `--tasks`, `--single-session`) override this config setting.
 
@@ -1400,8 +1307,8 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 ### skip_permissions
 
 **Type**: boolean
-**Default**: `false`
-**Description**: Enable Claude autonomous mode (`--dangerously-skip-permissions`). When `true`, Claude runs without prompting for tool approval.
+**Default**: `true`
+**Description**: Enable autonomous mode for supported agents. Claude uses `--dangerously-skip-permissions`; Codex uses `--dangerously-bypass-approvals-and-sandbox`.
 
 **Environment**: `AUTOSPEC_SKIP_PERMISSIONS`
 
@@ -1428,6 +1335,36 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 **Default**: `"default"`
 **Values**: `"default"` | `"compact"` | `"minimal"` | `"plain"`
 **Description**: Output formatting style for cclean (`-s` flag)
+
+### codex_output
+
+**Type**: object
+**Description**: Configuration for automated Codex output formatting. Applies only to built-in Codex non-interactive runs.
+
+#### codex_output.mode
+
+**Type**: string (enum)
+**Default**: `"compact"`
+**Values**: `"compact"` | `"full"`
+**Description**: `compact` runs `codex exec --json` and displays concise JSONL event summaries. `full` preserves Codex's native terminal output.
+
+**Environment**: `AUTOSPEC_CODEX_OUTPUT_MODE`
+
+#### codex_output.max_lines_per_message
+
+**Type**: integer
+**Default**: `40`
+**Description**: Maximum lines shown for each compact Codex output block before autospec prints a truncation marker.
+
+**Environment**: `AUTOSPEC_CODEX_OUTPUT_MAX_LINES_PER_MESSAGE`
+
+#### codex_output.color
+
+**Type**: boolean
+**Default**: `true`
+**Description**: Enable ANSI color in compact Codex output.
+
+**Environment**: `AUTOSPEC_CODEX_OUTPUT_COLOR`
 
 ### worktree
 
@@ -1467,75 +1404,14 @@ enable_risk_assessment: true   # Enable risk documentation in plan.yaml
 #### worktree.copy_dirs
 
 **Type**: list
-**Default**: `[]`
-**Description**: Non-tracked directories to copy to new worktrees (e.g., `.autospec/`, `.claude/`)
+**Default**: `[.autospec, .agents, .claude]`
+**Description**: Non-tracked directories to copy to new worktrees (for example, autospec state and agent configuration directories)
 
 #### worktree.setup_timeout
 
 **Type**: duration
 **Default**: `"5m"`
 **Description**: Maximum duration for setup script execution
-
-### dag
-
-**Type**: object
-**Description**: DAG multi-spec orchestration configuration.
-
-#### dag.on_conflict
-
-**Type**: string (enum)
-**Default**: `"manual"`
-**Values**: `"manual"` | `"agent"`
-**Description**: Merge conflict handling strategy
-
-#### dag.base_branch
-
-**Type**: string
-**Default**: `""` (uses repo default)
-**Description**: Target branch for merging completed specs
-
-#### dag.max_spec_retries
-
-**Type**: integer
-**Default**: `0`
-**Description**: Max auto-retry attempts per spec (0 = manual only)
-
-#### dag.max_log_size
-
-**Type**: string
-**Default**: `"50MB"`
-**Description**: Max log file size per spec (e.g., `50MB`, `100MB`, `1GB`)
-
-#### dag.log_dir
-
-**Type**: string
-**Default**: `""` (XDG cache default)
-**Description**: Custom log directory for DAG execution logs
-
-#### dag.autocommit
-
-**Type**: boolean
-**Default**: `true`
-**Description**: Enable post-execution commit verification
-
-#### dag.autocommit_cmd
-
-**Type**: string
-**Default**: `""` (uses agent session)
-**Description**: Custom commit command template. Supports variables: `{{.SpecID}}`, `{{.Worktree}}`, `{{.Branch}}`, `{{.BaseBranch}}`, `{{.DagID}}`
-
-#### dag.autocommit_retries
-
-**Type**: integer
-**Default**: `1`
-**Range**: 0-10
-**Description**: Number of commit retry attempts
-
-#### dag.automerge
-
-**Type**: boolean
-**Default**: `true`
-**Description**: Enable automatic merge into staging branch after spec commits
 
 ### verification
 
@@ -1892,7 +1768,7 @@ Standardized exit codes for programmatic composition and CI/CD integration:
 | 1 | Validation Failed | Output artifact validation failed | Retry or inspect error |
 | 2 | Retries Exhausted | Max retry limit reached without success | Reset retry state or fix issue |
 | 3 | Invalid Arguments | User provided invalid command arguments | Check command syntax |
-| 4 | Missing Dependencies | Required dependencies not found | Install Claude CLI or other deps |
+| 4 | Missing Dependencies | Required dependencies not found | Install the configured agent CLI or other deps |
 | 5 | Command Timeout | Operation exceeded configured timeout | Increase timeout or optimize |
 
 **Examples**:
@@ -2019,7 +1895,7 @@ fi
 
 ### Prompt Injection
 
-All phase commands support optional guidance text to direct Claude's execution:
+All phase commands support optional guidance text to direct the configured agent's execution:
 
 ```bash
 # Plan with specific focus
@@ -2051,7 +1927,7 @@ custom_agent:
 ```
 
 **Placeholders**:
-- `{{PROMPT}}`: Replaced with actual prompt (e.g., `/autospec.plan "focus on security"`)
+- `{{PROMPT}}`: Replaced with the rendered autospec prompt text
 
 ### Retry State Management
 

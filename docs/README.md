@@ -26,7 +26,8 @@ docs/
 |----------|-------------|
 | [quickstart.md](public/quickstart.md) | Getting started guide |
 | [reference.md](public/reference.md) | Complete CLI command reference |
-| [agents.md](public/agents.md) | Agent configuration (Claude, Gemini, etc.) |
+| [agents.md](public/agents.md) | Agent configuration (Claude, Codex, OpenCode, etc.) |
+| [codex-settings.md](public/codex-settings.md) | Codex CLI auth, sandboxing, and yolo mode |
 | [claude-settings.md](public/claude-settings.md) | Claude Code settings and sandboxing |
 | [troubleshooting.md](public/troubleshooting.md) | Common issues and solutions |
 | [faq.md](public/faq.md) | Frequently asked questions |
@@ -45,6 +46,7 @@ docs/
 | [go-best-practices.md](internal/go-best-practices.md) | Go conventions and patterns |
 | [internals.md](internal/internals.md) | Spec detection, validation, retry system |
 | [testing-mocks.md](internal/testing-mocks.md) | Testing patterns and mocks |
+| [codex-manual-testing.md](internal/codex-manual-testing.md) | Codex smoke and regression testing checklist |
 | [events.md](internal/events.md) | Event system architecture |
 | [YAML-STRUCTURED-OUTPUT.md](internal/YAML-STRUCTURED-OUTPUT.md) | YAML artifact schemas |
 | [risks.md](internal/risks.md) | Risk documentation in plan.yaml |

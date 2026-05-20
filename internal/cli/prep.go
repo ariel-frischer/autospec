@@ -11,6 +11,7 @@ import (
 	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
+	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/workflow"
 	"github.com/spf13/cobra"
 )
@@ -37,15 +38,19 @@ This is useful when you want to review the generated artifacts before implementa
 
   # Prepare artifacts for review
   autospec prep "Refactor database layer"`,
-	Args: cobra.ExactArgs(1),
+	Args: validatePrepArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true // Don't show help for execution errors
-		featureDescription := args[0]
+		featureDescription := ""
+		if len(args) > 0 {
+			featureDescription = args[0]
+		}
 
 		// Get flags
 		configPath, _ := cmd.Flags().GetString("config")
 		skipPreflight, _ := cmd.Flags().GetBool("skip-preflight")
 		maxRetries, _ := cmd.Flags().GetInt("max-retries")
+		specName, _ := cmd.Flags().GetString("spec")
 
 		// Load configuration
 		cfg, err := config.Load(configPath)
@@ -110,6 +115,23 @@ This is useful when you want to review the generated artifacts before implementa
 
 			// Apply OpenCode agent if the flag is present
 			shared.ApplyOpenCodeAgent(cmd, cfg, orchestrator)
+      
+			if specName != "" {
+				activeFeature, err := resolvePrepFeature(cfg, specName)
+				if err != nil {
+					return err
+				}
+				PrintSpecInfo(activeFeature.Metadata)
+				fmt.Printf("  active feature: %s (source: %s)\n", activeFeature.Metadata.Directory, activeFeature.Source)
+				resolvedName := fmt.Sprintf("%s-%s", activeFeature.Metadata.Number, activeFeature.Metadata.Name)
+				if err := orchestrator.ExecutePlan(resolvedName, featureDescription); err != nil {
+					return fmt.Errorf("prep plan stage failed: %w", err)
+				}
+				if err := orchestrator.ExecuteTasks(resolvedName, featureDescription); err != nil {
+					return fmt.Errorf("prep tasks stage failed: %w", err)
+				}
+				return nil
+			}
 
 			// Run complete workflow (specify → plan → tasks, no implementation)
 			if err := orchestrator.RunCompleteWorkflow(featureDescription); err != nil {
@@ -127,6 +149,7 @@ func init() {
 
 	// Command-specific flags
 	prepCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (overrides config when set)")
+	prepCmd.Flags().String("spec", "", "Specify which spec to prepare (overrides branch detection)")
 
 	// Agent override flag
 	shared.AddAgentFlag(prepCmd)
@@ -136,4 +159,28 @@ func init() {
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(prepCmd)
+}
+
+func validatePrepArgs(cmd *cobra.Command, args []string) error {
+	specName, _ := cmd.Flags().GetString("spec")
+	if specName != "" {
+		return cobra.MaximumNArgs(1)(cmd, args)
+	}
+	return cobra.ExactArgs(1)(cmd, args)
+}
+
+func resolvePrepFeature(cfg *config.Configuration, specName string) (*spec.ActiveFeatureResult, error) {
+	result, err := spec.ResolveActiveFeature(spec.ActiveFeatureRequest{
+		SpecsDir:           cfg.SpecsDir,
+		StateDir:           cfg.StateDir,
+		ExplicitIdentifier: specName,
+		RequiredArtifact:   "spec.yaml",
+	})
+	if err == nil {
+		return result, nil
+	}
+	if specName != "" {
+		return nil, fmt.Errorf("spec not found: %s: %w", specName, err)
+	}
+	return nil, fmt.Errorf("failed to detect spec for prep: %w", err)
 }

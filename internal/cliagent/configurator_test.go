@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -511,7 +512,7 @@ func TestClaudeConfigureProject_NoDuplicates(t *testing.T) {
 	}
 }
 
-func TestClaudeConfigureProject_CommandsInstalled(t *testing.T) {
+func TestClaudeConfigureProject_SkillsInstalled(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -522,25 +523,25 @@ func TestClaudeConfigureProject_CommandsInstalled(t *testing.T) {
 		t.Fatalf("ConfigureProject() error = %v", err)
 	}
 
-	// Verify command templates are installed
-	cmdDir := filepath.Join(tempDir, ".claude", "commands")
-	entries, err := os.ReadDir(cmdDir)
-	if err != nil {
-		t.Fatalf("failed to read commands dir: %v", err)
-	}
-
-	// Should have at least one autospec.*.md file
-	foundAutospec := false
-	for _, entry := range entries {
-		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".md" {
-			if len(entry.Name()) > 9 && entry.Name()[:9] == "autospec." {
-				foundAutospec = true
-				break
-			}
+	for _, skillDir := range []string{
+		"autospec.specify",
+		"autospec.plan",
+		"autospec.tasks",
+		"autospec.implement",
+	} {
+		skillPath := filepath.Join(tempDir, ".claude", "skills", skillDir, "SKILL.md")
+		content, err := os.ReadFile(skillPath)
+		if err != nil {
+			t.Fatalf("expected Claude skill %s to exist: %v", skillDir, err)
+		}
+		if !strings.Contains(string(content), "disable-model-invocation: true") {
+			t.Errorf("Claude skill %s should disable automatic model invocation:\n%s", skillDir, string(content))
 		}
 	}
-	if !foundAutospec {
-		t.Error("no autospec.*.md files found in .claude/commands/")
+
+	_, err = os.Stat(filepath.Join(tempDir, ".claude", "commands", "autospec.specify.md"))
+	if !os.IsNotExist(err) {
+		t.Fatalf("Claude command templates should not be installed for fresh init")
 	}
 }
 

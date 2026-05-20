@@ -71,7 +71,7 @@ func runUpdateAgentContext(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting git repo root: %w", err)
 	}
 
-	metadata, err := detectSpecForAgentContext(cfg.SpecsDir)
+	metadata, err := detectSpecForAgentContext(cfg)
 	if err != nil {
 		return fmt.Errorf("detecting spec: %w", err)
 	}
@@ -124,17 +124,21 @@ func getGitRepoRoot() (string, error) {
 	return repoRoot, nil
 }
 
-// detectSpecForAgentContext detects the current spec
-func detectSpecForAgentContext(specsDir string) (*spec.Metadata, error) {
-	metadata, err := spec.DetectCurrentSpec(specsDir)
+// detectSpecForAgentContext detects the current active spec.
+func detectSpecForAgentContext(cfg *config.Configuration) (*spec.Metadata, error) {
+	result, err := spec.ResolveActiveFeature(spec.ActiveFeatureRequest{
+		SpecsDir:         cfg.SpecsDir,
+		StateDir:         cfg.StateDir,
+		RequiredArtifact: "plan.yaml",
+	})
 	if err != nil {
-		cliErr := fmt.Errorf("failed to detect spec: %w\nEnsure you're on a feature branch or have spec directories in %s", err, specsDir)
+		cliErr := fmt.Errorf("failed to detect spec: %w\nEnsure you're on a feature branch or have spec directories in %s", err, cfg.SpecsDir)
 		if !updateAgentContextJSONFlag {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", cliErr)
 		}
 		return nil, outputError(cliErr, updateAgentContextJSONFlag)
 	}
-	return metadata, nil
+	return result.Metadata, nil
 }
 
 // parseAgentPlanData parses plan.yaml for agent context

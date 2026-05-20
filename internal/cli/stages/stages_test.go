@@ -5,9 +5,16 @@
 package stages
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSpecifyCmd_Flags(t *testing.T) {
@@ -256,6 +263,146 @@ func TestImplementCmd_ShortDescriptionAliases(t *testing.T) {
 	short := implementCmd.Short
 	assert.Contains(t, short, "impl", "Short description should mention alias")
 	assert.Contains(t, short, "i", "Short description should mention single-letter alias")
+}
+
+func TestResolveStageFeatureUsesPersistedState(t *testing.T) {
+	tests := map[string]struct {
+		requiredArtifact string
+		removeArtifact   string
+		wantErr          string
+	}{
+		"plan resolves persisted feature with spec artifact": {
+			requiredArtifact: "spec.yaml",
+		},
+		"tasks resolves persisted feature with plan artifact": {
+			requiredArtifact: "plan.yaml",
+		},
+		"implement resolves persisted feature with tasks artifact": {
+			requiredArtifact: "tasks.yaml",
+		},
+		"missing persisted artifact returns validation error": {
+			requiredArtifact: "tasks.yaml",
+			removeArtifact:   "tasks.yaml",
+			wantErr:          "missing required artifact tasks.yaml",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cfg := setupPersistedStageFeature(t)
+			if tt.removeArtifact != "" {
+				path := filepath.Join(cfg.SpecsDir, "128-persisted-feature", tt.removeArtifact)
+				require.NoError(t, os.Remove(path))
+			}
+
+			got, err := resolveStageFeature(cfg, "", tt.requiredArtifact)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, spec.SelectionSourcePersisted, got.Source)
+			require.Equal(t, filepath.Join(cfg.SpecsDir, "128-persisted-feature"), got.Metadata.Directory)
+		})
+	}
+}
+
+func TestResolveStageFeatureExplicitSelectionWins(t *testing.T) {
+	cfg := setupPersistedStageFeature(t)
+	writeStageFeature(t, cfg.SpecsDir, "129-explicit-feature")
+
+	got, err := resolveStageFeature(cfg, "129-explicit-feature", "tasks.yaml")
+
+	require.NoError(t, err)
+	require.Equal(t, spec.SelectionSourceExplicit, got.Source)
+	require.Equal(t, filepath.Join(cfg.SpecsDir, "129-explicit-feature"), got.Metadata.Directory)
+}
+
+func TestStageCommandsKeepLifecycleHistoryWrappers(t *testing.T) {
+	tests := map[string]struct {
+		path string
+		want string
+	}{
+		"plan": {
+			path: "plan.go",
+			want: "lifecycle.RunWithHistory(",
+		},
+		"tasks": {
+			path: "tasks.go",
+			want: "lifecycle.RunWithHistory(",
+		},
+		"implement": {
+			path: "implement.go",
+			want: "lifecycle.RunWithHistoryContext(",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, currentFile, _, ok := runtime.Caller(0)
+			require.True(t, ok)
+			data, err := os.ReadFile(filepath.Join(filepath.Dir(currentFile), tt.path))
+			require.NoError(t, err)
+			require.Contains(t, string(data), tt.want)
+		})
+	}
+}
+
+func TestStageCommandsPassResolvedFeatureToOrchestrator(t *testing.T) {
+	tests := map[string]struct {
+		path string
+		want string
+	}{
+		"plan": {
+			path: "plan.go",
+			want: "orch.ExecutePlan(specName, prompt)",
+		},
+		"tasks": {
+			path: "tasks.go",
+			want: "orch.ExecuteTasks(specName, prompt)",
+		},
+		"implement": {
+			path: "implement.go",
+			want: "orch.ExecuteImplement(historySpecName, prompt, resume, phaseOpts)",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, currentFile, _, ok := runtime.Caller(0)
+			require.True(t, ok)
+			data, err := os.ReadFile(filepath.Join(filepath.Dir(currentFile), tt.path))
+			require.NoError(t, err)
+			require.Contains(t, string(data), tt.want)
+		})
+	}
+}
+
+func setupPersistedStageFeature(t *testing.T) *config.Configuration {
+	t.Helper()
+
+	root := t.TempDir()
+	cfg := &config.Configuration{
+		SpecsDir: filepath.Join(root, "specs"),
+		StateDir: filepath.Join(root, ".autospec", "state"),
+	}
+	writeStageFeature(t, cfg.SpecsDir, "128-persisted-feature")
+	_, err := spec.SaveActiveFeatureState(cfg.StateDir, "128-persisted-feature", "test")
+	require.NoError(t, err)
+	return cfg
+}
+
+func writeStageFeature(t *testing.T, specsDir, name string) {
+	t.Helper()
+
+	dir := filepath.Join(specsDir, name)
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	for _, artifact := range []string{"spec.yaml", "plan.yaml", "tasks.yaml"} {
+		content := strings.TrimSuffix(artifact, ".yaml") + ":\n  branch: " + name + "\n"
+		require.NoError(t, os.WriteFile(filepath.Join(dir, artifact), []byte(content), 0o644))
+	}
 }
 
 func TestSpecifyCmd_HasMaxRetriesFlag(t *testing.T) {

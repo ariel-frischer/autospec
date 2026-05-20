@@ -53,6 +53,11 @@ The mock testing infrastructure enables:
 - **Git Isolation**: Tests can manipulate git state without affecting the actual repository
 - **Deterministic Testing**: Mocks provide consistent, reproducible responses
 
+Default unit, package integration, and workflow tests must not invoke real
+configured agents or external AI APIs. Use explicit E2E/manual testing plans for
+real agent smoke tests, and keep those paths isolated from the developer's active
+repository.
+
 ## Infrastructure Components
 
 ### Mock Executor (`internal/testutil/mock_executor.go`)

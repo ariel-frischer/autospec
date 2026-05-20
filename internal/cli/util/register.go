@@ -1,9 +1,8 @@
 // Package util provides utility CLI commands for autospec.
-// Includes: status, history, version, clean, worktree, dag
+// Includes: status, history, version, clean, worktree
 package util
 
 import (
-	"github.com/ariel-frischer/autospec/internal/cli/dag"
 	"github.com/ariel-frischer/autospec/internal/cli/worktree"
 	"github.com/spf13/cobra"
 )
@@ -20,10 +19,4 @@ func Register(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(viewCmd)
 	rootCmd.AddCommand(ckCmd)
 	rootCmd.AddCommand(worktree.WorktreeCmd)
-
-	// Experimental: dag and waves commands only available in dev builds
-	if IsDevBuild() {
-		rootCmd.AddCommand(dag.DagCmd)
-		rootCmd.AddCommand(wavesCmd)
-	}
 }

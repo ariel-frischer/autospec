@@ -7,6 +7,7 @@ package workflow
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/commands"
 	"github.com/ariel-frischer/autospec/internal/prereqs"
@@ -87,7 +88,10 @@ func (s *StageExecutor) resetSpecifyRetryState() {
 
 // runSpecifyStage executes the specify stage command
 func (s *StageExecutor) runSpecifyStage(featureDescription string) (*StageResult, error) {
-	command := fmt.Sprintf("/autospec.specify \"%s\"", featureDescription)
+	command, err := s.buildRenderedSpecifyCommand(featureDescription)
+	if err != nil {
+		return nil, fmt.Errorf("building specify command: %w", err)
+	}
 	command = InjectEarsInstructions(command, s.enableEarsRequirements)
 	validateFunc := MakeSpecSchemaValidatorWithDetection(s.specsDir)
 	return s.executor.ExecuteStage("", StageSpecify, command, validateFunc)
@@ -125,7 +129,7 @@ func (s *StageExecutor) ExecutePlan(specNameArg string, prompt string) error {
 
 	s.debugLog("ExecutePlan called for spec: %s, prompt: %s", specName, prompt)
 
-	command, err := s.buildRenderedPlanCommand(prompt)
+	command, err := s.buildRenderedPlanCommand(specName, prompt)
 	if err != nil {
 		return fmt.Errorf("building plan command: %w", err)
 	}
@@ -157,7 +161,7 @@ func (s *StageExecutor) ExecuteTasks(specNameArg string, prompt string) error {
 
 	s.debugLog("ExecuteTasks called for spec: %s, prompt: %s", specName, prompt)
 
-	command, err := s.buildRenderedTasksCommand(prompt)
+	command, err := s.buildRenderedTasksCommand(specName, prompt)
 	if err != nil {
 		return fmt.Errorf("building tasks command: %w", err)
 	}
@@ -187,8 +191,8 @@ func (s *StageExecutor) resolveSpecName(specNameArg string) (string, error) {
 }
 
 // buildRenderedPlanCommand renders the plan template and appends optional prompt.
-func (s *StageExecutor) buildRenderedPlanCommand(prompt string) (string, error) {
-	rendered, err := s.computeAndRenderCommand("autospec.plan")
+func (s *StageExecutor) buildRenderedPlanCommand(specName, prompt string) (string, error) {
+	rendered, err := s.computeAndRenderCommand("autospec.plan", specName)
 	if err != nil {
 		return "", err
 	}
@@ -200,8 +204,8 @@ func (s *StageExecutor) buildRenderedPlanCommand(prompt string) (string, error) 
 }
 
 // buildRenderedTasksCommand renders the tasks template and appends optional prompt.
-func (s *StageExecutor) buildRenderedTasksCommand(prompt string) (string, error) {
-	rendered, err := s.computeAndRenderCommand("autospec.tasks")
+func (s *StageExecutor) buildRenderedTasksCommand(specName, prompt string) (string, error) {
+	rendered, err := s.computeAndRenderCommand("autospec.tasks", specName)
 	if err != nil {
 		return "", err
 	}
@@ -209,6 +213,24 @@ func (s *StageExecutor) buildRenderedTasksCommand(prompt string) (string, error)
 		return fmt.Sprintf("%s\n\n## User Input\n\n%s", rendered, prompt), nil
 	}
 	return rendered, nil
+}
+
+// buildRenderedSpecifyCommand renders the specify template with the feature description.
+func (s *StageExecutor) buildRenderedSpecifyCommand(featureDescription string) (string, error) {
+	return s.buildRenderedCommandWithArguments("autospec.specify", "", featureDescription)
+}
+
+// buildRenderedConstitutionCommand renders the constitution template with optional guidance.
+func (s *StageExecutor) buildRenderedConstitutionCommand(prompt string) (string, error) {
+	return s.buildRenderedCommandWithArguments("autospec.constitution", "", prompt)
+}
+
+func (s *StageExecutor) buildRenderedCommandWithArguments(commandName, specName, arguments string) (string, error) {
+	rendered, err := s.computeAndRenderCommand(commandName, specName)
+	if err != nil {
+		return "", err
+	}
+	return strings.ReplaceAll(rendered, "$ARGUMENTS", arguments), nil
 }
 
 // formatStageError formats an error from a stage execution.
@@ -223,8 +245,8 @@ func (s *StageExecutor) formatStageError(stageName string, result *StageResult, 
 }
 
 // buildRenderedAuxCommand renders an auxiliary command template (clarify, analyze, checklist).
-func (s *StageExecutor) buildRenderedAuxCommand(commandName, prompt string) (string, error) {
-	rendered, err := s.computeAndRenderCommand(commandName)
+func (s *StageExecutor) buildRenderedAuxCommand(commandName, specName, prompt string) (string, error) {
+	rendered, err := s.computeAndRenderCommand(commandName, specName)
 	if err != nil {
 		return "", err
 	}
@@ -239,7 +261,10 @@ func (s *StageExecutor) buildRenderedAuxCommand(commandName, prompt string) (str
 func (s *StageExecutor) ExecuteConstitution(prompt string) error {
 	s.debugLog("ExecuteConstitution called with prompt: %s", prompt)
 
-	command := s.buildCommand("/autospec.constitution", prompt)
+	command, err := s.buildRenderedConstitutionCommand(prompt)
+	if err != nil {
+		return fmt.Errorf("building constitution command: %w", err)
+	}
 	s.printExecuting("/autospec.constitution", prompt)
 
 	// Derive project directory from specsDir (parent of specs/)
@@ -276,7 +301,7 @@ func (s *StageExecutor) ExecuteConstitution(prompt string) error {
 func (s *StageExecutor) ExecuteClarify(specName string, prompt string) error {
 	s.debugLog("ExecuteClarify called for spec: %s, prompt: %s", specName, prompt)
 
-	command, err := s.buildRenderedAuxCommand("autospec.clarify", prompt)
+	command, err := s.buildRenderedAuxCommand("autospec.clarify", specName, prompt)
 	if err != nil {
 		return fmt.Errorf("building clarify command: %w", err)
 	}
@@ -299,7 +324,7 @@ func (s *StageExecutor) ExecuteClarify(specName string, prompt string) error {
 func (s *StageExecutor) ExecuteChecklist(specName string, prompt string) error {
 	s.debugLog("ExecuteChecklist called for spec: %s, prompt: %s", specName, prompt)
 
-	command, err := s.buildRenderedAuxCommand("autospec.checklist", prompt)
+	command, err := s.buildRenderedAuxCommand("autospec.checklist", specName, prompt)
 	if err != nil {
 		return fmt.Errorf("building checklist command: %w", err)
 	}
@@ -324,7 +349,7 @@ func (s *StageExecutor) ExecuteChecklist(specName string, prompt string) error {
 func (s *StageExecutor) ExecuteAnalyze(specName string, prompt string) error {
 	s.debugLog("ExecuteAnalyze called for spec: %s, prompt: %s", specName, prompt)
 
-	command, err := s.buildRenderedAuxCommand("autospec.analyze", prompt)
+	command, err := s.buildRenderedAuxCommand("autospec.analyze", specName, prompt)
 	if err != nil {
 		return fmt.Errorf("building analyze command: %w", err)
 	}
@@ -366,19 +391,28 @@ func (s *StageExecutor) getOptionsForStage(stageName string) prereqs.Options {
 	opts := prereqs.Options{
 		SpecsDir: s.specsDir,
 	}
+	if s.executor != nil {
+		opts.StateDir = s.executor.StateDir
+	}
 
+	needsFeatureContext := false
 	for _, v := range requiredVars {
 		switch v {
+		case "FeatureDir":
+			needsFeatureContext = true
 		case "FeatureSpec":
 			opts.RequireSpec = true
+			needsFeatureContext = true
 		case "ImplPlan":
 			opts.RequirePlan = true
+			needsFeatureContext = true
 		case "TasksFile":
 			opts.RequireTasks = true
+			needsFeatureContext = true
 		}
 	}
 
-	if len(requiredVars) == 0 {
+	if !needsFeatureContext {
 		opts.PathsOnly = true
 	}
 
@@ -387,13 +421,14 @@ func (s *StageExecutor) getOptionsForStage(stageName string) prereqs.Options {
 
 // computeAndRenderCommand gets a command template and renders it with prereqs context.
 // Returns the rendered command string ready for execution.
-func (s *StageExecutor) computeAndRenderCommand(commandName string) (string, error) {
+func (s *StageExecutor) computeAndRenderCommand(commandName, specName string) (string, error) {
 	content, err := commands.GetTemplate(commandName)
 	if err != nil {
 		return "", fmt.Errorf("loading template %s: %w", commandName, err)
 	}
 
 	opts := s.getOptionsForStage(commandName)
+	opts.FeatureIdentifier = specName
 	ctx, err := prereqs.ComputeContext(opts)
 	if err != nil {
 		return "", fmt.Errorf("computing prereqs context: %w", err)

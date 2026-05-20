@@ -17,14 +17,14 @@ func IsDevBuild() bool {
 }
 
 // MultiAgentEnabled returns true if multi-agent selection is enabled.
-// Enabled now that OpenCode is production-ready alongside Claude.
+// Enabled now that OpenCode and Codex are production-ready alongside Claude.
 func MultiAgentEnabled() bool {
 	return true
 }
 
 // ProductionAgents returns the list of agents available in production builds.
-// Only Claude and OpenCode are supported in production; other agents (Gemini, Cline)
-// are available only in dev builds via MultiAgentEnabled().
+// Claude, Codex, and OpenCode are supported in production; other agents are
+// available only in dev builds via MultiAgentEnabled().
 func ProductionAgents() []string {
-	return []string{"claude", "opencode"}
+	return []string{"claude", "codex", "opencode"}
 }

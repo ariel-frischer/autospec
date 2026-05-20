@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os/exec"
 	"testing"
 	"time"
@@ -99,6 +100,65 @@ func TestClaudeExecutor_StreamCommand_WithAgent(t *testing.T) {
 	err = executor.StreamCommand("test prompt", &stdout, &stderr)
 	assert.NoError(t, err)
 	assert.Contains(t, stdout.String(), "test prompt")
+}
+
+func TestClaudeExecutor_StreamCommand_CodexCompactUsesJSONFormatter(t *testing.T) {
+	t.Parallel()
+
+	executor := &ClaudeExecutor{
+		Agent:       &codexOutputAgent{stdout: `{"type":"item.completed","item":{"type":"agent_message","text":"hello from json"}}`},
+		CodexOutput: config.CodexOutputConfig{Mode: "compact", MaxLinesPerMessage: 40},
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := executor.StreamCommand("test prompt", &stdout, &stderr)
+	require.NoError(t, err)
+	assert.Contains(t, stdout.String(), "Agent message")
+	assert.Contains(t, stdout.String(), "hello from json")
+	assert.True(t, executor.Agent.(*codexOutputAgent).jsonOutput)
+}
+
+func TestClaudeExecutor_StreamCommand_CodexFullBypassesFormatter(t *testing.T) {
+	t.Parallel()
+
+	executor := &ClaudeExecutor{
+		Agent:       &codexOutputAgent{stdout: `{"type":"item.completed","item":{"type":"agent_message","text":"native output"}}`},
+		CodexOutput: config.CodexOutputConfig{Mode: "full", MaxLinesPerMessage: 40},
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := executor.StreamCommand("test prompt", &stdout, &stderr)
+	require.NoError(t, err)
+	assert.NotContains(t, stdout.String(), "Agent message")
+	assert.Contains(t, stdout.String(), `"native output"`)
+	assert.False(t, executor.Agent.(*codexOutputAgent).jsonOutput)
+}
+
+type codexOutputAgent struct {
+	stdout     string
+	jsonOutput bool
+}
+
+func (a *codexOutputAgent) Name() string { return "codex" }
+
+func (a *codexOutputAgent) Version() (string, error) { return "test", nil }
+
+func (a *codexOutputAgent) Validate() error { return nil }
+
+func (a *codexOutputAgent) Capabilities() cliagent.Caps {
+	return cliagent.Caps{Automatable: true}
+}
+
+func (a *codexOutputAgent) BuildCommand(prompt string, opts cliagent.ExecOptions) (*exec.Cmd, error) {
+	return exec.Command("codex", "exec", prompt), nil
+}
+
+func (a *codexOutputAgent) Execute(ctx context.Context, prompt string, opts cliagent.ExecOptions) (*cliagent.Result, error) {
+	a.jsonOutput = opts.JSONOutput
+	if opts.Stdout != nil {
+		_, _ = io.WriteString(opts.Stdout, a.stdout)
+	}
+	return &cliagent.Result{}, nil
 }
 
 // TestClaudeExecutor_Timeout tests timeout enforcement

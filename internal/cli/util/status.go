@@ -32,20 +32,13 @@ var statusCmd = &cobra.Command{
 			return cliErr
 		}
 
-		// Detect or get spec
-		var metadata *spec.Metadata
-		if len(args) > 0 {
-			metadata, err = spec.GetSpecMetadata(cfg.SpecsDir, args[0])
-			if err == nil {
-				metadata.Detection = spec.DetectionExplicit
-			}
-		} else {
-			metadata, err = spec.DetectCurrentSpec(cfg.SpecsDir)
-		}
+		activeFeature, err := resolveStatusFeature(cfg, args)
 		if err != nil {
 			return fmt.Errorf("failed to detect spec: %w", err)
 		}
+		metadata := activeFeature.Metadata
 		shared.PrintSpecInfo(metadata)
+		fmt.Printf("  active feature: %s (source: %s)\n", metadata.Directory, activeFeature.Source)
 
 		// Check which artifact files exist
 		artifacts := []string{"spec.yaml", "plan.yaml", "tasks.yaml"}
@@ -102,6 +95,19 @@ var statusCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func resolveStatusFeature(cfg *config.Configuration, args []string) (*spec.ActiveFeatureResult, error) {
+	explicit := ""
+	if len(args) > 0 {
+		explicit = args[0]
+	}
+	return spec.ResolveActiveFeature(spec.ActiveFeatureRequest{
+		SpecsDir:           cfg.SpecsDir,
+		StateDir:           cfg.StateDir,
+		ExplicitIdentifier: explicit,
+		AllowMissingSpec:   true,
+	})
 }
 
 func init() {

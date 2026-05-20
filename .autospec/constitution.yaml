@@ -1,0 +1,253 @@
+constitution:
+  project_name: "autospec"
+  version: "1.1.0"
+  ratified: "2026-05-14"
+  last_amended: "2026-05-18"
+
+preamble: |
+  Autospec automates spec-driven development through structured YAML artifacts,
+  validated workflow transitions, and agent-executed implementation stages.
+  These principles keep generated work reliable, auditable, and maintainable
+  enough for developers to trust in real projects.
+
+principles:
+  - name: "Validation-First Workflow"
+    id: "PRIN-001"
+    category: "process"
+    priority: "NON-NEGOTIABLE"
+    description: |
+      Workflow stages must execute in dependency order:
+      constitution, specify, plan, tasks, then implement. Each transition must
+      validate the required input and output artifacts before continuing.
+    rationale: "Invalid or missing artifacts waste agent time and can cascade into incorrect implementation."
+    enforcement:
+      - mechanism: "Stage prerequisite checks"
+        description: "Commands fail before execution when required artifacts are missing or invalid."
+      - mechanism: "autospec artifact validation"
+        description: "Generated YAML artifacts are validated against their schemas."
+    exceptions: []
+
+  - name: "Test-First Development"
+    id: "PRIN-002"
+    category: "quality"
+    priority: "NON-NEGOTIABLE"
+    description: |
+      New behavior must be specified by tests before implementation whenever
+      practical. Tests must use focused, map-based table cases for Go logic and
+      must cover observable CLI behavior when command behavior changes.
+    rationale: "Tests define expected behavior and prevent regressions in automated workflows."
+    enforcement:
+      - mechanism: "Code review"
+        description: "Changes are reviewed for appropriate test coverage before merge."
+      - mechanism: "Pre-commit checklist"
+        description: "make test must pass before committing or releasing changes."
+    exceptions:
+      - "Documentation-only changes"
+      - "Configuration-only changes with no behavior change"
+      - "Explicit spike or prototype code that will not ship"
+
+  - name: "Performance Standards"
+    id: "PRIN-003"
+    category: "quality"
+    priority: "MUST"
+    description: |
+      Validation functions and retry state load/save operations must complete in
+      under 10ms. Configuration loading must complete in under 100ms. User-facing
+      CLI operations must avoid unnecessary slow work before reporting failures.
+    rationale: "Fast validation keeps stage orchestration responsive and economical."
+    enforcement:
+      - mechanism: "Targeted tests and benchmarks"
+        description: "Performance-sensitive packages include tests or benchmarks for regression detection."
+      - mechanism: "Code review"
+        description: "Reviewers reject unnecessary filesystem, network, or agent calls in validation paths."
+    exceptions:
+      - "Explicitly documented integration tests"
+      - "Operations that intentionally invoke external agent CLIs"
+
+  - name: "Idempotency and Retry Safety"
+    id: "PRIN-004"
+    category: "architecture"
+    priority: "MUST"
+    description: |
+      Workflow operations must be idempotent where practical and safe to retry
+      after recoverable failures. Retry limits must be configurable and persistent
+      retry state must not corrupt user work.
+    rationale: "Agent and CLI failures are expected; recovery must be predictable."
+    enforcement:
+      - mechanism: "Retry state validation"
+        description: "Retry persistence is validated and bounded by configured limits."
+      - mechanism: "Integration tests"
+        description: "Workflow tests cover rerun and resume behavior."
+    exceptions:
+      - "One-time initialization prompts"
+      - "External tools whose side effects cannot be made idempotent"
+
+  - name: "Command Template Independence"
+    id: "PRIN-005"
+    category: "architecture"
+    priority: "NON-NEGOTIABLE"
+    description: |
+      Embedded command templates in internal/commands/*.md must remain
+      project-agnostic. They must not depend on MCP tools, Claude Code-specific
+      tools, local autospec-internal paths, or assumptions unavailable to other
+      supported agents.
+    rationale: "Autospec supports multiple AI agents and must ship portable command templates."
+    enforcement:
+      - mechanism: "Template review"
+        description: "Changes to command templates are reviewed for agent neutrality."
+      - mechanism: "Render tests"
+        description: "Command rendering tests verify required context is injected explicitly."
+    exceptions: []
+
+  - name: "Configuration Consistency"
+    id: "PRIN-006"
+    category: "quality"
+    priority: "MUST"
+    description: |
+      Adding, changing, or removing configuration fields requires synchronized
+      updates to the Configuration struct, schema validation, defaults YAML,
+      runtime defaults, validation rules when needed, and relevant public
+      documentation.
+    rationale: "Split configuration definitions must not drift or create hidden runtime behavior."
+    enforcement:
+      - mechanism: "Config tests"
+        description: "Schema, defaults, validation, and migration tests cover config behavior."
+      - mechanism: "Documentation review"
+        description: "Config-facing changes include docs updates when user-visible."
+    exceptions:
+      - "Internal-only constants that are not user-configurable"
+
+  - name: "Workflow Lifecycle and Auditability"
+    id: "PRIN-007"
+    category: "process"
+    priority: "MUST"
+    description: |
+      Workflow commands must use lifecycle.RunWithHistory or
+      lifecycle.RunWithHistoryContext so notifications, timing, and history are
+      recorded consistently. Autospec's own feature task lists must include
+      final/polish tasks for manual validation notes and YAML-first changelog
+      updates for user-visible changes, followed by make changelog-sync.
+    rationale: "Users need consistent execution history and release notes for generated workflow work."
+    enforcement:
+      - mechanism: "Regression tests"
+        description: "TestAllCommandsHaveNotificationSupport covers lifecycle wrapper usage."
+      - mechanism: "Task generation requirements"
+        description: "Project-local task generation guidance requires manual validation notes and changelog YAML updates."
+    exceptions:
+      - "Read-only utility commands that are not workflow stages"
+      - "Internal test helpers"
+
+  - name: "Deterministic Agent-Safe Testing"
+    id: "PRIN-008"
+    category: "quality"
+    priority: "MUST"
+    description: |
+      Unit, package integration, and workflow tests must be deterministic by
+      default. Tests covering agent execution, git state, and workflow
+      orchestration must use mock executors, temporary directories, and git
+      isolation rather than invoking real agent CLIs, external AI APIs, or the
+      developer's working repository.
+    rationale: "Deterministic tests protect users from network cost, flaky agent behavior, and accidental workspace mutation."
+    enforcement:
+      - mechanism: "Mock testing infrastructure"
+        description: "Workflow and agent tests use testutil.MockExecutor, E2EEnv, and GitIsolation helpers."
+      - mechanism: "Code review"
+        description: "Reviewers reject default test paths that call real agents or mutate the active repository."
+    exceptions:
+      - "Explicit e2e tests that use a mock binary or isolated environment"
+      - "Documented manual testing plans for real agent smoke tests"
+
+sections:
+  - name: "Code Quality"
+    content: |
+      Go code must be formatted with gofmt, linted, tested, and built before
+      commit. Functions should stay under 40 lines by extracting validation,
+      core logic, and output formatting helpers. Errors must be wrapped with
+      context except in pass-through helpers and tests. Prefer interfaces at
+      boundaries and concrete return types for implementation values. Workflow,
+      agent, and git behavior must be tested with mocks, temporary directories,
+      and git isolation by default.
+
+  - name: "Architecture Boundaries"
+    content: |
+      CLI command packages should stay thin: parse flags, load configuration,
+      resolve active feature context, and delegate behavior to internal domain
+      packages. Business logic belongs in focused internal packages, workflow
+      orchestration should depend on executor/config/validation interfaces where
+      useful, and agent-specific coupling should remain inside the agent
+      integration layers. Avoid circular dependencies and broad cross-package
+      helpers that hide ownership boundaries.
+
+  - name: "YAML Artifact Standards"
+    content: |
+      Autospec artifacts are YAML-first and must remain machine-readable. Specs
+      must include code-quality NFRs for function size, wrapped errors,
+      map-based table tests, and interface-oriented boundaries. Final functional
+      requirements must require make test, make fmt, make lint, and make build
+      to pass.
+
+  - name: "Documentation and Changelog"
+    content: |
+      Review relevant internal and public docs before implementation. Public
+      behavior changes require documentation updates when applicable. User-facing
+      release notes must be added to internal/changelog/changelog.yaml and
+      CHANGELOG.md must be regenerated with make changelog-sync; do not edit
+      CHANGELOG.md directly.
+
+  - name: "Security"
+    content: |
+      Do not commit secrets or credentials. Validate and sanitize user input
+      before using it in filesystem, shell, or agent-invocation contexts. Agent
+      configuration and sandbox changes must be explicit, documented, and covered
+      by tests when behavior changes.
+
+governance:
+  amendment_process:
+    - step: 1
+      action: "Propose change"
+      requirements: "Document the rationale, affected principles, and compatibility impact."
+    - step: 2
+      action: "Review"
+      requirements: "At least one maintainer reviews the change and checks downstream docs or templates."
+    - step: 3
+      action: "Version"
+      requirements: "Apply the semantic version bump and update last_amended."
+    - step: 4
+      action: "Validate"
+      requirements: "Run autospec artifact .autospec/constitution.yaml before merge."
+
+  versioning_policy: |
+    Constitution versions follow semantic versioning.
+    MAJOR changes invalidate previously compliant work or remove/relax a
+    non-negotiable principle. MINOR changes add new principles or expand
+    enforceable governance. PATCH changes clarify wording without changing
+    required behavior.
+
+  compliance_review:
+    frequency: "quarterly"
+    process: "Review principles, enforcement mechanisms, and generated workflow artifacts for drift."
+
+  rules:
+    - "Changes require review by at least one maintainer."
+    - "Breaking governance changes require explicit discussion before merge."
+    - "Emergency changes may bypass normal review only with follow-up documentation."
+    - "The constitution must pass autospec artifact validation after every amendment."
+
+sync_impact:
+  version_change: "1.0.0 -> 1.1.0"
+  modified_principles:
+    - "PRIN-006"
+    - "PRIN-007"
+    - "PRIN-008"
+  added_sections:
+    - "Architecture Boundaries"
+  removed_sections: []
+  templates_requiring_updates: []
+  follow_up_todos: []
+
+_meta:
+  version: "1.1.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-05-14T01:17:11Z"
+  artifact_type: "constitution"

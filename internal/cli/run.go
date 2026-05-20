@@ -165,22 +165,13 @@ Stages are always executed in canonical order:
 		// Detect or validate spec name
 		var specMetadata *spec.Metadata
 		if !stageConfig.Specify {
-			// Need to detect or validate spec if not starting with specify
-			if specName != "" {
-				// Use GetSpecMetadata to properly parse number and name from spec identifier
-				specMetadata, err = spec.GetSpecMetadata(cfg.SpecsDir, specName)
-				if err != nil {
-					return fmt.Errorf("spec not found: %s\n\nRun 'autospec specify' to create a new spec or check the spec name", specName)
-				}
-				specMetadata.Detection = spec.DetectionExplicit
-			} else {
-				// Auto-detect from git branch
-				specMetadata, err = spec.DetectCurrentSpec(cfg.SpecsDir)
-				if err != nil {
-					return fmt.Errorf("failed to detect spec: %w\n\nUse --spec flag to specify explicitly or checkout a spec branch", err)
-				}
-				PrintSpecInfo(specMetadata)
+			activeFeature, err := resolveRunFeature(cfg, specName)
+			if err != nil {
+				return err
 			}
+			specMetadata = activeFeature.Metadata
+			PrintSpecInfo(specMetadata)
+			fmt.Printf("  active feature: %s (source: %s)\n", specMetadata.Directory, activeFeature.Source)
 		}
 
 		// Check artifact dependencies before execution - hard fail if missing
@@ -277,6 +268,22 @@ func printDryRunPreview(stageConfig *workflow.StageConfig, featureDescription st
 	fmt.Println("No changes made. Remove --dry-run to execute.")
 
 	return nil
+}
+
+func resolveRunFeature(cfg *config.Configuration, specName string) (*spec.ActiveFeatureResult, error) {
+	result, err := spec.ResolveActiveFeature(spec.ActiveFeatureRequest{
+		SpecsDir:           cfg.SpecsDir,
+		StateDir:           cfg.StateDir,
+		ExplicitIdentifier: specName,
+		RequiredArtifact:   "spec.yaml",
+	})
+	if err == nil {
+		return result, nil
+	}
+	if specName != "" {
+		return nil, fmt.Errorf("spec not found: %s\n\nRun 'autospec specify' to create a new spec or check the spec name", specName)
+	}
+	return nil, fmt.Errorf("failed to detect spec: %w\n\nUse --spec flag to specify explicitly or checkout a spec branch", err)
 }
 
 // stageExecutionContext holds state during stage execution

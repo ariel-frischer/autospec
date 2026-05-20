@@ -111,9 +111,8 @@ func TestRegister_CommandCount(t *testing.T) {
 
 	Register(rootCmd)
 
-	// Should register exactly 11 commands (status, history, version, update, sauce, clean, view, ck, worktree, dag, waves)
-	// Note: waves is only registered in dev builds, dag is the new DAG validation command group
-	assert.Equal(t, 11, len(rootCmd.Commands()))
+	// Should register exactly 9 commands (status, history, version, update, sauce, clean, view, ck, worktree)
+	assert.Equal(t, 9, len(rootCmd.Commands()))
 }
 
 func TestStatusCmd_Structure(t *testing.T) {

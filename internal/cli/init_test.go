@@ -196,7 +196,7 @@ func TestInitCmdLongDescription(t *testing.T) {
 	require.NotNil(t, initCmd, "init command must exist")
 
 	keywords := []string{
-		"command templates",
+		"Claude skills",
 		"user-level",
 		"Configuration precedence",
 	}

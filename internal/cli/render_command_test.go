@@ -78,6 +78,10 @@ func TestRenderCommandIntegration(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(featureDir, "spec.yaml"), []byte(specContent), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(featureDir, "plan.yaml"), []byte(planContent), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(featureDir, "tasks.yaml"), []byte(tasksContent), 0o644))
+	require.NoError(t, os.Mkdir(filepath.Join(tmpDir, ".autospec"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".autospec", "constitution.yaml"),
+		[]byte("constitution:\n  name: Test Governance\n"), 0o644))
+	t.Chdir(tmpDir)
 
 	// Set environment variable for feature detection
 	oldEnv := os.Getenv("SPECIFY_FEATURE")
@@ -100,6 +104,16 @@ func TestRenderCommandIntegration(t *testing.T) {
 			commandName: "autospec.constitution",
 			wantContains: []string{
 				"autospec", // Version string
+			},
+		},
+		"implement command renders governance context": {
+			commandName: "autospec.implement",
+			wantContains: []string{
+				"CONSTITUTION_FILE",
+				".autospec/constitution.yaml",
+				"REQUIRED GOVERNANCE",
+				"governance:",
+				"skip_reads",
 			},
 		},
 	}
@@ -126,6 +140,7 @@ func TestRenderCommandIntegration(t *testing.T) {
 			assert.NotContains(t, renderedStr, "{{.FeatureSpec}}")
 			assert.NotContains(t, renderedStr, "{{.ImplPlan}}")
 			assert.NotContains(t, renderedStr, "{{.TasksFile}}")
+			assert.NotContains(t, renderedStr, "{{.ConstitutionFile}}")
 			assert.NotContains(t, renderedStr, "{{.AutospecVersion}}")
 			assert.NotContains(t, renderedStr, "{{.CreatedDate}}")
 

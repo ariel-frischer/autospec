@@ -122,6 +122,33 @@ versions:
 				},
 			},
 		},
+		"chlog map format": {
+			yaml: `
+project: myproject
+versions:
+  unreleased:
+    added:
+      - "New feature"
+  1.0.0:
+    date: "2024-01-15"
+    fixed:
+      - "Bug fix"
+`,
+			expected: &Changelog{
+				Project: "myproject",
+				Versions: []Version{
+					{
+						Version: "unreleased",
+						Changes: Changes{Added: []string{"New feature"}},
+					},
+					{
+						Version: "1.0.0",
+						Date:    "2024-01-15",
+						Changes: Changes{Fixed: []string{"Bug fix"}},
+					},
+				},
+			},
+		},
 	}
 
 	for name, tt := range tests {
@@ -294,6 +321,19 @@ func TestValidate_UnreleasedNoDateRequired(t *testing.T) {
 		Project: "myproject",
 		Versions: []Version{
 			{Version: "unreleased", Changes: Changes{Added: []string{"New feature"}}},
+		},
+	}
+
+	err := Validate(changelog)
+	assert.NoError(t, err)
+}
+
+func TestValidate_EmptyUnreleasedAllowed(t *testing.T) {
+	changelog := &Changelog{
+		Project: "myproject",
+		Versions: []Version{
+			{Version: "unreleased", Changes: Changes{}},
+			{Version: "1.0.0", Date: "2024-01-15", Changes: Changes{Added: []string{"Initial release"}}},
 		},
 	}
 

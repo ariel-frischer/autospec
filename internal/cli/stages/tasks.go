@@ -11,7 +11,6 @@ import (
 	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
-	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/workflow"
 	"github.com/spf13/cobra"
 )
@@ -86,13 +85,14 @@ You can optionally provide a prompt to guide the task generation.`,
 			return shared.NewExitError(shared.ExitInvalidArguments)
 		}
 
-		// Auto-detect spec directory for prerequisite validation
-		metadata, err := spec.DetectCurrentSpec(cfg.SpecsDir)
+		// Resolve spec directory for prerequisite validation
+		activeFeature, err := resolveStageFeature(cfg, "", "plan.yaml")
 		if err != nil {
 			cmd.SilenceUsage = true
-			return fmt.Errorf("failed to detect current spec: %w\n\nRun 'autospec specify' to create a new spec first", err)
+			return fmt.Errorf("%w\n\nRun 'autospec specify' to create a new spec first", err)
 		}
-		shared.PrintSpecInfo(metadata)
+		metadata := activeFeature.Metadata
+		printActiveFeature(activeFeature)
 
 		// Validate plan.yaml exists (required for tasks stage)
 		prereqResult := workflow.ValidateStagePrerequisites(workflow.StageTasks, metadata.Directory)
@@ -120,7 +120,7 @@ You can optionally provide a prompt to guide the task generation.`,
 			shared.ApplyOpenCodeAgent(cmd, cfg, orch)
 
 			// Execute tasks stage
-			if err := orch.ExecuteTasks("", prompt); err != nil {
+			if err := orch.ExecuteTasks(specName, prompt); err != nil {
 				return fmt.Errorf("tasks stage failed: %w", err)
 			}
 

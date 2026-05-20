@@ -76,7 +76,7 @@ type WorktreeConfig struct {
 	AutoSetup bool `yaml:"auto_setup" koanf:"auto_setup"`
 	// TrackStatus determines whether to persist worktree state (default: true).
 	TrackStatus bool `yaml:"track_status" koanf:"track_status"`
-	// CopyDirs lists non-tracked directories to copy (default: [.autospec, .claude]).
+	// CopyDirs lists non-tracked directories to copy.
 	CopyDirs []string `yaml:"copy_dirs,omitempty" koanf:"copy_dirs"`
 	// SetupTimeout is the maximum duration for setup script execution (default: 5m).
 	SetupTimeout time.Duration `yaml:"setup_timeout,omitempty" koanf:"setup_timeout"`
@@ -104,7 +104,7 @@ func DefaultConfig() *WorktreeConfig {
 		SetupScript:  "",
 		AutoSetup:    true,
 		TrackStatus:  true,
-		CopyDirs:     []string{".autospec", ".claude"},
+		CopyDirs:     []string{".autospec", ".agents", ".claude"},
 		SetupTimeout: 5 * time.Minute,
 	}
 }

@@ -266,7 +266,7 @@ Exit code: 4
 # Run doctor to diagnose
 autospec doctor
 
-# Install Claude CLI - see https://claude.ai/download
+# Install the configured agent CLI: Claude Code, Codex, or OpenCode
 ```
 
 ### Claude permission denied / command blocked
@@ -282,10 +282,10 @@ autospec doctor
 }
 ```
 
-Or add `--dangerously-skip-permissions` to `claude_args`--enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux).
+Or re-enable autospec autonomous mode with `autospec config set skip_permissions true` if it was disabled. For Claude, enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux). For Codex, this maps to `--dangerously-bypass-approvals-and-sandbox`; use it only in a trusted or isolated environment.
 
 {: .warning }
-> **WARNING**: Bypasses ALL safety checks--never use with API keys/credentials/production data.
+> **WARNING**: Autonomous mode bypasses approval prompts and may bypass sandboxing depending on the agent. Never use it with credentials or production data unless the environment is isolated.
 
 ---
 
@@ -417,14 +417,14 @@ The `run` command performs "smart" validation. It only checks for artifacts that
 
 ## Blocked tasks workflow
 
-When Claude encounters a task it can't complete, it marks the task as `Blocked` with a `blocked_reason`.
+When the agent encounters a task it can't complete, it marks the task as `Blocked` with a `blocked_reason`.
 
 ### Understanding blocked tasks
 
 **What happens:**
 1. `autospec implement` runs
-2. Claude hits a wall (too complex, needs clarification, external dependency)
-3. Claude marks task as `Blocked` with `blocked_reason` and optionally `notes`
+2. The agent hits a wall (too complex, needs clarification, external dependency)
+3. The agent marks task as `Blocked` with `blocked_reason` and optionally `notes`
 4. Implementation stops or continues with other tasks
 
 **Check blocked tasks:**
@@ -451,17 +451,17 @@ Task T015 gets blocked
        │
 autospec st  (see what's blocked and why)
        │
-claude  (interactive session - work on T015 with Claude)
+agent  (interactive session - work on T015 with your preferred agent)
        │
 Either:
-  - You/Claude fix it   → autospec task complete T015
+  - You/agent fix it    → autospec task complete T015
   - Need to retry       → autospec task unblock T015
        │
 autospec implement  (continues with remaining tasks)
 ```
 
 {: .note }
-> Blocked tasks are better suited for interactive Claude sessions, not automated retries. The blocking often requires back-and-forth dialogue, human judgment or clarification, and manual fixes or environment changes.
+> Blocked tasks are better suited for interactive agent sessions, not automated retries. The blocking often requires back-and-forth dialogue, human judgment or clarification, and manual fixes or environment changes.
 
 ### Commands for managing blocked tasks
 
@@ -494,17 +494,19 @@ Both fields help document why a task is blocked:
 |----------|----------------------|------------|
 | External dependency | "Waiting for auth service API spec" | Wait for dependency, then unblock |
 | Too complex | "Task too large, needs breakdown" | Split task in tasks.yaml, unblock |
-| Needs clarification | "Unclear requirement - multiple valid approaches" | Discuss in interactive Claude, then complete |
+| Needs clarification | "Unclear requirement - multiple valid approaches" | Discuss in an interactive agent session, then complete |
 | Environment issue | "Database not running locally" | Fix environment, then unblock |
-| Partial progress | "80% done, stuck on edge case" | Interactive Claude session to finish |
+| Partial progress | "80% done, stuck on edge case" | Interactive agent session to finish |
 
-### Iterating with Claude on blocked tasks
+### Iterating with an agent on blocked tasks
 
-For complex blocked tasks, use interactive Claude:
+For complex blocked tasks, use an interactive agent:
 
 ```bash
 # Start interactive session
 claude
+# or: codex
+# or: opencode
 
 # In the session, reference the blocked task:
 > Look at T015 in specs/my-feature/tasks.yaml.
@@ -514,7 +516,7 @@ claude
 
 After resolving:
 ```bash
-# If Claude completed the task in interactive mode
+# If the task was completed in interactive mode
 autospec task complete T015
 
 # If you want autospec to retry it
@@ -791,4 +793,4 @@ AUTOSPEC_*                     # Environment variables
 - [FAQ](faq) - Frequently asked questions
 - [CLI Reference](/autospec/reference/cli) - Complete command documentation
 - [Configuration Reference](/autospec/reference/configuration) - All configuration options
-- [Architecture Internals](/autospec/architecture/internals) - How spec detection and retry work
+- [FAQ](faq) - How spec detection and retry work

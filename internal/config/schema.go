@@ -194,7 +194,7 @@ var KnownKeys = map[string]ConfigKeySchema{
 	"skip_permissions_notice_shown": {
 		Path:        "skip_permissions_notice_shown",
 		Type:        TypeBool,
-		Description: "Whether the security notice about --dangerously-skip-permissions has been shown",
+		Description: "Whether the security notice about autonomous agent permissions has been shown",
 		Default:     false,
 	},
 	"worktree.base_dir": {
@@ -231,7 +231,7 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Path:        "worktree.copy_dirs",
 		Type:        TypeString, // Actually a list, but we handle as string for simplicity
 		Description: "Non-tracked directories to copy to worktrees",
-		Default:     "",
+		Default:     ".autospec,.agents,.claude",
 	},
 	"worktree.setup_timeout": {
 		Path:        "worktree.setup_timeout",
@@ -258,11 +258,30 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description:   "Output formatting style for cclean (-s flag)",
 		Default:       "default",
 	},
+	"codex_output.mode": {
+		Path:          "codex_output.mode",
+		Type:          TypeEnum,
+		AllowedValues: []string{"compact", "full"},
+		Description:   "Output mode for automated Codex runs",
+		Default:       "compact",
+	},
+	"codex_output.max_lines_per_message": {
+		Path:        "codex_output.max_lines_per_message",
+		Type:        TypeInt,
+		Description: "Maximum displayed lines per compact Codex output block",
+		Default:     40,
+	},
+	"codex_output.color": {
+		Path:        "codex_output.color",
+		Type:        TypeBool,
+		Description: "Enable ANSI color in compact Codex output",
+		Default:     true,
+	},
 	"skip_permissions": {
 		Path:        "skip_permissions",
 		Type:        TypeBool,
-		Description: "Enable Claude autonomous mode (--dangerously-skip-permissions)",
-		Default:     false,
+		Description: "Enable autonomous mode for supported agents",
+		Default:     true,
 	},
 	"verification.level": {
 		Path:          "verification.level",
@@ -318,61 +337,6 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Type:        TypeBool,
 		Description: "Enable EARS requirements in spec.yaml (basic=disabled, enhanced/full=enabled by default)",
 		Default:     nil,
-	},
-	"dag.on_conflict": {
-		Path:          "dag.on_conflict",
-		Type:          TypeEnum,
-		AllowedValues: []string{"manual", "agent"},
-		Description:   "Merge conflict handling strategy (manual or agent)",
-		Default:       "manual",
-	},
-	"dag.base_branch": {
-		Path:        "dag.base_branch",
-		Type:        TypeString,
-		Description: "Target branch for merging completed specs (empty = repo default)",
-		Default:     "",
-	},
-	"dag.max_spec_retries": {
-		Path:        "dag.max_spec_retries",
-		Type:        TypeInt,
-		Description: "Max auto-retry attempts per spec (0 = manual only)",
-		Default:     0,
-	},
-	"dag.max_log_size": {
-		Path:        "dag.max_log_size",
-		Type:        TypeString,
-		Description: "Max log file size per spec (e.g., 50MB, 100MB, 1GB)",
-		Default:     "50MB",
-	},
-	"dag.log_dir": {
-		Path:        "dag.log_dir",
-		Type:        TypeString,
-		Description: "Custom log directory (empty = XDG cache default)",
-		Default:     "",
-	},
-	"dag.autocommit": {
-		Path:        "dag.autocommit",
-		Type:        TypeBool,
-		Description: "Enable post-execution commit verification",
-		Default:     true,
-	},
-	"dag.autocommit_cmd": {
-		Path:        "dag.autocommit_cmd",
-		Type:        TypeString,
-		Description: "Custom commit command (empty = agent session). Supports: {{.SpecID}}, {{.Worktree}}, {{.Branch}}, {{.BaseBranch}}, {{.DagID}}",
-		Default:     "",
-	},
-	"dag.autocommit_retries": {
-		Path:        "dag.autocommit_retries",
-		Type:        TypeInt,
-		Description: "Commit retry attempts (0-10)",
-		Default:     1,
-	},
-	"dag.automerge": {
-		Path:        "dag.automerge",
-		Type:        TypeBool,
-		Description: "Enable automatic merge into staging branch after spec commits",
-		Default:     true,
 	},
 }
 

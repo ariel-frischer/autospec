@@ -252,14 +252,14 @@ Exit code: 4
 # Run doctor to diagnose
 autospec doctor
 
-# Install Claude CLI - see https://claude.ai/download
+# Install the configured agent CLI: Claude Code, Codex, or OpenCode
 ```
 
 #### Claude permission denied / command blocked
 
 **Problem**: Claude blocks commands (can't respond to approval prompts).
 
-**Solutions**: Allow commands in `~/.claude/settings.json`: `{"permissions":{"allow":["Bash(mkdir:*)", "Edit", "Write", "Read"]}}`. Or configure `custom_agent` with `--dangerously-skip-permissions` in the args—enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux). **WARNING**: bypasses ALL safety checks—never use with API keys/credentials/production data.
+**Solutions**: Allow commands in `~/.claude/settings.json`: `{"permissions":{"allow":["Bash(mkdir:*)", "Edit", "Write", "Read"]}}`. Or re-enable autospec autonomous mode with `autospec config set skip_permissions true` if it was disabled. For Claude, enable Claude's sandbox first (`/sandbox`, uses [bubblewrap](https://github.com/containers/bubblewrap) on Linux). For Codex, this maps to `--dangerously-bypass-approvals-and-sandbox`; use it only in a trusted or isolated environment.
 
 ### Prerequisite Validation Errors
 
@@ -416,14 +416,14 @@ The `run` command performs "smart" validation. It only checks for artifacts that
 
 ### Blocked Tasks Workflow
 
-When Claude encounters a task it can't complete, it marks the task as `Blocked` with a `blocked_reason`. This section covers how to handle blocked tasks effectively.
+When the agent encounters a task it can't complete, it marks the task as `Blocked` with a `blocked_reason`. This section covers how to handle blocked tasks effectively.
 
 #### Understanding blocked tasks
 
 **What happens:**
 1. `autospec implement` runs
-2. Claude hits a wall (too complex, needs clarification, external dependency)
-3. Claude marks task as `Blocked` with `blocked_reason` and optionally `notes`
+2. The agent hits a wall (too complex, needs clarification, external dependency)
+3. The agent marks task as `Blocked` with `blocked_reason` and optionally `notes`
 4. Implementation stops or continues with other tasks
 
 **Check blocked tasks:**
@@ -450,16 +450,16 @@ Task T015 gets blocked
        ↓
 autospec st  (see what's blocked and why)
        ↓
-claude  (interactive session - work on T015 with Claude)
+agent  (interactive session - work on T015 with your preferred agent)
        ↓
 Either:
-  • You/Claude fix it   → autospec task complete T015
+  • You/agent fix it    → autospec task complete T015
   • Need to retry       → autospec task unblock T015
        ↓
 autospec implement  (continues with remaining tasks)
 ```
 
-**Key insight:** Blocked tasks are better suited for interactive Claude sessions, not automated retries. The blocking often requires:
+**Key insight:** Blocked tasks are better suited for interactive agent sessions, not automated retries. The blocking often requires:
 - Back-and-forth dialogue
 - Human judgment or clarification
 - Manual fixes or environment changes
@@ -510,17 +510,19 @@ Both fields help document why a task is blocked:
 |----------|----------------------|------------|
 | External dependency | "Waiting for auth service API spec" | Wait for dependency, then unblock |
 | Too complex | "Task too large, needs breakdown" | Split task in tasks.yaml, unblock |
-| Needs clarification | "Unclear requirement - multiple valid approaches" | Discuss in interactive Claude, then complete |
+| Needs clarification | "Unclear requirement - multiple valid approaches" | Discuss in an interactive agent session, then complete |
 | Environment issue | "Database not running locally" | Fix environment, then unblock |
-| Partial progress | "80% done, stuck on edge case" | Interactive Claude session to finish |
+| Partial progress | "80% done, stuck on edge case" | Interactive agent session to finish |
 
-#### Iterating with Claude on blocked tasks
+#### Iterating with an agent on blocked tasks
 
-For complex blocked tasks, use interactive Claude:
+For complex blocked tasks, use an interactive agent:
 
 ```bash
 # Start interactive session
 claude
+# or: codex
+# or: opencode
 
 # In the session, reference the blocked task:
 > Look at T015 in specs/my-feature/tasks.yaml.
@@ -530,7 +532,7 @@ claude
 
 After resolving:
 ```bash
-# If Claude completed the task in interactive mode
+# If the task was completed in interactive mode
 autospec task complete T015
 
 # If you want autospec to retry it
@@ -549,9 +551,9 @@ Blocked tasks should NOT be automatically retried - they need human intervention
 
 ### Claude Code Known Issues
 
-#### Slash commands treated as skills (v2.0.73 - v2.0.75+)
+#### Legacy slash commands treated as skills (v2.0.73 - v2.0.75+)
 
-**Problem**: When running `autospec run` or any stage command, Claude tries to invoke the slash command via the `Skill` tool and fails.
+**Problem**: In projects initialized by older autospec versions, Claude may try to invoke a `.claude/commands/` slash command via the `Skill` tool and fail.
 
 **Symptoms**:
 ```
@@ -566,20 +568,14 @@ Blocked tasks should NOT be automatically retried - they need human intervention
 
 **Cause**: This is a **known Claude Code regression** (tracked in GitHub issues [#14851](https://github.com/anthropics/claude-code/issues/14851), [#11459](https://github.com/anthropics/claude-code/issues/11459), [#14733](https://github.com/anthropics/claude-code/issues/14733)).
 
-Claude Code incorrectly promotes `.claude/commands/` slash commands to `available_skills` in the system prompt, then fails when the Skill tool tries to invoke them in non-interactive (`-p`) mode.
+Older autospec versions installed Claude prompts as `.claude/commands/autospec.*.md`. Some Claude Code versions promoted those command files to `available_skills` in the system prompt, then failed when the Skill tool tried to invoke them in non-interactive (`-p`) mode.
 
-**Affected versions**: v2.0.73 - v2.0.75 (and possibly later)
+**Affected versions**: v2.0.73 - v2.0.75-era projects with legacy `.claude/commands/autospec.*.md` files.
 
 **Workarounds**:
-1. **Wait for official fix** - track the GitHub issues above
-2. **Run interactively** - use `claude` then type `/autospec.plan` manually
-3. **Downgrade Claude Code** - if possible, use a version before v2.0.73
-
-**Note**: The intended separation is:
-- **Slash commands** (`.claude/commands/`) - user-invoked with `/command`
-- **Skills** (`.claude/skills/`) - model-invoked automatically
-
-Claude Code is currently conflating these two systems.
+1. Re-run `autospec init --ai claude --project` to install Claude skills under `.claude/skills/autospec.*/`.
+2. Remove stale autospec command files with `autospec clean` if they are no longer needed.
+3. Run interactively with the skill name, for example `/autospec.plan`.
 
 ### Performance Issues
 
@@ -751,8 +747,8 @@ echo "test" | claude
 # Test config loading
 autospec config show
 
-# Verify commands are installed
-ls .claude/commands/autospec.*.md
+# Verify Claude skills are installed
+ls .claude/skills/autospec.*/SKILL.md
 ```
 
 ### Capture Full Output

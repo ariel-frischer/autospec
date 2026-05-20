@@ -2884,6 +2884,17 @@ func TestExecuteSpecify_Success(t *testing.T) {
 			if _, err := os.Stat(specPath); os.IsNotExist(err) {
 				t.Errorf("spec.yaml was not created at %s", specPath)
 			}
+
+			state, found, err := spec.LoadActiveFeatureState(orchestrator.Config.StateDir)
+			if err != nil {
+				t.Fatalf("LoadActiveFeatureState() error = %v, want nil", err)
+			}
+			if !found {
+				t.Fatal("active feature state was not persisted")
+			}
+			if state.FeatureDirectory != tt.specName {
+				t.Errorf("active feature = %q, want %q", state.FeatureDirectory, tt.specName)
+			}
 		})
 	}
 }

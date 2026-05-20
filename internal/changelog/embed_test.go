@@ -35,12 +35,14 @@ func TestLoadEmbedded(t *testing.T) {
 				assert.NotEmpty(t, cl.Versions, "changelog should have at least one version")
 			},
 		},
-		"first version has changes": {
+		"latest release has changes": {
 			assertion: func(t *testing.T, cl *Changelog, err error) {
 				require.NoError(t, err)
 				require.NotEmpty(t, cl.Versions)
-				assert.False(t, cl.Versions[0].Changes.IsEmpty(),
-					"first version should have at least one change entry")
+				latest := cl.GetLatestRelease()
+				require.NotNil(t, latest)
+				assert.False(t, latest.Changes.IsEmpty(),
+					"latest released version should have at least one change entry")
 			},
 		},
 	}

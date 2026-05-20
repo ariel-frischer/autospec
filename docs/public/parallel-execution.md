@@ -1,78 +1,10 @@
 # Sequential and Parallel Execution Guide
 
-This guide covers strategies for running multiple autospec workflows, whether sequentially on a single branch or in parallel using git worktrees.
-
-## Built-in Parallel Task Execution
-
-> **⚠️ Experimental Feature (Dev Builds Only)**
->
-> The `--parallel` flag and wave-based task execution are experimental features available only in development builds. They are not included in production releases. Install a dev build to use this feature.
-
-The `--parallel` flag enables concurrent task execution within a single `autospec implement` run using DAG-based wave scheduling. Independent tasks within each wave run in parallel, respecting dependency ordering across waves.
-
-### Quick Start
-
-```bash
-# Enable parallel execution
-autospec implement --parallel
-
-# Set maximum concurrent tasks (default: 4)
-autospec implement --parallel --max-parallel 8
-
-# Preview execution plan without running tasks
-autospec implement --parallel --dry-run
-
-# Skip confirmation prompts
-autospec implement --parallel --yes
-```
-
-### How Wave Scheduling Works
-
-Tasks are grouped into "waves" based on their dependencies:
-- **Wave 1**: Tasks with no dependencies (roots)
-- **Wave 2**: Tasks that depend only on Wave 1 tasks
-- **Wave N**: Tasks that depend on tasks from earlier waves
-
-Example with dependencies `T001 -> T002 -> T004` and `T003 -> T004`:
-```
-Wave 1: [T001, T003] (parallel)
-Wave 2: [T002]
-Wave 3: [T004]
-```
-
-### Parallel Execution Flags
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--parallel` | Enable parallel execution | `false` |
-| `--max-parallel` | Maximum concurrent Claude sessions | `4` |
-| `--worktrees` | Use git worktrees for isolation | `false` |
-| `--dry-run` | Show execution plan without running | `false` |
-| `--yes` | Skip confirmation prompts | `false` |
-
-### Progress Display
-
-During execution, progress is shown in single-line format:
-```
-Wave 2: T002 * T003 + T004 o
-```
-
-Status symbols:
-- `*` = running, `+` = completed, `x` = failed, `-` = skipped, `o` = pending
-
-### Resume on Interrupt
-
-If execution is interrupted, the next run prompts with options:
-- **[R] Retry**: Retry failed tasks and continue
-- **[W] Skip Wave**: Skip current wave and continue
-- **[S] Start Fresh**: Clear state and start over
-- **[A] Abort**: Cancel and exit
-
----
+This guide covers running multiple autospec workflows either sequentially in one working directory or manually in parallel with separate git worktrees.
 
 ## Understanding Branch Behavior
 
-**Important**: When you run `autospec specify` or `autospec run -a`, the command creates a new feature branch and **automatically checks it out**. This is critical to understand when planning parallel workflows.
+When you run `autospec specify` or `autospec run -a`, autospec creates a new feature branch and checks it out.
 
 ```bash
 # Before: on main branch
@@ -80,266 +12,144 @@ autospec specify "Add user authentication"
 # After: now on branch 001-user-authentication
 ```
 
-This automatic checkout behavior means:
-- Running multiple `autospec specify` commands sequentially will switch branches each time
-- You cannot run parallel `autospec` processes in the same working directory
-- For parallel execution, you need separate working directories (git worktrees)
+That means:
+- Running multiple `autospec specify` commands sequentially switches branches each time.
+- You should not run multiple autospec processes in the same working directory.
+- Parallel feature work needs separate working directories, typically git worktrees.
 
 ## Sequential Execution
 
-For features that should be developed one after another, use shell command chaining.
-
-### Basic Sequential Workflow
+Use sequential execution when features depend on each other, modify overlapping code, or need review between steps.
 
 ```bash
-# Complete one feature fully before starting the next
 autospec run -a "Add user authentication" && \
 autospec run -a "Add user profile page" && \
 autospec run -a "Add password reset flow"
 ```
 
-### Sequential with Review Points
+For review checkpoints:
 
 ```bash
-# Prepare specs for review, then implement separately
 autospec prep "Add user authentication"
-# Review specs/001-user-authentication/ artifacts
+# Review specs/001-user-authentication/
 autospec implement
 
 autospec prep "Add user profile page"
-# Review specs/002-user-profile-page/ artifacts
+# Review specs/002-user-profile-page/
 autospec implement
 ```
 
-### When to Use Sequential Execution
-
-- Features have dependencies (feature B requires feature A)
-- You want to review each feature before starting the next
-- Limited compute resources
-- Features modify overlapping code areas
-
 ## Parallel Execution with Git Worktrees
 
-Git worktrees allow multiple working directories sharing the same repository, enabling true parallel development.
+Git worktrees allow multiple working directories to share one repository. Each worktree has its own checked-out branch, which lets separate agent sessions work on independent features without file contention.
 
-### Setting Up Worktrees
+For automated setup, see [Worktree Management](worktree.md). For manual setup:
 
 ```bash
-# From your main repository directory
 cd ~/projects/myapp
 
-# Create worktrees for parallel features
-git worktree add ../myapp-auth feature/auth
-git worktree add ../myapp-profile feature/profile
-git worktree add ../myapp-search feature/search
+git worktree add ../myapp-auth -b feature/auth
+git worktree add ../myapp-profile -b feature/profile
+git worktree add ../myapp-search -b feature/search
 ```
 
-**Directory structure after setup:**
-```
+Directory layout:
+
+```text
 ~/projects/
-├── myapp/              # Main repository
-├── myapp-auth/         # Worktree for auth feature
-├── myapp-profile/      # Worktree for profile feature
-└── myapp-search/       # Worktree for search feature
+├── myapp/
+├── myapp-auth/
+├── myapp-profile/
+└── myapp-search/
 ```
 
-### Running Parallel Workflows
+Run each workflow from its own terminal:
 
 ```bash
-# Terminal 1
 cd ~/projects/myapp-auth
 autospec run -a "Add user authentication with OAuth"
-
-# Terminal 2
-cd ~/projects/myapp-profile
-autospec run -a "Add user profile page with avatar upload"
-
-# Terminal 3
-cd ~/projects/myapp-search
-autospec run -a "Add full-text search with Elasticsearch"
 ```
 
-Or launch all in background:
+```bash
+cd ~/projects/myapp-profile
+autospec run -a "Add user profile page with avatar upload"
+```
+
+```bash
+cd ~/projects/myapp-search
+autospec run -a "Add full-text search"
+```
+
+You can also launch independent workflows in the background:
 
 ```bash
 cd ~/projects/myapp-auth && autospec run -a "Add user auth" &
 cd ~/projects/myapp-profile && autospec run -a "Add profile page" &
 cd ~/projects/myapp-search && autospec run -a "Add search" &
-wait  # Wait for all to complete
+wait
 ```
 
-### Worktree Best Practices
+## Worktree Practices
 
-1. **Use descriptive directory names**: Match the feature being developed
-   ```bash
-   # Good
-   git worktree add ../myapp-oauth feature/oauth
-
-   # Avoid
-   git worktree add ../temp1 feature/oauth
-   ```
-
-2. **Keep worktrees as siblings**: Place them next to (not inside) the main repo
-   ```bash
-   # Good: siblings
-   ~/projects/myapp/
-   ~/projects/myapp-feature/
-
-   # Bad: nested
-   ~/projects/myapp/worktrees/feature/  # Avoid this
-   ```
-
-3. **Clean up when done**: Remove worktrees after merging
-   ```bash
-   git worktree remove ../myapp-auth
-   git worktree prune  # Clean stale entries
-   ```
-
-4. **List active worktrees**: Track what's in use
-   ```bash
-   git worktree list
-   ```
-
-### Handling Branch Conflicts
-
-Git prevents checking out the same branch in multiple worktrees. If autospec generates a branch name that already exists:
+- Use one branch per worktree. Git prevents checking out the same branch in multiple worktrees.
+- Keep worktrees as siblings of the main repository, not nested inside it.
+- Use descriptive directory and branch names.
+- Merge one feature at a time from the main worktree.
+- Remove worktrees after merging.
 
 ```bash
-# Option 1: Specify a different branch via worktree
-git worktree add ../myapp-auth-v2 -b feature/auth-v2
-
-# Option 2: Remove the existing branch first
-git branch -d old-branch-name
+git worktree list
+git worktree remove ../myapp-auth
+git worktree prune
 ```
 
-### Merging Parallel Features
+## Merging Parallel Features
 
-After parallel features complete:
+After each feature finishes:
 
 ```bash
-# From main repository
 cd ~/projects/myapp
 git checkout main
 
-# Merge each feature
 git merge feature/auth
 git merge feature/profile
 git merge feature/search
 
-# Clean up worktrees
 git worktree remove ../myapp-auth
 git worktree remove ../myapp-profile
 git worktree remove ../myapp-search
 ```
 
-> **Tip: Claude Code for Merge Conflicts**
->
-> Claude Code excels at resolving merge conflicts and merging branches. For best results, provide context about each branch's original purpose by sharing the `specs/` folder from each branch being merged. This gives Claude the specification context needed to make intelligent merge decisions.
+If branches conflict, merge them one at a time and use the related `specs/` artifacts as context for resolving intent.
 
-## Advanced: Bare Repository Pattern
+## Comparison
 
-For heavy parallel workflows, consider a bare repository pattern:
-
-```bash
-# Clone as bare (no working directory)
-git clone --bare git@github.com:user/myapp.git myapp.git
-
-# Add worktrees from bare repo
-cd myapp.git
-git worktree add ../myapp-main main
-git worktree add ../myapp-auth feature/auth
-git worktree add ../myapp-profile feature/profile
-```
-
-**Benefits:**
-- Cleaner separation between repo metadata and working directories
-- Easier management of many worktrees
-- Better for CI/CD pipelines
-
-## Comparison Table
-
-| Approach | Parallel Execution | Disk Usage | Complexity | Best For |
-|----------|-------------------|------------|------------|----------|
-| Sequential (`&&`) | No | Low | Simple | Dependent features, review-heavy workflows |
-| Git Worktrees | Yes | Medium | Moderate | Independent features, time-sensitive projects |
-| Full Clones | Yes | High | Simple | Complete isolation, different base branches |
+| Approach | Parallel | Disk Usage | Complexity | Best For |
+|----------|----------|------------|------------|----------|
+| Sequential | No | Low | Simple | Dependent features, review-heavy workflows |
+| Git worktrees | Yes | Medium | Moderate | Independent features in one repository |
+| Full clones | Yes | High | Simple | Complete isolation or different remotes |
 
 ## Troubleshooting
 
-### "Branch already exists" Error
-
-If autospec tries to create a branch that exists:
+If autospec tries to create a branch that already exists:
 
 ```bash
-# Check existing branches
 git branch -a | grep feature-name
-
-# Delete if safe to do so
 git branch -d 001-feature-name
 ```
 
-### Worktree Shows as "prunable"
+If a worktree shows as prunable:
 
 ```bash
-# Remove stale worktree references
 git worktree prune
-
-# Force remove if directory was deleted
 git worktree remove --force /path/to/worktree
 ```
 
-### Spec Directory Conflicts
-
-Each worktree has its own `specs/` directory. If you need to share specs:
-
-```bash
-# Copy specs between worktrees
-cp -r ~/projects/myapp/specs/001-auth ~/projects/myapp-auth/specs/
-```
-
-## Example: Full Parallel Workflow
-
-See [`scripts/examples/parallel-features.sh`](../scripts/examples/parallel-features.sh) for the complete script.
-
-```bash
-#!/bin/bash
-# parallel-features.sh - Run 3 features in parallel
-
-REPO_DIR=~/projects/myapp
-FEATURES=(
-    "auth:Add user authentication with OAuth"
-    "profile:Add user profile with avatar upload"
-    "search:Add full-text search functionality"
-)
-
-# Create worktrees
-for feature in "${FEATURES[@]}"; do
-    name="${feature%%:*}"
-    git worktree add "${REPO_DIR}-${name}" -b "feature/${name}" 2>/dev/null || true
-done
-
-# Run autospec in parallel
-pids=()
-for feature in "${FEATURES[@]}"; do
-    name="${feature%%:*}"
-    desc="${feature#*:}"
-    (
-        cd "${REPO_DIR}-${name}"
-        autospec run -a "${desc}"
-    ) &
-    pids+=($!)
-done
-
-# Wait for all to complete
-for pid in "${pids[@]}"; do
-    wait $pid
-done
-
-echo "All features complete!"
-```
+Each worktree has its own `specs/` directory. Copy specs manually when you need to reuse context across worktrees.
 
 ## See Also
 
-- [CLI Reference](reference.md) - Complete command documentation
-- [Configuration](internals.md) - Project and user configuration options
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
+- [Worktree Management](worktree.md)
+- [CLI Reference](reference.md)
+- [Troubleshooting](troubleshooting.md)

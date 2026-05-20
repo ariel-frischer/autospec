@@ -8,7 +8,7 @@ import (
 )
 
 // OpenCode implements the Agent interface for OpenCode CLI.
-// Command: opencode run <prompt> --command <command-name>
+// Command: opencode run <prompt>
 type OpenCode struct {
 	BaseAgent
 }
@@ -23,11 +23,9 @@ func NewOpenCode() *OpenCode {
 			AgentCaps: Caps{
 				Automatable: true,
 				PromptDelivery: PromptDelivery{
-					Method:          PromptMethodSubcommandWithFlag,
+					Method:          PromptMethodSubcommand,
 					Flag:            "run",
-					CommandFlag:     "--command",
 					InteractiveFlag: "--prompt",
-					ContextFileFlag: "-f",
 				},
 				// run subcommand is inherently non-interactive
 				AutonomousFlag: "",
@@ -40,7 +38,7 @@ func NewOpenCode() *OpenCode {
 
 // ConfigureProject implements the Configurator interface for OpenCode.
 // It configures the OpenCode agent for autospec:
-//   - Installs command templates to .opencode/command/
+//   - Installs shared autospec skills to .agents/skills/
 //   - Adds 'autospec *': 'allow' bash permission to opencode.json
 //   - Sets edit permission to 'allow' for file editing
 //
@@ -50,9 +48,8 @@ func NewOpenCode() *OpenCode {
 //
 // This method is idempotent - calling it multiple times produces the same result.
 func (o *OpenCode) ConfigureProject(projectDir, specsDir string, projectLevel bool) (ConfigResult, error) {
-	// Install command templates (always project-level)
-	if _, err := commands.InstallTemplatesForAgent("opencode", projectDir); err != nil {
-		return ConfigResult{}, fmt.Errorf("installing opencode commands: %w", err)
+	if _, _, err := commands.InstallAgentSkills(projectDir, specsDir); err != nil {
+		return ConfigResult{}, fmt.Errorf("installing shared autospec skills: %w", err)
 	}
 
 	// Configure opencode.json permissions

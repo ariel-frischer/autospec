@@ -193,6 +193,14 @@ func BenchmarkValidateSpecFile(b *testing.B) {
 }
 ```
 
+### Agent and Workflow Tests
+
+Tests for agent execution, workflow orchestration, or git behavior must be
+deterministic by default. Use `testutil.MockExecutor` for agent calls,
+`testutil.E2EEnv` for compiled CLI tests, and `testutil.GitIsolation` or
+`t.TempDir()` for repository state. Do not call real configured agent CLIs or
+external AI APIs from default unit or package integration tests.
+
 ### Running Tests
 
 ```bash
@@ -255,7 +263,9 @@ When adding a new configuration option, update these files:
 |------|-------------|
 | `internal/config/config.go` | Field in `Configuration` struct with `koanf:"field_name"` tag |
 | `internal/config/schema.go` | Entry in `KnownKeys` map with type, description, default |
-| `internal/config/defaults.go` | Default value in `defaultConfig()` |
+| `internal/config/defaults.go` | Default YAML template and runtime default in `GetDefaults()`/default map |
+| `internal/config/validate.go` | Validation rule when the field has constraints |
+| Public docs | User-facing behavior, defaults, and examples when applicable |
 
 **Important**: `config show` uses `Configuration.ToMap()` which automatically includes all `koanf`-tagged fields via reflection. No manual map updates needed.
 

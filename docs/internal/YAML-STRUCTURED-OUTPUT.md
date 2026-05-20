@@ -7,7 +7,7 @@ AutoSpec provides YAML-based workflow artifacts that enable programmatic parsing
 The YAML structured output feature introduces:
 
 - **YAML Artifacts**: Structured output files (`spec.yaml`, `plan.yaml`, `tasks.yaml`, etc.) with consistent schemas
-- **Command Templates**: Claude Code slash commands (`/autospec.specify`, `/autospec.plan`, etc.) that generate YAML artifacts
+- **Command Skills**: Claude Code skills (`/autospec.specify`, `/autospec.plan`, etc.) that generate YAML artifacts
 - **Schema Validation**: Full schema validation with `autospec artifact` (required fields, types, enums, cross-references)
 - **Syntax Checking**: Simple YAML syntax checking with `autospec yaml check`
 - **Command Management**: Install, check, and manage command templates with `autospec commands`
@@ -22,7 +22,7 @@ Install the YAML-based command templates into your project:
 autospec commands install
 ```
 
-This creates command templates in `.claude/commands/`.
+This legacy command installs templates in `.claude/commands/`. Current `autospec init --ai claude` installs equivalent Claude skills in `.claude/skills/autospec.*/`.
 
 ### 2. Check Installation
 
@@ -132,6 +132,14 @@ _meta:
   created: "2025-12-13T10:30:00Z"
   artifact_type: "spec"  # or plan, tasks, checklist, analysis, constitution
 ```
+
+### Governance Invariants
+
+Generated artifacts must comply with the project constitution when one is
+present. Command templates shipped in the binary must stay project-agnostic:
+they may ask for project-appropriate validation, documentation, or release-note
+tasks, but must not hard-code autospec maintainer-local paths such as `.dev/`
+or autospec's own changelog file.
 
 ### spec.yaml
 
@@ -533,10 +541,10 @@ Common issues:
 
 ### Commands not found in Claude Code
 
-Verify commands are installed:
+Verify Claude skills are installed:
 
 ```bash
-ls .claude/commands/autospec.*.md
+ls .claude/skills/autospec.*/SKILL.md
 ```
 
-If missing, run `autospec commands install`.
+If missing, run `autospec init --ai claude --project`. For the legacy command-template path, run `autospec commands install`.

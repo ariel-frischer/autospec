@@ -6,6 +6,7 @@ package workflow
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -301,5 +302,45 @@ func TestStageExecutor_DebugLog(t *testing.T) {
 			// Call debugLog - it should not panic
 			se.debugLog("test message: %s", "value")
 		})
+	}
+}
+
+func TestStageExecutor_BuildRenderedSpecifyCommand(t *testing.T) {
+	t.Parallel()
+
+	se := NewStageExecutor(&Executor{StateDir: t.TempDir()}, filepath.Join(t.TempDir(), "specs"), false)
+	command, err := se.buildRenderedSpecifyCommand("Add Codex support")
+	if err != nil {
+		t.Fatalf("buildRenderedSpecifyCommand() error = %v", err)
+	}
+
+	if strings.HasPrefix(strings.TrimSpace(command), "/autospec.specify") {
+		t.Errorf("rendered specify command starts with raw slash command: %q", command)
+	}
+	if !strings.Contains(command, "Create feature branch and directory") {
+		t.Errorf("rendered specify command missing template content")
+	}
+	if !strings.Contains(command, "Add Codex support") {
+		t.Errorf("rendered specify command missing user input")
+	}
+}
+
+func TestStageExecutor_BuildRenderedConstitutionCommand(t *testing.T) {
+	t.Parallel()
+
+	se := NewStageExecutor(&Executor{StateDir: t.TempDir()}, filepath.Join(t.TempDir(), "specs"), false)
+	command, err := se.buildRenderedConstitutionCommand("Focus on agent support")
+	if err != nil {
+		t.Fatalf("buildRenderedConstitutionCommand() error = %v", err)
+	}
+
+	if strings.HasPrefix(strings.TrimSpace(command), "/autospec.constitution") {
+		t.Errorf("rendered constitution command starts with raw slash command: %q", command)
+	}
+	if !strings.Contains(command, "creating or updating the project constitution") {
+		t.Errorf("rendered constitution command missing template content")
+	}
+	if !strings.Contains(command, "Focus on agent support") {
+		t.Errorf("rendered constitution command missing user input")
 	}
 }

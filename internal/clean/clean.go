@@ -44,7 +44,8 @@ func GetSpecsTarget() (CleanTarget, bool) {
 }
 
 // FindAutospecFiles detects all autospec-related files and directories in the current directory.
-// Scans for: .autospec/, specs/ (unless keepSpecs=true), .claude/commands/autospec*.md.
+// Scans for: .autospec/, specs/ (unless keepSpecs=true), .claude/commands/autospec*.md,
+// and .claude/skills/autospec.* directories.
 // Uses os.Stat for directory checks and filepath.Glob for file pattern matching.
 // Returns targets in discovery order for predictable output.
 func FindAutospecFiles(keepSpecs bool) ([]CleanTarget, error) {
@@ -83,6 +84,21 @@ func FindAutospecFiles(keepSpecs bool) ([]CleanTarget, error) {
 		})
 	}
 
+	// Check for .claude/skills/autospec.* directories using filepath.Glob
+	skillMatches, err := filepath.Glob(".claude/skills/autospec.*")
+	if err != nil {
+		return nil, err
+	}
+	for _, match := range skillMatches {
+		if info, err := os.Stat(match); err == nil && info.IsDir() {
+			targets = append(targets, CleanTarget{
+				Path:        match,
+				Type:        TypeDirectory,
+				Description: "Autospec Claude skill",
+			})
+		}
+	}
+
 	return targets, nil
 }
 
@@ -106,17 +122,22 @@ func RemoveFiles(targets []CleanTarget) []CleanResult {
 		})
 	}
 
-	// Clean up empty .claude/commands/ and .claude/ directories after removal
+	// Clean up empty .claude child directories after removal
 	cleanupEmptyDirs()
 
 	return results
 }
 
-// cleanupEmptyDirs removes .claude/commands/ and .claude/ if they are empty
+// cleanupEmptyDirs removes empty generated Claude directories.
 func cleanupEmptyDirs() {
 	// Try to remove .claude/commands/ if empty
 	if entries, err := os.ReadDir(".claude/commands"); err == nil && len(entries) == 0 {
 		_ = os.Remove(".claude/commands")
+	}
+
+	// Try to remove .claude/skills/ if empty
+	if entries, err := os.ReadDir(".claude/skills"); err == nil && len(entries) == 0 {
+		_ = os.Remove(".claude/skills")
 	}
 
 	// Try to remove .claude/ if empty

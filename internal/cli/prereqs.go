@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/prereqs"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/spf13/cobra"
@@ -68,13 +69,19 @@ func init() {
 }
 
 func runPrereqs(cmd *cobra.Command, args []string) error {
+	configPath, _ := cmd.Flags().GetString("config")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return err
+	}
 	specsDir, err := cmd.Flags().GetString("specs-dir")
 	if err != nil || specsDir == "" {
-		specsDir = "./specs"
+		specsDir = cfg.SpecsDir
 	}
 
 	opts := prereqs.Options{
 		SpecsDir:     specsDir,
+		StateDir:     cfg.StateDir,
 		RequireSpec:  prereqsRequireSpec,
 		RequirePlan:  prereqsRequirePlan,
 		RequireTasks: prereqsRequireTasks,

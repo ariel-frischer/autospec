@@ -467,15 +467,29 @@ func TestFormatAgentStatus(t *testing.T) {
 	}{
 		"valid with version": {
 			status: cliagent.AgentStatus{
-				Name:      "claude",
-				Installed: true,
-				Version:   "1.0.0",
-				Valid:     true,
-				Error:     "",
+				Name:          "claude",
+				Installed:     true,
+				Version:       "1.0.0",
+				TestedVersion: "2.1.139",
+				Valid:         true,
+				Error:         "",
 			},
 			wantSymb: "✓",
 			wantName: "claude",
-			wantInfo: "v1.0.0",
+			wantInfo: "tested 2.1.139",
+		},
+		"valid with command-style version": {
+			status: cliagent.AgentStatus{
+				Name:          "codex",
+				Installed:     true,
+				Version:       "codex-cli 0.130.0",
+				TestedVersion: "0.130.0",
+				Valid:         true,
+				Error:         "",
+			},
+			wantSymb: "✓",
+			wantName: "codex",
+			wantInfo: "codex-cli 0.130.0; tested 0.130.0",
 		},
 		"valid without version": {
 			status: cliagent.AgentStatus{

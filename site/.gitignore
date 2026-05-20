@@ -11,6 +11,7 @@ reference/shell-completion.md
 reference/timeout.md
 guides/checklists.md
 guides/self-update.md
+guides/task-sizing.md
 contributing/architecture.md
 contributing/go-best-practices.md
 contributing/internals.md

@@ -311,7 +311,7 @@ autospec doctor [flags]
 
 **Alias:** `autospec doc`
 
-Checks Claude CLI installation, authentication, and directory access. When `.autospec/init.yml` indicates global scope was used during init, doctor checks global agent settings instead of project-level ones.
+Checks configured CLI agents, authentication/configuration, and directory access. When `.autospec/init.yml` indicates global scope was used during init, doctor checks global agent settings instead of project-level ones.
 
 ---
 
@@ -344,7 +344,7 @@ autospec config get timeout
 
 ### autospec init
 
-Initialize configuration files. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version).
+Initialize configuration files. Creates `.autospec/init.yml` to track initialization settings (scope, agent, version) and `.autospec/.gitignore` for local runtime files.
 
 ```bash
 autospec init [flags]
@@ -356,11 +356,11 @@ autospec init [flags]
 |:-----|:------------|
 | `-p, --project` | Create project config (`.autospec/config.yml`) |
 | `-f, --force` | Overwrite existing config |
-| `--ai <agents>` | Configure specific agent(s), comma-separated |
+| `--ai <agents>` | Configure specific agent(s), comma-separated (e.g., `claude,codex,opencode`) |
 | `--sandbox / --no-sandbox` | Enable/skip Claude sandbox configuration |
 | `--use-subscription / --no-use-subscription` | Use subscription billing vs API key |
 | `--skip-permissions / --no-skip-permissions` | Enable/disable autonomous mode |
-| `--gitignore / --no-gitignore` | Add/skip adding .autospec/ to .gitignore |
+| `--gitignore / --no-gitignore` | Add/skip adding .autospec/ to root .gitignore |
 | `--constitution / --no-constitution` | Create/skip project constitution |
 
 **Examples:**

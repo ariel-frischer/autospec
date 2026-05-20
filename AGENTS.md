@@ -30,6 +30,10 @@ autospec st                              # Show status and task progress
 autospec doctor                          # Check dependencies
 ```
 
+## Post-Change Polish (REQUIRED)
+
+After significant code changes, automatically invoke the repo-local `polish` skill before final handoff. Use it to update changelog/docs and run the required validation targets. Do not wait for an explicit `$polish` request unless the change is trivial or docs-only.
+
 ## Core Workflow
 
 ### Stage Dependencies (MUST follow this order)
@@ -53,7 +57,7 @@ constitution.yaml spec.yaml plan.yaml tasks.yaml
 ### What `autospec init` Does
 
 1. Creates config (`~/.config/autospec/config.yml` or `.autospec/config.yml`)
-2. Installs slash commands to agent's command directory (e.g., `.claude/commands/`)
+2. Installs agent-native prompts (Claude skills in `.claude/skills/`, shared Codex/OpenCode skills in `.agents/skills/`)
 3. Configures agent permissions and sandbox settings
 4. Prompts for constitution creation (one-time per project)
 
@@ -79,9 +83,11 @@ autospec implement         # Execute tasks
 | `docs/internal/internals.md` | Spec detection, validation, retry system, phase context |
 | `docs/internal/YAML-STRUCTURED-OUTPUT.md` | YAML artifact schemas and slash commands |
 | `docs/internal/testing-mocks.md` | Mock testing infrastructure for workflows without real API calls |
+| `docs/internal/codex-manual-testing.md` | Manual Codex smoke and regression testing plan |
 | `docs/internal/events.md` | Event-driven architecture using kelindar/event |
 | `docs/internal/risks.md` | Risk documentation in plan.yaml |
 | `docs/internal/cclean.md` | claude-clean tool for transforming streaming JSON output |
+| `docs/internal/changelog-yaml.md` | Developer workflow for YAML-first changelog and release notes |
 
 ### Public (User-Focused)
 
@@ -98,7 +104,7 @@ autospec implement         # Execute tasks
 | `docs/public/opencode-settings.md` | OpenCode configuration, permissions, and command patterns |
 | `docs/public/agents.md` | CLI agent configuration (Claude and OpenCode supported) |
 | `docs/public/worktree.md` | Git worktree management for parallel agent execution |
-| `docs/public/parallel-execution.md` | Sequential and parallel execution with DAG scheduling |
+| `docs/public/parallel-execution.md` | Sequential workflows and manual multi-worktree parallel workflows |
 | `docs/public/self-update.md` | Version checking and self-update functionality |
 | `docs/public/faq.md` | Frequently asked questions |
 
@@ -124,7 +130,7 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
   - `internal/cli/admin/`: Admin commands (commands, completion, uninstall)
   - `internal/cli/worktree/`: Worktree management commands (create, list, remove, prune)
   - `internal/cli/shared/`: Shared types and constants
-- `internal/workflow/`: Workflow orchestration and Claude execution
+- `internal/workflow/`: Workflow orchestration and agent execution
 - `internal/config/`: Hierarchical config (env > project > user > defaults)
 - `internal/validation/`: Artifact validation (<10ms performance contract)
 - `internal/retry/`: Persistent retry state
@@ -132,7 +138,6 @@ autospec is a Go CLI that orchestrates SpecKit workflows. Key distinction:
 - `internal/agent/`: Agent abstraction (Claude, Gemini, Cline, etc.)
 - `internal/cliagent/`: CLI agent integration and Configurator interface
 - `internal/worktree/`: Git worktree management logic
-- `internal/taskgraph/`: Task dependency graph for parallel execution waves
 
 ### Configuration
 
@@ -155,9 +160,11 @@ From `.autospec/constitution.yaml`:
 ## Config Changes (REQUIRED)
 
 When adding, changing, or removing config fields, update **ALL** locations:
-1. `internal/config/schema.go` - Add to `KnownKeys` map
-2. `internal/config/defaults.go` - Add to YAML template AND `GetDefaults()` function
-3. `internal/config/validate.go` - Add validation if needed
+1. `internal/config/config.go` - Add field to `Configuration` with `koanf` tag
+2. `internal/config/schema.go` - Add to `KnownKeys` map
+3. `internal/config/defaults.go` - Add to YAML template AND `GetDefaults()` function
+4. `internal/config/validate.go` - Add validation if needed
+5. Relevant public docs - Update user-facing defaults and examples
 
 ## Coding Standards
 
@@ -229,6 +236,13 @@ func TestValidateSpecFile(t *testing.T) {
     }
 }
 ```
+
+### Deterministic Agent/Workflow Tests
+
+Default unit, package integration, and workflow tests MUST NOT call real agent
+CLIs or external AI APIs. Use `testutil.MockExecutor` for agent execution,
+`testutil.E2EEnv` for compiled CLI tests, and `testutil.GitIsolation` or
+`t.TempDir()` for git/repository state.
 
 ### CLI Command Lifecycle Wrapper (REQUIRED)
 

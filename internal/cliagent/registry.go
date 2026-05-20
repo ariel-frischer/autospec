@@ -126,11 +126,12 @@ func Automatable() []Agent {
 
 // AgentStatus represents the diagnostic status of an agent.
 type AgentStatus struct {
-	Name      string
-	Installed bool
-	Version   string
-	Valid     bool
-	Error     string
+	Name          string
+	Installed     bool
+	Version       string
+	TestedVersion string
+	Valid         bool
+	Error         string
 }
 
 // Doctor returns diagnostic status for all registered agents.
@@ -142,7 +143,8 @@ func (r *Registry) Doctor() []AgentStatus {
 	statuses := make([]AgentStatus, 0, len(r.agents))
 	for _, agent := range r.agents {
 		status := AgentStatus{
-			Name: agent.Name(),
+			Name:          agent.Name(),
+			TestedVersion: TestedVersion(agent.Name()),
 		}
 
 		// Check validation (installed and env vars)
@@ -178,4 +180,18 @@ func (r *Registry) Doctor() []AgentStatus {
 // Doctor returns diagnostic status for all agents in the default registry.
 func Doctor() []AgentStatus {
 	return Default.Doctor()
+}
+
+// TestedVersion returns the latest agent CLI version verified by autospec smoke tests.
+func TestedVersion(agentName string) string {
+	switch agentName {
+	case "claude":
+		return "2.1.139"
+	case "codex":
+		return "0.130.0"
+	case "opencode":
+		return "1.14.46"
+	default:
+		return ""
+	}
 }

@@ -37,9 +37,9 @@ func TestNewOpenCode(t *testing.T) {
 	t.Run("prompt delivery method", func(t *testing.T) {
 		t.Parallel()
 		caps := agent.Capabilities()
-		if caps.PromptDelivery.Method != PromptMethodSubcommandWithFlag {
+		if caps.PromptDelivery.Method != PromptMethodSubcommand {
 			t.Errorf("PromptDelivery.Method = %q, want %q",
-				caps.PromptDelivery.Method, PromptMethodSubcommandWithFlag)
+				caps.PromptDelivery.Method, PromptMethodSubcommand)
 		}
 	})
 
@@ -52,12 +52,11 @@ func TestNewOpenCode(t *testing.T) {
 		}
 	})
 
-	t.Run("prompt delivery command flag", func(t *testing.T) {
+	t.Run("no prompt delivery command flag", func(t *testing.T) {
 		t.Parallel()
 		caps := agent.Capabilities()
-		if caps.PromptDelivery.CommandFlag != "--command" {
-			t.Errorf("PromptDelivery.CommandFlag = %q, want %q",
-				caps.PromptDelivery.CommandFlag, "--command")
+		if caps.PromptDelivery.CommandFlag != "" {
+			t.Errorf("PromptDelivery.CommandFlag = %q, want empty", caps.PromptDelivery.CommandFlag)
 		}
 	})
 
@@ -101,21 +100,6 @@ func TestOpenCode_BuildCommand(t *testing.T) {
 			opts:     ExecOptions{},
 			wantArgs: []string{"run", "fix the bug"},
 		},
-		"with slash command via ExtraArgs": {
-			prompt:   "specify this feature",
-			opts:     ExecOptions{ExtraArgs: []string{"--command", "autospec.specify"}},
-			wantArgs: []string{"run", "specify this feature", "--command", "autospec.specify"},
-		},
-		"with plan command via ExtraArgs": {
-			prompt:   "plan the implementation",
-			opts:     ExecOptions{ExtraArgs: []string{"--command", "autospec.plan"}},
-			wantArgs: []string{"run", "plan the implementation", "--command", "autospec.plan"},
-		},
-		"with implement command via ExtraArgs": {
-			prompt:   "implement the feature",
-			opts:     ExecOptions{ExtraArgs: []string{"--command", "autospec.implement"}},
-			wantArgs: []string{"run", "implement the feature", "--command", "autospec.implement"},
-		},
 		"with retry prompt injection": {
 			prompt: `Original task: implement feature
 
@@ -124,19 +108,19 @@ func TestOpenCode_BuildCommand(t *testing.T) {
 - Invalid format for field 'description'
 
 Please fix these validation errors and try again.`,
-			opts: ExecOptions{ExtraArgs: []string{"--command", "autospec.specify"}},
+			opts: ExecOptions{},
 			wantArgs: []string{"run", `Original task: implement feature
 
 ## Validation Errors (Retry 1/3)
 - Missing required field: 'id'
 - Invalid format for field 'description'
 
-Please fix these validation errors and try again.`, "--command", "autospec.specify"},
+Please fix these validation errors and try again.`},
 		},
 		"with multiple extra args": {
 			prompt:   "analyze the code",
-			opts:     ExecOptions{ExtraArgs: []string{"--model", "opus", "--command", "autospec.analyze"}},
-			wantArgs: []string{"run", "analyze the code", "--model", "opus", "--command", "autospec.analyze"},
+			opts:     ExecOptions{ExtraArgs: []string{"--model", "opus"}},
+			wantArgs: []string{"run", "analyze the code", "--model", "opus"},
 		},
 		"with opencode-agent flag": {
 			prompt:   "specify this feature",
@@ -199,17 +183,15 @@ func TestOpenCode_BuildCommand_Pattern(t *testing.T) {
 	t.Parallel()
 	agent := NewOpenCode()
 
-	// Test the expected pattern: opencode run <prompt> --command <command-name>
-	opts := ExecOptions{ExtraArgs: []string{"--command", "autospec.specify"}}
-	cmd, err := agent.BuildCommand("specify my feature", opts)
+	// Test the expected pattern: opencode run <rendered prompt>
+	cmd, err := agent.BuildCommand("specify my feature", ExecOptions{})
 	if err != nil {
 		t.Fatalf("BuildCommand() error = %v", err)
 	}
 
 	args := cmd.Args
-	// Expected: ["opencode", "run", "specify my feature", "--command", "autospec.specify"]
-	if len(args) != 5 {
-		t.Fatalf("expected 5 args, got %d: %v", len(args), args)
+	if len(args) != 3 {
+		t.Fatalf("expected 3 args, got %d: %v", len(args), args)
 	}
 	if args[0] != "opencode" {
 		t.Errorf("args[0] = %q, want %q", args[0], "opencode")
@@ -220,17 +202,11 @@ func TestOpenCode_BuildCommand_Pattern(t *testing.T) {
 	if args[2] != "specify my feature" {
 		t.Errorf("args[2] = %q, want %q", args[2], "specify my feature")
 	}
-	if args[3] != "--command" {
-		t.Errorf("args[3] = %q, want %q", args[3], "--command")
-	}
-	if args[4] != "autospec.specify" {
-		t.Errorf("args[4] = %q, want %q", args[4], "autospec.specify")
-	}
 }
 
-// TestOpenCode_BuildCommand_SlashCommand verifies the slash command parsing
-// works correctly for OpenCode's PromptMethodSubcommandWithFlag.
-func TestOpenCode_BuildCommand_SlashCommand(t *testing.T) {
+// TestOpenCode_BuildCommand_SkillReference verifies that OpenCode receives skill
+// references as prompt text instead of routing through command files.
+func TestOpenCode_BuildCommand_SkillReference(t *testing.T) {
 	t.Parallel()
 	agent := NewOpenCode()
 
@@ -239,16 +215,16 @@ func TestOpenCode_BuildCommand_SlashCommand(t *testing.T) {
 		wantArgs []string
 	}{
 		"slash command with quoted args": {
-			prompt:   `/autospec.specify "feature description"`,
-			wantArgs: []string{"opencode", "run", "feature description", "--command", "autospec.specify"},
+			prompt:   `$autospec-specify "feature description"`,
+			wantArgs: []string{"opencode", "run", `$autospec-specify "feature description"`},
 		},
 		"slash command without args": {
-			prompt:   `/autospec.plan`,
-			wantArgs: []string{"opencode", "run", "", "--command", "autospec.plan"},
+			prompt:   `$autospec-plan`,
+			wantArgs: []string{"opencode", "run", "$autospec-plan"},
 		},
 		"slash command with unquoted args": {
-			prompt:   `/autospec.tasks generate all tasks`,
-			wantArgs: []string{"opencode", "run", "generate all tasks", "--command", "autospec.tasks"},
+			prompt:   `$autospec-tasks generate all tasks`,
+			wantArgs: []string{"opencode", "run", "$autospec-tasks generate all tasks"},
 		},
 	}
 
@@ -294,9 +270,9 @@ func TestOpenCode_BuildCommand_Interactive(t *testing.T) {
 			wantArgs: []string{"opencode", "--prompt", "/autospec.analyze", "--model", "opus"},
 		},
 		"non-interactive mode uses run subcommand": {
-			prompt:   `/autospec.specify "feature"`,
+			prompt:   `Generate spec.yaml for "feature"`,
 			opts:     ExecOptions{Interactive: false},
-			wantArgs: []string{"opencode", "run", "feature", "--command", "autospec.specify"},
+			wantArgs: []string{"opencode", "run", `Generate spec.yaml for "feature"`},
 		},
 	}
 
@@ -329,7 +305,8 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 		wantAlreadyConfig    bool
 		wantPermissionsLen   int // Now expects 2: 1 bash + 1 edit (string, not patterns)
 		wantWarning          bool
-		wantCommandsDirExist bool
+		wantOpencodeDirExist bool
+		wantSkillsDirExist   bool
 	}{
 		"fresh project without opencode.json": {
 			existingJSON:         "",
@@ -337,7 +314,8 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantAlreadyConfig:    false,
 			wantPermissionsLen:   2, // Bash(autospec *) + Edit(allow)
 			wantWarning:          false,
-			wantCommandsDirExist: true,
+			wantOpencodeDirExist: false,
+			wantSkillsDirExist:   true,
 		},
 		"project with empty opencode.json": {
 			existingJSON:         "{}",
@@ -345,7 +323,8 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantAlreadyConfig:    false,
 			wantPermissionsLen:   2,
 			wantWarning:          false,
-			wantCommandsDirExist: true,
+			wantOpencodeDirExist: false,
+			wantSkillsDirExist:   true,
 		},
 		"project with existing unrelated permissions": {
 			existingJSON:         `{"permission": {"bash": {"npm *": "allow"}}}`,
@@ -353,7 +332,8 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantAlreadyConfig:    false,
 			wantPermissionsLen:   2,
 			wantWarning:          false,
-			wantCommandsDirExist: true,
+			wantOpencodeDirExist: false,
+			wantSkillsDirExist:   true,
 		},
 		"project already configured": {
 			// Now requires both bash AND edit: "allow" to be considered already configured
@@ -362,7 +342,8 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantAlreadyConfig:    true,
 			wantPermissionsLen:   0,
 			wantWarning:          false,
-			wantCommandsDirExist: true,
+			wantOpencodeDirExist: false,
+			wantSkillsDirExist:   true,
 		},
 		"project with only bash permission": {
 			// Bash only is no longer sufficient - needs edit: "allow" too
@@ -371,7 +352,8 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantAlreadyConfig:    false,
 			wantPermissionsLen:   2,
 			wantWarning:          false,
-			wantCommandsDirExist: true,
+			wantOpencodeDirExist: false,
+			wantSkillsDirExist:   true,
 		},
 		"project with denied permission": {
 			existingJSON:         `{"permission": {"bash": {"autospec *": "deny"}}}`,
@@ -379,7 +361,8 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 			wantAlreadyConfig:    false,
 			wantPermissionsLen:   2,
 			wantWarning:          true,
-			wantCommandsDirExist: true,
+			wantOpencodeDirExist: false,
+			wantSkillsDirExist:   true,
 		},
 	}
 
@@ -422,18 +405,24 @@ func TestOpenCode_ConfigureProject(t *testing.T) {
 				t.Errorf("Warning present = %v, want %v (warning: %q)", hasWarning, tt.wantWarning, result.Warning)
 			}
 
-			// Check commands directory exists
-			cmdDir := filepath.Join(tempDir, ".opencode", "command")
-			_, err = os.Stat(cmdDir)
+			opencodeDir := filepath.Join(tempDir, ".opencode")
+			_, err = os.Stat(opencodeDir)
 			exists := err == nil
-			if exists != tt.wantCommandsDirExist {
-				t.Errorf("commands dir exists = %v, want %v", exists, tt.wantCommandsDirExist)
+			if exists != tt.wantOpencodeDirExist {
+				t.Errorf(".opencode dir exists = %v, want %v", exists, tt.wantOpencodeDirExist)
+			}
+
+			skillsDir := filepath.Join(tempDir, ".agents", "skills")
+			_, err = os.Stat(skillsDir)
+			exists = err == nil
+			if exists != tt.wantSkillsDirExist {
+				t.Errorf("skills dir exists = %v, want %v", exists, tt.wantSkillsDirExist)
 			}
 		})
 	}
 }
 
-func TestOpenCode_ConfigureProject_CommandsInstalled(t *testing.T) {
+func TestOpenCode_ConfigureProject_DoesNotInstallCommandFiles(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -444,25 +433,32 @@ func TestOpenCode_ConfigureProject_CommandsInstalled(t *testing.T) {
 		t.Fatalf("ConfigureProject() error = %v", err)
 	}
 
-	// Verify command templates are installed
-	cmdDir := filepath.Join(tempDir, ".opencode", "command")
-	entries, err := os.ReadDir(cmdDir)
+	if _, err := os.Stat(filepath.Join(tempDir, ".opencode")); !os.IsNotExist(err) {
+		t.Fatalf("expected OpenCode init to skip .opencode artifacts, got err: %v", err)
+	}
+}
+
+func TestOpenCode_ConfigureProject_SkillsInstalled(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	agent := NewOpenCode()
+
+	_, err := agent.ConfigureProject(tempDir, "specs", true)
 	if err != nil {
-		t.Fatalf("failed to read commands dir: %v", err)
+		t.Fatalf("ConfigureProject() error = %v", err)
 	}
 
-	// Should have at least one autospec.*.md file
-	foundAutospec := false
-	for _, entry := range entries {
-		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".md" {
-			if len(entry.Name()) > 9 && entry.Name()[:9] == "autospec." {
-				foundAutospec = true
-				break
-			}
+	for _, skillName := range []string{
+		"autospec-specify",
+		"autospec-plan",
+		"autospec-tasks",
+		"autospec-implement",
+	} {
+		skillPath := filepath.Join(tempDir, ".agents", "skills", skillName, "SKILL.md")
+		if _, err := os.Stat(skillPath); err != nil {
+			t.Fatalf("expected shared skill %s to exist: %v", skillName, err)
 		}
-	}
-	if !foundAutospec {
-		t.Error("no autospec.*.md files found in .opencode/command/")
 	}
 }
 

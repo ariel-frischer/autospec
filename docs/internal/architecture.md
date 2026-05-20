@@ -25,13 +25,13 @@ graph TB
     Orchestrator --> PhaseExec[PhaseExecutor<br/>phase-based impl]
     Orchestrator --> TaskExec[TaskExecutor<br/>task-based impl]
 
-    StageExec --> Executor[Executor<br/>Claude execution]
+    StageExec --> Executor[Executor<br/>Agent execution]
     PhaseExec --> Executor
     TaskExec --> Executor
 
     Executor --> Validation[Validation<br/>internal/validation]
     Executor --> Retry[Retry Management<br/>internal/retry]
-    Executor --> Claude[Claude Integration<br/>internal/workflow]
+    Executor --> Agent[Agent Integration<br/>internal/workflow]
 
     CLI --> Health[Health Checks<br/>internal/health]
     CLI --> Spec[Spec Detection<br/>internal/spec]
@@ -45,7 +45,7 @@ graph TB
 
     class CLI,Orchestrator primary
     class StageExec,PhaseExec,TaskExec,Executor executor
-    class Config,Validation,Retry,Claude,Health,Spec,Git,Progress secondary
+    class Config,Validation,Retry,Agent,Health,Spec,Git,Progress secondary
     class Commands embedded
 ```
 
@@ -61,7 +61,7 @@ Multi-stage execution with validation and retry. The workflow package uses a lay
 - **StageExecutor** (stage_executor.go): Handles specify, plan, tasks, and auxiliary stages (constitution, clarify, etc.)
 - **PhaseExecutor** (phase_executor.go): Handles phase-based implementation with context files
 - **TaskExecutor** (task_executor.go): Handles individual task execution with dependency validation
-- **Executor** (executor.go): Low-level Claude command execution with retry logic
+- **Executor** (executor.go): Low-level agent command execution with retry logic
 
 ### Executor Architecture
 
@@ -163,7 +163,7 @@ Git helpers (internal/git/git.go:1): Check repo status, get branch name
 
 ### 8. Health Checks (internal/health/)
 
-Dependency verification (internal/health/health.go:1): Verify Claude CLI, check directory access, validate config
+Dependency verification (internal/health/health.go:1): Verify configured CLI agents, check directory access, validate config
 
 ### 9. Progress Display (internal/progress/)
 
@@ -171,7 +171,7 @@ Real-time feedback (internal/progress/display.go:1): Spinner indicators for long
 
 ### 10. Embedded Commands (internal/commands/)
 
-Slash command templates embedded in binary (internal/commands/embed.go:1): Install to `.claude/commands/` during `autospec init`
+Slash command templates embedded in binary (internal/commands/embed.go:1): converted to Claude skills in `.claude/skills/autospec.*/` during `autospec init`
 
 ## System Architecture
 
@@ -193,10 +193,10 @@ flowchart TB
     Executor -->|Load State| Retry[Retry Manager]
     Retry -->|State| Executor
 
-    Executor -->|Command| Claude[Claude Integration]
-    Claude -->|API/CLI| ClaudeSvc[Claude Service]
-    ClaudeSvc -->|Response| Claude
-    Claude -->|Output| Executor
+    Executor -->|Command| Agent[Agent Integration]
+    Agent -->|API/CLI| AgentSvc[Agent Service]
+    AgentSvc -->|Response| Agent
+    Agent -->|Output| Executor
 
     Executor -->|Validate| Validation[Validation Functions]
     Validation -->|Parse| Files[Output Files]
@@ -242,7 +242,7 @@ internal/
 │   ├── stage_executor.go  # StageExecutor - specify/plan/tasks/constitution/clarify/etc.
 │   ├── phase_executor.go  # PhaseExecutor - phase-based implementation
 │   ├── task_executor.go   # TaskExecutor - task-based implementation
-│   ├── executor.go        # Executor - Claude command execution with retry
+│   ├── executor.go        # Executor - agent command execution with retry
 │   ├── interfaces.go      # Interface definitions for dependency injection
 │   ├── preflight.go       # PreflightChecks - dependency verification
 │   ├── validators.go      # Stage validation functions
@@ -267,7 +267,6 @@ internal/
 ├── history/      # Command history persistence
 ├── completion/   # Shell completion generation
 ├── worktree/     # Git worktree management logic
-├── taskgraph/    # Task dependency graph for parallel execution waves
 └── testutil/     # Test utilities and helpers
 ```
 
@@ -283,7 +282,7 @@ sequenceDiagram
     participant CLI as CLI Command
     participant O as Orchestrator
     participant E as Executor
-    participant C as Claude
+    participant A as Agent
     participant V as Validation
     participant R as Retry State
 
@@ -294,9 +293,9 @@ sequenceDiagram
     O->>E: ExecutePhase(specify)
     E->>R: LoadState(001-feature:specify)
     R-->>E: retries=0, max=3
-    E->>C: Execute("/autospec.specify ...")
-    C->>C: Call Claude API/CLI
-    C-->>E: spec.yaml created
+    E->>A: Execute(rendered specify prompt)
+    A->>A: Run configured CLI agent
+    A-->>E: spec.yaml created
     E->>V: ValidateSpec(spec.yaml)
     alt Validation Pass
         V-->>E: OK
@@ -306,7 +305,7 @@ sequenceDiagram
         V-->>E: Error
         E->>R: IncrementRetries(001-feature:specify)
         alt Retries Remaining
-            E->>C: Retry with continuation prompt
+            E->>A: Retry with validation context
         else Max Retries Exhausted
             E-->>O: Fail (exit code 2)
         end
@@ -315,8 +314,8 @@ sequenceDiagram
     Note over O: Phase 2: Plan
     O->>E: ExecutePhase(plan)
     E->>R: LoadState(001-feature:plan)
-    E->>C: Execute("/autospec.plan")
-    C-->>E: plan.yaml created
+    E->>A: Execute(rendered plan prompt)
+    A-->>E: plan.yaml created
     E->>V: ValidatePlan(plan.yaml)
     V-->>E: OK
     E->>R: ResetRetries(001-feature:plan)
@@ -324,15 +323,15 @@ sequenceDiagram
 
     Note over O: Phase 3: Tasks
     O->>E: ExecutePhase(tasks)
-    E->>C: Execute("/autospec.tasks")
-    C-->>E: tasks.yaml created
+    E->>A: Execute(rendered tasks prompt)
+    A-->>E: tasks.yaml created
     E->>V: ValidateTasks(tasks.yaml)
     V-->>E: OK
     E-->>O: Success
 
     Note over O: Phase 4: Implement
     O->>E: ExecutePhase(implement)
-    E->>C: Execute("/autospec.implement")
+    E->>A: Execute(rendered implement prompt)
     C-->>E: Implementation complete
     E->>V: ValidateTasksComplete(tasks.yaml)
     V-->>E: OK
@@ -481,7 +480,7 @@ func DetectCurrentSpec() (*SpecMetadata, error) {
 
 ## Integration Points
 
-### Claude Integration
+### Agent Integration
 
 **Methods**:
 1. **Preset Mode** (default): Use a registered agent preset
@@ -504,7 +503,7 @@ custom_agent:
 All phase commands support optional guidance text:
 ```bash
 autospec plan "Focus on security best practices"
-# Executes: claude -p "/autospec.plan \"Focus on security best practices\""
+# Executes the configured agent with rendered autospec plan prompt text.
 ```
 
 ### File System
@@ -526,7 +525,7 @@ autospec plan "Focus on security best practices"
 ### External Tools
 
 **Required**:
-- Claude CLI: For workflow execution
+- CLI coding agent: Claude Code, Codex, OpenCode, or custom agent for workflow execution
 - Git (optional): For branch-based spec detection
 
 ## Performance Characteristics
@@ -566,7 +565,7 @@ Areas designed for future extension:
 
 1. **Custom Validators**: Add new validation functions in internal/validation/
 2. **Additional Commands**: Add new CLI commands in internal/cli/
-3. **Alternative Executors**: Implement ClaudeExecutor interface for new backends
+3. **Alternative Executors**: Implement the executor/agent interfaces for new backends
 4. **Custom Health Checks**: Extend health check framework
 5. **Progress Reporters**: Implement alternative progress display formats
 

@@ -715,7 +715,8 @@ func TestParseSlashCommandFull(t *testing.T) {
 	}
 }
 
-// TestOpenCode_BuildCommand_ImplementPhase tests OpenCode command building for implement with phase.
+// TestOpenCode_BuildCommand_ImplementPhase tests OpenCode receives skill or
+// rendered prompt text directly rather than command-file routing flags.
 func TestOpenCode_BuildCommand_ImplementPhase(t *testing.T) {
 	t.Parallel()
 	agent := NewOpenCode()
@@ -726,19 +727,19 @@ func TestOpenCode_BuildCommand_ImplementPhase(t *testing.T) {
 	}{
 		"implement with phase and context-file": {
 			prompt:   `/autospec.implement --phase 1 --context-file .autospec/context/phase-1.yaml`,
-			wantArgs: []string{"opencode", "run", "phase 1", "-f", ".autospec/context/phase-1.yaml", "--command", "autospec.implement"},
+			wantArgs: []string{"opencode", "run", `/autospec.implement --phase 1 --context-file .autospec/context/phase-1.yaml`},
 		},
 		"implement with phase only": {
 			prompt:   `/autospec.implement --phase 2`,
-			wantArgs: []string{"opencode", "run", "phase 2", "--command", "autospec.implement"},
+			wantArgs: []string{"opencode", "run", `/autospec.implement --phase 2`},
 		},
 		"implement without phase (default mode)": {
 			prompt:   `/autospec.implement`,
-			wantArgs: []string{"opencode", "run", "", "--command", "autospec.implement"},
+			wantArgs: []string{"opencode", "run", `/autospec.implement`},
 		},
 		"implement with resume flag": {
 			prompt:   `/autospec.implement --resume`,
-			wantArgs: []string{"opencode", "run", "--resume", "--command", "autospec.implement"},
+			wantArgs: []string{"opencode", "run", `/autospec.implement --resume`},
 		},
 	}
 

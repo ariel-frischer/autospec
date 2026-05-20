@@ -41,7 +41,7 @@ func NewClaude() *Claude {
 
 // ConfigureProject implements the Configurator interface for Claude.
 // It configures the Claude agent for autospec:
-//   - Installs command templates to .claude/commands/
+//   - Installs command skills to .claude/skills/
 //   - Adds required permissions: Bash(autospec:*), Write/Edit(.autospec/**), Write/Edit({specsDir}/**)
 //
 // The projectLevel parameter determines where permissions are configured:
@@ -50,9 +50,9 @@ func NewClaude() *Claude {
 //
 // This method is idempotent - calling it multiple times produces the same result.
 func (c *Claude) ConfigureProject(projectDir, specsDir string, projectLevel bool) (ConfigResult, error) {
-	// Install command templates (always project-level)
-	if _, err := commands.InstallTemplatesForAgent("claude", projectDir); err != nil {
-		return ConfigResult{}, fmt.Errorf("installing claude commands: %w", err)
+	// Install command skills (always project-level)
+	if _, _, err := commands.InstallClaudeSkills(projectDir, specsDir); err != nil {
+		return ConfigResult{}, fmt.Errorf("installing claude skills: %w", err)
 	}
 
 	var settings *claude.Settings

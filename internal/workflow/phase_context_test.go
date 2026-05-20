@@ -641,12 +641,16 @@ func TestContextMetaYAMLSerialization(t *testing.T) {
 			meta: ContextMeta{
 				PhaseArtifactsBundled: true,
 				BundledArtifacts:      []string{"spec.yaml", "plan.yaml", "tasks.yaml"},
+				HasGovernance:         true,
+				GovernanceFile:        ".autospec/constitution.yaml",
 				HasChecklists:         false,
 				SkipReads:             []string{"specs/test/spec.yaml"},
 			},
 			wantFields: []string{
 				"phase_artifacts_bundled:",
 				"bundled_artifacts:",
+				"has_governance:",
+				"governance_file:",
 				"has_checklists:",
 				"skip_reads:",
 			},
@@ -656,11 +660,13 @@ func TestContextMetaYAMLSerialization(t *testing.T) {
 			meta: ContextMeta{
 				PhaseArtifactsBundled: true,
 				BundledArtifacts:      []string{"spec.yaml"},
+				HasGovernance:         false,
 				HasChecklists:         true,
 				SkipReads:             []string{},
 			},
 			wantFields: []string{
 				"phase_artifacts_bundled: true",
+				"has_governance: false",
 				"has_checklists: true",
 			},
 			wantBoolValue: true,
@@ -669,12 +675,14 @@ func TestContextMetaYAMLSerialization(t *testing.T) {
 			meta: ContextMeta{
 				PhaseArtifactsBundled: false,
 				BundledArtifacts:      []string{},
+				HasGovernance:         false,
 				HasChecklists:         false,
 				SkipReads:             []string{},
 			},
 			wantFields: []string{
 				"phase_artifacts_bundled: false",
 				"bundled_artifacts: []",
+				"has_governance: false",
 				"has_checklists: false",
 				"skip_reads: []",
 			},
@@ -710,6 +718,7 @@ func TestPhaseContextMetaAppearsFirst(t *testing.T) {
 				ContextMeta: ContextMeta{
 					PhaseArtifactsBundled: true,
 					BundledArtifacts:      []string{"spec.yaml", "plan.yaml", "tasks.yaml"},
+					HasGovernance:         false,
 					HasChecklists:         false,
 					SkipReads:             []string{"specs/test/spec.yaml"},
 				},
@@ -727,6 +736,8 @@ func TestPhaseContextMetaAppearsFirst(t *testing.T) {
 				ContextMeta: ContextMeta{
 					PhaseArtifactsBundled: true,
 					BundledArtifacts:      []string{"spec.yaml", "plan.yaml", "tasks.yaml (phase-filtered)"},
+					HasGovernance:         true,
+					GovernanceFile:        ".autospec/constitution.yaml",
 					HasChecklists:         true,
 					SkipReads:             []string{"specs/feature/spec.yaml", "specs/feature/plan.yaml", "specs/feature/tasks.yaml"},
 				},
@@ -770,51 +781,35 @@ func TestBuildContextMeta(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		specDir                   string
+		specDirSuffix             string
 		wantPhaseArtifactsBundled bool
 		wantBundledArtifacts      []string
-		wantSkipReads             []string
 	}{
 		"sets phase_artifacts_bundled to true": {
-			specDir:                   "specs/test-feature",
+			specDirSuffix:             filepath.Join("specs", "test-feature"),
 			wantPhaseArtifactsBundled: true,
 			wantBundledArtifacts: []string{
 				"spec.yaml",
 				"plan.yaml",
 				"tasks.yaml (phase-filtered)",
-			},
-			wantSkipReads: []string{
-				"specs/test-feature/spec.yaml",
-				"specs/test-feature/plan.yaml",
-				"specs/test-feature/tasks.yaml",
 			},
 		},
 		"uses correct paths for nested spec directory": {
-			specDir:                   "specs/nested/feature",
+			specDirSuffix:             filepath.Join("specs", "nested", "feature"),
 			wantPhaseArtifactsBundled: true,
 			wantBundledArtifacts: []string{
 				"spec.yaml",
 				"plan.yaml",
 				"tasks.yaml (phase-filtered)",
-			},
-			wantSkipReads: []string{
-				"specs/nested/feature/spec.yaml",
-				"specs/nested/feature/plan.yaml",
-				"specs/nested/feature/tasks.yaml",
 			},
 		},
 		"handles simple directory name": {
-			specDir:                   "feature",
+			specDirSuffix:             "feature",
 			wantPhaseArtifactsBundled: true,
 			wantBundledArtifacts: []string{
 				"spec.yaml",
 				"plan.yaml",
 				"tasks.yaml (phase-filtered)",
-			},
-			wantSkipReads: []string{
-				"feature/spec.yaml",
-				"feature/plan.yaml",
-				"feature/tasks.yaml",
 			},
 		},
 	}
@@ -823,7 +818,8 @@ func TestBuildContextMeta(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			meta := buildContextMeta(tt.specDir)
+			specDir := filepath.Join(t.TempDir(), tt.specDirSuffix)
+			meta := buildContextMeta(specDir)
 
 			assert.Equal(t, tt.wantPhaseArtifactsBundled, meta.PhaseArtifactsBundled,
 				"PhaseArtifactsBundled should be true for all generated contexts")
@@ -831,10 +827,30 @@ func TestBuildContextMeta(t *testing.T) {
 			assert.Equal(t, tt.wantBundledArtifacts, meta.BundledArtifacts,
 				"BundledArtifacts should contain expected three items")
 
-			assert.Equal(t, tt.wantSkipReads, meta.SkipReads,
+			wantSkipReads := []string{
+				filepath.Join(specDir, "spec.yaml"),
+				filepath.Join(specDir, "plan.yaml"),
+				filepath.Join(specDir, "tasks.yaml"),
+			}
+			assert.Equal(t, wantSkipReads, meta.SkipReads,
 				"SkipReads should contain correct paths for spec directory")
 		})
 	}
+}
+
+func TestBuildContextMetaIncludesGovernanceWhenPresent(t *testing.T) {
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(tmpDir, ".autospec"), 0o755))
+	governanceFile := filepath.Join(tmpDir, ".autospec", "constitution.yaml")
+	require.NoError(t, os.WriteFile(governanceFile,
+		[]byte("constitution:\n  name: Test\n"), 0o644))
+
+	meta := buildContextMeta(filepath.Join(tmpDir, "specs", "test-feature"))
+
+	assert.True(t, meta.HasGovernance)
+	assert.Equal(t, governanceFile, meta.GovernanceFile)
+	assert.Contains(t, meta.BundledArtifacts, "constitution.yaml")
+	assert.Contains(t, meta.SkipReads, governanceFile)
 }
 
 func TestBuildPhaseContextPopulatesContextMeta(t *testing.T) {
@@ -883,6 +899,36 @@ func TestBuildPhaseContextPopulatesContextMeta(t *testing.T) {
 		assert.Contains(t, ctx.ContextMeta.SkipReads, filepath.Join(specDir, "plan.yaml"))
 		assert.Contains(t, ctx.ContextMeta.SkipReads, filepath.Join(specDir, "tasks.yaml"))
 	})
+}
+
+func TestBuildPhaseContextBundlesGovernanceWhenPresent(t *testing.T) {
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(tmpDir, ".autospec"), 0o755))
+	governanceFile := filepath.Join(tmpDir, ".autospec", "constitution.yaml")
+	require.NoError(t, os.WriteFile(governanceFile,
+		[]byte("constitution:\n  name: Test Governance\n"), 0o644))
+
+	specDir := filepath.Join(tmpDir, "specs", "test-feature")
+	require.NoError(t, os.MkdirAll(specDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(specDir, "spec.yaml"),
+		[]byte("feature:\n  branch: test\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(specDir, "plan.yaml"),
+		[]byte("plan:\n  branch: test\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(specDir, "tasks.yaml"), []byte(`phases:
+  - number: 1
+    title: Phase 1
+    tasks:
+      - id: T001
+        title: Task 1
+`), 0o644))
+
+	ctx, err := BuildPhaseContext(specDir, 1, 1)
+	require.NoError(t, err)
+
+	assert.True(t, ctx.ContextMeta.HasGovernance)
+	assert.Equal(t, governanceFile, ctx.ContextMeta.GovernanceFile)
+	assert.Contains(t, ctx.ContextMeta.SkipReads, governanceFile)
+	assert.NotEmpty(t, ctx.Governance)
 }
 
 func TestCheckChecklistsExist(t *testing.T) {
