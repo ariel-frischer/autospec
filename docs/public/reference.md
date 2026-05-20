@@ -21,6 +21,7 @@ Execute complete workflow: specify → plan → tasks → implement
 - `--timeout <seconds>`: Command timeout (0=infinite, 1-604800)
 - `--max-retries <count>`: Maximum retry attempts (0-10, default: 0)
 - `--agent <name>`: Override agent for this run (see [CLI Agents](#cli-agents))
+- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`); see [OpenCode Agents](https://opencode.ai/docs/agents)
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
 
@@ -87,6 +88,7 @@ Run selected workflow stages with flexible stage selection
 - `--dry-run`: Preview what stages would run without executing
 - `--max-retries <count>`: Override max retry attempts
 - `--agent <name>`: Override agent for this run
+- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`)
 - `--auto-commit` / `--no-auto-commit`: Override auto-commit config
 
 **Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
@@ -200,6 +202,8 @@ Execute implementation phase using tasks breakdown
 - `--single-session`: Run all tasks in one Claude session (legacy mode)
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
+- `--agent <name>`: Override agent for this run
+- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`)
 - Plus all flags from `autospec all`
 
 **Execution Modes**:

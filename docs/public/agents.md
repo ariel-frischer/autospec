@@ -372,6 +372,43 @@ Key differences:
 - Command name is passed via `--command` flag at the end
 - Non-interactive execution is the default with `run`
 
+### OpenCode Sub-Agent Selection
+
+OpenCode supports specialized agents for different tasks — see the [OpenCode Agents documentation](https://opencode.ai/docs/agents) for the full list of built-in agents and how to create custom ones. The `--opencode-agent` flag passes through to OpenCode's `--agent` flag.
+
+```bash
+# Use a specific sub-agent for a workflow
+autospec run -a "add login" --opencode-agent Build --agent opencode
+
+# Persistent config option
+opencode_agent: Build
+```
+
+Priority: `--opencode-agent` CLI flag > `opencode_agent` config > empty (uses OpenCode's default).
+
+Available on: `run`, `prep`, `specify`, `plan`, `tasks`, `implement`.
+
+### Permission Requirements by Stage
+
+Each sub-agent has different permission defaults. Whether an agent works for a given stage depends on its permissions:
+
+| Stage | Permissions Required | Why |
+|-------|---------------------|-----|
+| `specify`, `plan`, `tasks`, `implement`, `clarify`, `checklist`, `constitution` | `edit: allow` | Writes artifacts (spec.yaml, plan.yaml, tasks.yaml, source code) |
+| All stages | `bash: allow` | Executes autospec commands, git operations, make/build |
+| All stages | `read: allow` | Reads existing code, specs, configs |
+| `implement`, `analyze` | `grep/glob: allow` | Searches codebase during implementation |
+
+If you find `bash:allow` to be too permissive, you should be more granular with wich bash commands are allowed. 
+
+**Minimum requirement for workflow stages**: `edit: allow` + `bash: allow`. something like OpenCode's built-in **Plan** agent will not work with any workflow that needs to create or edit files.
+
+```yaml
+# .autospec/config.yml — recommended for full workflows
+agent_preset: opencode
+opencode_agent: Build
+```
+
 ### Model Configuration
 
 OpenCode supports multiple AI providers. For the best experience with Anthropic models, use OAuth authentication with your Claude Max/Pro subscription instead of API keys.

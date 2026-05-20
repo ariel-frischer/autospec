@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- placeholder
+- Add `--opencode-agent` flag to specify OpenCode sub-agent (Plan, Build, Explore, etc.)
+- Add `opencode_agent` config option for persistent OpenCode sub-agent selection
 
 ## [0.10.5] - 2026-02-25
 
