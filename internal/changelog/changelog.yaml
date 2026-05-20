@@ -4,10 +4,12 @@ versions:
     0.11.3:
         date: 2026-05-20
         changed:
-            - Project governance now requires deterministic mock-based agent/workflow tests and explicit architecture boundary guidance in the autospec constitution
-            - Task generation guidance now keeps shipped prompts project-agnostic while allowing project governance to request validation, documentation, or release-note tasks
             - Removed the unused internal `autospec setup-plan` command and its legacy project plan-template lookup
             - Constitution discovery no longer treats `.specify/memory` files as autospec project governance
+        internal:
+            changed:
+                - Project governance now requires deterministic mock-based agent/workflow tests and explicit architecture boundary guidance in the autospec constitution
+                - Task generation guidance now keeps shipped prompts project-agnostic while allowing project governance to request validation, documentation, or release-note tasks
     0.11.2:
         date: 2026-05-18
         fixed:
