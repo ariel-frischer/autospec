@@ -218,7 +218,11 @@ The tasks.yaml should be immediately executable - each task must be specific eno
 
 **CRITICAL**: Tasks MUST be organized by user story to enable independent implementation and testing.
 
-**Tests are OPTIONAL**: Only generate test tasks if explicitly requested in the feature specification or if user requests TDD approach.
+**Tests are REQUIRED for new behavior whenever practical**: Generate test tasks before implementation tasks when the feature changes behavior. Tests may be omitted only for documentation-only changes, configuration-only changes with no behavior change, or explicitly marked spike/prototype work.
+
+**Final tasks**: Include project-appropriate polish, documentation, validation,
+or release-note tasks when required by the specification, implementation plan,
+or project governance.
 
 ### Task ID Format
 
@@ -276,4 +280,3 @@ Every task MUST have:
 - `Pending`: Not started
 - `InProgress`: Currently being worked on
 - `Completed`: Finished and verified
-

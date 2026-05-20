@@ -133,6 +133,14 @@ _meta:
   artifact_type: "spec"  # or plan, tasks, checklist, analysis, constitution
 ```
 
+### Governance Invariants
+
+Generated artifacts must comply with the project constitution when one is
+present. Command templates shipped in the binary must stay project-agnostic:
+they may ask for project-appropriate validation, documentation, or release-note
+tasks, but must not hard-code autospec maintainer-local paths such as `.dev/`
+or autospec's own changelog file.
+
 ### spec.yaml
 
 Feature specification with requirements and user stories:

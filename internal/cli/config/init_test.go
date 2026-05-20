@@ -354,37 +354,6 @@ func TestWriteDefaultConfig_ErrorOnInvalidPath(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestCopyConstitution(t *testing.T) {
-	tmpDir := t.TempDir()
-	srcPath := filepath.Join(tmpDir, "source.yaml")
-	dstPath := filepath.Join(tmpDir, "subdir", "dest.yaml")
-
-	// Create source file
-	content := "test: constitution"
-	err := os.WriteFile(srcPath, []byte(content), 0o644)
-	require.NoError(t, err)
-
-	// Copy
-	err = copyConstitution(srcPath, dstPath)
-	require.NoError(t, err)
-
-	// Verify destination
-	assert.FileExists(t, dstPath)
-	dstContent, err := os.ReadFile(dstPath)
-	require.NoError(t, err)
-	assert.Equal(t, content, string(dstContent))
-}
-
-func TestCopyConstitution_SourceNotFound(t *testing.T) {
-	tmpDir := t.TempDir()
-	srcPath := filepath.Join(tmpDir, "nonexistent.yaml")
-	dstPath := filepath.Join(tmpDir, "dest.yaml")
-
-	err := copyConstitution(srcPath, dstPath)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to read source")
-}
-
 func TestHandleConstitution_NoConstitution(t *testing.T) {
 	// Cannot run in parallel due to working directory change
 	tmpDir := t.TempDir()

@@ -478,8 +478,7 @@ func generateConstitutionMissingError() string {
 	sb.WriteString("The constitution defines your project's principles and guidelines.\n\n")
 	sb.WriteString("To create a constitution, run:\n")
 	sb.WriteString("  autospec constitution\n\n")
-	sb.WriteString("Or if you have an existing constitution at a legacy path,\n")
-	sb.WriteString("run 'autospec init' to copy it to .autospec/constitution.yaml\n")
+	sb.WriteString("Expected path: .autospec/constitution.yaml\n")
 
 	return sb.String()
 }

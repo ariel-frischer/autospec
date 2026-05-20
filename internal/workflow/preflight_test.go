@@ -300,17 +300,17 @@ func TestCheckConstitutionExists(t *testing.T) {
 			wantPath:     ".autospec/memory/constitution.yml",
 			wantErrEmpty: true,
 		},
-		"legacy specify constitution exists (.yaml)": {
+		"specify constitution is ignored (.yaml)": {
 			setupFiles:   map[string]string{".specify/memory/constitution.yaml": "project_name: Test"},
-			wantExists:   true,
-			wantPath:     ".specify/memory/constitution.yaml",
-			wantErrEmpty: true,
+			wantExists:   false,
+			wantPath:     "",
+			wantErrEmpty: false,
 		},
-		"legacy specify constitution exists (.yml)": {
+		"specify constitution is ignored (.yml)": {
 			setupFiles:   map[string]string{".specify/memory/constitution.yml": "project_name: Test"},
-			wantExists:   true,
-			wantPath:     ".specify/memory/constitution.yml",
-			wantErrEmpty: true,
+			wantExists:   false,
+			wantPath:     "",
+			wantErrEmpty: false,
 		},
 		"new path takes precedence over legacy": {
 			setupFiles: map[string]string{
@@ -330,7 +330,7 @@ func TestCheckConstitutionExists(t *testing.T) {
 			wantPath:     ".autospec/constitution.yaml",
 			wantErrEmpty: true,
 		},
-		"autospec takes precedence over specify": {
+		"autospec is used when specify also exists": {
 			setupFiles: map[string]string{
 				".autospec/constitution.yaml":       "project_name: Autospec",
 				".specify/memory/constitution.yaml": "project_name: Specify",
@@ -396,7 +396,7 @@ func TestGenerateConstitutionMissingError(t *testing.T) {
 	assert.Contains(t, errMsg, "constitution not found")
 	assert.Contains(t, errMsg, "autospec constitution")
 	assert.Contains(t, errMsg, ".autospec/constitution.yaml")
-	assert.Contains(t, errMsg, "autospec init")
+	assert.NotContains(t, errMsg, "autospec init")
 }
 
 // BenchmarkCheckConstitutionExists benchmarks constitution check performance

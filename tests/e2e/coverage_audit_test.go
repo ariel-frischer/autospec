@@ -73,7 +73,6 @@ var allCLICommands = []string{
 	"migrate md-to-yaml",
 	"new-feature",
 	"prereqs",
-	"setup-plan",
 	"task",
 	"task block",
 	"task unblock",

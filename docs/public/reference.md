@@ -893,17 +893,6 @@ autospec prereqs --require-plan --json
 
 **Exit Codes**: 0 (success), 1 (prerequisites missing)
 
-### autospec setup-plan
-
-Initialize plan file from template
-
-**Syntax**: `autospec setup-plan [flags]`
-
-**Flags**:
-- `--json`: Output as JSON
-
-**Exit Codes**: 0 (success), 1 (failed)
-
 ### autospec clean
 
 Remove autospec files from the project

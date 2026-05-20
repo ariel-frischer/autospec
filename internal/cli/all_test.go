@@ -142,20 +142,20 @@ func TestAllCmdConstitutionCheck(t *testing.T) {
 	// Create temp directory structure
 
 	tmpDir := t.TempDir()
-	specifyDir := filepath.Join(tmpDir, ".specify", "memory")
-	require.NoError(t, os.MkdirAll(specifyDir, 0o755))
+	autospecDir := filepath.Join(tmpDir, ".autospec")
+	require.NoError(t, os.MkdirAll(autospecDir, 0o755))
 
 	t.Run("constitution missing shows error", func(t *testing.T) {
 		// When constitution doesn't exist, the command should fail
 		// This is a behavior test - we can't run the full command
 		// but we can verify the constitution.yaml check is in place
-		constPath := filepath.Join(specifyDir, "constitution.yaml")
+		constPath := filepath.Join(autospecDir, "constitution.yaml")
 		_, err := os.Stat(constPath)
 		assert.True(t, os.IsNotExist(err))
 	})
 
 	t.Run("constitution exists", func(t *testing.T) {
-		constPath := filepath.Join(specifyDir, "constitution.yaml")
+		constPath := filepath.Join(autospecDir, "constitution.yaml")
 		require.NoError(t, os.WriteFile(constPath, []byte("project_name: Test"), 0o644))
 
 		_, err := os.Stat(constPath)

@@ -1424,12 +1424,6 @@ func handleConstitution(out io.Writer) bool {
 		".autospec/memory/constitution.yml",  // legacy
 	}
 
-	// Legacy specify paths (source for migration)
-	legacyPaths := []string{
-		".specify/memory/constitution.yaml",
-		".specify/memory/constitution.yml",
-	}
-
 	// Check if any autospec constitution already exists
 	for _, path := range autospecPaths {
 		if _, err := os.Stat(path); err == nil {
@@ -1438,44 +1432,9 @@ func handleConstitution(out io.Writer) bool {
 		}
 	}
 
-	// Check if any legacy specify constitution exists
-	for _, legacyPath := range legacyPaths {
-		if _, err := os.Stat(legacyPath); err == nil {
-			// Copy legacy constitution to autospec location (prefer .yaml)
-			destPath := autospecPaths[0]
-			if err := copyConstitution(legacyPath, destPath); err != nil {
-				fmt.Fprintf(out, "%s %s: failed to copy from %s: %v\n", cYellow("⚠"), cBold("Constitution"), legacyPath, err)
-				return false
-			}
-			fmt.Fprintf(out, "%s %s: copied from %s → %s\n", cGreen("✓"), cBold("Constitution"), cDim(legacyPath), cDim(destPath))
-			return true
-		}
-	}
-
 	// No constitution found
 	fmt.Fprintf(out, "%s %s: not found\n", cYellow("⚠"), cBold("Constitution"))
 	return false
-}
-
-// copyConstitution copies the constitution file from src to dst
-func copyConstitution(src, dst string) error {
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	// Read source file
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return fmt.Errorf("failed to read source: %w", err)
-	}
-
-	// Write to destination
-	if err := os.WriteFile(dst, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write destination: %w", err)
-	}
-
-	return nil
 }
 
 // gitignoreHasAutospec checks if .gitignore contains .autospec entry.
