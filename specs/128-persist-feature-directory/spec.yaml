@@ -54,31 +54,24 @@ requirements:
     functional:
         - id: "FR-001"
           description: "MUST resolve the active feature using explicit feature directory selection before any persisted state or branch-derived fallback."
-          testable: true
           acceptance_criteria: "When explicit feature directory selection is provided, commands target that directory regardless of current branch name or persisted state."
         - id: "FR-002"
           description: "MUST persist the selected active feature directory for later autospec workflow commands."
-          testable: true
           acceptance_criteria: "After creating or selecting a feature, subsequent commands can resolve the same feature directory without requiring a matching branch suffix."
         - id: "FR-003"
           description: "MUST fall back to existing branch-prefix spec detection when no explicit or persisted feature directory is available."
-          testable: true
           acceptance_criteria: "Existing branch-based workflows continue to find the same specs they found before this change."
         - id: "FR-004"
           description: "MUST preserve --spec override behavior as a higher-priority user selection than persisted feature directory state."
-          testable: true
           acceptance_criteria: "Commands with --spec target the requested spec even when persisted state points to a different feature directory."
         - id: "FR-005"
           description: "MUST report actionable errors when the resolved feature directory is missing, invalid, or lacks the required spec artifact."
-          testable: true
           acceptance_criteria: "Invalid resolution states produce clear messages identifying the selected directory and the validation problem."
         - id: "FR-006"
           description: "MUST document the active feature resolution order and its limitations for multi-worktree usage."
-          testable: true
           acceptance_criteria: "User-facing documentation explains explicit selection, persisted state, branch fallback, --spec behavior, and that Git still prevents checking out the same branch in multiple worktrees."
         - id: "FR-007"
           description: "MUST require make test, make fmt, make lint, and make build to exit 0 before completion."
-          testable: true
           acceptance_criteria: "The final validation report shows successful completion of make test, make fmt, make lint, and make build."
     non_functional:
         - id: "NFR-001"

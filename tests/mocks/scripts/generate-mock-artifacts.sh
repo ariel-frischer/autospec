@@ -88,7 +88,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Test requirement"
-      testable: true
       acceptance_criteria: "Tests pass"
   non_functional:
     - id: "NFR-001"

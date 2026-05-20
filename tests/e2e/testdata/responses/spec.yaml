@@ -22,7 +22,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "The system must process input correctly"
-      testable: true
       acceptance_criteria: "Input is validated and processed without errors"
   non_functional:
     - id: "NFR-001"

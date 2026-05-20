@@ -360,7 +360,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "test"
-      testable: true
       acceptance_criteria: "test"
   non_functional:
     - id: "NFR-001"

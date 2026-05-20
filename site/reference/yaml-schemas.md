@@ -93,7 +93,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "System MUST validate user credentials against database"
-      testable: true
       acceptance_criteria: "Login succeeds with valid email/password"
   non_functional:
     - id: "NFR-001"

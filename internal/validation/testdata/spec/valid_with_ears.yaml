@@ -20,7 +20,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "MUST support authentication"
-      testable: true
 
 ears_requirements:
   - id: "EARS-001"

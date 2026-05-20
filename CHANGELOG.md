@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Generated `spec.yaml` functional requirements no longer include the redundant `testable: true` field
+
 ## [0.11.3] - 2026-05-20
 
 ### Changed
