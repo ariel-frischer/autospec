@@ -1025,6 +1025,38 @@ state_dir: "~/.autospec/state"
 	assert.Equal(t, "gemini", agent.Name())
 }
 
+func TestLoad_OpenCodeModelConfigFromYAML(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	projectConfigPath := filepath.Join(tmpDir, "project-config.yml")
+	userConfigPath := filepath.Join(tmpDir, "user-config.yml")
+
+	err := os.WriteFile(userConfigPath, []byte(""), 0o644)
+	require.NoError(t, err)
+
+	configContent := `agent_preset: opencode
+opencode:
+  model: anthropic/claude-sonnet-4-20250514
+  models:
+    plan: anthropic/claude-opus-4-5-20251101
+    implement: anthropic/claude-opus-4-5-latest
+`
+	err = os.WriteFile(projectConfigPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	cfg, err := LoadWithOptions(LoadOptions{
+		ProjectConfigPath: projectConfigPath,
+		UserConfigPath:    userConfigPath,
+		SkipWarnings:      true,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, "anthropic/claude-sonnet-4-20250514", cfg.OpenCode.Model)
+	assert.Equal(t, "anthropic/claude-opus-4-5-20251101", cfg.OpenCode.Models.Plan)
+	assert.Equal(t, "anthropic/claude-opus-4-5-latest", cfg.OpenCode.Models.Implement)
+}
+
 func TestLoad_CustomAgentFromYAML(t *testing.T) {
 	t.Parallel()
 
