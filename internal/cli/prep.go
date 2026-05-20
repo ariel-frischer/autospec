@@ -108,6 +108,9 @@ This is useful when you want to review the generated artifacts before implementa
 			// Apply output style from CLI flag (overrides config)
 			shared.ApplyOutputStyle(cmd, orchestrator)
 
+			// Apply OpenCode agent if the flag is present
+			shared.ApplyOpenCodeAgent(cmd, cfg, orchestrator)
+
 			// Run complete workflow (specify → plan → tasks, no implementation)
 			if err := orchestrator.RunCompleteWorkflow(featureDescription); err != nil {
 				return fmt.Errorf("prep workflow failed: %w", err)
@@ -127,6 +130,9 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(prepCmd)
+
+	// Opencode-agent flag
+	shared.AddOpenCodeAgentFlag(prepCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(prepCmd)
