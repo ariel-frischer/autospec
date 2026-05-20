@@ -114,12 +114,7 @@ The feature description should be a clear, concise description of what you want 
 			shared.ApplyOutputStyle(cmd, orch)
 
 			// Apply opencode-agent from CLI flag or config
-			opencodeAgent := shared.ResolveOpenCodeAgent(cmd, cfg)
-			if opencodeAgent != "" {
-				if claude, ok := orch.Executor.Claude.(*workflow.ClaudeExecutor); ok {
-					claude.OpenCodeAgent = opencodeAgent
-				}
-			}
+			shared.ApplyOpenCodeAgent(cmd, cfg, orch)
 
 			// Execute specify stage
 			specName, execErr := orch.ExecuteSpecify(featureDescription)

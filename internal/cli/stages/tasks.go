@@ -117,12 +117,7 @@ You can optionally provide a prompt to guide the task generation.`,
 			shared.ApplyOutputStyle(cmd, orch)
 
 			// Apply opencode-agent from CLI flag or config
-			opencodeAgent := shared.ResolveOpenCodeAgent(cmd, cfg)
-			if opencodeAgent != "" {
-				if claude, ok := orch.Executor.Claude.(*workflow.ClaudeExecutor); ok {
-					claude.OpenCodeAgent = opencodeAgent
-				}
-			}
+			shared.ApplyOpenCodeAgent(cmd, cfg, orch)
 
 			// Execute tasks stage
 			if err := orch.ExecuteTasks("", prompt); err != nil {

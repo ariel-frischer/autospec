@@ -8,6 +8,8 @@ import (
 	"github.com/ariel-frischer/autospec/internal/build"
 	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/workflow"
+
 	"github.com/spf13/cobra"
 )
 
@@ -115,4 +117,15 @@ func ResolveOpenCodeAgent(cmd *cobra.Command, cfg *config.Configuration) string 
 
 	// Fall back to config
 	return cfg.OpenCodeAgent
+}
+
+// suggested: internal/cli/shared/agent.go
+func ApplyOpenCodeAgent(cmd *cobra.Command, cfg *config.Configuration, orch *workflow.WorkflowOrchestrator) {
+	agent := ResolveOpenCodeAgent(cmd, cfg)
+	if agent == "" {
+		return
+	}
+	if claude, ok := orch.Executor.Claude.(*workflow.ClaudeExecutor); ok {
+		claude.OpenCodeAgent = agent
+	}
 }
