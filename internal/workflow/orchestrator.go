@@ -93,6 +93,7 @@ func NewWorkflowOrchestrator(cfg *config.Configuration) *WorkflowOrchestrator {
 		TotalStages: 3,     // Default to 3 stages (specify, plan, tasks)
 		Debug:       false, // Will be set by CLI command
 		AutoCommit:  cfg.AutoCommit,
+		OpenCode:    cfg.OpenCode,
 		Progress:    progressCtrl,
 		Notify:      notifyDispatch,
 	}

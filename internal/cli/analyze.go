@@ -58,6 +58,7 @@ Prerequisites:
 			clierrors.PrintError(cliErr)
 			return cliErr
 		}
+		shared.ApplyOpenCodeModelOverride(cmd, cfg)
 
 		// Override skip-preflight from flag if set
 		if cmd.Flags().Changed("skip-preflight") {
@@ -116,5 +117,6 @@ Prerequisites:
 func init() {
 	analyzeCmd.GroupID = GroupOptionalStages
 	rootCmd.AddCommand(analyzeCmd)
+	shared.AddOpenCodeModelFlag(analyzeCmd)
 	// Note: No --max-retries flag - analyze doesn't produce artifacts that need validation/retry
 }

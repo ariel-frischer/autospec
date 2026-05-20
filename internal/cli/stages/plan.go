@@ -70,6 +70,7 @@ You can optionally provide a prompt to guide the planning process.`,
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
+		shared.ApplyOpenCodeModelOverride(cmd, cfg)
 
 		// Apply auto-commit override from flags
 		shared.ApplyAutoCommitOverride(cmd, cfg)
@@ -134,6 +135,7 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(planCmd)
+	shared.AddOpenCodeModelFlag(planCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(planCmd)

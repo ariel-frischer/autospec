@@ -887,6 +887,14 @@ func TestEnvTransform(t *testing.T) {
 			input:    "AUTOSPEC_CUSTOM_AGENT_COMMAND",
 			expected: "custom_agent.command",
 		},
+		"nested opencode model": {
+			input:    "AUTOSPEC_OPENCODE_MODEL",
+			expected: "opencode.model",
+		},
+		"nested opencode stage model": {
+			input:    "AUTOSPEC_OPENCODE_MODELS_PLAN",
+			expected: "opencode.models.plan",
+		},
 	}
 
 	for name, tt := range tests {
@@ -1055,6 +1063,20 @@ opencode:
 	assert.Equal(t, "anthropic/claude-sonnet-4-20250514", cfg.OpenCode.Model)
 	assert.Equal(t, "anthropic/claude-opus-4-5-20251101", cfg.OpenCode.Models.Plan)
 	assert.Equal(t, "anthropic/claude-opus-4-5-latest", cfg.OpenCode.Models.Implement)
+}
+
+func TestLoad_OpenCodeModelConfigFromEnv(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+	t.Setenv("AUTOSPEC_OPENCODE_MODEL", "anthropic/default")
+	t.Setenv("AUTOSPEC_OPENCODE_MODELS_PLAN", "anthropic/plan")
+
+	cfg, err := LoadWithOptions(LoadOptions{SkipWarnings: true})
+	require.NoError(t, err)
+
+	assert.Equal(t, "anthropic/default", cfg.OpenCode.Model)
+	assert.Equal(t, "anthropic/plan", cfg.OpenCode.Models.Plan)
 }
 
 func TestLoad_CustomAgentFromYAML(t *testing.T) {

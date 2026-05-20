@@ -77,3 +77,35 @@ func TestAutoCommitFlagsHelpText(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenCodeModelFlagsRegistered(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		cmd *cobra.Command
+	}{
+		"specify has opencode model flag": {
+			cmd: specifyCmd,
+		},
+		"plan has opencode model flag": {
+			cmd: planCmd,
+		},
+		"tasks has opencode model flag": {
+			cmd: tasksCmd,
+		},
+		"implement has opencode model flag": {
+			cmd: implementCmd,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			flag := tt.cmd.Flags().Lookup(shared.OpenCodeModelFlagName)
+			assert.NotNil(t, flag, "opencode model flag should be registered")
+			assert.Equal(t, "string", flag.Value.Type())
+			assert.NotEmpty(t, flag.Usage, "opencode model flag should have help text")
+		})
+	}
+}

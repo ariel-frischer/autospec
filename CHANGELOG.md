@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- OpenCode workflow runs can now select models with `--opencode-model` or persistent `opencode.model` / `opencode.models.<stage>` config
+
 ### Changed
 - Generated `spec.yaml` functional requirements no longer include the redundant `testable: true` field
 
