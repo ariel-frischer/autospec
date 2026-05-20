@@ -3,6 +3,7 @@ package shared
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/build"
@@ -127,5 +128,7 @@ func ApplyOpenCodeAgent(cmd *cobra.Command, cfg *config.Configuration, orch *wor
 	}
 	if claude, ok := orch.Executor.Claude.(*workflow.ClaudeExecutor); ok {
 		claude.OpenCodeAgent = agent
+	} else {
+		slog.Warn("--opencode-agent flag ignored: executor is not ClaudeExecutor")
 	}
 }

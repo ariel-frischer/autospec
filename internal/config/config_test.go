@@ -1916,3 +1916,40 @@ func TestLoad_VerificationFeatureToggleOverride_EnvOverridesLevel(t *testing.T) 
 	assert.True(t, cfg.Verification.IsEnabled("property_tests"))
 	assert.True(t, cfg.Verification.IsEnabled("metamorphic_tests"))
 }
+
+func TestLoad_OpenCodeAgentEnvOverride(t *testing.T) {
+	t.Setenv("AUTOSPEC_OPENCODE_AGENT", "Plan")
+	cfg, err := Load("")
+	require.NoError(t, err)
+	assert.Equal(t, "Plan", cfg.OpenCodeAgent)
+}
+
+func TestLoad_OpenCodeAgentEnvOverridesConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yml")
+	configContent := `opencode_agent: Build`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	t.Setenv("AUTOSPEC_OPENCODE_AGENT", "Plan")
+
+	cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: configPath, SkipWarnings: true})
+	require.NoError(t, err)
+	assert.Equal(t, "Plan", cfg.OpenCodeAgent, "Env should override config file")
+}
+
+func TestLoad_OpenCodeAgentFromYAML(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yml")
+
+	configContent := `opencode_agent: Build`
+
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: configPath, SkipWarnings: true})
+	require.NoError(t, err)
+	assert.Equal(t, "Build", cfg.OpenCodeAgent)
+}
