@@ -1,6 +1,9 @@
 project: autospec
 versions:
     unreleased:
+        internal:
+            changed:
+                - Project developer tooling is now pinned with mise for Go and release validation commands
     0.11.4:
         date: 2026-05-21
         added:
