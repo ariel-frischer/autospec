@@ -1,6 +1,8 @@
 project: autospec
 versions:
     unreleased:
+    0.11.4:
+        date: 2026-05-21
         added:
             - 'Workflow commands now accept a generic `--model` flag for Claude, Codex, and OpenCode agents'
             - 'Autospec config now supports a top-level `model` value and `AUTOSPEC_MODEL` for workflow model defaults'
