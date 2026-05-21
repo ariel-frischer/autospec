@@ -185,7 +185,7 @@ func TestConfigShowCmd_ModelVisibility(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Contains(t, buf.String(), tt.want)
-			assert.Contains(t, buf.String(), "opencode")
+			assert.NotContains(t, buf.String(), "opencode_model")
 		})
 	}
 }
