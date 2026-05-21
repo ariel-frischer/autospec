@@ -129,6 +129,7 @@ func TestKnownKeysComplete(t *testing.T) {
 
 	// Verify all expected keys are present
 	expectedKeys := []string{
+		"model",
 		"notifications.enabled",
 		"notifications.type",
 		"notifications.on_command_complete",

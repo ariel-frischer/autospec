@@ -7,9 +7,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/workflow"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,6 +68,61 @@ func TestRunImplementMethodConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWorkflowCommandModelOverrideReachesExecutorConfig(t *testing.T) {
+	tests := map[string]struct {
+		cmd   *cobra.Command
+		agent string
+	}{
+		"single stage command applies cli model": {
+			cmd:   findRootCommandForTest(t, "specify "),
+			agent: "claude",
+		},
+		"orchestration command applies cli model": {
+			cmd:   runCmd,
+			agent: "codex",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			flag := tt.cmd.Flags().Lookup(shared.ModelFlagName)
+			require.NotNil(t, flag)
+			oldValue := flag.Value.String()
+			require.NoError(t, flag.Value.Set("cli-model"))
+			t.Cleanup(func() {
+				_ = flag.Value.Set(oldValue)
+			})
+
+			cfg := &config.Configuration{
+				AgentPreset: tt.agent,
+				Model:       "configured-model",
+			}
+
+			shared.ApplyModelOverride(tt.cmd, cfg)
+			orch := workflow.NewWorkflowOrchestrator(cfg)
+			selection := workflow.ResolveWorkflowModelSelection(orch.Executor.Config, workflow.ModelSelectionInput{
+				Agent: tt.agent,
+				Stage: workflow.StagePlan,
+			})
+
+			require.Equal(t, "configured-model", orch.Executor.Config.Model)
+			require.Equal(t, "cli-model", selection.Value)
+			require.Equal(t, workflow.ModelSourceCLI, selection.Source)
+		})
+	}
+}
+
+func findRootCommandForTest(t *testing.T, usePrefix string) *cobra.Command {
+	t.Helper()
+	for _, cmd := range rootCmd.Commands() {
+		if strings.HasPrefix(cmd.Use, usePrefix) {
+			return cmd
+		}
+	}
+	t.Fatalf("root command %q not found", usePrefix)
+	return nil
 }
 
 // TestRunAndImplementConsistency verifies that both 'autospec run -i' and 'autospec implement'

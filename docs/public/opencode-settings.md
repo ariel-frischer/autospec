@@ -214,34 +214,20 @@ Models are specified as `provider/model-id`:
 
 ### Setting Default Model
 
-For autospec workflow commands, set the OpenCode model in autospec config:
+For autospec workflow commands, use the generic workflow model setting:
 
 ```yaml
 agent_preset: opencode
-opencode:
-  model: anthropic/claude-opus-4-5-20251101
+model: anthropic/claude-opus-4-5-20251101
 ```
 
-You can also set stage-specific models:
-
-```yaml
-agent_preset: opencode
-opencode:
-  model: anthropic/claude-sonnet-4-20250514
-  models:
-    specify: anthropic/claude-sonnet-4-20250514
-    plan: anthropic/claude-opus-4-5-latest
-    tasks: anthropic/claude-sonnet-4-20250514
-    implement: anthropic/claude-opus-4-5-20251101
-```
-
-For one-off runs, use the CLI flag:
+For one-off runs, use the generic CLI flag:
 
 ```bash
-autospec implement --agent opencode --opencode-model anthropic/claude-opus-4-5-latest
+autospec implement --agent opencode --model anthropic/claude-opus-4-5-latest
 ```
 
-Autospec passes this as `opencode run <prompt> --model <model>`. The CLI flag overrides autospec config for that invocation.
+Autospec passes the selected model as `opencode run <prompt> --model <model>`. Precedence is CLI `--model`, then top-level config `model`, then OpenCode's own CLI default.
 
 OpenCode's own config can still define a default for non-autospec usage:
 

@@ -1,0 +1,208 @@
+plan:
+  branch: "agent/autospec-4kp-unify-model-flag"
+  created: "2026-05-20"
+  spec_path: "specs/129-unify-model-selection/spec.yaml"
+
+summary: |
+  Implement unified workflow model selection with exactly one autospec model
+  flag and one autospec model config key. Workflow commands register --model,
+  config exposes top-level model / AUTOSPEC_MODEL, and workflow execution
+  resolves that value for Claude, Codex, and OpenCode through the existing
+  ExecOptions.ExtraArgs path. Agent-specific autospec model flags and config
+  keys are removed.
+
+technical_context:
+  language: "Go 1.25.1 module; local toolchain go1.26.1"
+  framework: "Cobra CLI v1.10.1"
+  primary_dependencies:
+    - name: "github.com/spf13/cobra"
+      version: "v1.10.1"
+      purpose: "Workflow command flag registration and help text"
+    - name: "github.com/knadh/koanf/v2"
+      version: "v2.3.0"
+      purpose: "Hierarchical configuration loading for the generic model key"
+    - name: "github.com/stretchr/testify"
+      version: "v1.11.1"
+      purpose: "Existing assertion library for deterministic Go tests"
+  storage: "YAML configuration files loaded by koanf; no persistent runtime storage changes"
+  testing:
+    framework: "Go testing with testify"
+    approach: "Map-based table unit tests for flag registration, config loading, model precedence, and generated agent arguments; no real agent CLI or external API calls in automated tests"
+  target_platform: "Linux, macOS, Windows"
+  project_type: "cli"
+  performance_goals: "Model resolution is pure in-memory string selection and avoids validation/config performance paths."
+  constraints:
+    - "Expose exactly one model CLI flag: --model."
+    - "Expose exactly one autospec workflow model config key: model."
+    - "Do not validate provider-specific model availability against remote services."
+    - "Keep model selection scoped to workflow agent execution."
+    - "Functions introduced or materially changed should stay under 40 lines where practical."
+    - "Tests for model selection behavior must use map[string]struct table definitions."
+
+constitution_check:
+  constitution_path: ".autospec/constitution.yaml"
+  gates:
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "Spec, plan, and tasks are validated with autospec artifact."
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Implementation includes table-driven tests for model resolution, command flags, config loading, and agent argument output."
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Resolution is pure in-memory string selection during workflow execution."
+    - name: "Command Template Independence"
+      status: "PASS"
+      notes: "No command template behavior is required for model selection."
+
+research_findings:
+  decisions:
+    - topic: "Generic model configuration shape"
+      decision: "Add top-level config model with koanf key model and transient CLI override ModelOverride on Configuration."
+      rationale: "A top-level key matches the requested generic setting and avoids agent-specific config."
+      alternatives_considered:
+        - "workflow.model, which introduces a new grouping not used by existing workflow settings."
+        - "Agent-specific config, which violates the one-model-control requirement."
+    - topic: "Model precedence"
+      decision: "--model > model config > agent CLI default."
+      rationale: "This is simple, predictable, and identical across Claude, Codex, and OpenCode."
+      alternatives_considered:
+        - "Agent-specific model flags or config, rejected for unnecessary surface area."
+    - topic: "Execution layer ownership"
+      decision: "Centralize model resolution in internal/workflow and keep CLI commands limited to flag registration and config override application."
+      rationale: "Executor.extraArgsForStage already owns stage-specific agent arguments."
+    - topic: "Agent CLI argument form"
+      decision: "Use --model for Claude, Codex, and OpenCode through ExtraArgs."
+      rationale: "The supported CLIs expose --model and BaseAgent command builders already append ExtraArgs."
+
+data_model:
+  entities:
+    - name: "WorkflowModelSelection"
+      description: "Resolved model choice for a workflow stage and agent execution."
+      fields:
+        - name: "value"
+          type: "string"
+          description: "Model identifier passed to the active agent CLI."
+          constraints: "Optional; empty preserves the agent's default model behavior."
+        - name: "source"
+          type: "string"
+          description: "Source of the selected model for tests and maintainability."
+          constraints: "One of cli_model, config_model, default."
+        - name: "stage"
+          type: "workflow.Stage"
+          description: "Workflow stage being executed."
+        - name: "agent"
+          type: "string"
+          description: "Active agent name."
+    - name: "Configuration"
+      description: "Autospec runtime configuration after defaults, files, environment, and CLI flags are applied."
+      fields:
+        - name: "Model"
+          type: "string"
+          description: "Generic default workflow model."
+          constraints: "Optional top-level koanf key model."
+        - name: "ModelOverride"
+          type: "string"
+          description: "Transient generic --model value for one command run."
+          constraints: "Not persisted; command-line value has highest precedence."
+
+api_contracts:
+  endpoints: []
+  cli_contracts:
+    - command: "autospec specify|plan|tasks|implement|run|prep|constitution|clarify|checklist|analyze"
+      description: "Workflow commands accept --model as the one-shot model override for supported agents."
+      request:
+        flags:
+          - name: "--model"
+            type: "string"
+            required: false
+            description: "Generic model override for this workflow run."
+      response:
+        success: "The active agent process receives --model <value> when a resolved model value exists."
+        errors: "Unknown agents or invalid existing command arguments continue to fail through current CLI validation paths."
+
+project_structure:
+  documentation:
+    - path: "docs/public/reference.md"
+      description: "Document the generic model config key and --model workflow flag."
+    - path: "docs/public/agents.md"
+      description: "Update agent model configuration guidance for Claude, Codex, and OpenCode."
+    - path: "docs/public/opencode-settings.md"
+      description: "Document that OpenCode workflow model selection uses the generic --model/model surface."
+    - path: "internal/changelog/changelog.yaml"
+      description: "Add user-facing changelog bullets for unified model selection."
+  source_code:
+    - path: "internal/config/config.go"
+      description: "Add generic model fields to Configuration."
+    - path: "internal/config/schema.go"
+      description: "Register the generic model config key in KnownKeys and remove agent-specific model keys."
+    - path: "internal/config/defaults.go"
+      description: "Add the generic model key to default YAML and runtime defaults."
+    - path: "internal/cli/shared/agent.go"
+      description: "Add generic model flag constants/helpers and apply CLI model overrides consistently."
+    - path: "internal/cli/**/*.go"
+      description: "Register --model on workflow commands and remove agent-specific model flags."
+    - path: "internal/workflow/model_selection.go"
+      description: "Focused resolver for model precedence and agent applicability."
+    - path: "internal/workflow/executor.go"
+      description: "Use the resolver in extraArgsForStage for Claude, Codex, and OpenCode."
+  tests:
+    - path: "internal/config/config_test.go"
+      description: "Config loading tests for top-level model from YAML and AUTOSPEC_MODEL."
+    - path: "internal/cli/stages/flags_test.go"
+      description: "Workflow stage flag registration tests for --model."
+    - path: "internal/cli/shared/agent_test.go"
+      description: "Override application tests."
+    - path: "internal/workflow/model_selection_test.go"
+      description: "Table-driven precedence and agent applicability tests."
+    - path: "internal/workflow/executor_test.go"
+      description: "Extra argument output tests for Claude, Codex, and OpenCode without invoking real agents."
+
+implementation_phases:
+  - phase: 1
+    name: "Configuration and CLI Surface"
+    goal: "Expose exactly one model setting and one-shot flag."
+    deliverables:
+      - "Configuration.Model and Configuration.ModelOverride fields."
+      - "model key in KnownKeys, default template, and runtime defaults."
+      - "Shared AddModelFlag and ApplyModelOverride helpers."
+      - "--model registration and override application in workflow commands."
+  - phase: 2
+    name: "Workflow Resolution"
+    goal: "Route all supported workflow agent model selection through one resolver."
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "Workflow model resolver with --model > model config > default precedence."
+      - "Executor.extraArgsForStage updated to apply resolved --model arguments to Claude, Codex, and OpenCode."
+  - phase: 3
+    name: "Docs and Polish"
+    goal: "Make the simplified model selection path discoverable and validated."
+    dependencies:
+      - "Phase 2"
+    deliverables:
+      - "Public docs updated with generic --model and model config."
+      - "Manual testing plan at .dev/tasks/129-unify-model-selection.md with report summaries section."
+      - "User-facing changelog entries in internal/changelog/changelog.yaml and regenerated CHANGELOG.md via make changelog-sync."
+      - "Verification with make test, make fmt, make lint, and make build."
+
+risks:
+  - id: "RISK-001"
+    risk: "Codex or Claude CLI model flag behavior may differ across installed versions."
+    likelihood: "medium"
+    impact: "medium"
+    mitigation: "Use --model because local CLI help supports it, keep automated tests focused on constructed argv, and document manual smoke tests for installed agents."
+  - id: "RISK-002"
+    risk: "Adding a top-level model key could conflict with future non-workflow agent configuration expectations."
+    likelihood: "low"
+    impact: "medium"
+    mitigation: "Document the key as workflow-scoped and keep application limited to workflow Executor.extraArgsForStage."
+
+open_questions: []
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-05-20T22:03:24Z"
+  artifact_type: "plan"

@@ -14,8 +14,8 @@ import (
 // AgentFlagName is the flag name for agent override.
 const AgentFlagName = "agent"
 
-// OpenCodeModelFlagName is the flag name for one-shot OpenCode model overrides.
-const OpenCodeModelFlagName = "opencode-model"
+// ModelFlagName is the flag name for one-shot workflow model overrides.
+const ModelFlagName = "model"
 
 // availableAgentNames returns agent names available for the current build type.
 // Production builds only show production agents; dev builds show all registered agents.
@@ -41,18 +41,18 @@ func AddAgentFlag(cmd *cobra.Command) {
 	}
 }
 
-// AddOpenCodeModelFlag adds the --opencode-model flag to a command.
-func AddOpenCodeModelFlag(cmd *cobra.Command) {
-	cmd.Flags().String(OpenCodeModelFlagName, "", "Use an OpenCode model for this workflow run (e.g., anthropic/claude-opus-4-5-latest)")
+// AddModelFlag adds the --model flag to a command.
+func AddModelFlag(cmd *cobra.Command) {
+	cmd.Flags().String(ModelFlagName, "", "Use a model for this workflow run")
 }
 
-// ApplyOpenCodeModelOverride applies the --opencode-model flag as a one-run override.
-func ApplyOpenCodeModelOverride(cmd *cobra.Command, cfg *config.Configuration) {
-	model, _ := cmd.Flags().GetString(OpenCodeModelFlagName)
+// ApplyModelOverride applies the --model flag as a one-run override.
+func ApplyModelOverride(cmd *cobra.Command, cfg *config.Configuration) {
+	model, _ := cmd.Flags().GetString(ModelFlagName)
 	if model == "" {
 		return
 	}
-	cfg.OpenCode.ModelOverride = model
+	cfg.ModelOverride = model
 }
 
 // ResolveAgent resolves the agent to use based on CLI flag and config.

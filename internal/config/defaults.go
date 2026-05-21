@@ -10,18 +10,8 @@ func GetDefaultConfigTemplate() string {
 
 # Agent settings
 agent_preset: ""                      # Built-in agent: claude | codex | opencode
+model: ""                             # Default model for workflow agent execution
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
-opencode:
-  model: ""                           # Default OpenCode model for workflow stages
-  models:                             # Per-stage OpenCode model overrides
-    specify: ""
-    plan: ""
-    tasks: ""
-    implement: ""
-    constitution: ""
-    clarify: ""
-    checklist: ""
-    analyze: ""
 
 # Workflow settings
 max_retries: 0                        # Max retry attempts per stage (0-10)
@@ -98,21 +88,9 @@ verification:
 func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
 		// Agent configuration
-		"agent_preset":     "",
-		"use_subscription": true, // Protect users from accidental API charges
-		"opencode": map[string]interface{}{
-			"model": "",
-			"models": map[string]interface{}{
-				"specify":      "",
-				"plan":         "",
-				"tasks":        "",
-				"implement":    "",
-				"constitution": "",
-				"clarify":      "",
-				"checklist":    "",
-				"analyze":      "",
-			},
-		},
+		"agent_preset":       "",
+		"model":              "",
+		"use_subscription":   true, // Protect users from accidental API charges
 		"max_retries":        0,
 		"specs_dir":          "./specs",
 		"state_dir":          "~/.autospec/state",

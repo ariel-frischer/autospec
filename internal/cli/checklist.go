@@ -56,7 +56,7 @@ Prerequisites:
 			clierrors.PrintError(cliErr)
 			return cliErr
 		}
-		shared.ApplyOpenCodeModelOverride(cmd, cfg)
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Override skip-preflight from flag if set
 		if cmd.Flags().Changed("skip-preflight") {
@@ -123,5 +123,5 @@ func init() {
 
 	// Command-specific flags
 	checklistCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (overrides config when set)")
-	shared.AddOpenCodeModelFlag(checklistCmd)
+	shared.AddModelFlag(checklistCmd)
 }
