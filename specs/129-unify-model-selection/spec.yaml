@@ -1,0 +1,152 @@
+feature:
+  branch: "129-unify-model-selection"
+  created: "2026-05-20"
+  status: "Draft"
+  input: "Unify workflow model selection so one --model flag and one generic model config work for Claude, Codex, and OpenCode agents."
+
+user_stories:
+  - id: "US-001"
+    title: "Use one model flag across workflow agents"
+    priority: "P1"
+    as_a: "workflow user"
+    i_want: "to choose the AI model with one generic --model flag regardless of the selected agent"
+    so_that: "I do not need to remember agent-specific flags for common workflow commands"
+    why_this_priority: "A single model selection path is the core user-facing behavior requested for the feature."
+    independent_test: "Run representative workflow commands for Claude, Codex, and OpenCode with --model and verify each command applies the selected model to the configured agent."
+    acceptance_scenarios:
+      - given: "a workflow command supports agent execution"
+        when: "the user runs the command with --model set"
+        then: "the workflow passes that model to the active Claude, Codex, or OpenCode agent session"
+
+  - id: "US-002"
+    title: "Configure one generic workflow model"
+    priority: "P1"
+    as_a: "project maintainer"
+    i_want: "to set a generic model value in configuration"
+    so_that: "team workflows can share one default model setting across supported agents"
+    why_this_priority: "Generic configuration is required to make unified model selection persistent and not only command-line driven."
+    independent_test: "Configure a generic model without command-line model flags, run workflows for each supported agent, and verify the configured model is selected."
+    acceptance_scenarios:
+      - given: "a project has a generic workflow model configured"
+        when: "a workflow command runs without --model"
+        then: "the workflow uses the generic configured model for the active agent"
+
+  - id: "US-003"
+    title: "Remove agent-specific model controls"
+    priority: "P1"
+    as_a: "workflow user"
+    i_want: "autospec to expose only one model flag and one model config key"
+    so_that: "model selection remains simple and predictable"
+    why_this_priority: "The final requirement explicitly rejects agent-specific --*-model flags and model config namespaces."
+    independent_test: "Inspect workflow help and config keys to verify only --model and top-level model are exposed for autospec model selection."
+    acceptance_scenarios:
+      - given: "a workflow command help page is shown"
+        when: "the user searches for model flags"
+        then: "only --model is exposed"
+      - given: "autospec config keys are listed"
+        when: "the user searches for model settings"
+        then: "only top-level model is exposed for workflow model selection"
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST provide a generic --model option for workflow commands that launch Claude, Codex, or OpenCode agents."
+      acceptance_criteria: "Each supported workflow command accepts --model and applies it to the active Claude, Codex, or OpenCode agent."
+    - id: "FR-002"
+      description: "MUST provide one top-level model configuration setting for Claude, Codex, and OpenCode workflow execution."
+      acceptance_criteria: "When no model flag is provided, workflow execution uses the generic configured model for each supported agent."
+    - id: "FR-003"
+      description: "MUST define precedence so command-line model selection overrides configured model defaults."
+      acceptance_criteria: "When both --model and configured model are present, --model is used."
+    - id: "FR-004"
+      description: "MUST remove agent-specific autospec model flags and config keys."
+      acceptance_criteria: "No workflow command exposes agent-specific model flags, and config schema/defaults do not expose agent-specific model keys."
+    - id: "FR-005"
+      description: "MUST expose the generic model setting in user-facing configuration references and command help where model selection is documented."
+      acceptance_criteria: "Users can discover the generic model configuration and --model flag through CLI help and public docs."
+    - id: "FR-006"
+      description: "MUST keep model selection scoped to workflow agent execution and avoid changing unrelated agent configuration behavior."
+      acceptance_criteria: "Non-workflow commands and unrelated agent settings retain current behavior."
+    - id: "FR-007"
+      description: "MUST require make test && make fmt && make lint && make build to all exit 0 before the feature is considered complete."
+      acceptance_criteria: "The final implementation report includes validation results for make test, make fmt, make lint, and make build."
+  non_functional:
+    - id: "NFR-001"
+      category: "usability"
+      description: "Model selection must be understandable from command help and configuration documentation without agent-specific model internals."
+      measurable_target: "A user can identify --model and top-level model from docs/help in under 2 minutes."
+    - id: "NFR-002"
+      category: "code_quality"
+      description: "Functions introduced or materially changed for this feature must stay under 40 lines where practical."
+      measurable_target: "Code review confirms new or changed functions are under 40 lines unless a clear exception is documented."
+    - id: "NFR-003"
+      category: "code_quality"
+      description: "Errors introduced for model selection must be wrapped with context."
+      measurable_target: "New error returns use contextual wrapping such as fmt.Errorf with %w, except in pass-through helpers and tests."
+    - id: "NFR-004"
+      category: "code_quality"
+      description: "Tests for model selection behavior must use map-based table tests."
+      measurable_target: "Relevant new tests use map[string]struct table definitions."
+    - id: "NFR-005"
+      category: "code_quality"
+      description: "New abstractions must accept interfaces and return concrete types when that reduces coupling."
+      measurable_target: "Review of shared model-selection code confirms dependency boundaries follow this convention where applicable."
+
+success_criteria:
+  measurable_outcomes:
+    - id: "SC-001"
+      description: "Users can select a workflow model for any supported agent using one flag."
+      metric: "Supported agent coverage"
+      target: "Claude, Codex, and OpenCode workflow executions each honor --model in validation scenarios."
+    - id: "SC-002"
+      description: "Users can configure one default workflow model."
+      metric: "Config coverage"
+      target: "Top-level model and AUTOSPEC_MODEL load into Configuration.Model."
+    - id: "SC-003"
+      description: "No agent-specific autospec model controls remain."
+      metric: "Surface area audit"
+      target: "No agent-specific autospec model flags or config keys remain in CLI help, config schema, docs, or code."
+
+key_entities:
+  - name: "Workflow Model Selection"
+    description: "The user-visible choice of which model an agent-backed workflow should use."
+    attributes:
+      - "generic command-line model value"
+      - "generic configured model value"
+      - "precedence source"
+  - name: "Supported Workflow Agent"
+    description: "An agent implementation that can execute autospec workflow stages."
+    attributes:
+      - "Claude"
+      - "Codex"
+      - "OpenCode"
+
+edge_cases:
+  - scenario: "A generic model is provided for an agent whose provider does not recognize it."
+    expected_behavior: "The selected agent CLI reports its normal model error; autospec does not silently rewrite the model."
+  - scenario: "No model is provided by flag or configuration."
+    expected_behavior: "The workflow keeps the existing default model behavior for the selected agent."
+
+assumptions:
+  - "The supported workflow agents for this feature are Claude, Codex, and OpenCode."
+  - "The generic --model flag is the only user-facing command-line model selector."
+  - "The top-level model config is the only autospec config key for workflow model selection."
+
+constraints:
+  - "Do not add agent-specific --*-model flags."
+  - "Do not add agent-specific model config namespaces."
+  - "The feature must not validate provider-specific model availability against remote services."
+  - "The feature must not change non-model workflow settings."
+
+out_of_scope:
+  - "Adding support for new agent providers beyond Claude, Codex, and OpenCode."
+  - "Validating provider-specific model availability against remote services."
+  - "Adding per-agent or per-stage model defaults."
+  - "Changing non-model workflow settings."
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-05-20T22:02:17Z"
+  artifact_type: "spec"

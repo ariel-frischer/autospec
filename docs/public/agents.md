@@ -420,35 +420,24 @@ Key differences:
 
 ### Model Configuration
 
-OpenCode supports multiple AI providers. For the best experience with Anthropic models, use OAuth authentication with your Claude Max/Pro subscription instead of API keys.
-
-Autospec can pass an OpenCode model directly when it launches workflow stages:
+Autospec workflow commands can pass a model to supported agents when they launch stages. Use the generic `--model` flag for one run:
 
 ```bash
-autospec plan --agent opencode --opencode-model anthropic/claude-opus-4-5-latest
-autospec run -a "Add billing exports" --agent opencode --opencode-model anthropic/claude-sonnet-4-20250514
+autospec plan --agent claude --model claude-opus-4-5-20251101
+autospec run -a "Add billing exports" --agent codex --model gpt-5.4
+autospec run -a "Add billing exports" --agent opencode --model anthropic/claude-sonnet-4-20250514
 ```
 
-Persist a default model in autospec config:
+Persist a default workflow model in autospec config:
 
 ```yaml
-agent_preset: opencode
-opencode:
-  model: anthropic/claude-sonnet-4-20250514
+agent_preset: codex
+model: gpt-5.4
 ```
 
-Use per-stage defaults when different stages need different models:
+Model selection is scoped to autospec workflow agent execution. It does not rewrite Claude, Codex, or OpenCode's own global defaults for non-autospec usage.
 
-```yaml
-agent_preset: opencode
-opencode:
-  model: anthropic/claude-sonnet-4-20250514
-  models:
-    plan: anthropic/claude-opus-4-5-latest
-    implement: anthropic/claude-opus-4-5-20251101
-```
-
-`--opencode-model` overrides `opencode.model` and `opencode.models.<stage>` for that command invocation. These autospec settings are separate from OpenCode's own `opencode.json` defaults.
+OpenCode also supports multiple AI providers. For the best experience with Anthropic models, use OAuth authentication with your Claude Max/Pro subscription instead of API keys.
 
 #### Authentication Setup
 

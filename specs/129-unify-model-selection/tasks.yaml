@@ -1,0 +1,187 @@
+tasks:
+  branch: "agent/autospec-4kp-unify-model-flag"
+  created: "2026-05-20"
+  spec_path: "specs/129-unify-model-selection/spec.yaml"
+  plan_path: "specs/129-unify-model-selection/plan.yaml"
+summary:
+  total_tasks: 15
+  total_phases: 4
+  parallel_opportunities: 4
+  estimated_complexity: "medium"
+phases:
+  - number: 1
+    title: "Generic model configuration"
+    purpose: "Expose one top-level model setting and environment variable."
+    tasks:
+      - id: "T001"
+        title: "Add Configuration.Model and transient ModelOverride"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/config/config.go"
+        dependencies: []
+      - id: "T002"
+        title: "Add model to config schema/defaults and remove agent-specific model config keys"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/config/schema.go"
+        dependencies: ["T001"]
+      - id: "T003"
+        title: "Add config tests for model, AUTOSPEC_MODEL, defaults, and schema visibility"
+        status: "Completed"
+        type: "test"
+        parallel: true
+        story_id: "US-002"
+        file_path: "internal/config/config_test.go"
+        dependencies: ["T001", "T002"]
+  - number: 2
+    title: "Single CLI model flag"
+    purpose: "Expose only --model on workflow commands."
+    tasks:
+      - id: "T004"
+        title: "Add shared AddModelFlag and ApplyModelOverride helpers"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/shared/agent.go"
+        dependencies: []
+      - id: "T005"
+        title: "Register and apply --model across workflow commands"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cli/run.go"
+        dependencies: ["T004"]
+      - id: "T006"
+        title: "Remove agent-specific model flag helpers and workflow command registrations"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/cli/shared/agent.go"
+        dependencies: ["T004", "T005"]
+      - id: "T007"
+        title: "Add command flag and override tests for the generic --model flag"
+        status: "Completed"
+        type: "test"
+        parallel: true
+        story_id: "US-001"
+        file_path: "internal/cli/stages/flags_test.go"
+        dependencies: ["T004", "T005", "T006"]
+  - number: 3
+    title: "Workflow model resolution"
+    purpose: "Resolve and pass model values to Claude, Codex, and OpenCode through one path."
+    tasks:
+      - id: "T008"
+        title: "Add workflow model resolver with --model > model config > default precedence"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/workflow/model_selection.go"
+        dependencies: ["T001"]
+      - id: "T009"
+        title: "Wire executor extra args through the generic resolver"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/workflow/executor.go"
+        dependencies: ["T008"]
+      - id: "T010"
+        title: "Add resolver and executor tests for Claude, Codex, and OpenCode"
+        status: "Completed"
+        type: "test"
+        parallel: true
+        story_id: "US-001"
+        file_path: "internal/workflow/model_selection_test.go"
+        dependencies: ["T008", "T009"]
+      - id: "T011"
+        title: "Remove OpenCode-specific model resolver helpers and tests"
+        status: "Completed"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/workflow/opencode_model.go"
+        dependencies: ["T008", "T009", "T010"]
+  - number: 4
+    title: "Docs, changelog, and validation"
+    purpose: "Document the single model surface and run final gates."
+    tasks:
+      - id: "T012"
+        title: "Update public docs for generic --model and top-level model"
+        status: "Completed"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "docs/public/reference.md"
+        dependencies: ["T001", "T005", "T006"]
+      - id: "T013"
+        title: "Create manual testing plan"
+        status: "Completed"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: ".dev/tasks/129-unify-model-selection.md"
+        dependencies: ["T012"]
+      - id: "T014"
+        title: "Update changelog and sync generated markdown"
+        status: "Completed"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "internal/changelog/changelog.yaml"
+        dependencies: ["T012"]
+      - id: "T015"
+        title: "Run final validation gates"
+        status: "Completed"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "Makefile"
+        dependencies: ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T009", "T010", "T011", "T012", "T013", "T014"]
+dependencies:
+  user_story_order:
+    - story_id: "US-001"
+      depends_on: []
+      blocks: ["US-002", "US-003"]
+    - story_id: "US-002"
+      depends_on: ["US-001"]
+      blocks: []
+    - story_id: "US-003"
+      depends_on: ["US-001"]
+      blocks: []
+  phase_order:
+    - phase: 1
+      blocks: [2, 3]
+    - phase: 2
+      blocks: [3, 4]
+    - phase: 3
+      blocks: [4]
+    - phase: 4
+      blocks: []
+parallel_execution:
+  - phase: 2
+    parallel_groups:
+      - tasks: ["T007"]
+        rationale: "Flag tests can be updated after shared helper and command wiring are in place."
+  - phase: 4
+    parallel_groups:
+      - tasks: ["T012", "T013", "T014"]
+        rationale: "Docs, manual test plan, and changelog touch separate files."
+implementation_strategy:
+  mvp_scope:
+    phases: [1, 2, 3]
+    description: "One model config, one model flag, and one workflow resolver."
+    validation: "Run focused config, CLI, and workflow tests."
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-05-20T22:06:43Z"
+  artifact_type: "tasks"

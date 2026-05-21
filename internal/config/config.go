@@ -66,6 +66,8 @@ type Configuration struct {
 	MaxRetries        int    `koanf:"max_retries"`
 	SpecsDir          string `koanf:"specs_dir"`
 	StateDir          string `koanf:"state_dir"`
+	Model             string `koanf:"model"`
+	ModelOverride     string `koanf:"-"`
 	SkipPreflight     bool   `koanf:"skip_preflight"`
 	Timeout           int    `koanf:"timeout"`
 	SkipConfirmations bool   `koanf:"skip_confirmations"` // Skip confirmation prompts (can also be set via AUTOSPEC_YES env var)
@@ -137,39 +139,11 @@ type Configuration struct {
 	// Environment variable support via AUTOSPEC_CODEX_OUTPUT_* prefix.
 	CodexOutput CodexOutputConfig `koanf:"codex_output"`
 
-	// OpenCode configures OpenCode-specific workflow execution settings.
-	// Environment variable support via AUTOSPEC_OPENCODE_* prefix.
-	OpenCode OpenCodeConfig `koanf:"opencode"`
-
 	// Verification configures verification depth and feature toggles.
 	// Controls verification level (basic, enhanced, full), individual feature toggles,
 	// and quality thresholds for mutation testing, coverage, and complexity.
 	// Environment variable support via AUTOSPEC_VERIFICATION_* prefix.
 	Verification verification.VerificationConfig `koanf:"verification"`
-}
-
-// OpenCodeConfig configures OpenCode-specific workflow execution behavior.
-type OpenCodeConfig struct {
-	// Model is the default OpenCode model for all autospec workflow stages.
-	Model string `koanf:"model"`
-
-	// ModelOverride is a transient CLI override applied to all stages for one run.
-	ModelOverride string `koanf:"-"`
-
-	// Models contains stage-specific OpenCode model overrides.
-	Models OpenCodeStageModels `koanf:"models"`
-}
-
-// OpenCodeStageModels contains per-stage OpenCode model defaults.
-type OpenCodeStageModels struct {
-	Specify      string `koanf:"specify"`
-	Plan         string `koanf:"plan"`
-	Tasks        string `koanf:"tasks"`
-	Implement    string `koanf:"implement"`
-	Constitution string `koanf:"constitution"`
-	Clarify      string `koanf:"clarify"`
-	Checklist    string `koanf:"checklist"`
-	Analyze      string `koanf:"analyze"`
 }
 
 // LoadOptions configures how configuration is loaded
@@ -441,18 +415,12 @@ func fileExists(path string) bool {
 //   - AUTOSPEC_NOTIFICATIONS_ENABLED -> notifications.enabled
 //   - AUTOSPEC_WORKTREE_BASE_DIR -> worktree.base_dir
 //   - AUTOSPEC_CUSTOM_AGENT_COMMAND -> custom_agent.command
-//   - AUTOSPEC_OPENCODE_MODEL -> opencode.model
-//   - AUTOSPEC_OPENCODE_MODELS_PLAN -> opencode.models.plan
 func envTransform(s string) string {
 	key := strings.ToLower(strings.TrimPrefix(s, "AUTOSPEC_"))
 
-	if strings.HasPrefix(key, "opencode_models_") {
-		return "opencode.models." + key[len("opencode_models_"):]
-	}
-
 	// Known nested config prefixes that need dot notation.
 	// Order matters: longer prefixes must come first to avoid partial matches.
-	nestedPrefixes := []string{"custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "opencode_", "cclean_"}
+	nestedPrefixes := []string{"custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_"}
 	for _, prefix := range nestedPrefixes {
 		if strings.HasPrefix(key, prefix) {
 			// Replace the trailing underscore of the prefix with a dot

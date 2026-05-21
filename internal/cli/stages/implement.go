@@ -143,7 +143,7 @@ The --tasks mode provides maximum context isolation:
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
-		shared.ApplyOpenCodeModelOverride(cmd, cfg)
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Resolve agent to get its name for the security notice
 		agent, err := shared.ResolveAgent(cmd, cfg)
@@ -349,7 +349,7 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(implementCmd)
-	shared.AddOpenCodeModelFlag(implementCmd)
+	shared.AddModelFlag(implementCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(implementCmd)

@@ -887,14 +887,6 @@ func TestEnvTransform(t *testing.T) {
 			input:    "AUTOSPEC_CUSTOM_AGENT_COMMAND",
 			expected: "custom_agent.command",
 		},
-		"nested opencode model": {
-			input:    "AUTOSPEC_OPENCODE_MODEL",
-			expected: "opencode.model",
-		},
-		"nested opencode stage model": {
-			input:    "AUTOSPEC_OPENCODE_MODELS_PLAN",
-			expected: "opencode.models.plan",
-		},
 	}
 
 	for name, tt := range tests {
@@ -1033,50 +1025,51 @@ state_dir: "~/.autospec/state"
 	assert.Equal(t, "gemini", agent.Name())
 }
 
-func TestLoad_OpenCodeModelConfigFromYAML(t *testing.T) {
-	t.Parallel()
+func TestLoad_GenericModelConfig(t *testing.T) {
+	tests := map[string]struct {
+		configContent string
+		env           map[string]string
+		want          string
+	}{
+		"yaml model": {
+			configContent: "model: claude-sonnet-4-5\n",
+			want:          "claude-sonnet-4-5",
+		},
+		"env model": {
+			env:  map[string]string{"AUTOSPEC_MODEL": "gpt-5.4-codex"},
+			want: "gpt-5.4-codex",
+		},
+		"env model overrides yaml model": {
+			configContent: "model: claude-sonnet-4-5\n",
+			env:           map[string]string{"AUTOSPEC_MODEL": "gpt-5.4-codex"},
+			want:          "gpt-5.4-codex",
+		},
+		"default empty model": {
+			want: "",
+		},
+	}
 
-	tmpDir := t.TempDir()
-	projectConfigPath := filepath.Join(tmpDir, "project-config.yml")
-	userConfigPath := filepath.Join(tmpDir, "user-config.yml")
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			t.Setenv("HOME", tmpDir)
+			t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+			for key, value := range tt.env {
+				t.Setenv(key, value)
+			}
 
-	err := os.WriteFile(userConfigPath, []byte(""), 0o644)
-	require.NoError(t, err)
+			projectConfigPath := filepath.Join(tmpDir, "project-config.yml")
+			err := os.WriteFile(projectConfigPath, []byte(tt.configContent), 0o644)
+			require.NoError(t, err)
 
-	configContent := `agent_preset: opencode
-opencode:
-  model: anthropic/claude-sonnet-4-20250514
-  models:
-    plan: anthropic/claude-opus-4-5-20251101
-    implement: anthropic/claude-opus-4-5-latest
-`
-	err = os.WriteFile(projectConfigPath, []byte(configContent), 0o644)
-	require.NoError(t, err)
-
-	cfg, err := LoadWithOptions(LoadOptions{
-		ProjectConfigPath: projectConfigPath,
-		UserConfigPath:    userConfigPath,
-		SkipWarnings:      true,
-	})
-	require.NoError(t, err)
-
-	assert.Equal(t, "anthropic/claude-sonnet-4-20250514", cfg.OpenCode.Model)
-	assert.Equal(t, "anthropic/claude-opus-4-5-20251101", cfg.OpenCode.Models.Plan)
-	assert.Equal(t, "anthropic/claude-opus-4-5-latest", cfg.OpenCode.Models.Implement)
-}
-
-func TestLoad_OpenCodeModelConfigFromEnv(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("HOME", tmpDir)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
-	t.Setenv("AUTOSPEC_OPENCODE_MODEL", "anthropic/default")
-	t.Setenv("AUTOSPEC_OPENCODE_MODELS_PLAN", "anthropic/plan")
-
-	cfg, err := LoadWithOptions(LoadOptions{SkipWarnings: true})
-	require.NoError(t, err)
-
-	assert.Equal(t, "anthropic/default", cfg.OpenCode.Model)
-	assert.Equal(t, "anthropic/plan", cfg.OpenCode.Models.Plan)
+			cfg, err := LoadWithOptions(LoadOptions{
+				ProjectConfigPath: projectConfigPath,
+				SkipWarnings:      true,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.Model)
+		})
+	}
 }
 
 func TestLoad_CustomAgentFromYAML(t *testing.T) {

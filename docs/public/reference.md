@@ -21,7 +21,7 @@ Execute complete workflow: specify → plan → tasks → implement
 - `--timeout <seconds>`: Command timeout (0=infinite, 1-604800)
 - `--max-retries <count>`: Maximum retry attempts (0-10, default: 0)
 - `--agent <name>`: Override agent for this run (see [CLI Agents](#cli-agents))
-- `--opencode-model <model>`: Override the OpenCode model for this run
+- `--model <model>`: Override the workflow agent model for this run
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
 
@@ -88,7 +88,7 @@ Run selected workflow stages with flexible stage selection
 - `--dry-run`: Preview what stages would run without executing
 - `--max-retries <count>`: Override max retry attempts
 - `--agent <name>`: Override agent for this run
-- `--opencode-model <model>`: Override the OpenCode model for this run
+- `--model <model>`: Override the workflow agent model for this run
 - `--auto-commit` / `--no-auto-commit`: Override auto-commit config
 
 **Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
@@ -1088,36 +1088,21 @@ use_subscription: false
 
 **Note**: This setting protects users from accidentally burning API credits when they have `ANTHROPIC_API_KEY` set in their shell for other purposes. Set to `false` only if you specifically want to use API billing.
 
-### opencode.model
+### model
 
 **Type**: string
 **Default**: `""`
-**Description**: Default OpenCode model passed to autospec workflow stages when `agent_preset: opencode` or `--agent opencode` is active.
+**Description**: Default model passed to autospec workflow stages for supported CLI agents. Applies when the active workflow agent is Claude, Codex, or OpenCode and no `--model` override is provided.
 
 **Example**:
 ```yaml
-agent_preset: opencode
-opencode:
-  model: anthropic/claude-sonnet-4-20250514
+agent_preset: codex
+model: gpt-5.4
 ```
 
-### opencode.models.<stage>
+**Environment**: `AUTOSPEC_MODEL`
 
-**Type**: string
-**Default**: `""`
-**Description**: Stage-specific OpenCode model. Supported stage keys are `specify`, `plan`, `tasks`, `implement`, `constitution`, `clarify`, `checklist`, and `analyze`.
-**Environment**: `AUTOSPEC_OPENCODE_MODELS_<STAGE>` (for example, `AUTOSPEC_OPENCODE_MODELS_PLAN`)
-
-**Example**:
-```yaml
-opencode:
-  model: anthropic/claude-sonnet-4-20250514
-  models:
-    plan: anthropic/claude-opus-4-5-latest
-    implement: anthropic/claude-opus-4-5-20251101
-```
-
-The `--opencode-model` flag overrides both config values for one command invocation.
+For one command invocation, pass `--model <model>`. Precedence is `--model`, then top-level `model`, then the agent CLI default.
 
 ### skip_permissions
 

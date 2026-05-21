@@ -131,7 +131,7 @@ Stages are always executed in canonical order:
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
-		shared.ApplyOpenCodeModelOverride(cmd, cfg)
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Resolve agent to get its name for the security notice
 		agent, err := shared.ResolveAgent(cmd, cfg)
@@ -541,7 +541,7 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(runCmd)
-	shared.AddOpenCodeModelFlag(runCmd)
+	shared.AddModelFlag(runCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(runCmd)

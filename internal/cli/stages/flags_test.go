@@ -6,6 +6,7 @@ import (
 	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAutoCommitFlagsRegistered(t *testing.T) {
@@ -78,22 +79,22 @@ func TestAutoCommitFlagsHelpText(t *testing.T) {
 	}
 }
 
-func TestOpenCodeModelFlagsRegistered(t *testing.T) {
+func TestModelFlagsRegistered(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
 		cmd *cobra.Command
 	}{
-		"specify has opencode model flag": {
+		"specify has model flag": {
 			cmd: specifyCmd,
 		},
-		"plan has opencode model flag": {
+		"plan has model flag": {
 			cmd: planCmd,
 		},
-		"tasks has opencode model flag": {
+		"tasks has model flag": {
 			cmd: tasksCmd,
 		},
-		"implement has opencode model flag": {
+		"implement has model flag": {
 			cmd: implementCmd,
 		},
 	}
@@ -102,10 +103,11 @@ func TestOpenCodeModelFlagsRegistered(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			flag := tt.cmd.Flags().Lookup(shared.OpenCodeModelFlagName)
-			assert.NotNil(t, flag, "opencode model flag should be registered")
+			flag := tt.cmd.Flags().Lookup(shared.ModelFlagName)
+			require.NotNil(t, flag, "model flag should be registered")
 			assert.Equal(t, "string", flag.Value.Type())
-			assert.NotEmpty(t, flag.Usage, "opencode model flag should have help text")
+			assert.Contains(t, flag.Usage, "model")
+			assert.Contains(t, flag.Usage, "workflow")
 		})
 	}
 }

@@ -29,7 +29,7 @@ type Executor struct {
 	TotalStages         int                       // Total stages in workflow
 	Debug               bool                      // Enable debug logging
 	AutoCommit          bool                      // Enable auto-commit instruction injection
-	OpenCode            config.OpenCodeConfig     // OpenCode-specific execution settings
+	Config              config.Configuration      // Workflow execution configuration
 	Progress            *ProgressController       // Optional progress display controller
 	Notify              *NotifyDispatcher         // Optional notification dispatcher
 	ProgressDisplay     *progress.ProgressDisplay // Deprecated: use Progress instead
@@ -91,19 +91,30 @@ func (e *Executor) formatCommand(command string, stage Stage) string {
 }
 
 func (e *Executor) extraArgsForStage(stage Stage) []string {
-	if !e.usesOpenCodeAgent() {
+	agentName := e.workflowAgentName()
+	if agentName == "" {
 		return nil
 	}
-	model := OpenCodeModelForStage(e.OpenCode, stage)
-	if model == "" {
+	selection := ResolveWorkflowModelSelection(e.modelSelectionConfig(), ModelSelectionInput{
+		Agent: agentName,
+		Stage: stage,
+	})
+	if selection.Value == "" {
 		return nil
 	}
-	return []string{"--model", model}
+	return []string{"--model", selection.Value}
 }
 
-func (e *Executor) usesOpenCodeAgent() bool {
+func (e *Executor) workflowAgentName() string {
 	ce, ok := e.Claude.(*ClaudeExecutor)
-	return ok && ce.Agent != nil && ce.Agent.Name() == "opencode"
+	if !ok || ce.Agent == nil {
+		return ""
+	}
+	return ce.Agent.Name()
+}
+
+func (e *Executor) modelSelectionConfig() config.Configuration {
+	return e.Config
 }
 
 // getStageNumber returns the sequential number for a stage (1-based)

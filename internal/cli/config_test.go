@@ -139,6 +139,7 @@ func TestConfigShowCmd_AllFields(t *testing.T) {
 	// All expected fields should be present
 	expectedFields := []string{
 		"agent_preset",
+		"model",
 		"custom_agent",
 		"max_retries",
 		"specs_dir",
@@ -150,6 +151,42 @@ func TestConfigShowCmd_AllFields(t *testing.T) {
 
 	for _, field := range expectedFields {
 		assert.Contains(t, config, field, "Config should contain field: %s", field)
+	}
+}
+
+func TestConfigShowCmd_ModelVisibility(t *testing.T) {
+	cmd := getConfigShowCmd()
+	require.NotNil(t, cmd, "config show command must exist")
+
+	tests := map[string]struct {
+		json bool
+		want string
+	}{
+		"yaml shows generic model": {
+			want: "model:",
+		},
+		"json shows generic model": {
+			json: true,
+			want: `"model"`,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			cmd.SetOut(&buf)
+			require.NoError(t, cmd.Flags().Set("json", "false"))
+			require.NoError(t, cmd.Flags().Set("yaml", "true"))
+			if tt.json {
+				require.NoError(t, cmd.Flags().Set("json", "true"))
+			}
+
+			err := cmd.RunE(cmd, []string{})
+			require.NoError(t, err)
+
+			assert.Contains(t, buf.String(), tt.want)
+			assert.Contains(t, buf.String(), "opencode")
+		})
 	}
 }
 
@@ -176,6 +213,7 @@ func TestConfigCmdLongDescription(t *testing.T) {
 	for _, priority := range priorities {
 		assert.Contains(t, cmd.Long, priority)
 	}
+	assert.Contains(t, cmd.Long, "model key sets the default model for workflow agent execution")
 }
 
 func TestConfigShowCmd_YAMLFormatDefault(t *testing.T) {
