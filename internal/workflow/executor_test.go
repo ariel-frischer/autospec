@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ariel-frischer/autospec/internal/cliagent"
+	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/progress"
 	"github.com/ariel-frischer/autospec/internal/retry"
 	"github.com/stretchr/testify/assert"
@@ -137,6 +138,74 @@ func TestBuildStageInfo(t *testing.T) {
 			assert.Equal(t, tc.totalStages, info.TotalStages)
 			assert.Equal(t, tc.retryCount, info.RetryCount)
 			assert.Equal(t, tc.maxRetries, info.MaxRetries)
+		})
+	}
+}
+
+func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agent interface {
+			cliagent.Agent
+		}
+		cfg  config.Configuration
+		want []string
+	}{
+		"claude receives generic cli model": {
+			agent: cliagent.NewClaude(),
+			cfg:   config.Configuration{ModelOverride: "claude-cli"},
+			want:  []string{"--model", "claude-cli"},
+		},
+		"codex receives generic cli model": {
+			agent: cliagent.NewCodex(),
+			cfg:   config.Configuration{ModelOverride: "codex-cli"},
+			want:  []string{"--model", "codex-cli"},
+		},
+		"opencode receives generic cli model": {
+			agent: cliagent.NewOpenCode(),
+			cfg:   config.Configuration{ModelOverride: "generic-cli"},
+			want:  []string{"--model", "generic-cli"},
+		},
+		"claude receives configured generic model": {
+			agent: cliagent.NewClaude(),
+			cfg:   config.Configuration{Model: "claude-config"},
+			want:  []string{"--model", "claude-config"},
+		},
+		"codex receives configured generic model": {
+			agent: cliagent.NewCodex(),
+			cfg:   config.Configuration{Model: "codex-config"},
+			want:  []string{"--model", "codex-config"},
+		},
+		"opencode receives configured generic model": {
+			agent: cliagent.NewOpenCode(),
+			cfg:   config.Configuration{Model: "opencode-config"},
+			want:  []string{"--model", "opencode-config"},
+		},
+		"generic cli model wins over configured generic model": {
+			agent: cliagent.NewClaude(),
+			cfg: config.Configuration{
+				Model:         "claude-config",
+				ModelOverride: "claude-cli",
+			},
+			want: []string{"--model", "claude-cli"},
+		},
+		"default model emits no extra args": {
+			agent: cliagent.NewClaude(),
+			cfg:   config.Configuration{},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			executor := &Executor{
+				Claude: &ClaudeExecutor{Agent: tt.agent},
+				Config: tt.cfg,
+			}
+
+			assert.Equal(t, tt.want, executor.extraArgsForStage(StagePlan))
 		})
 	}
 }

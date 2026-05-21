@@ -49,6 +49,25 @@ func TestGetTemplateInfo(t *testing.T) {
 	assert.NotEmpty(t, info.Content)
 }
 
+func TestSpecifyTemplateOmitsRedundantTestableField(t *testing.T) {
+	tests := map[string]struct {
+		templateName string
+	}{
+		"specify template": {templateName: "autospec.specify"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			info, err := GetTemplateInfo(tt.templateName)
+			require.NoError(t, err)
+			content := string(info.Content)
+
+			assert.NotContains(t, content, "testable:")
+			assert.Contains(t, content, "Each requirement must be testable")
+		})
+	}
+}
+
 func TestGetTemplateInfo_NotFound(t *testing.T) {
 	_, err := GetTemplateInfo("nonexistent")
 	assert.Error(t, err)

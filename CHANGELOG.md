@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-05-21
+
+### Added
+- Workflow commands now accept a generic `--model` flag for Claude, Codex, and OpenCode agents
+- Autospec config now supports a top-level `model` value and `AUTOSPEC_MODEL` for workflow model defaults
+
+### Changed
+- Generated `spec.yaml` functional requirements no longer include the redundant `testable: true` field
+
 ## [0.11.3] - 2026-05-20
 
 ### Changed
-- Project governance now requires deterministic mock-based agent/workflow tests and explicit architecture boundary guidance in the autospec constitution
-- Task generation guidance now keeps shipped prompts project-agnostic while allowing project governance to request validation, documentation, or release-note tasks
 - Removed the unused internal `autospec setup-plan` command and its legacy project plan-template lookup
 - Constitution discovery no longer treats `.specify/memory` files as autospec project governance
 
@@ -379,7 +386,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.4...HEAD
+[0.11.4]: https://github.com/ariel-frischer/autospec/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/ariel-frischer/autospec/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/ariel-frischer/autospec/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/ariel-frischer/autospec/compare/v0.11.0...v0.11.1

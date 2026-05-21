@@ -20,7 +20,10 @@ Configuration is loaded with the following priority (highest to lowest):
   1. Environment variables (AUTOSPEC_*)
   2. Project config (.autospec/config.yml)
   3. User config (~/.config/autospec/config.yml)
-  4. Built-in defaults`,
+  4. Built-in defaults
+
+The top-level model key sets the default model for workflow agent execution.
+Agent-specific model keys remain available for compatibility where documented.`,
 	Example: `  # Show current configuration
   autospec config show
 

@@ -84,7 +84,6 @@ Given that feature description, do this:
      functional:               # REQUIRED (array)
        - id: "FR-001"
          description: "<MUST/SHOULD/MAY + requirement>"
-         testable: true
          acceptance_criteria: "<how to verify this>"
      non_functional:           # optional (array)
        - id: "NFR-001"

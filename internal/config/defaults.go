@@ -10,6 +10,7 @@ func GetDefaultConfigTemplate() string {
 
 # Agent settings
 agent_preset: ""                      # Built-in agent: claude | codex | opencode
+model: ""                             # Default model for workflow agent execution
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
 
 # Workflow settings
@@ -88,6 +89,7 @@ func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
 		// Agent configuration
 		"agent_preset":       "",
+		"model":              "",
 		"use_subscription":   true, // Protect users from accidental API charges
 		"max_retries":        0,
 		"specs_dir":          "./specs",

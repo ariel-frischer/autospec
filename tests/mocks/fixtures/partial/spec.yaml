@@ -23,7 +23,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Minimal requirement"
-      testable: true
       acceptance_criteria: "Passes"
   non_functional:
     - id: "NFR-001"

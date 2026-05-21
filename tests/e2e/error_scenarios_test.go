@@ -666,7 +666,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Clear error messages"
-      testable: true
       acceptance_criteria: "Errors are actionable"
   non_functional:
     - id: "NFR-001"

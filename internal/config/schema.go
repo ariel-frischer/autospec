@@ -57,6 +57,12 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description:   "Built-in agent preset to use",
 		Default:       "",
 	},
+	"model": {
+		Path:        "model",
+		Type:        TypeString,
+		Description: "Default model for workflow agent execution",
+		Default:     "",
+	},
 	"use_subscription": {
 		Path:        "use_subscription",
 		Type:        TypeBool,

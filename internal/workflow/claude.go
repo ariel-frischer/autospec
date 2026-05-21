@@ -41,6 +41,22 @@ type ClaudeExecutor struct {
 	ReplaceProcessForInteractive bool
 }
 
+// ExecuteWithExtraArgs runs an agent command with additional CLI arguments.
+func (c *ClaudeExecutor) ExecuteWithExtraArgs(prompt string, extraArgs []string) error {
+	if c.Agent == nil {
+		return fmt.Errorf("no agent configured")
+	}
+	return c.executeWithAgentOptions(prompt, false, extraArgs)
+}
+
+// ExecuteInteractiveWithExtraArgs runs an interactive agent command with additional CLI arguments.
+func (c *ClaudeExecutor) ExecuteInteractiveWithExtraArgs(prompt string, extraArgs []string) error {
+	if c.Agent == nil {
+		return fmt.Errorf("no agent configured")
+	}
+	return c.executeWithAgentOptions(prompt, true, extraArgs)
+}
+
 // Execute runs an agent command with the given prompt.
 // Streams output to stdout in real-time.
 // If Timeout > 0, the command is terminated after the timeout duration.
@@ -48,7 +64,7 @@ func (c *ClaudeExecutor) Execute(prompt string) error {
 	if c.Agent == nil {
 		return fmt.Errorf("no agent configured")
 	}
-	return c.executeWithAgent(prompt, false)
+	return c.executeWithAgentOptions(prompt, false, nil)
 }
 
 // ExecuteInteractive runs an agent command in interactive mode.
@@ -58,12 +74,12 @@ func (c *ClaudeExecutor) ExecuteInteractive(prompt string) error {
 	if c.Agent == nil {
 		return fmt.Errorf("no agent configured")
 	}
-	return c.executeWithAgent(prompt, true)
+	return c.executeWithAgentOptions(prompt, true, nil)
 }
 
-// executeWithAgent uses the new Agent interface for execution.
+// executeWithAgentOptions uses the new Agent interface for execution.
 // When interactive is true, sets ExecOptions.Interactive to skip headless flags.
-func (c *ClaudeExecutor) executeWithAgent(prompt string, interactive bool) error {
+func (c *ClaudeExecutor) executeWithAgentOptions(prompt string, interactive bool, extraArgs []string) error {
 	ctx, cancel := c.createTimeoutContext()
 	if cancel != nil {
 		defer cancel()
@@ -85,6 +101,7 @@ func (c *ClaudeExecutor) executeWithAgent(prompt string, interactive bool) error
 		Interactive:     interactive,
 		ReplaceProcess:  interactive && c.ReplaceProcessForInteractive,
 		JSONOutput:      !interactive && c.codexCompactOutputEnabled(),
+		ExtraArgs:       extraArgs,
 	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)
@@ -119,10 +136,15 @@ func (c *ClaudeExecutor) createTimeoutContext() (context.Context, context.Cancel
 
 // FormatCommand returns a human-readable command string for display and error messages.
 func (c *ClaudeExecutor) FormatCommand(prompt string) string {
+	return c.FormatCommandWithExtraArgs(prompt, nil)
+}
+
+// FormatCommandWithExtraArgs returns a human-readable command string with extra args.
+func (c *ClaudeExecutor) FormatCommandWithExtraArgs(prompt string, extraArgs []string) string {
 	if c.Agent == nil {
 		return "[no agent configured]"
 	}
-	cmd, err := c.Agent.BuildCommand(prompt, cliagent.ExecOptions{})
+	cmd, err := c.Agent.BuildCommand(prompt, cliagent.ExecOptions{ExtraArgs: extraArgs})
 	if err != nil {
 		return fmt.Sprintf("%s [error: %v]", c.Agent.Name(), err)
 	}

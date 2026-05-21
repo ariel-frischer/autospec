@@ -80,6 +80,46 @@ When enabled (default), `ANTHROPIC_API_KEY` is set to empty at execution time. T
 
 ---
 
+### opencode.model
+
+Default OpenCode model for autospec workflow stages.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+| Environment | `AUTOSPEC_OPENCODE_MODEL` |
+
+```yaml
+agent_preset: opencode
+opencode:
+  model: anthropic/claude-sonnet-4-20250514
+```
+
+---
+
+### opencode.models.<stage>
+
+Stage-specific OpenCode model overrides. Supported stage keys are `specify`, `plan`, `tasks`, `implement`, `constitution`, `clarify`, `checklist`, and `analyze`.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+| Environment | `AUTOSPEC_OPENCODE_MODELS_<STAGE>` |
+
+```yaml
+opencode:
+  model: anthropic/claude-sonnet-4-20250514
+  models:
+    plan: anthropic/claude-opus-4-5-latest
+    implement: anthropic/claude-opus-4-5-20251101
+```
+
+`--opencode-model` overrides both config values for one command invocation.
+
+---
+
 ### max_retries
 
 Maximum retry attempts on validation failure.

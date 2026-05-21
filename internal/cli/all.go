@@ -72,6 +72,7 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Resolve agent to get its name for the security notice
 		agent, err := shared.ResolveAgent(cmd, cfg)
@@ -159,6 +160,7 @@ func init() {
 	allCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (overrides config when set)")
 	allCmd.Flags().Bool("resume", false, "Resume implementation from where it left off")
 	allCmd.Flags().String("spec", "", "Specify which spec to run (overrides branch detection)")
+	shared.AddModelFlag(allCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(allCmd)

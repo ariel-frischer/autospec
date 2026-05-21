@@ -70,6 +70,7 @@ You can optionally provide a prompt to guide the task generation.`,
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Apply auto-commit override from flags
 		shared.ApplyAutoCommitOverride(cmd, cfg)
@@ -134,6 +135,7 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(tasksCmd)
+	shared.AddModelFlag(tasksCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(tasksCmd)

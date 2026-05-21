@@ -62,6 +62,7 @@ func TestGetDefaults(t *testing.T) {
 	// Verify required keys exist
 	requiredKeys := []string{
 		"agent_preset",
+		"model",
 		"max_retries",
 		"specs_dir",
 		"state_dir",
@@ -84,6 +85,10 @@ func TestGetDefaults(t *testing.T) {
 	// Verify specific default values
 	if defaults["agent_preset"] != "" {
 		t.Errorf("agent_preset default = %v, want ''", defaults["agent_preset"])
+	}
+
+	if defaults["model"] != "" {
+		t.Errorf("model default = %v, want ''", defaults["model"])
 	}
 
 	if defaults["max_retries"] != 0 {

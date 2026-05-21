@@ -54,6 +54,7 @@ This command has no prerequisites - it can be run at any time.`,
 			clierrors.PrintError(cliErr)
 			return cliErr
 		}
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Create notification handler and history logger
 		notifHandler := notify.NewHandler(cfg.Notifications)
@@ -95,4 +96,5 @@ func init() {
 
 	// Command-specific flags
 	constitutionCmd.Flags().IntP("max-retries", "r", 0, "Override max retry attempts (overrides config when set)")
+	shared.AddModelFlag(constitutionCmd)
 }

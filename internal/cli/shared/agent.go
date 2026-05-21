@@ -14,6 +14,9 @@ import (
 // AgentFlagName is the flag name for agent override.
 const AgentFlagName = "agent"
 
+// ModelFlagName is the flag name for one-shot workflow model overrides.
+const ModelFlagName = "model"
+
 // availableAgentNames returns agent names available for the current build type.
 // Production builds only show production agents; dev builds show all registered agents.
 func availableAgentNames() []string {
@@ -36,6 +39,20 @@ func AddAgentFlag(cmd *cobra.Command) {
 	} else {
 		cmd.Flags().String(AgentFlagName, "", fmt.Sprintf("Override agent (available: %s)", strings.Join(agents, ", ")))
 	}
+}
+
+// AddModelFlag adds the --model flag to a command.
+func AddModelFlag(cmd *cobra.Command) {
+	cmd.Flags().String(ModelFlagName, "", "Use a model for this workflow run")
+}
+
+// ApplyModelOverride applies the --model flag as a one-run override.
+func ApplyModelOverride(cmd *cobra.Command, cfg *config.Configuration) {
+	model, _ := cmd.Flags().GetString(ModelFlagName)
+	if model == "" {
+		return
+	}
+	cfg.ModelOverride = model
 }
 
 // ResolveAgent resolves the agent to use based on CLI flag and config.

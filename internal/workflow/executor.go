@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
 	"github.com/ariel-frischer/autospec/internal/notify"
 	"github.com/ariel-frischer/autospec/internal/output"
@@ -28,10 +29,20 @@ type Executor struct {
 	TotalStages         int                       // Total stages in workflow
 	Debug               bool                      // Enable debug logging
 	AutoCommit          bool                      // Enable auto-commit instruction injection
+	Config              config.Configuration      // Workflow execution configuration
 	Progress            *ProgressController       // Optional progress display controller
 	Notify              *NotifyDispatcher         // Optional notification dispatcher
 	ProgressDisplay     *progress.ProgressDisplay // Deprecated: use Progress instead
 	NotificationHandler *notify.Handler           // Deprecated: use Notify instead
+}
+
+type extraArgsExecutor interface {
+	ExecuteWithExtraArgs(prompt string, extraArgs []string) error
+	ExecuteInteractiveWithExtraArgs(prompt string, extraArgs []string) error
+}
+
+type extraArgsFormatter interface {
+	FormatCommandWithExtraArgs(prompt string, extraArgs []string) string
 }
 
 // Stage represents a workflow stage (specify, plan, tasks, implement)
@@ -56,6 +67,54 @@ func (e *Executor) debugLog(format string, args ...interface{}) {
 	if e.Debug {
 		fmt.Printf("[DEBUG] "+format+"\n", args...)
 	}
+}
+
+func (e *Executor) execute(command string, stage Stage) error {
+	if runner, ok := e.Claude.(extraArgsExecutor); ok {
+		return runner.ExecuteWithExtraArgs(command, e.extraArgsForStage(stage))
+	}
+	return e.Claude.Execute(command)
+}
+
+func (e *Executor) executeInteractive(command string, stage Stage) error {
+	if runner, ok := e.Claude.(extraArgsExecutor); ok {
+		return runner.ExecuteInteractiveWithExtraArgs(command, e.extraArgsForStage(stage))
+	}
+	return e.Claude.ExecuteInteractive(command)
+}
+
+func (e *Executor) formatCommand(command string, stage Stage) string {
+	if runner, ok := e.Claude.(extraArgsFormatter); ok {
+		return runner.FormatCommandWithExtraArgs(command, e.extraArgsForStage(stage))
+	}
+	return e.Claude.FormatCommand(command)
+}
+
+func (e *Executor) extraArgsForStage(stage Stage) []string {
+	agentName := e.workflowAgentName()
+	if agentName == "" {
+		return nil
+	}
+	selection := ResolveWorkflowModelSelection(e.modelSelectionConfig(), ModelSelectionInput{
+		Agent: agentName,
+		Stage: stage,
+	})
+	if selection.Value == "" {
+		return nil
+	}
+	return []string{"--model", selection.Value}
+}
+
+func (e *Executor) workflowAgentName() string {
+	ce, ok := e.Claude.(*ClaudeExecutor)
+	if !ok || ce.Agent == nil {
+		return ""
+	}
+	return ce.Agent.Name()
+}
+
+func (e *Executor) modelSelectionConfig() config.Configuration {
+	return e.Config
 }
 
 // getStageNumber returns the sequential number for a stage (1-based)
@@ -192,8 +251,8 @@ func (e *Executor) executeStageLoop(ctx *stageExecutionContext) (*StageResult, e
 func (e *Executor) executeInteractiveStage(ctx *stageExecutionContext) (*StageResult, error) {
 	e.debugLog("Executing interactive stage: %s", ctx.stage)
 
-	e.displayInteractiveCommandExecution(ctx.currentCommand)
-	if err := e.Claude.ExecuteInteractive(ctx.currentCommand); err != nil {
+	e.displayInteractiveCommandExecution(ctx.currentCommand, ctx.stage)
+	if err := e.executeInteractive(ctx.currentCommand, ctx.stage); err != nil {
 		output.PrintAgentOutputEnd(os.Stdout)
 		ctx.result.Error = fmt.Errorf("interactive session failed: %w", err)
 		return ctx.result, ctx.result.Error
@@ -208,8 +267,8 @@ func (e *Executor) executeInteractiveStage(ctx *stageExecutionContext) (*StageRe
 // executeStageAttempt executes a single attempt of a stage
 func (e *Executor) executeStageAttempt(ctx *stageExecutionContext, stageInfo progress.StageInfo) (stageErr, validationErr error) {
 	_ = lifecycle.RunStage(e.NotificationHandler, string(ctx.stage), func() error {
-		e.displayCommandExecution(ctx.currentCommand)
-		if err := e.Claude.Execute(ctx.currentCommand); err != nil {
+		e.displayCommandExecution(ctx.currentCommand, ctx.stage)
+		if err := e.execute(ctx.currentCommand, ctx.stage); err != nil {
 			output.PrintAgentOutputEnd(os.Stdout)
 			stageErr = e.handleExecutionFailure(ctx.result, ctx.retryState, stageInfo, err)
 			return stageErr
@@ -297,13 +356,13 @@ func (e *Executor) startProgressDisplay(stageInfo progress.StageInfo) {
 // Compact tags [+Name] are shown for injected instructions.
 // In debug mode, shows [+Name: hint] if a DisplayHint is present and full prompt is shown.
 // In normal mode, long prompts are truncated for display (full content is still sent to agent).
-func (e *Executor) displayCommandExecution(command string) {
+func (e *Executor) displayCommandExecution(command string, stage Stage) {
 	compactedCommand := CompactInstructionsForDisplay(command, e.Debug)
 	displayCommand := compactedCommand
 	if !e.Debug {
 		displayCommand = TruncatePromptForDisplay(compactedCommand)
 	}
-	fullCommand := e.Claude.FormatCommand(displayCommand)
+	fullCommand := e.formatCommand(displayCommand, stage)
 	output.PrintExecutingCommand(os.Stdout, fullCommand)
 	e.debugLog("About to call Claude.Execute()")
 }
@@ -312,30 +371,27 @@ func (e *Executor) displayCommandExecution(command string) {
 // Interactive mode uses positional argument without -p flag for multi-turn conversation.
 // In normal mode, long prompts are truncated for display (full content is still sent to agent).
 // In debug mode, full prompt is shown.
-func (e *Executor) displayInteractiveCommandExecution(command string) {
+func (e *Executor) displayInteractiveCommandExecution(command string, stage Stage) {
 	compactedCommand := CompactInstructionsForDisplay(command, e.Debug)
 	displayCommand := compactedCommand
 	if !e.Debug {
 		displayCommand = TruncatePromptForDisplay(compactedCommand)
 	}
-	fullCommand := e.formatInteractiveCommand(displayCommand)
+	fullCommand := e.formatInteractiveCommand(displayCommand, stage)
 	fmt.Printf("\n→ Executing (interactive): %s\n\n", fullCommand)
 	e.debugLog("About to call Claude.ExecuteInteractive()")
 }
 
 // formatInteractiveCommand returns the command string for interactive mode.
 // Interactive mode uses positional argument (no -p, no --output-format stream-json).
-func (e *Executor) formatInteractiveCommand(prompt string) string {
+func (e *Executor) formatInteractiveCommand(prompt string, stage Stage) string {
 	if e.Claude == nil {
 		return "[no agent configured]"
 	}
-	// For Claude, interactive mode is: claude <prompt> (positional, no -p flag)
-	// We get the agent name and append the prompt directly
-	ce, ok := e.Claude.(*ClaudeExecutor)
-	if !ok || ce.Agent == nil {
-		return fmt.Sprintf("claude %s", prompt)
+	if runner, ok := e.Claude.(extraArgsFormatter); ok {
+		return runner.FormatCommandWithExtraArgs(prompt, e.extraArgsForStage(stage))
 	}
-	return fmt.Sprintf("%s %s", ce.Agent.Name(), prompt)
+	return e.Claude.FormatCommand(prompt)
 }
 
 // failStageProgress marks a stage as failed in the progress display.
