@@ -367,7 +367,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Support multi-phase execution"
-      testable: true
       acceptance_criteria: "Phases execute in order"
   non_functional:
     - id: "NFR-001"

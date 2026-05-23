@@ -302,7 +302,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Test requirement"
-      testable: true
       acceptance_criteria: "Test passes"
 `
 				if err := os.WriteFile(filepath.Join(specDir, "spec.yaml"), []byte(validSpec), 0o644); err != nil {
@@ -415,7 +414,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Test requirement"
-      testable: true
       acceptance_criteria: "Test passes"
 `
 	if err := os.WriteFile(filepath.Join(specDir, "spec.yaml"), []byte(validSpec), 0o644); err != nil {

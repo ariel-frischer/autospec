@@ -42,7 +42,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Test requirement"
-      testable: true
       acceptance_criteria: "Test passes"
 
   non_functional:

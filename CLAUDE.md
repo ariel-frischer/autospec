@@ -204,6 +204,8 @@ This ensures all features have documented test plans and are visible to users.
 
 Edit `internal/changelog/changelog.yaml` directly, then run `make changelog-sync` to regenerate `CHANGELOG.md`. Never edit `CHANGELOG.md` directly—it is auto-generated from the YAML source.
 
+Public changelog entries must describe user-visible behavior: CLI changes, config changes, compatibility changes, docs users rely on, security fixes, or bug fixes users can observe. Maintainer-only process, governance, prompt hygiene, test strategy, architecture-boundary, or release-workflow notes belong under the version's `internal:` tier in `internal/changelog/changelog.yaml`, not in public `added`/`changed`/`fixed` release notes.
+
 ## Git Commits in Sandbox Mode
 
 ```bash

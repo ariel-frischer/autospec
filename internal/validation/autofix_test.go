@@ -254,7 +254,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "MUST work"
-      testable: true
 
 
 _meta:

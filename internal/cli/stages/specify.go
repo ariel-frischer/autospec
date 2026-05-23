@@ -79,6 +79,7 @@ The feature description should be a clear, concise description of what you want 
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Resolve agent to get its name for the security notice
 		agent, err := shared.ResolveAgent(cmd, cfg)
@@ -136,6 +137,7 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(specifyCmd)
+	shared.AddModelFlag(specifyCmd)
 
 	// OpenCode agent flag
 	shared.AddOpenCodeAgentFlag(specifyCmd)

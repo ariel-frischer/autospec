@@ -143,6 +143,7 @@ The --tasks mode provides maximum context isolation:
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Resolve agent to get its name for the security notice
 		agent, err := shared.ResolveAgent(cmd, cfg)
@@ -220,12 +221,7 @@ The --tasks mode provides maximum context isolation:
 			shared.ApplyOutputStyle(cmd, orch)
 
 			// Apply opencode-agent from CLI flag or config
-			opencodeAgent := shared.ResolveOpenCodeAgent(cmd, cfg)
-			if opencodeAgent != "" {
-				if claude, ok := orch.Executor.Claude.(*workflow.ClaudeExecutor); ok {
-					claude.OpenCodeAgent = opencodeAgent
-				}
-			}
+			shared.ApplyOpenCodeAgent(cmd, cfg, orch)
 
 			// Build phase execution options
 			phaseOpts := workflow.PhaseExecutionOptions{
@@ -356,6 +352,7 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(implementCmd)
+	shared.AddModelFlag(implementCmd)
 
 	// OpenCode agent flag
 	shared.AddOpenCodeAgentFlag(implementCmd)

@@ -57,6 +57,12 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description:   "Built-in agent preset to use",
 		Default:       "",
 	},
+	"model": {
+		Path:        "model",
+		Type:        TypeString,
+		Description: "Default model for workflow agent execution",
+		Default:     "",
+	},
 	"opencode_agent": {
 		Path:        "opencode_agent",
 		Type:        TypeString,

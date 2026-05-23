@@ -2633,7 +2633,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "test"
-      testable: true
       acceptance_criteria: "test"
   non_functional:
     - id: "NFR-001"
@@ -4207,7 +4206,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "MUST pass test"
-      testable: true
       acceptance_criteria: "Test passes"
   non_functional: []
 success_criteria:
@@ -4456,7 +4454,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "MUST validate spec"
-      testable: true
       acceptance_criteria: "Spec passes validation"
   non_functional: []
 success_criteria:

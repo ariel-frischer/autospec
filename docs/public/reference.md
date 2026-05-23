@@ -21,6 +21,7 @@ Execute complete workflow: specify → plan → tasks → implement
 - `--timeout <seconds>`: Command timeout (0=infinite, 1-604800)
 - `--max-retries <count>`: Maximum retry attempts (0-10, default: 0)
 - `--agent <name>`: Override agent for this run (see [CLI Agents](#cli-agents))
+- `--model <model>`: Override the workflow agent model for this run
 - `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`); see [OpenCode Agents](https://opencode.ai/docs/agents)
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
@@ -88,6 +89,7 @@ Run selected workflow stages with flexible stage selection
 - `--dry-run`: Preview what stages would run without executing
 - `--max-retries <count>`: Override max retry attempts
 - `--agent <name>`: Override agent for this run
+- `--model <model>`: Override the workflow agent model for this run
 - `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`)
 - `--auto-commit` / `--no-auto-commit`: Override auto-commit config
 
@@ -1089,6 +1091,22 @@ use_subscription: false
 **Environment**: `AUTOSPEC_USE_SUBSCRIPTION`
 
 **Note**: This setting protects users from accidentally burning API credits when they have `ANTHROPIC_API_KEY` set in their shell for other purposes. Set to `false` only if you specifically want to use API billing.
+
+### model
+
+**Type**: string
+**Default**: `""`
+**Description**: Default model passed to autospec workflow stages for supported CLI agents. Applies when the active workflow agent is Claude, Codex, or OpenCode and no `--model` override is provided.
+
+**Example**:
+```yaml
+agent_preset: codex
+model: gpt-5.4
+```
+
+**Environment**: `AUTOSPEC_MODEL`
+
+For one command invocation, pass `--model <model>`. Precedence is `--model`, then top-level `model`, then the agent CLI default.
 
 ### skip_permissions
 

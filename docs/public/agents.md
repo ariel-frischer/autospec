@@ -445,9 +445,9 @@ Each sub-agent has different permission defaults. Whether an agent works for a g
 | All stages | `read: allow` | Reads existing code, specs, configs |
 | `implement`, `analyze` | `grep/glob: allow` | Searches codebase during implementation |
 
-If you find `bash:allow` to be too permissive, you should be more granular with wich bash commands are allowed. 
+If you find `bash:allow` to be too permissive, you can allow narrower bash command patterns instead.
 
-**Minimum requirement for workflow stages**: `edit: allow` + `bash: allow`. something like OpenCode's built-in **Plan** agent will not work with any workflow that needs to create or edit files.
+**Minimum requirement for workflow stages**: `edit: allow` + `bash: allow`. OpenCode's built-in **Plan** agent will not work with workflows that need to create or edit files.
 
 ```yaml
 # .autospec/config.yml — recommended for full workflows
@@ -457,7 +457,24 @@ opencode_agent: Build
 
 ### Model Configuration
 
-OpenCode supports multiple AI providers. For the best experience with Anthropic models, use OAuth authentication with your Claude Max/Pro subscription instead of API keys.
+Autospec workflow commands can pass a model to supported agents when they launch stages. Use the generic `--model` flag for one run:
+
+```bash
+autospec plan --agent claude --model claude-opus-4-5-20251101
+autospec run -a "Add billing exports" --agent codex --model gpt-5.4
+autospec run -a "Add billing exports" --agent opencode --model anthropic/claude-sonnet-4-20250514
+```
+
+Persist a default workflow model in autospec config:
+
+```yaml
+agent_preset: codex
+model: gpt-5.4
+```
+
+Model selection is scoped to autospec workflow agent execution. It does not rewrite Claude, Codex, or OpenCode's own global defaults for non-autospec usage.
+
+OpenCode also supports multiple AI providers. For the best experience with Anthropic models, use OAuth authentication with your Claude Max/Pro subscription instead of API keys.
 
 #### Authentication Setup
 

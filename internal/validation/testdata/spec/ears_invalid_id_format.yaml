@@ -19,7 +19,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "MUST do something"
-      testable: true
 
 ears_requirements:
   - id: "REQ-001"

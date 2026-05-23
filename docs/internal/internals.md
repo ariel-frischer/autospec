@@ -253,7 +253,7 @@ RETRY 2/3
 Schema validation failed:
 - missing required field: feature.branch
 - invalid enum value for user_stories[0].priority: expected one of [P1, P2, P3]
-- invalid type for requirements.functional[0].testable: expected bool, got string
+- wrong type for user_stories: expected array, got object
 
 Create a user authentication feature
 ```

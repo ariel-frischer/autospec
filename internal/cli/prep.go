@@ -78,6 +78,7 @@ This is useful when you want to review the generated artifacts before implementa
 		if _, err := shared.ApplyAgentOverride(cmd, cfg); err != nil {
 			return err
 		}
+		shared.ApplyModelOverride(cmd, cfg)
 
 		// Resolve agent to get its name for the security notice
 		agent, err := shared.ResolveAgent(cmd, cfg)
@@ -115,7 +116,7 @@ This is useful when you want to review the generated artifacts before implementa
 
 			// Apply OpenCode agent if the flag is present
 			shared.ApplyOpenCodeAgent(cmd, cfg, orchestrator)
-      
+
 			if specName != "" {
 				activeFeature, err := resolvePrepFeature(cfg, specName)
 				if err != nil {
@@ -153,6 +154,7 @@ func init() {
 
 	// Agent override flag
 	shared.AddAgentFlag(prepCmd)
+	shared.AddModelFlag(prepCmd)
 
 	// Opencode-agent flag
 	shared.AddOpenCodeAgentFlag(prepCmd)

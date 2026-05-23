@@ -104,7 +104,6 @@ requirements:
   functional:
     - id: "FR-001"
       description: "test feature"
-      testable: true
       acceptance_criteria: "test passes"
   non_functional:
     - id: "NFR-001"

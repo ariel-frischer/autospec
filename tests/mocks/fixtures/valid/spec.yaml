@@ -25,11 +25,9 @@ requirements:
   functional:
     - id: "FR-001"
       description: "Mock must simulate Claude CLI behavior"
-      testable: true
       acceptance_criteria: "Mock returns configured responses"
     - id: "FR-002"
       description: "Git isolation must prevent branch pollution"
-      testable: true
       acceptance_criteria: "Original branch unchanged after test"
   non_functional:
     - id: "NFR-001"

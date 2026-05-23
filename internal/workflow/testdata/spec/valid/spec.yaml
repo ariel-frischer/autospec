@@ -43,17 +43,14 @@ requirements:
   functional:
     - id: "FR-001"
       description: "MUST support email/password authentication"
-      testable: true
       acceptance_criteria: "Users can log in with valid email and password"
 
     - id: "FR-002"
       description: "MUST hash passwords before storage"
-      testable: true
       acceptance_criteria: "Passwords are stored using bcrypt with cost factor 12"
 
     - id: "FR-003"
       description: "SHOULD support password reset via email"
-      testable: true
       acceptance_criteria: "Reset link expires after 24 hours"
 
   non_functional:

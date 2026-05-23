@@ -71,6 +71,8 @@ type Configuration struct {
 	MaxRetries        int    `koanf:"max_retries"`
 	SpecsDir          string `koanf:"specs_dir"`
 	StateDir          string `koanf:"state_dir"`
+	Model             string `koanf:"model"`
+	ModelOverride     string `koanf:"-"`
 	SkipPreflight     bool   `koanf:"skip_preflight"`
 	Timeout           int    `koanf:"timeout"`
 	SkipConfirmations bool   `koanf:"skip_confirmations"` // Skip confirmation prompts (can also be set via AUTOSPEC_YES env var)
