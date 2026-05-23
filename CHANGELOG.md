@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.5] - 2026-05-23
-
 ### Added
 - Workflow commands now accept `--opencode-agent` for OpenCode sub-agent selection
 - Autospec config now supports `opencode_agent` for persistent OpenCode sub-agent selection
@@ -395,8 +393,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.5...HEAD
-[0.11.5]: https://github.com/ariel-frischer/autospec/compare/v0.11.4...v0.11.5
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.4...HEAD
 [0.11.4]: https://github.com/ariel-frischer/autospec/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/ariel-frischer/autospec/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/ariel-frischer/autospec/compare/v0.11.1...v0.11.2
