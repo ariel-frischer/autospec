@@ -691,14 +691,14 @@ func TestClaudeExecutor_OpenCodeAgentPassesThrough(t *testing.T) {
 			run: func(executor *ClaudeExecutor, _ *mockCapturingAgent) error {
 				return executor.Execute("test prompt")
 			},
-			wantName: "Build",
+			wantName: "build",
 		},
 		"stream command": {
 			run: func(executor *ClaudeExecutor, _ *mockCapturingAgent) error {
 				var stdout, stderr bytes.Buffer
 				return executor.StreamCommand("test prompt", &stdout, &stderr)
 			},
-			wantName: "Build",
+			wantName: "build",
 		},
 	}
 
@@ -709,7 +709,7 @@ func TestClaudeExecutor_OpenCodeAgentPassesThrough(t *testing.T) {
 			mockAgent := &mockCapturingAgent{name: "opencode"}
 			executor := &ClaudeExecutor{
 				Agent:         mockAgent,
-				OpenCodeAgent: "Build",
+				OpenCodeAgent: "build",
 				Timeout:       60,
 			}
 

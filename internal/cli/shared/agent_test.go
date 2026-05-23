@@ -62,13 +62,13 @@ func TestResolveOpenCodeAgent(t *testing.T) {
 		want        string
 	}{
 		"cli flag takes priority over config": {
-			flagValue:   "Plan",
-			configValue: "Build",
-			want:        "Plan",
+			flagValue:   "plan",
+			configValue: "build",
+			want:        "plan",
 		},
 		"config used when no flag": {
-			configValue: "Build",
-			want:        "Build",
+			configValue: "build",
+			want:        "build",
 		},
 		"empty when neither flag nor config": {
 			want: "",

@@ -11,7 +11,7 @@ func GetDefaultConfigTemplate() string {
 # Agent settings
 agent_preset: ""                      # Built-in agent: claude | codex | opencode
 model: ""                             # Default model for workflow agent execution
-opencode_agent: ""                    # OpenCode sub-agent: Plan | Build | etc.
+opencode_agent: ""                    # OpenCode sub-agent: build | plan | explore | etc.
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
 
 # Workflow settings

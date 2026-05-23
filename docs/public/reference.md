@@ -22,7 +22,7 @@ Execute complete workflow: specify → plan → tasks → implement
 - `--max-retries <count>`: Maximum retry attempts (0-10, default: 0)
 - `--agent <name>`: Override agent for this run (see [CLI Agents](#cli-agents))
 - `--model <model>`: Override the workflow agent model for this run
-- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`); see [OpenCode Agents](https://opencode.ai/docs/agents)
+- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `build`, `plan`); see [OpenCode Agents](https://opencode.ai/docs/agents)
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
 
@@ -90,7 +90,7 @@ Run selected workflow stages with flexible stage selection
 - `--max-retries <count>`: Override max retry attempts
 - `--agent <name>`: Override agent for this run
 - `--model <model>`: Override the workflow agent model for this run
-- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`)
+- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `build`, `plan`)
 - `--auto-commit` / `--no-auto-commit`: Override auto-commit config
 
 **Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
@@ -211,7 +211,7 @@ Execute implementation phase using tasks breakdown
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
 - `--agent <name>`: Override agent for this run
-- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `Build`, `Plan`)
+- `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `build`, `plan`)
 - Plus all flags from `autospec all`
 
 When no positional spec is provided, `autospec implement` uses the persisted active feature if one exists; otherwise it uses branch-prefix fallback. If persisted state points at a deleted spec directory, branch-prefix fallback is used. A positional spec argument is explicit selection and takes precedence over persisted state.

@@ -118,7 +118,7 @@ func AddOpenCodeAgentFlag(cmd *cobra.Command) {
 	if !build.MultiAgentEnabled() {
 		return
 	}
-	cmd.Flags().String(OpenCodeAgentFlagName, "", "OpenCode sub-agent to use (Plan, Build, Explore, etc.)")
+	cmd.Flags().String(OpenCodeAgentFlagName, "", "OpenCode sub-agent to use (build, plan, explore, etc.)")
 }
 
 // ResolveOpenCodeAgent resolves the OpenCode agent from CLI flag or config.

@@ -59,9 +59,9 @@ type ExecOptions struct {
 	// Only applies when Interactive is true.
 	ReplaceProcess bool
 
-	// OpenCodeAgent specifies the OpenCode sub-agent to use (e.g., "Plan", "Explore").
+	// OpenCodeAgent specifies the OpenCode sub-agent to use (e.g., "plan", "explore").
 	// Only applies when the agent is OpenCode. Empty string uses OpenCode's default.
-	// Example: "Plan" → opencode run ... --agent Plan
+	// Example: "plan" -> opencode run ... --agent plan
 	OpenCodeAgent string
 }
 

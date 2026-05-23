@@ -424,10 +424,10 @@ OpenCode supports specialized agents for different tasks — see the [OpenCode A
 
 ```bash
 # Use a specific sub-agent for a workflow
-autospec run -a "add login" --opencode-agent Build --agent opencode
+autospec run -a "add login" --opencode-agent build --agent opencode
 
 # Persistent config option
-opencode_agent: Build
+opencode_agent: build
 ```
 
 Priority: `--opencode-agent` CLI flag > `opencode_agent` config > empty (uses OpenCode's default).
@@ -447,12 +447,12 @@ Each sub-agent has different permission defaults. Whether an agent works for a g
 
 If you find `bash:allow` to be too permissive, you can allow narrower bash command patterns instead.
 
-**Minimum requirement for workflow stages**: `edit: allow` + `bash: allow`. OpenCode's built-in **Plan** agent will not work with workflows that need to create or edit files.
+**Minimum requirement for workflow stages**: `edit: allow` + `bash: allow`. OpenCode's built-in `plan` agent will not work with workflows that need to create or edit files.
 
 ```yaml
 # .autospec/config.yml — recommended for full workflows
 agent_preset: opencode
-opencode_agent: Build
+opencode_agent: build
 ```
 
 ### Model Configuration

@@ -124,18 +124,18 @@ Please fix these validation errors and try again.`},
 		},
 		"with opencode-agent flag": {
 			prompt:   "specify this feature",
-			opts:     ExecOptions{OpenCodeAgent: "Plan", ExtraArgs: []string{"--command", "autospec.specify"}},
-			wantArgs: []string{"run", "specify this feature", "--agent", "Plan", "--command", "autospec.specify"},
+			opts:     ExecOptions{OpenCodeAgent: "plan", ExtraArgs: []string{"--command", "autospec.specify"}},
+			wantArgs: []string{"run", "specify this feature", "--agent", "plan", "--command", "autospec.specify"},
 		},
 		"with explore agent": {
 			prompt:   "analyze the code",
-			opts:     ExecOptions{OpenCodeAgent: "Explore", ExtraArgs: []string{"--command", "autospec.analyze"}},
-			wantArgs: []string{"run", "analyze the code", "--agent", "Explore", "--command", "autospec.analyze"},
+			opts:     ExecOptions{OpenCodeAgent: "explore", ExtraArgs: []string{"--command", "autospec.analyze"}},
+			wantArgs: []string{"run", "analyze the code", "--agent", "explore", "--command", "autospec.analyze"},
 		},
 		"with opencode-agent and no command flag": {
 			prompt:   "run a quick task",
-			opts:     ExecOptions{OpenCodeAgent: "Build"},
-			wantArgs: []string{"run", "run a quick task", "--agent", "Build"},
+			opts:     ExecOptions{OpenCodeAgent: "build"},
+			wantArgs: []string{"run", "run a quick task", "--agent", "build"},
 		},
 	}
 
