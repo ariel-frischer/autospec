@@ -1,0 +1,20 @@
+[tools]
+go = "1.25.10"
+"aqua:golangci/golangci-lint" = "2.11.4"
+"aqua:goreleaser/goreleaser" = "2.13.1"
+"aqua:koalaman/shellcheck" = "0.11.0"
+
+[tasks.build]
+run = "make build"
+
+[tasks.test]
+run = "make test"
+
+[tasks.lint]
+run = "make lint"
+
+[tasks.fmt]
+run = "make fmt"
+
+[tasks.doctor]
+run = "go run ./cmd/autospec doctor"

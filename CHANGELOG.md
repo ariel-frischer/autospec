@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workflow commands now accept `--opencode-agent` for OpenCode sub-agent selection
 - Autospec config now supports `opencode_agent` for persistent OpenCode sub-agent selection
 
+### Security
+- Bumped `github.com/go-git/go-git/v5` from v5.19.0 to v5.19.1
+
 ## [0.11.4] - 2026-05-21
 
 ### Added
