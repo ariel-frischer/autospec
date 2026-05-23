@@ -418,6 +418,43 @@ Key differences:
 - OpenCode uses `run` subcommand (not `-p` flag)
 - Non-interactive execution is the default with `run`
 
+### OpenCode Sub-Agent Selection
+
+OpenCode supports specialized agents for different tasks — see the [OpenCode Agents documentation](https://opencode.ai/docs/agents) for the full list of built-in agents and how to create custom ones. The `--opencode-agent` flag passes through to OpenCode's `--agent` flag.
+
+```bash
+# Use a specific sub-agent for a workflow
+autospec run -a "add login" --opencode-agent build --agent opencode
+
+# Persistent config option
+opencode_agent: build
+```
+
+Priority: `--opencode-agent` CLI flag > `opencode_agent` config > empty (uses OpenCode's default).
+
+Available on: `run`, `prep`, `specify`, `plan`, `tasks`, `implement`.
+
+### Permission Requirements by Stage
+
+Each sub-agent has different permission defaults. Whether an agent works for a given stage depends on its permissions:
+
+| Stage | Permissions Required | Why |
+|-------|---------------------|-----|
+| `specify`, `plan`, `tasks`, `implement`, `clarify`, `checklist`, `constitution` | `edit: allow` | Writes artifacts (spec.yaml, plan.yaml, tasks.yaml, source code) |
+| All stages | `bash: allow` | Executes autospec commands, git operations, make/build |
+| All stages | `read: allow` | Reads existing code, specs, configs |
+| `implement`, `analyze` | `grep/glob: allow` | Searches codebase during implementation |
+
+If you find `bash:allow` to be too permissive, you can allow narrower bash command patterns instead.
+
+**Minimum requirement for workflow stages**: `edit: allow` + `bash: allow`. OpenCode's built-in `plan` agent will not work with workflows that need to create or edit files.
+
+```yaml
+# .autospec/config.yml — recommended for full workflows
+agent_preset: opencode
+opencode_agent: build
+```
+
 ### Model Configuration
 
 Autospec workflow commands can pass a model to supported agents when they launch stages. Use the generic `--model` flag for one run:

@@ -114,6 +114,9 @@ The feature description should be a clear, concise description of what you want 
 			// Apply output style from CLI flag (overrides config)
 			shared.ApplyOutputStyle(cmd, orch)
 
+			// Apply opencode-agent from CLI flag or config
+			shared.ApplyOpenCodeAgent(cmd, cfg, orch)
+
 			// Execute specify stage
 			specName, execErr := orch.ExecuteSpecify(featureDescription)
 			if execErr != nil {
@@ -135,6 +138,9 @@ func init() {
 	// Agent override flag
 	shared.AddAgentFlag(specifyCmd)
 	shared.AddModelFlag(specifyCmd)
+
+	// OpenCode agent flag
+	shared.AddOpenCodeAgentFlag(specifyCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(specifyCmd)

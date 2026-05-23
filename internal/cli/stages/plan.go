@@ -117,6 +117,9 @@ You can optionally provide a prompt to guide the planning process.`,
 			// Apply output style from CLI flag (overrides config)
 			shared.ApplyOutputStyle(cmd, orch)
 
+			// Apply opencode-agent from CLI flag or config
+			shared.ApplyOpenCodeAgent(cmd, cfg, orch)
+
 			// Execute plan stage
 			if err := orch.ExecutePlan(specName, prompt); err != nil {
 				return fmt.Errorf("plan stage failed: %w", err)
@@ -136,6 +139,9 @@ func init() {
 	// Agent override flag
 	shared.AddAgentFlag(planCmd)
 	shared.AddModelFlag(planCmd)
+
+	// OpenCode agent flag
+	shared.AddOpenCodeAgentFlag(planCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(planCmd)

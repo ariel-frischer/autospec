@@ -122,6 +122,21 @@ Please fix these validation errors and try again.`},
 			opts:     ExecOptions{ExtraArgs: []string{"--model", "opus"}},
 			wantArgs: []string{"run", "analyze the code", "--model", "opus"},
 		},
+		"with opencode-agent flag": {
+			prompt:   "specify this feature",
+			opts:     ExecOptions{OpenCodeAgent: "plan", ExtraArgs: []string{"--command", "autospec.specify"}},
+			wantArgs: []string{"run", "specify this feature", "--agent", "plan", "--command", "autospec.specify"},
+		},
+		"with explore agent": {
+			prompt:   "analyze the code",
+			opts:     ExecOptions{OpenCodeAgent: "explore", ExtraArgs: []string{"--command", "autospec.analyze"}},
+			wantArgs: []string{"run", "analyze the code", "--agent", "explore", "--command", "autospec.analyze"},
+		},
+		"with opencode-agent and no command flag": {
+			prompt:   "run a quick task",
+			opts:     ExecOptions{OpenCodeAgent: "build"},
+			wantArgs: []string{"run", "run a quick task", "--agent", "build"},
+		},
 	}
 
 	for name, tt := range tests {

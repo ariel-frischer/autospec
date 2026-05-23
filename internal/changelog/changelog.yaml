@@ -1,6 +1,11 @@
 project: autospec
 versions:
     unreleased:
+        added:
+            - 'Workflow commands now accept `--opencode-agent` for OpenCode sub-agent selection'
+            - 'Autospec config now supports `opencode_agent` for persistent OpenCode sub-agent selection'
+        security:
+            - Bumped `github.com/go-git/go-git/v5` from v5.19.0 to v5.19.1
         internal:
             changed:
                 - Project developer tooling is now pinned with mise for Go and release validation commands

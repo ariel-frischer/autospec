@@ -118,6 +118,9 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
 			// Apply output style from CLI flag (overrides config)
 			shared.ApplyOutputStyle(cmd, orchestrator)
 
+			// Apply Opencode agent if flagged
+			shared.ApplyOpenCodeAgent(cmd, cfg, orchestrator)
+
 			if debug {
 				fmt.Println("[DEBUG] Debug mode enabled")
 				fmt.Printf("[DEBUG] Config: %+v\n", cfg)
@@ -164,4 +167,11 @@ func init() {
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(allCmd)
+
+	// Agent override flag
+	shared.AddAgentFlag(allCmd)
+
+	// Opencode agent flag
+	shared.AddOpenCodeAgentFlag(allCmd)
+
 }

@@ -52,3 +52,43 @@ func commandWithModelFlags() *cobra.Command {
 	AddModelFlag(cmd)
 	return cmd
 }
+
+func TestResolveOpenCodeAgent(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		flagValue   string
+		configValue string
+		want        string
+	}{
+		"cli flag takes priority over config": {
+			flagValue:   "plan",
+			configValue: "build",
+			want:        "plan",
+		},
+		"config used when no flag": {
+			configValue: "build",
+			want:        "build",
+		},
+		"empty when neither flag nor config": {
+			want: "",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := &cobra.Command{Use: "test"}
+			AddOpenCodeAgentFlag(cmd)
+			if tt.flagValue != "" {
+				require.NoError(t, cmd.ParseFlags([]string{"--" + OpenCodeAgentFlagName, tt.flagValue}))
+			}
+			cfg := &config.Configuration{OpenCodeAgent: tt.configValue, AgentPreset: "opencode"}
+
+			got := ResolveOpenCodeAgent(cmd, cfg)
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
