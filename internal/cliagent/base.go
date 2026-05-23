@@ -150,7 +150,9 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 			if parts.CmdName != "" && pd.CommandFlag != "" {
 				args = append(args, pd.CommandFlag, parts.CmdName)
 			}
+
 		}
+		args = b.appendOpenCodeAgentArgs(args, opts)
 		// Add default args (e.g., --verbose --output-format stream-json for Claude)
 		// Only in automated mode - interactive mode omits these for conversation
 		args = append(args, b.AgentCaps.DefaultArgs...)
@@ -159,6 +161,13 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 	args = b.appendAutonomousArgs(args, opts)
 	args = append(args, opts.ExtraArgs...)
 	return args
+}
+
+func (b *BaseAgent) appendOpenCodeAgentArgs(args []string, opts ExecOptions) []string {
+	if b.AgentName != "opencode" || opts.OpenCodeAgent == "" {
+		return args
+	}
+	return append(args, "--agent", opts.OpenCodeAgent)
 }
 
 // appendAutonomousArgs adds autonomous mode flags if enabled.

@@ -114,6 +114,9 @@ This is useful when you want to review the generated artifacts before implementa
 			// Apply output style from CLI flag (overrides config)
 			shared.ApplyOutputStyle(cmd, orchestrator)
 
+			// Apply OpenCode agent if the flag is present
+			shared.ApplyOpenCodeAgent(cmd, cfg, orchestrator)
+
 			if specName != "" {
 				activeFeature, err := resolvePrepFeature(cfg, specName)
 				if err != nil {
@@ -152,6 +155,9 @@ func init() {
 	// Agent override flag
 	shared.AddAgentFlag(prepCmd)
 	shared.AddModelFlag(prepCmd)
+
+	// Opencode-agent flag
+	shared.AddOpenCodeAgentFlag(prepCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(prepCmd)

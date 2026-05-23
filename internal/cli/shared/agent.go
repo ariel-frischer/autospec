@@ -3,11 +3,14 @@ package shared
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/build"
 	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/workflow"
+
 	"github.com/spf13/cobra"
 )
 
@@ -16,6 +19,9 @@ const AgentFlagName = "agent"
 
 // ModelFlagName is the flag name for one-shot workflow model overrides.
 const ModelFlagName = "model"
+
+// OpenCodeAgentFlagName is the flag name for OpenCode sub-agent override.
+const OpenCodeAgentFlagName = "opencode-agent"
 
 // availableAgentNames returns agent names available for the current build type.
 // Production builds only show production agents; dev builds show all registered agents.
@@ -105,4 +111,41 @@ func ApplyAgentOverride(cmd *cobra.Command, cfg *config.Configuration) (bool, er
 	cfg.CustomAgent = nil
 
 	return true, nil
+}
+
+// AddOpenCodeAgentFlag adds the --opencode-agent flag to a command.
+func AddOpenCodeAgentFlag(cmd *cobra.Command) {
+	if !build.MultiAgentEnabled() {
+		return
+	}
+	cmd.Flags().String(OpenCodeAgentFlagName, "", "OpenCode sub-agent to use (build, plan, explore, etc.)")
+}
+
+// ResolveOpenCodeAgent resolves the OpenCode agent from CLI flag or config.
+// Priority: CLI flag > config > default (empty)
+func ResolveOpenCodeAgent(cmd *cobra.Command, cfg *config.Configuration) string {
+	if !build.MultiAgentEnabled() {
+		return ""
+	}
+
+	// Check CLI flag first
+	if agent, _ := cmd.Flags().GetString(OpenCodeAgentFlagName); agent != "" {
+		return agent
+	}
+
+	// Fall back to config
+	return cfg.OpenCodeAgent
+}
+
+// ApplyOpenCodeAgent applies the OpenCode sub-agent override to the workflow executor.
+func ApplyOpenCodeAgent(cmd *cobra.Command, cfg *config.Configuration, orch *workflow.WorkflowOrchestrator) {
+	agent := ResolveOpenCodeAgent(cmd, cfg)
+	if agent == "" {
+		return
+	}
+	if claude, ok := orch.Executor.Claude.(*workflow.ClaudeExecutor); ok {
+		claude.OpenCodeAgent = agent
+	} else {
+		slog.Warn("--opencode-agent flag ignored: executor is not ClaudeExecutor")
+	}
 }

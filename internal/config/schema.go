@@ -63,6 +63,12 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description: "Default model for workflow agent execution",
 		Default:     "",
 	},
+	"opencode_agent": {
+		Path:        "opencode_agent",
+		Type:        TypeString,
+		Description: "OpenCode sub-agent to use (build, plan, explore, etc.)",
+		Default:     "",
+	},
 	"use_subscription": {
 		Path:        "use_subscription",
 		Type:        TypeBool,

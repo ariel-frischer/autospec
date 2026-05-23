@@ -197,6 +197,9 @@ Stages are always executed in canonical order:
 		// Apply output style from CLI flag (overrides config)
 		shared.ApplyOutputStyle(cmd, orchestrator)
 
+		// Apply Opencode agent if flagged
+		shared.ApplyOpenCodeAgent(cmd, cfg, orchestrator)
+
 		if debug {
 			fmt.Println("[DEBUG] Debug mode enabled")
 			fmt.Printf("[DEBUG] Config: %+v\n", cfg)
@@ -539,9 +542,12 @@ func init() {
 	runCmd.Flags().Bool("resume", false, "Resume implementation from where it left off")
 	runCmd.Flags().Bool("dry-run", false, "Preview what stages would run without executing")
 
-	// Agent override flag
+	// Agent flag
 	shared.AddAgentFlag(runCmd)
 	shared.AddModelFlag(runCmd)
+
+	// Opencode agent flag
+	shared.AddOpenCodeAgentFlag(runCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(runCmd)

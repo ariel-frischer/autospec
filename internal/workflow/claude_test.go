@@ -679,3 +679,44 @@ func TestClaudeExecutor_StreamCommand_SkipPermissions_SetsAutonomous(t *testing.
 		})
 	}
 }
+
+func TestClaudeExecutor_OpenCodeAgentPassesThrough(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		run      func(*ClaudeExecutor, *mockCapturingAgent) error
+		wantName string
+	}{
+		"execute": {
+			run: func(executor *ClaudeExecutor, _ *mockCapturingAgent) error {
+				return executor.Execute("test prompt")
+			},
+			wantName: "build",
+		},
+		"stream command": {
+			run: func(executor *ClaudeExecutor, _ *mockCapturingAgent) error {
+				var stdout, stderr bytes.Buffer
+				return executor.StreamCommand("test prompt", &stdout, &stderr)
+			},
+			wantName: "build",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mockAgent := &mockCapturingAgent{name: "opencode"}
+			executor := &ClaudeExecutor{
+				Agent:         mockAgent,
+				OpenCodeAgent: "build",
+				Timeout:       60,
+			}
+
+			err := tt.run(executor, mockAgent)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantName, mockAgent.capturedOpts.OpenCodeAgent)
+		})
+	}
+}

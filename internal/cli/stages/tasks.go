@@ -117,6 +117,9 @@ You can optionally provide a prompt to guide the task generation.`,
 			// Apply output style from CLI flag (overrides config)
 			shared.ApplyOutputStyle(cmd, orch)
 
+			// Apply opencode-agent from CLI flag or config
+			shared.ApplyOpenCodeAgent(cmd, cfg, orch)
+
 			// Execute tasks stage
 			if err := orch.ExecuteTasks(specName, prompt); err != nil {
 				return fmt.Errorf("tasks stage failed: %w", err)
@@ -136,6 +139,9 @@ func init() {
 	// Agent override flag
 	shared.AddAgentFlag(tasksCmd)
 	shared.AddModelFlag(tasksCmd)
+
+	// OpenCode agent flag
+	shared.AddOpenCodeAgentFlag(tasksCmd)
 
 	// Auto-commit flags
 	shared.AddAutoCommitFlags(tasksCmd)
