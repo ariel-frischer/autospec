@@ -1,9 +1,11 @@
 project: autospec
 versions:
-    unreleased:
+    unreleased: {}
+    0.11.5:
+        date: 2026-05-23
         added:
-            - 'Workflow commands now accept `--opencode-agent` for OpenCode sub-agent selection'
-            - 'Autospec config now supports `opencode_agent` for persistent OpenCode sub-agent selection'
+            - Workflow commands now accept `--opencode-agent` for OpenCode sub-agent selection
+            - Autospec config now supports `opencode_agent` for persistent OpenCode sub-agent selection
         security:
             - Bumped `github.com/go-git/go-git/v5` from v5.19.0 to v5.19.1
         internal:
@@ -12,8 +14,8 @@ versions:
     0.11.4:
         date: 2026-05-21
         added:
-            - 'Workflow commands now accept a generic `--model` flag for Claude, Codex, and OpenCode agents'
-            - 'Autospec config now supports a top-level `model` value and `AUTOSPEC_MODEL` for workflow model defaults'
+            - Workflow commands now accept a generic `--model` flag for Claude, Codex, and OpenCode agents
+            - Autospec config now supports a top-level `model` value and `AUTOSPEC_MODEL` for workflow model defaults
         changed:
             - 'Generated `spec.yaml` functional requirements no longer include the redundant `testable: true` field'
     0.11.3:
