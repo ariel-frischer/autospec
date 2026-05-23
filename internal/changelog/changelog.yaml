@@ -1,6 +1,8 @@
 project: autospec
 versions:
-    unreleased:
+    unreleased: {}
+    0.11.5:
+        date: 2026-05-23
         added:
             - Workflow commands now accept `--opencode-agent` for OpenCode sub-agent selection
             - Autospec config now supports `opencode_agent` for persistent OpenCode sub-agent selection
