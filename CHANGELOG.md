@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.6] - 2026-07-22
+
 ### Added
 - Codex workflows now support persistent global and per-stage reasoning effort configuration plus one-run `--reasoning-effort` (`-e`) overrides
 
@@ -401,7 +403,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.5...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.6...HEAD
+[0.11.6]: https://github.com/ariel-frischer/autospec/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/ariel-frischer/autospec/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/ariel-frischer/autospec/compare/v0.11.3...v0.11.4
 [0.11.3]: https://github.com/ariel-frischer/autospec/compare/v0.11.2...v0.11.3
