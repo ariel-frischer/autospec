@@ -9,7 +9,7 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 | Agent | Binary | Description | Status |
 |-------|--------|-------------|--------|
 | `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.139 |
-| `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.130.0 |
+| `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.145.0-alpha.23 |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.14.46 |
 
 ### Experimental Agents (Untested)
@@ -263,7 +263,7 @@ $ autospec doctor
 
 CLI Agents:
   ✓ claude: installed (v2.0.76)
-  ✓ codex: installed (codex-cli 0.130.0; tested 0.130.0)
+  ✓ codex: installed (codex-cli 0.145.0-alpha.23; tested 0.145.0-alpha.23)
   ✓ opencode: installed (v1.0.223)
 ```
 
@@ -275,7 +275,7 @@ $ autospec doctor
 CLI Agents:
   ✓ claude: installed (v2.0.76)
   ○ cline: not found in PATH
-  ✓ codex: installed (codex-cli 0.130.0; tested 0.130.0)
+  ✓ codex: installed (codex-cli 0.145.0-alpha.23; tested 0.145.0-alpha.23)
   ○ gemini: not found in PATH
   ○ goose: not found in PATH
   ✓ opencode: installed (v1.0.223)

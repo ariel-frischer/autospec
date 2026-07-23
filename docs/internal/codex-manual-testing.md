@@ -40,7 +40,7 @@ Expected result:
 
 - Codex appears with the supported CLI agents when installed.
 - Missing `OPENAI_API_KEY` is not reported as a Codex failure.
-- The displayed tested version is the current smoke-tested Codex version recorded in `internal/build/version.go`.
+- The displayed tested version is the current smoke-tested Codex version recorded in `internal/cliagent/registry.go`.
 
 ## Project Init
 

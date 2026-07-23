@@ -482,14 +482,14 @@ func TestFormatAgentStatus(t *testing.T) {
 			status: cliagent.AgentStatus{
 				Name:          "codex",
 				Installed:     true,
-				Version:       "codex-cli 0.130.0",
-				TestedVersion: "0.130.0",
+				Version:       "codex-cli 0.145.0-alpha.23",
+				TestedVersion: "0.145.0-alpha.23",
 				Valid:         true,
 				Error:         "",
 			},
 			wantSymb: "✓",
 			wantName: "codex",
-			wantInfo: "codex-cli 0.130.0; tested 0.130.0",
+			wantInfo: "codex-cli 0.145.0-alpha.23; tested 0.145.0-alpha.23",
 		},
 		"valid without version": {
 			status: cliagent.AgentStatus{

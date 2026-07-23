@@ -3,6 +3,8 @@ versions:
     unreleased:
         added:
             - Codex workflows now support persistent global and per-stage reasoning effort configuration plus one-run `--reasoning-effort` (`-e`) overrides
+        changed:
+            - '`autospec doctor` now reports Codex CLI 0.145.0-alpha.23 as the latest smoke-tested version'
     0.11.5:
         date: 2026-05-23
         added:

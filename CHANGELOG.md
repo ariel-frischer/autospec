@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Codex workflows now support persistent global and per-stage reasoning effort configuration plus one-run `--reasoning-effort` (`-e`) overrides
 
+### Changed
+- `autospec doctor` now reports Codex CLI 0.145.0-alpha.23 as the latest smoke-tested version
+
 ## [0.11.5] - 2026-05-23
 
 ### Added
