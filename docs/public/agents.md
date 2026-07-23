@@ -9,7 +9,7 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 | Agent | Binary | Description | Status |
 |-------|--------|-------------|--------|
 | `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.139 |
-| `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.130.0 |
+| `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.145.0-alpha.23 |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.14.46 |
 
 ### Experimental Agents (Untested)
@@ -263,7 +263,7 @@ $ autospec doctor
 
 CLI Agents:
   ✓ claude: installed (v2.0.76)
-  ✓ codex: installed (codex-cli 0.130.0; tested 0.130.0)
+  ✓ codex: installed (codex-cli 0.145.0-alpha.23; tested 0.145.0-alpha.23)
   ✓ opencode: installed (v1.0.223)
 ```
 
@@ -275,7 +275,7 @@ $ autospec doctor
 CLI Agents:
   ✓ claude: installed (v2.0.76)
   ○ cline: not found in PATH
-  ✓ codex: installed (codex-cli 0.130.0; tested 0.130.0)
+  ✓ codex: installed (codex-cli 0.145.0-alpha.23; tested 0.145.0-alpha.23)
   ○ gemini: not found in PATH
   ○ goose: not found in PATH
   ✓ opencode: installed (v1.0.223)
@@ -461,7 +461,7 @@ Autospec workflow commands can pass a model to supported agents when they launch
 
 ```bash
 autospec plan --agent claude --model claude-opus-4-5-20251101
-autospec run -a "Add billing exports" --agent codex --model gpt-5.4
+autospec run -a "Add billing exports" --agent codex --model gpt-5.6-terra --reasoning-effort high
 autospec run -a "Add billing exports" --agent opencode --model anthropic/claude-sonnet-4-20250514
 ```
 
@@ -469,10 +469,19 @@ Persist a default workflow model in autospec config:
 
 ```yaml
 agent_preset: codex
-model: gpt-5.4
+model: gpt-5.6-terra
+reasoning_effort: high
+reasoning_efforts:
+  specify: low
+  plan: xhigh
+  implement: max
 ```
 
 Model selection is scoped to autospec workflow agent execution. It does not rewrite Claude, Codex, or OpenCode's own global defaults for non-autospec usage.
+
+`reasoning_effort`, `--reasoning-effort`, and its `-e` shorthand apply only to Codex. Autospec passes the value through to Codex, so new model IDs and effort levels can work without an autospec release.
+
+Stage-specific `reasoning_efforts` values override the top-level default. A CLI effort overrides every stage for that invocation.
 
 OpenCode also supports multiple AI providers. For the best experience with Anthropic models, use OAuth authentication with your Claude Max/Pro subscription instead of API keys.
 

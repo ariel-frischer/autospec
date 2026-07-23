@@ -95,14 +95,34 @@ func (e *Executor) extraArgsForStage(stage Stage) []string {
 	if agentName == "" {
 		return nil
 	}
+	args := make([]string, 0, 4)
 	selection := ResolveWorkflowModelSelection(e.modelSelectionConfig(), ModelSelectionInput{
 		Agent: agentName,
 		Stage: stage,
 	})
-	if selection.Value == "" {
+	if selection.Value != "" {
+		args = append(args, "--model", selection.Value)
+	}
+	if effort := e.codexReasoningEffort(agentName, stage); effort != "" {
+		args = append(args, "-c", "model_reasoning_effort="+effort)
+	}
+	if len(args) == 0 {
 		return nil
 	}
-	return []string{"--model", selection.Value}
+	return args
+}
+
+func (e *Executor) codexReasoningEffort(agentName string, stage Stage) string {
+	if agentName != "codex" {
+		return ""
+	}
+	if e.Config.ReasoningEffortOverride != "" {
+		return e.Config.ReasoningEffortOverride
+	}
+	if effort := e.Config.ReasoningEfforts.ForStage(string(stage)); effort != "" {
+		return effort
+	}
+	return e.Config.ReasoningEffort
 }
 
 func (e *Executor) workflowAgentName() string {

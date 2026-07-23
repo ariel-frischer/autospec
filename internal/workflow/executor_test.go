@@ -149,8 +149,9 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 		agent interface {
 			cliagent.Agent
 		}
-		cfg  config.Configuration
-		want []string
+		stage Stage
+		cfg   config.Configuration
+		want  []string
 	}{
 		"claude receives generic cli model": {
 			agent: cliagent.NewClaude(),
@@ -176,6 +177,57 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 			agent: cliagent.NewCodex(),
 			cfg:   config.Configuration{Model: "codex-config"},
 			want:  []string{"--model", "codex-config"},
+		},
+		"codex receives configured reasoning effort": {
+			agent: cliagent.NewCodex(),
+			cfg:   config.Configuration{ReasoningEffort: "high"},
+			want:  []string{"-c", "model_reasoning_effort=high"},
+		},
+		"codex receives cli reasoning effort over configured effort": {
+			agent: cliagent.NewCodex(),
+			stage: StagePlan,
+			cfg: config.Configuration{
+				ReasoningEffort: "medium",
+				ReasoningEfforts: config.StageReasoningEfforts{
+					Plan: "high",
+				},
+				ReasoningEffortOverride: "xhigh",
+			},
+			want: []string{"-c", "model_reasoning_effort=xhigh"},
+		},
+		"codex stage reasoning effort overrides configured default": {
+			agent: cliagent.NewCodex(),
+			stage: StageTasks,
+			cfg: config.Configuration{
+				ReasoningEffort: "medium",
+				ReasoningEfforts: config.StageReasoningEfforts{
+					Tasks: "high",
+				},
+			},
+			want: []string{"-c", "model_reasoning_effort=high"},
+		},
+		"codex configured default applies when stage effort is empty": {
+			agent: cliagent.NewCodex(),
+			stage: StageImplement,
+			cfg: config.Configuration{
+				ReasoningEffort: "medium",
+				ReasoningEfforts: config.StageReasoningEfforts{
+					Plan: "high",
+				},
+			},
+			want: []string{"-c", "model_reasoning_effort=medium"},
+		},
+		"codex receives model and reasoning effort": {
+			agent: cliagent.NewCodex(),
+			cfg: config.Configuration{
+				Model:           "gpt-5.6-terra",
+				ReasoningEffort: "max",
+			},
+			want: []string{"--model", "gpt-5.6-terra", "-c", "model_reasoning_effort=max"},
+		},
+		"non-codex agent ignores reasoning effort": {
+			agent: cliagent.NewClaude(),
+			cfg:   config.Configuration{ReasoningEffort: "high"},
 		},
 		"opencode receives configured generic model": {
 			agent: cliagent.NewOpenCode(),
@@ -205,7 +257,42 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 				Config: tt.cfg,
 			}
 
-			assert.Equal(t, tt.want, executor.extraArgsForStage(StagePlan))
+			stage := tt.stage
+			if stage == "" {
+				stage = StagePlan
+			}
+			assert.Equal(t, tt.want, executor.extraArgsForStage(stage))
+		})
+	}
+}
+
+func TestExecutorExtraArgsForStageUsesEveryStageReasoningEffort(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		stage  Stage
+		effort config.StageReasoningEfforts
+		want   string
+	}{
+		"constitution": {stage: StageConstitution, effort: config.StageReasoningEfforts{Constitution: "low"}, want: "low"},
+		"specify":      {stage: StageSpecify, effort: config.StageReasoningEfforts{Specify: "medium"}, want: "medium"},
+		"clarify":      {stage: StageClarify, effort: config.StageReasoningEfforts{Clarify: "high"}, want: "high"},
+		"plan":         {stage: StagePlan, effort: config.StageReasoningEfforts{Plan: "xhigh"}, want: "xhigh"},
+		"tasks":        {stage: StageTasks, effort: config.StageReasoningEfforts{Tasks: "max"}, want: "max"},
+		"checklist":    {stage: StageChecklist, effort: config.StageReasoningEfforts{Checklist: "ultra"}, want: "ultra"},
+		"analyze":      {stage: StageAnalyze, effort: config.StageReasoningEfforts{Analyze: "low"}, want: "low"},
+		"implement":    {stage: StageImplement, effort: config.StageReasoningEfforts{Implement: "medium"}, want: "medium"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			executor := &Executor{
+				Claude: &ClaudeExecutor{Agent: cliagent.NewCodex()},
+				Config: config.Configuration{ReasoningEfforts: tt.effort},
+			}
+
+			assert.Equal(t, []string{"-c", "model_reasoning_effort=" + tt.want}, executor.extraArgsForStage(tt.stage))
 		})
 	}
 }

@@ -274,7 +274,7 @@ func TestTestedVersion(t *testing.T) {
 		},
 		"codex": {
 			agentName: "codex",
-			want:      "0.130.0",
+			want:      "0.145.0-alpha.23",
 		},
 		"unknown agent": {
 			agentName: "unknown",

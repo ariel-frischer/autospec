@@ -13,21 +13,36 @@ func TestApplyModelOverride(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		args              []string
-		initialModel      string
-		wantModel         string
-		wantModelOverride string
+		args               []string
+		initialModel       string
+		initialEffort      string
+		wantModel          string
+		wantModelOverride  string
+		wantEffort         string
+		wantEffortOverride string
 	}{
 		"absent model leaves configured model unchanged": {
-			args:         []string{},
-			initialModel: "configured",
-			wantModel:    "configured",
+			args:          []string{},
+			initialModel:  "configured",
+			initialEffort: "medium",
+			wantModel:     "configured",
+			wantEffort:    "medium",
 		},
 		"present model writes transient override": {
 			args:              []string{"--model", "cli-model"},
 			initialModel:      "configured",
 			wantModel:         "configured",
 			wantModelOverride: "cli-model",
+		},
+		"present reasoning effort writes transient override": {
+			args:               []string{"--reasoning-effort", "xhigh"},
+			initialEffort:      "medium",
+			wantEffort:         "medium",
+			wantEffortOverride: "xhigh",
+		},
+		"reasoning effort shorthand writes transient override": {
+			args:               []string{"-e", "high"},
+			wantEffortOverride: "high",
 		},
 	}
 
@@ -37,12 +52,17 @@ func TestApplyModelOverride(t *testing.T) {
 
 			cmd := commandWithModelFlags()
 			require.NoError(t, cmd.ParseFlags(tt.args))
-			cfg := &config.Configuration{Model: tt.initialModel}
+			cfg := &config.Configuration{
+				Model:           tt.initialModel,
+				ReasoningEffort: tt.initialEffort,
+			}
 
 			ApplyModelOverride(cmd, cfg)
 
 			assert.Equal(t, tt.wantModel, cfg.Model)
 			assert.Equal(t, tt.wantModelOverride, cfg.ModelOverride)
+			assert.Equal(t, tt.wantEffort, cfg.ReasoningEffort)
+			assert.Equal(t, tt.wantEffortOverride, cfg.ReasoningEffortOverride)
 		})
 	}
 }

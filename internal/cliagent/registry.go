@@ -188,7 +188,7 @@ func TestedVersion(agentName string) string {
 	case "claude":
 		return "2.1.139"
 	case "codex":
-		return "0.130.0"
+		return "0.145.0-alpha.23"
 	case "opencode":
 		return "1.14.46"
 	default:

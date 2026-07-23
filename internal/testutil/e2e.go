@@ -29,11 +29,13 @@ const (
 	AgentClaude AgentPreset = "claude"
 	// AgentOpencode uses the mock-opencode.sh script.
 	AgentOpencode AgentPreset = "opencode"
+	// AgentCodex uses the mock-codex.sh script.
+	AgentCodex AgentPreset = "codex"
 )
 
 // E2EEnv provides an isolated environment for E2E testing.
 // It manages PATH isolation, temp directories, and environment sanitization
-// to ensure E2E tests never invoke the real Claude or OpenCode CLI.
+// to ensure E2E tests never invoke a real agent CLI.
 type E2EEnv struct {
 	t               *testing.T
 	tempDir         string
@@ -124,6 +126,7 @@ func (e *E2EEnv) setupMockAgent() {
 	// Always set up both mock scripts for flexibility
 	e.setupMockClaude()
 	e.setupMockOpencode()
+	e.setupMockCodex()
 }
 
 func (e *E2EEnv) setupMockClaude() {
@@ -155,6 +158,21 @@ func (e *E2EEnv) setupMockOpencode() {
 
 	if err := os.WriteFile(opencodeLink, content, 0o755); err != nil {
 		e.t.Fatalf("writing mock opencode binary: %v", err)
+	}
+}
+
+func (e *E2EEnv) setupMockCodex() {
+	e.t.Helper()
+
+	mockPath := e.findMockScriptPath("mock-codex.sh")
+	codexPath := filepath.Join(e.binDir, "codex")
+
+	content, err := os.ReadFile(mockPath)
+	if err != nil {
+		e.t.Fatalf("reading mock-codex.sh: %v", err)
+	}
+	if err := os.WriteFile(codexPath, content, 0o755); err != nil {
+		e.t.Fatalf("writing mock codex binary: %v", err)
 	}
 }
 

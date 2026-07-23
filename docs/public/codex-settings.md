@@ -34,6 +34,44 @@ Project-level autospec setup creates:
 
 The project file is intentionally minimal. autospec records project metadata only and does not write destructive defaults such as full-access sandboxing.
 
+## Models And Reasoning Effort
+
+Set a persistent Codex model and reasoning effort in autospec config:
+
+```yaml
+agent_preset: codex
+model: gpt-5.6-terra
+reasoning_effort: medium
+reasoning_efforts:
+  specify: low
+  plan: high
+  tasks: medium
+  implement: xhigh
+```
+
+Or override both for one workflow run:
+
+```bash
+autospec run -a "Add billing exports" --agent codex --model gpt-5.6-sol --reasoning-effort xhigh
+```
+
+Use the equivalent `-e xhigh` shorthand for faster typing.
+
+Autospec invokes Codex with `--model <model>` and `-c model_reasoning_effort=<effort>`. Model IDs and effort values are passed through so the installed Codex CLI remains the source of truth.
+
+`reasoning_efforts` supports every workflow stage: `constitution`, `specify`, `clarify`, `plan`, `tasks`, `checklist`, `analyze`, and `implement`. Precedence is CLI `-e`/`--reasoning-effort`, stage-specific effort, top-level `reasoning_effort`, then the Codex model default.
+
+The Codex 0.145.0-alpha.23 catalog reports these visible models and efforts:
+
+| Model | Default | Supported efforts |
+|-------|---------|-------------------|
+| `gpt-5.6-sol` | `low` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `gpt-5.6-terra` | `medium` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `gpt-5.6-luna` | `medium` | `low`, `medium`, `high`, `xhigh`, `max` |
+| `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex-spark`, `codex-auto-review` | varies | `low`, `medium`, `high`, `xhigh` |
+
+Run `codex debug models` to inspect the catalog available to your installed version.
+
 ## Sandboxing And Approvals
 
 Codex supports these controls for `codex exec`:

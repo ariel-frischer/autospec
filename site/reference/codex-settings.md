@@ -41,6 +41,31 @@ Project-level autospec setup creates:
 
 The project file is intentionally minimal. autospec records project metadata only and does not write destructive defaults such as full-access sandboxing.
 
+## Models And Reasoning Effort
+
+```yaml
+agent_preset: codex
+model: gpt-5.6-terra
+reasoning_effort: medium
+reasoning_efforts:
+  specify: low
+  plan: high
+  tasks: medium
+  implement: xhigh
+```
+
+For one run:
+
+```bash
+autospec run -a "Add billing exports" --agent codex --model gpt-5.6-sol --reasoning-effort xhigh
+```
+
+Use the equivalent `-e xhigh` shorthand for faster typing.
+
+Autospec translates the effort to `-c model_reasoning_effort=<effort>`. It passes model IDs and effort values through to the installed Codex CLI. Sol and Terra currently support `low` through `ultra`; Luna supports `low` through `max`. Run `codex debug models` for the exact catalog installed locally.
+
+`reasoning_efforts` supports all workflow stages. Precedence is CLI `-e`/`--reasoning-effort`, stage-specific effort, top-level `reasoning_effort`, then the Codex model default.
+
 ## Sandboxing And Approvals
 
 Codex supports these controls for `codex exec`:

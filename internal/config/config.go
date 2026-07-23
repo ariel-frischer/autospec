@@ -68,14 +68,17 @@ type Configuration struct {
 	// Can be set via AUTOSPEC_OPENCODE_AGENT env var.
 	OpenCodeAgent string `koanf:"opencode_agent"`
 
-	MaxRetries        int    `koanf:"max_retries"`
-	SpecsDir          string `koanf:"specs_dir"`
-	StateDir          string `koanf:"state_dir"`
-	Model             string `koanf:"model"`
-	ModelOverride     string `koanf:"-"`
-	SkipPreflight     bool   `koanf:"skip_preflight"`
-	Timeout           int    `koanf:"timeout"`
-	SkipConfirmations bool   `koanf:"skip_confirmations"` // Skip confirmation prompts (can also be set via AUTOSPEC_YES env var)
+	MaxRetries              int                   `koanf:"max_retries"`
+	SpecsDir                string                `koanf:"specs_dir"`
+	StateDir                string                `koanf:"state_dir"`
+	Model                   string                `koanf:"model"`
+	ModelOverride           string                `koanf:"-"`
+	ReasoningEffort         string                `koanf:"reasoning_effort"`
+	ReasoningEfforts        StageReasoningEfforts `koanf:"reasoning_efforts"`
+	ReasoningEffortOverride string                `koanf:"-"`
+	SkipPreflight           bool                  `koanf:"skip_preflight"`
+	Timeout                 int                   `koanf:"timeout"`
+	SkipConfirmations       bool                  `koanf:"skip_confirmations"` // Skip confirmation prompts (can also be set via AUTOSPEC_YES env var)
 	// ImplementMethod sets the default execution mode for the implement command.
 	// Valid values: "single-session" (legacy), "phases" (default), "tasks"
 	// Can be overridden by CLI flags (--phases, --tasks) or env var AUTOSPEC_IMPLEMENT_METHOD
@@ -149,6 +152,42 @@ type Configuration struct {
 	// and quality thresholds for mutation testing, coverage, and complexity.
 	// Environment variable support via AUTOSPEC_VERIFICATION_* prefix.
 	Verification verification.VerificationConfig `koanf:"verification"`
+}
+
+// StageReasoningEfforts configures Codex reasoning effort by workflow stage.
+type StageReasoningEfforts struct {
+	Constitution string `koanf:"constitution"`
+	Specify      string `koanf:"specify"`
+	Clarify      string `koanf:"clarify"`
+	Plan         string `koanf:"plan"`
+	Tasks        string `koanf:"tasks"`
+	Checklist    string `koanf:"checklist"`
+	Analyze      string `koanf:"analyze"`
+	Implement    string `koanf:"implement"`
+}
+
+// ForStage returns the configured effort for a workflow stage name.
+func (e StageReasoningEfforts) ForStage(stage string) string {
+	switch stage {
+	case "constitution":
+		return e.Constitution
+	case "specify":
+		return e.Specify
+	case "clarify":
+		return e.Clarify
+	case "plan":
+		return e.Plan
+	case "tasks":
+		return e.Tasks
+	case "checklist":
+		return e.Checklist
+	case "analyze":
+		return e.Analyze
+	case "implement":
+		return e.Implement
+	default:
+		return ""
+	}
 }
 
 // LoadOptions configures how configuration is loaded
@@ -420,12 +459,13 @@ func fileExists(path string) bool {
 //   - AUTOSPEC_NOTIFICATIONS_ENABLED -> notifications.enabled
 //   - AUTOSPEC_WORKTREE_BASE_DIR -> worktree.base_dir
 //   - AUTOSPEC_CUSTOM_AGENT_COMMAND -> custom_agent.command
+//   - AUTOSPEC_REASONING_EFFORTS_PLAN -> reasoning_efforts.plan
 func envTransform(s string) string {
 	key := strings.ToLower(strings.TrimPrefix(s, "AUTOSPEC_"))
 
 	// Known nested config prefixes that need dot notation.
 	// Order matters: longer prefixes must come first to avoid partial matches.
-	nestedPrefixes := []string{"custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_"}
+	nestedPrefixes := []string{"reasoning_efforts_", "custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_"}
 	for _, prefix := range nestedPrefixes {
 		if strings.HasPrefix(key, prefix) {
 			// Replace the trailing underscore of the prefix with a dot

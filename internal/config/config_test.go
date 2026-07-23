@@ -1072,6 +1072,137 @@ func TestLoad_GenericModelConfig(t *testing.T) {
 	}
 }
 
+func TestLoadReasoningEffortConfig(t *testing.T) {
+	tests := map[string]struct {
+		configContent string
+		envValue      string
+		want          string
+	}{
+		"yaml effort": {
+			configContent: "reasoning_effort: high\n",
+			want:          "high",
+		},
+		"env effort": {
+			envValue: "xhigh",
+			want:     "xhigh",
+		},
+		"env effort overrides yaml": {
+			configContent: "reasoning_effort: medium\n",
+			envValue:      "max",
+			want:          "max",
+		},
+		"default effort is empty": {},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			t.Setenv("HOME", tmpDir)
+			t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+			if tt.envValue != "" {
+				t.Setenv("AUTOSPEC_REASONING_EFFORT", tt.envValue)
+			}
+			configPath := filepath.Join(tmpDir, "project-config.yml")
+			require.NoError(t, os.WriteFile(configPath, []byte(tt.configContent), 0o644))
+
+			cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: configPath, SkipWarnings: true})
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.ReasoningEffort)
+		})
+	}
+}
+
+func TestLoadStageReasoningEfforts(t *testing.T) {
+	tests := map[string]struct {
+		configContent string
+		envTaskEffort string
+		want          StageReasoningEfforts
+	}{
+		"yaml loads every stage": {
+			configContent: `reasoning_efforts:
+  constitution: low
+  specify: low
+  clarify: medium
+  plan: high
+  tasks: medium
+  checklist: high
+  analyze: xhigh
+  implement: max
+`,
+			want: StageReasoningEfforts{
+				Constitution: "low",
+				Specify:      "low",
+				Clarify:      "medium",
+				Plan:         "high",
+				Tasks:        "medium",
+				Checklist:    "high",
+				Analyze:      "xhigh",
+				Implement:    "max",
+			},
+		},
+		"environment overrides one stage": {
+			configContent: `reasoning_efforts:
+  tasks: medium
+`,
+			envTaskEffort: "xhigh",
+			want:          StageReasoningEfforts{Tasks: "xhigh"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			t.Setenv("HOME", tmpDir)
+			t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+			if tt.envTaskEffort != "" {
+				t.Setenv("AUTOSPEC_REASONING_EFFORTS_TASKS", tt.envTaskEffort)
+			}
+			configPath := filepath.Join(tmpDir, "project-config.yml")
+			require.NoError(t, os.WriteFile(configPath, []byte(tt.configContent), 0o644))
+
+			cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: configPath, SkipWarnings: true})
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.ReasoningEfforts)
+		})
+	}
+}
+
+func TestStageReasoningEffortsForStage(t *testing.T) {
+	t.Parallel()
+
+	efforts := StageReasoningEfforts{
+		Constitution: "constitution-effort",
+		Specify:      "specify-effort",
+		Clarify:      "clarify-effort",
+		Plan:         "plan-effort",
+		Tasks:        "tasks-effort",
+		Checklist:    "checklist-effort",
+		Analyze:      "analyze-effort",
+		Implement:    "implement-effort",
+	}
+	tests := map[string]struct {
+		stage string
+		want  string
+	}{
+		"constitution": {stage: "constitution", want: "constitution-effort"},
+		"specify":      {stage: "specify", want: "specify-effort"},
+		"clarify":      {stage: "clarify", want: "clarify-effort"},
+		"plan":         {stage: "plan", want: "plan-effort"},
+		"tasks":        {stage: "tasks", want: "tasks-effort"},
+		"checklist":    {stage: "checklist", want: "checklist-effort"},
+		"analyze":      {stage: "analyze", want: "analyze-effort"},
+		"implement":    {stage: "implement", want: "implement-effort"},
+		"unknown":      {stage: "unknown", want: ""},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, efforts.ForStage(tt.stage))
+		})
+	}
+}
+
 func TestLoad_CustomAgentFromYAML(t *testing.T) {
 	t.Parallel()
 

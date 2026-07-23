@@ -20,6 +20,9 @@ const AgentFlagName = "agent"
 // ModelFlagName is the flag name for one-shot workflow model overrides.
 const ModelFlagName = "model"
 
+// ReasoningEffortFlagName is the Codex reasoning effort override flag.
+const ReasoningEffortFlagName = "reasoning-effort"
+
 // OpenCodeAgentFlagName is the flag name for OpenCode sub-agent override.
 const OpenCodeAgentFlagName = "opencode-agent"
 
@@ -47,18 +50,22 @@ func AddAgentFlag(cmd *cobra.Command) {
 	}
 }
 
-// AddModelFlag adds the --model flag to a command.
+// AddModelFlag adds workflow model-selection flags to a command.
 func AddModelFlag(cmd *cobra.Command) {
 	cmd.Flags().String(ModelFlagName, "", "Use a model for this workflow run")
+	cmd.Flags().StringP(ReasoningEffortFlagName, "e", "", "Use a Codex reasoning effort for this workflow run")
 }
 
-// ApplyModelOverride applies the --model flag as a one-run override.
+// ApplyModelOverride applies one-run workflow model-selection overrides.
 func ApplyModelOverride(cmd *cobra.Command, cfg *config.Configuration) {
 	model, _ := cmd.Flags().GetString(ModelFlagName)
-	if model == "" {
-		return
+	if model != "" {
+		cfg.ModelOverride = model
 	}
-	cfg.ModelOverride = model
+	effort, _ := cmd.Flags().GetString(ReasoningEffortFlagName)
+	if effort != "" {
+		cfg.ReasoningEffortOverride = effort
+	}
 }
 
 // ResolveAgent resolves the agent to use based on CLI flag and config.

@@ -22,6 +22,7 @@ Execute complete workflow: specify → plan → tasks → implement
 - `--max-retries <count>`: Maximum retry attempts (0-10, default: 0)
 - `--agent <name>`: Override agent for this run (see [CLI Agents](#cli-agents))
 - `--model <model>`: Override the workflow agent model for this run
+- `-e, --reasoning-effort <effort>`: Override Codex reasoning effort for this run
 - `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `build`, `plan`); see [OpenCode Agents](https://opencode.ai/docs/agents)
 - `--auto-commit`: Enable automatic git commit after workflow completion
 - `--no-auto-commit`: Disable automatic git commit (overrides config)
@@ -90,6 +91,7 @@ Run selected workflow stages with flexible stage selection
 - `--max-retries <count>`: Override max retry attempts
 - `--agent <name>`: Override agent for this run
 - `--model <model>`: Override the workflow agent model for this run
+- `-e, --reasoning-effort <effort>`: Override Codex reasoning effort for this run
 - `--opencode-agent <name>`: OpenCode sub-agent to use (e.g., `build`, `plan`)
 - `--auto-commit` / `--no-auto-commit`: Override auto-commit config
 
@@ -1107,6 +1109,43 @@ model: gpt-5.4
 **Environment**: `AUTOSPEC_MODEL`
 
 For one command invocation, pass `--model <model>`. Precedence is `--model`, then top-level `model`, then the agent CLI default.
+
+### reasoning_effort
+
+**Type**: string
+**Default**: `""`
+**Description**: Default reasoning effort passed to Codex workflow stages. Autospec forwards this as Codex's `model_reasoning_effort` config override and leaves compatibility validation to the installed Codex CLI.
+
+**Example**:
+```yaml
+agent_preset: codex
+model: gpt-5.6-terra
+reasoning_effort: high
+```
+
+**Environment**: `AUTOSPEC_REASONING_EFFORT`
+
+For one command invocation, pass `-e <effort>` or `--reasoning-effort <effort>`. Precedence is the CLI flag, then a stage-specific value, then top-level `reasoning_effort`, then the Codex model default. Current Codex models use `low`, `medium`, `high`, `xhigh`, and, where supported, `max` or `ultra`.
+
+### reasoning_efforts.&lt;stage&gt;
+
+**Type**: string
+**Default**: `""`
+**Description**: Optional Codex reasoning effort for one workflow stage. Supported stage keys are `constitution`, `specify`, `clarify`, `plan`, `tasks`, `checklist`, `analyze`, and `implement`.
+
+**Example**:
+```yaml
+reasoning_effort: medium
+reasoning_efforts:
+  specify: low
+  plan: high
+  tasks: medium
+  implement: xhigh
+```
+
+**Environment**: `AUTOSPEC_REASONING_EFFORTS_<STAGE>`
+
+Precedence is the CLI `-e`/`--reasoning-effort` override, then the current stage's `reasoning_efforts` value, then top-level `reasoning_effort`, then the Codex model default.
 
 ### skip_permissions
 
