@@ -63,6 +63,20 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description: "Default model for workflow agent execution",
 		Default:     "",
 	},
+	"reasoning_effort": {
+		Path:        "reasoning_effort",
+		Type:        TypeString,
+		Description: "Codex reasoning effort for workflow execution",
+		Default:     "",
+	},
+	"reasoning_efforts.constitution": stageReasoningEffortSchema("constitution"),
+	"reasoning_efforts.specify":      stageReasoningEffortSchema("specify"),
+	"reasoning_efforts.clarify":      stageReasoningEffortSchema("clarify"),
+	"reasoning_efforts.plan":         stageReasoningEffortSchema("plan"),
+	"reasoning_efforts.tasks":        stageReasoningEffortSchema("tasks"),
+	"reasoning_efforts.checklist":    stageReasoningEffortSchema("checklist"),
+	"reasoning_efforts.analyze":      stageReasoningEffortSchema("analyze"),
+	"reasoning_efforts.implement":    stageReasoningEffortSchema("implement"),
 	"opencode_agent": {
 		Path:        "opencode_agent",
 		Type:        TypeString,
@@ -344,6 +358,16 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description: "Enable EARS requirements in spec.yaml (basic=disabled, enhanced/full=enabled by default)",
 		Default:     nil,
 	},
+}
+
+func stageReasoningEffortSchema(stage string) ConfigKeySchema {
+	path := "reasoning_efforts." + stage
+	return ConfigKeySchema{
+		Path:        path,
+		Type:        TypeString,
+		Description: "Codex reasoning effort for the " + stage + " stage",
+		Default:     "",
+	}
 }
 
 // ErrUnknownKey is returned when trying to access an unknown configuration key.

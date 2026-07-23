@@ -1,6 +1,8 @@
 project: autospec
 versions:
-    unreleased: {}
+    unreleased:
+        added:
+            - Codex workflows now support persistent global and per-stage reasoning effort configuration plus one-run `--reasoning-effort` (`-e`) overrides
     0.11.5:
         date: 2026-05-23
         added:

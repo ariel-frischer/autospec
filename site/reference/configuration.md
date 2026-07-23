@@ -55,6 +55,68 @@ Supported production presets include `claude`, `codex`, and `opencode`.
 
 ---
 
+### model
+
+Default model passed to Claude, Codex, or OpenCode workflow stages.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+| Environment | `AUTOSPEC_MODEL` |
+
+```yaml
+agent_preset: codex
+model: gpt-5.6-terra
+```
+
+Use `--model <model>` for a one-run override.
+
+---
+
+### reasoning_effort
+
+Default Codex reasoning effort. Autospec passes the value through as Codex's `model_reasoning_effort` config override.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+| Environment | `AUTOSPEC_REASONING_EFFORT` |
+
+```yaml
+agent_preset: codex
+model: gpt-5.6-terra
+reasoning_effort: high
+```
+
+Use `-e <effort>` or `--reasoning-effort <effort>` for a one-run override. Current values include `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`; support depends on the selected Codex model.
+
+---
+
+### reasoning_efforts.&lt;stage&gt;
+
+Optional Codex reasoning effort overrides by workflow stage.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+| Environment | `AUTOSPEC_REASONING_EFFORTS_<STAGE>` |
+
+```yaml
+reasoning_effort: medium
+reasoning_efforts:
+  specify: low
+  plan: high
+  tasks: medium
+  implement: xhigh
+```
+
+Supported stages are `constitution`, `specify`, `clarify`, `plan`, `tasks`, `checklist`, `analyze`, and `implement`. Precedence is CLI override, stage-specific value, top-level value, then the Codex model default.
+
+---
+
 ### use_subscription
 
 Force Claude to use subscription (Pro/Max) instead of API credits.
