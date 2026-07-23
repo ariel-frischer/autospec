@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `autospec doctor` now reports Codex CLI 0.145.0-alpha.23 as the latest smoke-tested version
 
+### Security
+- Updated golang.org/x/crypto to v0.52.0 and concurrent-ruby to v1.3.7 to incorporate upstream security fixes
+
 ## [0.11.5] - 2026-05-23
 
 ### Added
