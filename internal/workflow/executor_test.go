@@ -266,6 +266,37 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 	}
 }
 
+func TestExecutorExtraArgsForStageUsesEveryStageReasoningEffort(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		stage  Stage
+		effort config.StageReasoningEfforts
+		want   string
+	}{
+		"constitution": {stage: StageConstitution, effort: config.StageReasoningEfforts{Constitution: "low"}, want: "low"},
+		"specify":      {stage: StageSpecify, effort: config.StageReasoningEfforts{Specify: "medium"}, want: "medium"},
+		"clarify":      {stage: StageClarify, effort: config.StageReasoningEfforts{Clarify: "high"}, want: "high"},
+		"plan":         {stage: StagePlan, effort: config.StageReasoningEfforts{Plan: "xhigh"}, want: "xhigh"},
+		"tasks":        {stage: StageTasks, effort: config.StageReasoningEfforts{Tasks: "max"}, want: "max"},
+		"checklist":    {stage: StageChecklist, effort: config.StageReasoningEfforts{Checklist: "ultra"}, want: "ultra"},
+		"analyze":      {stage: StageAnalyze, effort: config.StageReasoningEfforts{Analyze: "low"}, want: "low"},
+		"implement":    {stage: StageImplement, effort: config.StageReasoningEfforts{Implement: "medium"}, want: "medium"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			executor := &Executor{
+				Claude: &ClaudeExecutor{Agent: cliagent.NewCodex()},
+				Config: config.Configuration{ReasoningEfforts: tt.effort},
+			}
+
+			assert.Equal(t, []string{"-c", "model_reasoning_effort=" + tt.want}, executor.extraArgsForStage(tt.stage))
+		})
+	}
+}
+
 func TestExecuteStage_Success(t *testing.T) {
 	stateDir := t.TempDir()
 	specsDir := t.TempDir()
