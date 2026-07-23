@@ -64,12 +64,12 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect; indirect - Reflection-based struct walking (36K)
 	github.com/pmezard/go-difflib v1.0.0 // indirect; indirect - Diff library (36K source, 0 KB in binary)
 	github.com/spf13/pflag v1.0.9 // indirect; indirect - POSIX/GNU-style flags (312K)
-	golang.org/x/sys v0.43.0 // indirect - Low-level OS primitives (9.0M) ⚠️ LARGEST DEPENDENCY
+	golang.org/x/sys v0.45.0 // indirect - Low-level OS primitives (9.0M) ⚠️ LARGEST DEPENDENCY
 )
 
 require (
 	github.com/briandowns/spinner v1.23.2
-	golang.org/x/term v0.42.0
+	golang.org/x/term v0.43.0
 )
 
 require (
@@ -98,8 +98,8 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/crypto v0.50.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
