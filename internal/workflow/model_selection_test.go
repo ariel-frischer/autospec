@@ -16,38 +16,44 @@ func TestResolveWorkflowModelSelection(t *testing.T) {
 		wantValue  string
 		wantSource ModelSelectionSource
 	}{
-		"cli model wins for opencode": {
+		"cli model wins over stage and top-level values": {
 			cfg: config.Configuration{
-				Model:         "generic-config",
-				ModelOverride: "generic-cli",
+				Model:         "top-level-model",
+				Models:        config.StageModels{Plan: "stage-model"},
+				ModelOverride: "cli-model",
 			},
 			input:      ModelSelectionInput{Agent: "opencode", Stage: StagePlan},
-			wantValue:  "generic-cli",
+			wantValue:  "cli-model",
 			wantSource: ModelSourceCLI,
 		},
-		"configured model used for claude": {
+		"stage model wins over top-level value": {
 			cfg: config.Configuration{
-				Model: "generic-config",
+				Model:  "top-level-model",
+				Models: config.StageModels{Plan: "stage-model"},
 			},
 			input:      ModelSelectionInput{Agent: "claude", Stage: StagePlan},
-			wantValue:  "generic-config",
-			wantSource: ModelSourceConfig,
+			wantValue:  "stage-model",
+			wantSource: ModelSourceStage,
 		},
-		"configured model used for codex": {
+		"empty matching stage falls back to top-level value": {
 			cfg: config.Configuration{
-				Model: "generic-config",
+				Model:  "top-level-model",
+				Models: config.StageModels{Specify: "neighbor-model"},
 			},
 			input:      ModelSelectionInput{Agent: "codex", Stage: StagePlan},
-			wantValue:  "generic-config",
+			wantValue:  "top-level-model",
 			wantSource: ModelSourceConfig,
 		},
-		"configured model used for opencode": {
+		"matching stage is isolated from neighboring stages": {
 			cfg: config.Configuration{
-				Model: "generic-config",
+				Models: config.StageModels{
+					Plan:  "plan-model",
+					Tasks: "tasks-model",
+				},
 			},
-			input:      ModelSelectionInput{Agent: "opencode", Stage: StageTasks},
-			wantValue:  "generic-config",
-			wantSource: ModelSourceConfig,
+			input:      ModelSelectionInput{Agent: "opencode", Stage: StagePlan},
+			wantValue:  "plan-model",
+			wantSource: ModelSourceStage,
 		},
 		"empty default source when no model configured": {
 			cfg:        config.Configuration{},
@@ -56,7 +62,11 @@ func TestResolveWorkflowModelSelection(t *testing.T) {
 			wantSource: ModelSourceDefault,
 		},
 		"unsupported agent ignores configured model": {
-			cfg:        config.Configuration{Model: "generic-config", ModelOverride: "generic-cli"},
+			cfg: config.Configuration{
+				Model:         "top-level-model",
+				Models:        config.StageModels{Plan: "stage-model"},
+				ModelOverride: "cli-model",
+			},
 			input:      ModelSelectionInput{Agent: "gemini", Stage: StagePlan},
 			wantValue:  "",
 			wantSource: ModelSourceDefault,
@@ -67,12 +77,14 @@ func TestResolveWorkflowModelSelection(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			originalConfig := tt.cfg
 			got := ResolveWorkflowModelSelection(tt.cfg, tt.input)
 
 			assert.Equal(t, tt.wantValue, got.Value)
 			assert.Equal(t, tt.wantSource, got.Source)
 			assert.Equal(t, tt.input.Stage, got.Stage)
 			assert.Equal(t, tt.input.Agent, got.Agent)
+			assert.Equal(t, originalConfig, tt.cfg)
 		})
 	}
 }

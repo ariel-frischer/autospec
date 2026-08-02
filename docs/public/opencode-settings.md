@@ -219,7 +219,14 @@ For autospec workflow commands, use the generic workflow model setting:
 ```yaml
 agent_preset: opencode
 model: anthropic/claude-opus-4-5-20251101
+models:
+  plan: anthropic/claude-opus-4-5-latest
+  implement: anthropic/claude-sonnet-4-20250514
 ```
+
+In this example, `plan` and `implement` use their stage-specific models. Other
+stages fall back to top-level `model`. Supported stage keys are `constitution`,
+`specify`, `clarify`, `plan`, `tasks`, `checklist`, `analyze`, and `implement`.
 
 For one-off runs, use the generic CLI flag:
 
@@ -227,7 +234,11 @@ For one-off runs, use the generic CLI flag:
 autospec implement --agent opencode --model anthropic/claude-opus-4-5-latest
 ```
 
-Autospec passes the selected model as `opencode run <prompt> --model <model>`. Precedence is CLI `--model`, then top-level config `model`, then OpenCode's own CLI default.
+Autospec passes the selected model through the unchanged
+`opencode run <prompt> --model <model>` contract. Precedence is CLI `--model`,
+the current stage's `models.<stage>` value, top-level `model`, then OpenCode's
+own CLI default. Empty stage values continue to the top-level fallback, and CLI
+overrides do not modify persistent configuration.
 
 OpenCode's own config can still define a default for non-autospec usage:
 

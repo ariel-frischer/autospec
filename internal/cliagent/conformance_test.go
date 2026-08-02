@@ -3,6 +3,8 @@ package cliagent
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestAllAgentsRegistered verifies that all Tier 1 agents are registered.
@@ -224,6 +226,44 @@ func TestBuildCommand(t *testing.T) {
 					t.Errorf("expected env var %q in command environment", tt.wantEnv)
 				}
 			}
+		})
+	}
+}
+
+func TestWorkflowModelExtraArgsConformance(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agent     Agent
+		extraArgs []string
+		wantArgs  []string
+	}{
+		"claude transports model without codex effort": {
+			agent:     NewClaude(),
+			extraArgs: []string{"--model", "stage-model"},
+			wantArgs:  []string{"-p", "test prompt", "--verbose", "--output-format", "stream-json", "--model", "stage-model"},
+		},
+		"codex transports model and reasoning effort": {
+			agent:     NewCodex(),
+			extraArgs: []string{"--model", "stage-model", "-c", "model_reasoning_effort=high"},
+			wantArgs:  []string{"exec", "test prompt", "--model", "stage-model", "-c", "model_reasoning_effort=high"},
+		},
+		"opencode transports model without codex effort": {
+			agent:     NewOpenCode(),
+			extraArgs: []string{"--model", "stage-model"},
+			wantArgs:  []string{"run", "test prompt", "--model", "stage-model"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cmd, err := tt.agent.BuildCommand("test prompt", ExecOptions{ExtraArgs: tt.extraArgs})
+			if !assert.NoError(t, err) {
+				return
+			}
+
+			assert.Equal(t, tt.wantArgs, cmd.Args[1:])
 		})
 	}
 }

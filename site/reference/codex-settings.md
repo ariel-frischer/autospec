@@ -47,11 +47,26 @@ The project file is intentionally minimal. autospec records project metadata onl
 agent_preset: codex
 model: gpt-5.6-terra
 reasoning_effort: medium
+models:
+  specify: gpt-5.6-sol
+  implement: gpt-5.6-luna
 reasoning_efforts:
-  specify: low
-  plan: high
-  tasks: medium
+  specify: high
   implement: xhigh
+```
+
+Each stage uses its configured model and effort together. All eight workflow
+stages are supported: `constitution`, `specify`, `clarify`, `plan`, `tasks`,
+`checklist`, `analyze`, and `implement`.
+
+The two settings resolve independently, so configuring only one leaves the
+other on its own fallback chain:
+
+```yaml
+models:
+  plan: gpt-5.6-sol
+reasoning_efforts:
+  tasks: high
 ```
 
 For one run:
@@ -64,7 +79,11 @@ Use the equivalent `-e xhigh` shorthand for faster typing.
 
 Autospec translates the effort to `-c model_reasoning_effort=<effort>`. It passes model IDs and effort values through to the installed Codex CLI. Sol and Terra currently support `low` through `ultra`; Luna supports `low` through `max`. Run `codex debug models` for the exact catalog installed locally.
 
-`reasoning_efforts` supports all workflow stages. Precedence is CLI `-e`/`--reasoning-effort`, stage-specific effort, top-level `reasoning_effort`, then the Codex model default.
+Model precedence is CLI `--model`, stage-specific `models.<stage>`, top-level
+`model`, then the Codex CLI default. Reasoning precedence is CLI
+`-e`/`--reasoning-effort`, stage-specific `reasoning_efforts.<stage>`, top-level
+`reasoning_effort`, then the Codex model default. CLI overrides are
+invocation-scoped and do not rewrite persistent configuration.
 
 ## Sandboxing And Approvals
 

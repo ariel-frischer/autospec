@@ -72,6 +72,7 @@ type Configuration struct {
 	SpecsDir                string                `koanf:"specs_dir"`
 	StateDir                string                `koanf:"state_dir"`
 	Model                   string                `koanf:"model"`
+	Models                  StageModels           `koanf:"models"`
 	ModelOverride           string                `koanf:"-"`
 	ReasoningEffort         string                `koanf:"reasoning_effort"`
 	ReasoningEfforts        StageReasoningEfforts `koanf:"reasoning_efforts"`
@@ -152,6 +153,42 @@ type Configuration struct {
 	// and quality thresholds for mutation testing, coverage, and complexity.
 	// Environment variable support via AUTOSPEC_VERIFICATION_* prefix.
 	Verification verification.VerificationConfig `koanf:"verification"`
+}
+
+// StageModels configures the workflow agent model by stage.
+type StageModels struct {
+	Constitution string `koanf:"constitution"`
+	Specify      string `koanf:"specify"`
+	Clarify      string `koanf:"clarify"`
+	Plan         string `koanf:"plan"`
+	Tasks        string `koanf:"tasks"`
+	Checklist    string `koanf:"checklist"`
+	Analyze      string `koanf:"analyze"`
+	Implement    string `koanf:"implement"`
+}
+
+// ForStage returns the configured model for a workflow stage name.
+func (m StageModels) ForStage(stage string) string {
+	switch stage {
+	case "constitution":
+		return m.Constitution
+	case "specify":
+		return m.Specify
+	case "clarify":
+		return m.Clarify
+	case "plan":
+		return m.Plan
+	case "tasks":
+		return m.Tasks
+	case "checklist":
+		return m.Checklist
+	case "analyze":
+		return m.Analyze
+	case "implement":
+		return m.Implement
+	default:
+		return ""
+	}
 }
 
 // StageReasoningEfforts configures Codex reasoning effort by workflow stage.
@@ -460,12 +497,13 @@ func fileExists(path string) bool {
 //   - AUTOSPEC_WORKTREE_BASE_DIR -> worktree.base_dir
 //   - AUTOSPEC_CUSTOM_AGENT_COMMAND -> custom_agent.command
 //   - AUTOSPEC_REASONING_EFFORTS_PLAN -> reasoning_efforts.plan
+//   - AUTOSPEC_MODELS_PLAN -> models.plan
 func envTransform(s string) string {
 	key := strings.ToLower(strings.TrimPrefix(s, "AUTOSPEC_"))
 
 	// Known nested config prefixes that need dot notation.
 	// Order matters: longer prefixes must come first to avoid partial matches.
-	nestedPrefixes := []string{"reasoning_efforts_", "custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_"}
+	nestedPrefixes := []string{"reasoning_efforts_", "custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_", "models_"}
 	for _, prefix := range nestedPrefixes {
 		if strings.HasPrefix(key, prefix) {
 			// Replace the trailing underscore of the prefix with a dot

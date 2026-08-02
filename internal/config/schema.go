@@ -63,6 +63,14 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description: "Default model for workflow agent execution",
 		Default:     "",
 	},
+	"models.constitution": stageModelSchema("constitution"),
+	"models.specify":      stageModelSchema("specify"),
+	"models.clarify":      stageModelSchema("clarify"),
+	"models.plan":         stageModelSchema("plan"),
+	"models.tasks":        stageModelSchema("tasks"),
+	"models.checklist":    stageModelSchema("checklist"),
+	"models.analyze":      stageModelSchema("analyze"),
+	"models.implement":    stageModelSchema("implement"),
 	"reasoning_effort": {
 		Path:        "reasoning_effort",
 		Type:        TypeString,
@@ -358,6 +366,16 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description: "Enable EARS requirements in spec.yaml (basic=disabled, enhanced/full=enabled by default)",
 		Default:     nil,
 	},
+}
+
+func stageModelSchema(stage string) ConfigKeySchema {
+	path := "models." + stage
+	return ConfigKeySchema{
+		Path:        path,
+		Type:        TypeString,
+		Description: "Workflow agent model for the " + stage + " stage",
+		Default:     "",
+	}
 }
 
 func stageReasoningEffortSchema(stage string) ConfigKeySchema {

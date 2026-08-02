@@ -179,6 +179,36 @@ func TestValidateConfigValues_Valid(t *testing.T) {
 	}
 }
 
+func TestValidateStageModelsAcceptOpaqueIdentifiers(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		model string
+	}{
+		"constitution": {model: "anthropic/claude-opus:latest"},
+		"specify":      {model: "openai:gpt-5.6@2026-08-01"},
+		"clarify":      {model: "provider/custom.model-v2"},
+		"plan":         {model: "org/model_name+extended"},
+		"tasks":        {model: "vendor/model:task-specialist"},
+		"checklist":    {model: "local/checklist-model#snapshot"},
+		"analyze":      {model: "provider/analysis model"},
+		"implement":    {model: "urn:provider:model:implementation"},
+	}
+
+	for stage, tt := range tests {
+		t.Run(stage, func(t *testing.T) {
+			t.Parallel()
+			result, err := ValidateValue("models."+stage, tt.model)
+			if err != nil {
+				t.Fatalf("models.%s rejected opaque identifier %q: %v", stage, tt.model, err)
+			}
+			if result.Type != TypeString || result.Raw != tt.model || result.Parsed != tt.model {
+				t.Errorf("models.%s = %#v, want unchanged string %q", stage, result, tt.model)
+			}
+		})
+	}
+}
+
 func TestValidateConfigValues_InvalidMaxRetries(t *testing.T) {
 	tests := map[string]struct {
 		maxRetries int

@@ -3,12 +3,57 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
+
+func TestStageModelConfigurationSurfacesStaySynchronized(t *testing.T) {
+	t.Parallel()
+
+	var templateDefaults map[string]interface{}
+	require.NoError(t, yaml.Unmarshal([]byte(GetDefaultConfigTemplate()), &templateDefaults))
+	runtimeDefaults := GetDefaults()
+	configType := reflect.TypeOf(Configuration{})
+
+	for stage := range stageModelEffortCases {
+		t.Run(stage, func(t *testing.T) {
+			t.Parallel()
+			path := "models." + stage
+
+			assert.True(t, configurationHasStageModel(configType, stage), "Configuration decoding missing %s", path)
+			assert.Contains(t, KnownKeys, path, "KnownKeys missing %s", path)
+			assert.True(t, hasEmptyStageDefault(runtimeDefaults, stage), "runtime defaults missing %s", path)
+			assert.True(t, hasEmptyStageDefault(templateDefaults, stage), "generated YAML defaults missing %s", path)
+		})
+	}
+}
+
+func configurationHasStageModel(configType reflect.Type, stage string) bool {
+	modelsField, ok := configType.FieldByName("Models")
+	if !ok || modelsField.Tag.Get("koanf") != "models" {
+		return false
+	}
+
+	for index := 0; index < modelsField.Type.NumField(); index++ {
+		if modelsField.Type.Field(index).Tag.Get("koanf") == stage {
+			return true
+		}
+	}
+	return false
+}
+
+func hasEmptyStageDefault(defaults map[string]interface{}, stage string) bool {
+	models, ok := defaults["models"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	value, ok := models[stage]
+	return ok && value == ""
+}
 
 func TestFlattenDefaults(t *testing.T) {
 	t.Parallel()

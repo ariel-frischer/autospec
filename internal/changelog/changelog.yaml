@@ -1,6 +1,10 @@
 project: autospec
 versions:
-    unreleased: {}
+    unreleased:
+        added:
+            - Workflow stages can now persist independent models for constitution, specify, clarify, plan, tasks, checklist, analyze, and implement
+        changed:
+            - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
     0.11.6:
         date: 2026-07-22
         added:
