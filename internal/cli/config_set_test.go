@@ -38,6 +38,16 @@ func TestConfigSetCommand(t *testing.T) {
 			wantErr:        true,
 			wantErrContain: "unknown configuration key",
 		},
+		"unsupported stage model": {
+			args: []string{"config", "set", "models.unsupported", "some-model", "--project"},
+			setup: func(t *testing.T, dir string) {
+				if err := os.MkdirAll(filepath.Join(dir, ".autospec"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantErr:        true,
+			wantErrContain: "unknown configuration key",
+		},
 		"invalid value type with project": {
 			args: []string{"config", "set", "max_retries", "not-a-number", "--project"},
 			setup: func(t *testing.T, dir string) {
@@ -128,6 +138,53 @@ func TestConfigSetCommand(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestConfigSetAndGetStageModels(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	projectDir := filepath.Join(tmpDir, ".autospec")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(projectDir, "config.yml")
+	if err := os.WriteFile(configPath, []byte("max_retries: 4\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := map[string]string{"constitution": "provider/constitution-model", "implement": "provider/implement-model"}
+	for stage, model := range tests {
+		runConfigCommand(t, []string{"config", "set", "models." + stage, model, "--project"}, "Set models."+stage+" = "+model)
+		runConfigCommand(t, []string{"config", "get", "models." + stage, "--project"}, "models."+stage+": "+model)
+	}
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "max_retries: 4") {
+		t.Errorf("unrelated config was modified: %s", content)
+	}
+}
+
+func runConfigCommand(t *testing.T, args []string, want string) {
+	t.Helper()
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	rootCmd.SetArgs(args)
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("%v: %v", args, err)
+	}
+	if !strings.Contains(buf.String(), want) {
+		t.Errorf("output = %q, want to contain %q", buf.String(), want)
 	}
 }
 
@@ -342,6 +399,14 @@ func TestConfigKeysCommand(t *testing.T) {
 		"timeout",
 		"skip_preflight",
 		"specs_dir",
+		"models.constitution",
+		"models.specify",
+		"models.clarify",
+		"models.plan",
+		"models.tasks",
+		"models.checklist",
+		"models.analyze",
+		"models.implement",
 	}
 
 	for _, key := range expectedKeys {

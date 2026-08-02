@@ -16,6 +16,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var stageModelEffortCases = map[string]struct {
+	model           string
+	reasoningEffort string
+}{
+	"constitution": {model: "constitution-model", reasoningEffort: "constitution-effort"},
+	"specify":      {model: "specify-model", reasoningEffort: "specify-effort"},
+	"clarify":      {model: "clarify-model", reasoningEffort: "clarify-effort"},
+	"plan":         {model: "plan-model", reasoningEffort: "plan-effort"},
+	"tasks":        {model: "tasks-model", reasoningEffort: "tasks-effort"},
+	"checklist":    {model: "checklist-model", reasoningEffort: "checklist-effort"},
+	"analyze":      {model: "analyze-model", reasoningEffort: "analyze-effort"},
+	"implement":    {model: "implement-model", reasoningEffort: "implement-effort"},
+}
+
 // TestLoad_Defaults tests that defaults are applied when no config files exist.
 // Requires working directory and HOME/XDG_CONFIG_HOME isolation to avoid
 // loading real config files from the system. NO t.Parallel() due to cwd changes.
@@ -1201,6 +1215,70 @@ func TestStageReasoningEffortsForStage(t *testing.T) {
 			assert.Equal(t, tt.want, efforts.ForStage(tt.stage))
 		})
 	}
+}
+
+func TestLoadStageModels(t *testing.T) {
+	for stage, values := range stageModelEffortCases {
+		t.Run(stage, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			t.Setenv("HOME", tmpDir)
+			t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+			configPath := filepath.Join(tmpDir, "project-config.yml")
+			configContent := fmt.Sprintf("models:\n  %s: %s\nreasoning_efforts:\n  %s: %s\n", stage, values.model, stage, values.reasoningEffort)
+			require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0o644))
+
+			cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: configPath, SkipWarnings: true})
+			require.NoError(t, err)
+			assert.Equal(t, values.model, cfg.Models.ForStage(stage))
+			assert.Equal(t, values.reasoningEffort, cfg.ReasoningEfforts.ForStage(stage))
+			assert.Empty(t, cfg.Models.ForStage(neighboringStage(stage)))
+
+			t.Setenv("AUTOSPEC_MODELS_"+strings.ToUpper(stage), "environment-model")
+			cfg, err = LoadWithOptions(LoadOptions{ProjectConfigPath: configPath, SkipWarnings: true})
+			require.NoError(t, err)
+			assert.Equal(t, "environment-model", cfg.Models.ForStage(stage))
+			assert.Equal(t, values.reasoningEffort, cfg.ReasoningEfforts.ForStage(stage))
+		})
+	}
+}
+
+func TestStageModelsForStage(t *testing.T) {
+	t.Parallel()
+
+	models := StageModels{
+		Constitution: "constitution-model", Specify: "specify-model", Clarify: "clarify-model", Plan: "plan-model",
+		Tasks: "tasks-model", Checklist: "checklist-model", Analyze: "analyze-model", Implement: "implement-model",
+	}
+	for stage, values := range stageModelEffortCases {
+		stage, values := stage, values
+		t.Run(stage, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, values.model, models.ForStage(stage))
+		})
+	}
+	assert.Empty(t, models.ForStage("unknown"))
+}
+
+func TestLoadEmptyStageModelPreservesFallbackInput(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+	configPath := filepath.Join(tmpDir, "project-config.yml")
+	configContent := "model: top-level-model\nmodels:\n  plan: \"\"\nreasoning_efforts:\n  plan: high\n"
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0o644))
+
+	cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: configPath, SkipWarnings: true})
+	require.NoError(t, err)
+	assert.Empty(t, cfg.Models.Plan)
+	assert.Equal(t, "top-level-model", cfg.Model)
+	assert.Equal(t, "high", cfg.ReasoningEfforts.Plan)
+}
+
+func neighboringStage(stage string) string {
+	if stage == "implement" {
+		return "plan"
+	}
+	return "implement"
 }
 
 func TestLoad_CustomAgentFromYAML(t *testing.T) {

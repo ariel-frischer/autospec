@@ -6,6 +6,10 @@ package config
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestGetDefaultConfigTemplate(t *testing.T) {
@@ -144,4 +148,36 @@ func TestGetDefaults(t *testing.T) {
 	if codexOutput["color"] != true {
 		t.Errorf("codex_output.color default = %v, want true", codexOutput["color"])
 	}
+}
+
+func TestStageModelDefaults(t *testing.T) {
+	t.Parallel()
+
+	var template map[string]interface{}
+	require.NoError(t, yaml.Unmarshal([]byte(GetDefaultConfigTemplate()), &template))
+	runtime := GetDefaults()
+	tests := map[string]struct{}{
+		"constitution": {}, "specify": {}, "clarify": {}, "plan": {},
+		"tasks": {}, "checklist": {}, "analyze": {}, "implement": {},
+	}
+
+	for stage := range tests {
+		stage := stage
+		t.Run(stage, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "", nestedDefault(t, template, "models", stage))
+			assert.Equal(t, "", nestedDefault(t, runtime, "models", stage))
+			assert.NotNil(t, nestedDefault(t, template, "reasoning_efforts", stage))
+			assert.NotNil(t, nestedDefault(t, runtime, "reasoning_efforts", stage))
+		})
+	}
+}
+
+func nestedDefault(t *testing.T, defaults map[string]interface{}, group, stage string) interface{} {
+	t.Helper()
+	values, ok := defaults[group].(map[string]interface{})
+	require.True(t, ok, "%s default is not a map", group)
+	value, ok := values[stage]
+	require.True(t, ok, "%s.%s default is missing", group, stage)
+	return value
 }

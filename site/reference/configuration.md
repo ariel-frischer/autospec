@@ -70,7 +70,41 @@ agent_preset: codex
 model: gpt-5.6-terra
 ```
 
-Use `--model <model>` for a one-run override.
+Use `--model <model>` for a one-run override. Model precedence is CLI override,
+the current stage's `models.<stage>` value, top-level `model`, then the selected
+agent's default.
+
+---
+
+### models.&lt;stage&gt;
+
+Optional workflow model overrides by stage.
+
+| Property | Value |
+|:---------|:------|
+| Type | string |
+| Default | `""` |
+| Environment | `AUTOSPEC_MODELS_<STAGE>` |
+
+```yaml
+model: provider/default-model
+models:
+  constitution: provider/constitution-model
+  specify: provider/specify-model
+  clarify: provider/clarify-model
+  plan: provider/plan-model
+  tasks: provider/tasks-model
+  checklist: provider/checklist-model
+  analyze: provider/analyze-model
+  implement: provider/implement-model
+```
+
+The supported keys are `models.constitution`, `models.specify`,
+`models.clarify`, `models.plan`, `models.tasks`, `models.checklist`,
+`models.analyze`, and `models.implement`. Every generated default is empty, so
+an empty or absent stage value falls back to top-level `model`, then the agent
+default. Environment variables use the uppercase stage name, such as
+`AUTOSPEC_MODELS_PLAN`.
 
 ---
 

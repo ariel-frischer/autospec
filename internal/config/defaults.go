@@ -11,6 +11,15 @@ func GetDefaultConfigTemplate() string {
 # Agent settings
 agent_preset: ""                      # Built-in agent: claude | codex | opencode
 model: ""                             # Default model for workflow agent execution
+models:                               # Optional per-stage workflow agent model overrides
+  constitution: ""
+  specify: ""
+  clarify: ""
+  plan: ""
+  tasks: ""
+  checklist: ""
+  analyze: ""
+  implement: ""
 reasoning_effort: ""                  # Codex reasoning effort: low | medium | high | xhigh | max | ultra
 reasoning_efforts:                     # Optional per-stage Codex reasoning effort overrides
   constitution: ""
@@ -99,8 +108,18 @@ verification:
 func GetDefaults() map[string]interface{} {
 	return map[string]interface{}{
 		// Agent configuration
-		"agent_preset":     "",
-		"model":            "",
+		"agent_preset": "",
+		"model":        "",
+		"models": map[string]interface{}{
+			"constitution": "",
+			"specify":      "",
+			"clarify":      "",
+			"plan":         "",
+			"tasks":        "",
+			"checklist":    "",
+			"analyze":      "",
+			"implement":    "",
+		},
 		"reasoning_effort": "",
 		"reasoning_efforts": map[string]interface{}{
 			"constitution": "",

@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -148,6 +149,52 @@ func TestKnownKeysComplete(t *testing.T) {
 		if _, ok := KnownKeys[key]; !ok {
 			t.Errorf("missing expected key in KnownKeys: %q", key)
 		}
+	}
+}
+
+func TestKnownStageModelKeys(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct{}{
+		"constitution": {}, "specify": {}, "clarify": {}, "plan": {},
+		"tasks": {}, "checklist": {}, "analyze": {}, "implement": {},
+	}
+	for stage := range tests {
+		stage := stage
+		t.Run(stage, func(t *testing.T) {
+			t.Parallel()
+			path := "models." + stage
+			schema, err := GetKeySchema(path)
+			if err != nil {
+				t.Fatalf("GetKeySchema(%q): %v", path, err)
+			}
+			if schema.Type != TypeString || schema.Default != "" {
+				t.Errorf("schema = %#v, want string with empty default", schema)
+			}
+		})
+	}
+
+	modelKeyCount := 0
+	for path := range KnownKeys {
+		if strings.HasPrefix(path, "models.") {
+			modelKeyCount++
+		}
+	}
+	if modelKeyCount != len(tests) {
+		t.Errorf("models.<stage> key count = %d, want %d", modelKeyCount, len(tests))
+	}
+}
+
+func TestUnknownStageModelKeyRejected(t *testing.T) {
+	t.Parallel()
+
+	_, err := GetKeySchema("models.unsupported")
+	if err == nil {
+		t.Fatal("GetKeySchema(models.unsupported) expected error")
+	}
+	var unknownKeyErr ErrUnknownKey
+	if !errors.As(err, &unknownKeyErr) {
+		t.Fatalf("expected ErrUnknownKey, got %T: %v", err, err)
 	}
 }
 

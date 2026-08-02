@@ -225,6 +225,47 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 			},
 			want: []string{"--model", "gpt-5.6-terra", "-c", "model_reasoning_effort=max"},
 		},
+		"codex receives matching stage model and reasoning effort": {
+			agent: cliagent.NewCodex(),
+			stage: StagePlan,
+			cfg: config.Configuration{
+				Model:            "top-level-model",
+				Models:           config.StageModels{Plan: "stage-model"},
+				ReasoningEffort:  "medium",
+				ReasoningEfforts: config.StageReasoningEfforts{Plan: "high"},
+			},
+			want: []string{"--model", "stage-model", "-c", "model_reasoning_effort=high"},
+		},
+		"codex cli overrides win for both independent chains": {
+			agent: cliagent.NewCodex(),
+			stage: StagePlan,
+			cfg: config.Configuration{
+				Model:                   "top-level-model",
+				Models:                  config.StageModels{Plan: "stage-model"},
+				ModelOverride:           "cli-model",
+				ReasoningEffort:         "medium",
+				ReasoningEfforts:        config.StageReasoningEfforts{Plan: "high"},
+				ReasoningEffortOverride: "xhigh",
+			},
+			want: []string{"--model", "cli-model", "-c", "model_reasoning_effort=xhigh"},
+		},
+		"codex emits only matching stage model": {
+			agent: cliagent.NewCodex(),
+			stage: StageTasks,
+			cfg:   config.Configuration{Models: config.StageModels{Tasks: "stage-model"}},
+			want:  []string{"--model", "stage-model"},
+		},
+		"codex emits only matching stage reasoning effort": {
+			agent: cliagent.NewCodex(),
+			stage: StageTasks,
+			cfg:   config.Configuration{ReasoningEfforts: config.StageReasoningEfforts{Tasks: "high"}},
+			want:  []string{"-c", "model_reasoning_effort=high"},
+		},
+		"codex emits no arguments when neither chain resolves": {
+			agent: cliagent.NewCodex(),
+			stage: StageAnalyze,
+			cfg:   config.Configuration{},
+		},
 		"non-codex agent ignores reasoning effort": {
 			agent: cliagent.NewClaude(),
 			cfg:   config.Configuration{ReasoningEffort: "high"},
@@ -293,6 +334,117 @@ func TestExecutorExtraArgsForStageUsesEveryStageReasoningEffort(t *testing.T) {
 			}
 
 			assert.Equal(t, []string{"-c", "model_reasoning_effort=" + tt.want}, executor.extraArgsForStage(tt.stage))
+		})
+	}
+}
+
+func TestExecutorExtraArgsForStageUsesEveryStageModel(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		stage  Stage
+		models config.StageModels
+		want   string
+	}{
+		"constitution": {stage: StageConstitution, models: config.StageModels{Constitution: "constitution-model"}, want: "constitution-model"},
+		"specify":      {stage: StageSpecify, models: config.StageModels{Specify: "specify-model"}, want: "specify-model"},
+		"clarify":      {stage: StageClarify, models: config.StageModels{Clarify: "clarify-model"}, want: "clarify-model"},
+		"plan":         {stage: StagePlan, models: config.StageModels{Plan: "plan-model"}, want: "plan-model"},
+		"tasks":        {stage: StageTasks, models: config.StageModels{Tasks: "tasks-model"}, want: "tasks-model"},
+		"checklist":    {stage: StageChecklist, models: config.StageModels{Checklist: "checklist-model"}, want: "checklist-model"},
+		"analyze":      {stage: StageAnalyze, models: config.StageModels{Analyze: "analyze-model"}, want: "analyze-model"},
+		"implement":    {stage: StageImplement, models: config.StageModels{Implement: "implement-model"}, want: "implement-model"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			executor := &Executor{
+				Claude: &ClaudeExecutor{Agent: cliagent.NewCodex()},
+				Config: config.Configuration{Models: tt.models},
+			}
+
+			assert.Equal(t, []string{"--model", tt.want}, executor.extraArgsForStage(tt.stage))
+		})
+	}
+}
+
+func TestExecutorExtraArgsForStageUsesTopLevelModelForEveryStage(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]Stage{
+		"constitution": StageConstitution,
+		"specify":      StageSpecify,
+		"clarify":      StageClarify,
+		"plan":         StagePlan,
+		"tasks":        StageTasks,
+		"checklist":    StageChecklist,
+		"analyze":      StageAnalyze,
+		"implement":    StageImplement,
+	}
+
+	for name, stage := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			executor := &Executor{
+				Claude: &ClaudeExecutor{Agent: cliagent.NewCodex()},
+				Config: config.Configuration{Model: "legacy-model"},
+			}
+
+			assert.Equal(t, []string{"--model", "legacy-model"}, executor.extraArgsForStage(stage))
+		})
+	}
+}
+
+func TestExecutorExtraArgsForStagePreservesInvocationScope(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agent          cliagent.Agent
+		cfg            config.Configuration
+		want           []string
+		wantWithoutCLI []string
+	}{
+		"cli override wins without changing persistent models": {
+			agent: cliagent.NewClaude(),
+			cfg: config.Configuration{
+				Model:         "top-level-model",
+				Models:        config.StageModels{Plan: "stage-model"},
+				ModelOverride: "cli-model",
+			},
+			want:           []string{"--model", "cli-model"},
+			wantWithoutCLI: []string{"--model", "stage-model"},
+		},
+		"no configured model emits no synthetic argument": {
+			agent: cliagent.NewOpenCode(),
+			cfg:   config.Configuration{},
+		},
+		"unsupported agent ignores configured models": {
+			agent: cliagent.NewGemini(),
+			cfg: config.Configuration{
+				Model:         "top-level-model",
+				Models:        config.StageModels{Plan: "stage-model"},
+				ModelOverride: "cli-model",
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			executor := &Executor{Claude: &ClaudeExecutor{Agent: tt.agent}, Config: tt.cfg}
+			before := executor.Config
+
+			assert.Equal(t, tt.want, executor.extraArgsForStage(StagePlan))
+			assert.Equal(t, before, executor.Config)
+			if tt.wantWithoutCLI == nil {
+				return
+			}
+
+			executor.Config.ModelOverride = ""
+			assert.Equal(t, tt.wantWithoutCLI, executor.extraArgsForStage(StagePlan))
+			assert.Equal(t, before.Model, executor.Config.Model)
+			assert.Equal(t, before.Models, executor.Config.Models)
 		})
 	}
 }

@@ -42,11 +42,26 @@ Set a persistent Codex model and reasoning effort in autospec config:
 agent_preset: codex
 model: gpt-5.6-terra
 reasoning_effort: medium
+models:
+  specify: gpt-5.6-sol
+  implement: gpt-5.6-luna
 reasoning_efforts:
-  specify: low
-  plan: high
-  tasks: medium
+  specify: high
   implement: xhigh
+```
+
+Here `specify` uses its stage model and effort together, as does `implement`.
+Every workflow stage is supported: `constitution`, `specify`, `clarify`,
+`plan`, `tasks`, `checklist`, `analyze`, and `implement`.
+
+The settings are independent. Configuring only one leaves the other on its own
+fallback chain:
+
+```yaml
+models:
+  plan: gpt-5.6-sol        # Plan model only; effort falls back.
+reasoning_efforts:
+  tasks: high              # Tasks effort only; model falls back.
 ```
 
 Or override both for one workflow run:
@@ -59,7 +74,12 @@ Use the equivalent `-e xhigh` shorthand for faster typing.
 
 Autospec invokes Codex with `--model <model>` and `-c model_reasoning_effort=<effort>`. Model IDs and effort values are passed through so the installed Codex CLI remains the source of truth.
 
-`reasoning_efforts` supports every workflow stage: `constitution`, `specify`, `clarify`, `plan`, `tasks`, `checklist`, `analyze`, and `implement`. Precedence is CLI `-e`/`--reasoning-effort`, stage-specific effort, top-level `reasoning_effort`, then the Codex model default.
+Model precedence is CLI `--model`, the current stage's `models.<stage>`,
+top-level `model`, then the Codex CLI default. Reasoning precedence is CLI
+`-e`/`--reasoning-effort`, the current stage's
+`reasoning_efforts.<stage>`, top-level `reasoning_effort`, then the Codex model
+default. CLI overrides apply only to that invocation and do not rewrite either
+persistent setting.
 
 The Codex 0.145.0-alpha.23 catalog reports these visible models and efforts:
 

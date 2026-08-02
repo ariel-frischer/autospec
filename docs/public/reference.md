@@ -1108,7 +1108,31 @@ model: gpt-5.4
 
 **Environment**: `AUTOSPEC_MODEL`
 
-For one command invocation, pass `--model <model>`. Precedence is `--model`, then top-level `model`, then the agent CLI default.
+For one command invocation, pass `--model <model>`. Precedence is `--model`, then the current stage's `models.<stage>` value, then top-level `model`, then the agent CLI default.
+
+### models.&lt;stage&gt;
+
+**Type**: string
+**Default**: `""`
+**Description**: Optional workflow model for one stage. Supported keys are `models.constitution`, `models.specify`, `models.clarify`, `models.plan`, `models.tasks`, `models.checklist`, `models.analyze`, and `models.implement`.
+
+**Example**:
+```yaml
+model: provider/default-model
+models:
+  constitution: provider/constitution-model
+  specify: provider/specify-model
+  clarify: provider/clarify-model
+  plan: provider/plan-model
+  tasks: provider/tasks-model
+  checklist: provider/checklist-model
+  analyze: provider/analyze-model
+  implement: provider/implement-model
+```
+
+**Environment**: `AUTOSPEC_MODELS_<STAGE>` (for example, `AUTOSPEC_MODELS_CONSTITUTION` through `AUTOSPEC_MODELS_IMPLEMENT`)
+
+Every generated stage default is empty. An empty or absent stage value falls back to top-level `model`, then to the selected agent's default. CLI `--model` remains the highest-priority, invocation-scoped override.
 
 ### reasoning_effort
 

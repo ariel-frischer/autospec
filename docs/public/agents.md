@@ -83,6 +83,40 @@ When determining which agent to use, autospec follows this priority order:
 
 > **Note**: When `agent_preset` is empty (`""`), autospec always uses `claude` as the default agent. This is a hardcoded fallback, not configurable via `default_agents`.
 
+## Workflow Model Selection
+
+Set a default workflow model with top-level `model`, or select a different
+model for any supported stage with `models.<stage>`:
+
+```yaml
+model: provider/default-model
+models:
+  constitution: provider/constitution-model
+  specify: provider/specify-model
+  clarify: provider/clarify-model
+  plan: provider/plan-model
+  tasks: provider/tasks-model
+  checklist: provider/checklist-model
+  analyze: provider/analyze-model
+  implement: provider/implement-model
+```
+
+For each invocation, model precedence is:
+
+1. CLI `--model` override
+2. The current stage's `models.<stage>` value
+3. Top-level `model`
+4. The selected agent's default
+
+Empty or absent stage values continue to the next level. CLI overrides apply
+only to that invocation and do not modify persistent configuration.
+
+Model identifiers are opaque: autospec does not validate them against a
+provider catalog. The effective model is transported through the existing
+`--model` contract for Claude, Codex, and OpenCode, so use an identifier
+accepted by the selected agent. Codex `reasoning_efforts.<stage>` values follow
+their own independent precedence chain and can be paired with stage models.
+
 ### `agent_preset` vs `default_agents`
 
 These two config fields serve different purposes:

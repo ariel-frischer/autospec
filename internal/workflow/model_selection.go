@@ -4,6 +4,7 @@ import "github.com/ariel-frischer/autospec/internal/config"
 
 const (
 	ModelSourceCLI     ModelSelectionSource = "cli_model"
+	ModelSourceStage   ModelSelectionSource = "stage_model"
 	ModelSourceConfig  ModelSelectionSource = "config_model"
 	ModelSourceDefault ModelSelectionSource = "default"
 )
@@ -33,6 +34,9 @@ func ResolveWorkflowModelSelection(cfg config.Configuration, input ModelSelectio
 	}
 	if cfg.ModelOverride != "" {
 		return selection.with(cfg.ModelOverride, ModelSourceCLI)
+	}
+	if stageModel := cfg.Models.ForStage(string(input.Stage)); stageModel != "" {
+		return selection.with(stageModel, ModelSourceStage)
 	}
 	if cfg.Model != "" {
 		return selection.with(cfg.Model, ModelSourceConfig)

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Workflow stages can now persist independent models for constitution, specify, clarify, plan, tasks, checklist, analyze, and implement
+
+### Changed
+- Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
+
 ## [0.11.6] - 2026-07-22
 
 ### Added
