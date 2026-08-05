@@ -111,6 +111,12 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 			args = append(args, prompt)
 		}
 	} else {
+		if b.AgentCaps.DefaultArgsBeforePrompt {
+			args = append(args, b.AgentCaps.DefaultArgs...)
+		}
+		if b.AgentCaps.ExtraArgsBeforePrompt {
+			args = append(args, opts.ExtraArgs...)
+		}
 		switch pd.Method {
 		case PromptMethodArg:
 			args = append(args, pd.Flag, prompt)
@@ -155,11 +161,15 @@ func (b *BaseAgent) buildArgs(prompt string, opts ExecOptions) []string {
 		args = b.appendOpenCodeAgentArgs(args, opts)
 		// Add default args (e.g., --verbose --output-format stream-json for Claude)
 		// Only in automated mode - interactive mode omits these for conversation
-		args = append(args, b.AgentCaps.DefaultArgs...)
+		if !b.AgentCaps.DefaultArgsBeforePrompt {
+			args = append(args, b.AgentCaps.DefaultArgs...)
+		}
 	}
 
 	args = b.appendAutonomousArgs(args, opts)
-	args = append(args, opts.ExtraArgs...)
+	if !b.AgentCaps.ExtraArgsBeforePrompt {
+		args = append(args, opts.ExtraArgs...)
+	}
 	return args
 }
 

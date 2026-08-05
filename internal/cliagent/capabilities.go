@@ -92,4 +92,11 @@ type Caps struct {
 	// Added after prompt delivery args but before AutonomousFlag and ExtraArgs.
 	// Example: ["--verbose", "--output-format", "stream-json"]
 	DefaultArgs []string
+
+	// ExtraArgsBeforePrompt places execution-specific flags before prompt delivery.
+	// This is required by CLIs whose global flags must precede subcommands.
+	ExtraArgsBeforePrompt bool
+
+	// DefaultArgsBeforePrompt places default global flags before prompt delivery.
+	DefaultArgsBeforePrompt bool
 }

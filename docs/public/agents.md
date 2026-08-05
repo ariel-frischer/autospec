@@ -11,6 +11,7 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 | `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.139 |
 | `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.145.0-alpha.23 |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.14.46 |
+| `jcode` | `jcode` | jcode coding-agent harness | ✅ Supported; uses quiet, no-update wrapper mode |
 
 ### Experimental Agents (Untested)
 

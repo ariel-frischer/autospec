@@ -11,7 +11,7 @@ import (
 func TestAllAgentsRegistered(t *testing.T) {
 	t.Parallel()
 
-	expected := []string{"claude", "cline", "codex", "gemini", "goose", "opencode"}
+	expected := []string{"claude", "cline", "codex", "gemini", "goose", "jcode", "opencode"}
 	registered := List()
 
 	if len(registered) != len(expected) {
@@ -84,6 +84,14 @@ func TestAgentInterface(t *testing.T) {
 			wantMethod:  PromptMethodSubcommandArg,
 			wantFlag:    "run",
 			wantAutonom: "--no-session",
+		},
+		"jcode": {
+			agent:       NewJcode(),
+			wantName:    "jcode",
+			wantCmd:     "jcode",
+			wantMethod:  PromptMethodSubcommand,
+			wantFlag:    "run",
+			wantAutonom: "",
 		},
 	}
 
@@ -182,6 +190,12 @@ func TestBuildCommand(t *testing.T) {
 			prompt:   "add feature",
 			opts:     ExecOptions{},
 			wantArgs: []string{"run", "-t", "add feature"},
+		},
+		"jcode basic": {
+			agent:    NewJcode(),
+			prompt:   "fix tests",
+			opts:     ExecOptions{},
+			wantArgs: []string{"--quiet", "--no-update", "--no-selfdev", "run", "fix tests"},
 		},
 		"goose autonomous": {
 			agent:    NewGoose(),

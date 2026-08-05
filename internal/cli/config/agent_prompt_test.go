@@ -14,8 +14,8 @@ func TestGetSupportedAgents(t *testing.T) {
 
 	agents := GetSupportedAgents()
 
-	// Verify we get all 6 registered agents
-	require.Len(t, agents, 6, "expected 6 registered agents")
+	// Verify we get all 7 registered agents
+	require.Len(t, agents, 7, "expected 7 registered agents")
 
 	// Build a map for easier lookup
 	agentMap := make(map[string]AgentOption)
@@ -24,7 +24,7 @@ func TestGetSupportedAgents(t *testing.T) {
 	}
 
 	// Verify all expected agents are present
-	expectedAgents := []string{"claude", "cline", "codex", "gemini", "goose", "opencode"}
+	expectedAgents := []string{"claude", "cline", "codex", "gemini", "goose", "jcode", "opencode"}
 	for _, name := range expectedAgents {
 		_, ok := agentMap[name]
 		assert.True(t, ok, "expected agent %q to be present", name)

@@ -38,6 +38,7 @@ var agentDisplayNames = map[string]string{
 	"codex":    "Codex CLI",
 	"gemini":   "Gemini CLI",
 	"goose":    "Goose",
+	"jcode":    "jcode",
 	"opencode": "OpenCode",
 }
 

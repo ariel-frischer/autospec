@@ -1553,7 +1553,7 @@ func TestProductionAgents(t *testing.T) {
 	assert.Contains(t, agents, "claude")
 	assert.Contains(t, agents, "codex")
 	assert.Contains(t, agents, "opencode")
-	assert.Len(t, agents, 3)
+	assert.Len(t, agents, 4)
 }
 
 // ============================================================================
