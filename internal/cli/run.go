@@ -112,7 +112,7 @@ Stages are always executed in canonical order:
 		}
 
 		// Load configuration
-		cfg, err := config.Load(configPath)
+		cfg, err := shared.LoadConfig(cmd, configPath)
 		if err != nil {
 			cliErr := clierrors.ConfigParseError(configPath, err)
 			clierrors.PrintError(cliErr)

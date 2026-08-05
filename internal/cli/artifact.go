@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/validation"
@@ -77,7 +78,7 @@ Exit Codes:
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configPath, _ := cmd.Flags().GetString("config")
-		return runArtifactCommand(args, configPath, cmd.OutOrStdout(), cmd.ErrOrStderr())
+		return runArtifactCommandWithCmd(cmd, args, configPath, cmd.OutOrStdout(), cmd.ErrOrStderr())
 	},
 }
 
@@ -178,8 +179,18 @@ func resolveArtifactPath(artType validation.ArtifactType, specsDir, stateDir str
 
 // runArtifactCommand executes the artifact validation command.
 func runArtifactCommand(args []string, configPath string, out, errOut io.Writer) error {
+	return runArtifactCommandWithConfig(configPath, args, config.Load, out, errOut)
+}
+
+func runArtifactCommandWithCmd(cmd *cobra.Command, args []string, configPath string, out, errOut io.Writer) error {
+	return runArtifactCommandWithConfig(configPath, args, func(path string) (*config.Configuration, error) {
+		return shared.LoadConfig(cmd, path)
+	}, out, errOut)
+}
+
+func runArtifactCommandWithConfig(configPath string, args []string, loadConfig func(string) (*config.Configuration, error), out, errOut io.Writer) error {
 	// Load configuration
-	cfg, err := config.Load(configPath)
+	cfg, err := loadConfig(configPath)
 	if err != nil {
 		fmt.Fprintf(errOut, "Error loading config: %v\n", err)
 		return NewExitError(ExitInvalidArguments)

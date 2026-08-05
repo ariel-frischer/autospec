@@ -53,7 +53,7 @@ This is useful when you want to review the generated artifacts before implementa
 		specName, _ := cmd.Flags().GetString("spec")
 
 		// Load configuration
-		cfg, err := config.Load(configPath)
+		cfg, err := shared.LoadConfig(cmd, configPath)
 		if err != nil {
 			cliErr := clierrors.ConfigParseError(configPath, err)
 			clierrors.PrintError(cliErr)

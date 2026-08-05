@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/worktree"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -29,7 +29,7 @@ The output shows:
 }
 
 func runList(cmd *cobra.Command, _ []string) error {
-	cfg, err := config.Load("")
+	cfg, err := shared.LoadConfig(cmd, "")
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}

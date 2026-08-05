@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/worktree"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +35,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	path := args[0]
 	track, _ := cmd.Flags().GetBool("track")
 
-	cfg, err := config.Load("")
+	cfg, err := shared.LoadConfig(cmd, "")
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}

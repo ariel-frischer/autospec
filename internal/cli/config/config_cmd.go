@@ -18,9 +18,10 @@ var configCmd = &cobra.Command{
 
 Configuration is loaded with the following priority (highest to lowest):
   1. Environment variables (AUTOSPEC_*)
-  2. Project config (.autospec/config.yml)
-  3. User config (~/.config/autospec/config.yml)
-  4. Built-in defaults
+  2. --profile overlay
+  3. Project config (.autospec/config.yml)
+  4. User config (~/.config/autospec/config.yml)
+  5. Built-in defaults
 
 The top-level model key sets the default model for workflow agent execution.
 Agent-specific model keys remain available for compatibility where documented.`,
@@ -49,15 +50,86 @@ environment variables. Use --json or --yaml to control output format.`,
 	RunE: runConfigShow,
 }
 
+var configProfilesCmd = &cobra.Command{
+	Use:   "profiles",
+	Short: "List available configuration profiles",
+	Args:  cobra.NoArgs,
+	RunE:  runConfigProfiles,
+}
+
+var configCreateProfileCmd = &cobra.Command{
+	Use:   "create NAME",
+	Short: "Save the effective configuration as a profile",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runConfigCreateProfile,
+}
+
+var configUseProfileCmd = &cobra.Command{
+	Use:   "use NAME",
+	Short: "Set the active configuration profile",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runConfigUseProfile,
+}
+
 func init() {
 	configCmd.GroupID = shared.GroupConfiguration
 
 	// Add subcommands
 	configCmd.AddCommand(configShowCmd)
+	configCmd.AddCommand(configProfilesCmd, configCreateProfileCmd, configUseProfileCmd)
 
 	// Show command flags
 	configShowCmd.Flags().Bool("json", false, "Output in JSON format")
 	configShowCmd.Flags().Bool("yaml", true, "Output in YAML format (default)")
+	configCreateProfileCmd.Flags().Bool("force", false, "Overwrite an existing profile")
+}
+
+func runConfigProfiles(cmd *cobra.Command, _ []string) error {
+	profiles, err := config.ListAllProfiles()
+	if err != nil {
+		return fmt.Errorf("listing profiles: %w", err)
+	}
+	if len(profiles) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No configuration profiles found.")
+		fmt.Fprintln(cmd.OutOrStdout(), "Create one with: autospec config create <name>")
+		return nil
+	}
+	active, err := config.ActiveProfile()
+	if err != nil {
+		return fmt.Errorf("loading active profile: %w", err)
+	}
+	for _, name := range profiles {
+		marker := " "
+		if name == active {
+			marker = "*"
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", marker, name)
+	}
+	return nil
+}
+
+func runConfigUseProfile(cmd *cobra.Command, args []string) error {
+	name := args[0]
+	if err := config.SetActiveProfile(name); err != nil {
+		return fmt.Errorf("setting active profile: %w; use 'autospec config profiles' to list profiles", err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Active configuration profile: %s\n", name)
+	return nil
+}
+
+func runConfigCreateProfile(cmd *cobra.Command, args []string) error {
+	name := args[0]
+	force, _ := cmd.Flags().GetBool("force")
+	configPath, _ := cmd.Flags().GetString("config")
+	cfg, err := shared.LoadConfig(cmd, configPath)
+	if err != nil {
+		return fmt.Errorf("loading configuration: %w", err)
+	}
+	if err := config.SaveProfile(name, cfg.ToMap(), force); err != nil {
+		return fmt.Errorf("creating profile: %w", err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Created configuration profile: %s\n", name)
+	return nil
 }
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
@@ -65,9 +137,8 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	useJSON, _ := cmd.Flags().GetBool("json")
 
 	// Load configuration with warnings suppressed
-	cfg, err := config.LoadWithOptions(config.LoadOptions{
-		SkipWarnings: true,
-	})
+	configPath, _ := cmd.Flags().GetString("config")
+	cfg, err := shared.LoadConfig(cmd, configPath)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
@@ -82,6 +153,13 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(out, "# Configuration Sources\n")
 	fmt.Fprintf(out, "# User config:    %s\n", userPath)
 	fmt.Fprintf(out, "# Project config: %s\n", projectPath)
+	profile, _ := cmd.Flags().GetString("profile")
+	if profile == "" {
+		profile, _ = config.ActiveProfile()
+	}
+	if profile != "" {
+		fmt.Fprintf(out, "# Active profile: %s\n", profile)
+	}
 	fmt.Fprintf(out, "\n")
 
 	if useJSON {

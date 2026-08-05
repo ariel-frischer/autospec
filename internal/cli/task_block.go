@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -56,7 +56,7 @@ func runTaskBlock(cmd *cobra.Command, args []string) error {
 
 	// Load config
 	configPath, _ := cmd.Flags().GetString("config")
-	cfg, err := config.Load(configPath)
+	cfg, err := shared.LoadConfig(cmd, configPath)
 	if err != nil {
 		cliErr := clierrors.ConfigParseError(configPath, err)
 		clierrors.PrintError(cliErr)

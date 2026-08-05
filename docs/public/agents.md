@@ -72,6 +72,46 @@ autospec implement --agent cline
 
 Available for all workflow commands: `run`, `prep`, `specify`, `plan`, `tasks`, `implement`.
 
+### Named Configuration Profiles
+
+Use `--profile` to load a named YAML overlay without replacing the project's
+normal `.autospec/config.yml`:
+
+```bash
+autospec run --profile cheap -a "Add a feature"
+autospec config show --profile cheap
+```
+
+Profiles are searched in this order and both files may be layered:
+
+```text
+~/.config/autospec/profiles/<name>.yml
+.autospec/profiles/<name>.yml
+```
+
+The project profile is applied after the user profile. Environment variables
+are applied after profiles, so `AUTOSPEC_*` values remain the highest-priority
+configuration source. Profile names may contain 1-64 letters, numbers, hyphens,
+and underscores. `autospec config use NAME` persists an active profile, while
+`--profile NAME` selects a profile for one command. `--config` remains available
+for selecting one explicit config file and can be combined with `--profile`.
+
+Manage profiles with `autospec config profiles`, `autospec config create NAME
+[--force]`, and `autospec config use NAME`.
+
+Example `cheap.yml`:
+
+```yaml
+agent_preset: codex
+model: openai/gpt-5.6-luna
+reasoning_efforts:
+  specify: xhigh
+  plan: max
+```
+
+Credentials are not stored in profiles. Configure provider credentials through
+the selected agent's normal environment variables.
+
 ## Configuration Priority
 
 When determining which agent to use, autospec follows this priority order:

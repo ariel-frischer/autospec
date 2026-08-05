@@ -33,6 +33,10 @@ func TestRootCmd_PersistentFlags(t *testing.T) {
 			flagName: "config",
 			wantFlag: true,
 		},
+		"profile flag exists": {
+			flagName: "profile",
+			wantFlag: true,
+		},
 		"specs-dir flag exists": {
 			flagName: "specs-dir",
 			wantFlag: true,

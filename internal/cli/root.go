@@ -76,6 +76,7 @@ func init() {
 
 	// Global flags
 	rootCmd.PersistentFlags().StringP("config", "c", ".autospec/config.yml", "Path to config file")
+	rootCmd.PersistentFlags().String("profile", "", "Named configuration profile (user or project profile directory)")
 	rootCmd.PersistentFlags().String("specs-dir", "./specs", "Directory containing feature specs")
 	rootCmd.PersistentFlags().Bool("skip-preflight", false, "Skip pre-flight validation checks")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug logging")
