@@ -272,6 +272,10 @@ func TestTestedVersion(t *testing.T) {
 			agentName: "opencode",
 			want:      "1.14.46",
 		},
+		"jcode": {
+			agentName: "jcode",
+			want:      "",
+		},
 		"codex": {
 			agentName: "codex",
 			want:      "0.145.0-alpha.23",
