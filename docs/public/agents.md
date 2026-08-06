@@ -92,12 +92,12 @@ Profiles are searched in this order and both files may be layered:
 The project profile is applied after the user profile. Environment variables
 are applied after profiles, so `AUTOSPEC_*` values remain the highest-priority
 configuration source. Profile names may contain 1-64 letters, numbers, hyphens,
-and underscores. `autospec config use NAME` persists an active profile, while
-`--profile NAME` selects a profile for one command. `--config` remains available
-for selecting one explicit config file and can be combined with `--profile`.
+and underscores. `--profile NAME` selects a profile for one command. `--config`
+remains available for selecting one explicit config file, but cannot be combined
+with `--profile`.
 
-Manage profiles with `autospec config profiles`, `autospec config create NAME
-[--force]`, and `autospec config use NAME`.
+Manage profiles with `autospec config profiles` and `autospec config create NAME
+[--force]`.
 
 Example `cheap.yml`:
 

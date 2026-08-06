@@ -1069,16 +1069,13 @@ autospec run -a --profile cheap "Add a feature"
 autospec config show --profile cheap
 autospec config profiles
 autospec config create cheap
-autospec config use cheap
 ```
 
 The user profile is loaded first and the project profile with the same name is
 loaded afterward. Environment variables remain the highest-priority overrides.
 Profile names use 1-64 letters, numbers, hyphens, or underscores. `--config`
-and `--profile` may be used together; the profile overlays the selected config.
-`autospec config use NAME` persists the active profile for later commands, while
-`--profile NAME` affects only the current command. Use `autospec config profiles`
-to list profiles and `autospec config create NAME [--force]` to save the current
+and `--profile` cannot be combined. Use `autospec config profiles` to list
+profiles and `autospec config create NAME [--force]` to save the current
 effective configuration.
 
 ### agent_preset

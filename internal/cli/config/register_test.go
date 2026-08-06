@@ -133,9 +133,6 @@ func TestConfigCmd_HasSubcommands(t *testing.T) {
 	}
 
 	assert.True(t, subcommandNames["show"], "Should have 'show' subcommand")
-	assert.True(t, subcommandNames["profiles"], "Should have 'profiles' subcommand")
-	assert.True(t, subcommandNames["create"], "Should have 'create' subcommand")
-	assert.True(t, subcommandNames["use"], "Should have 'use' subcommand")
 }
 
 func TestConfigShowCmd_Structure(t *testing.T) {

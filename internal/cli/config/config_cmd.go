@@ -64,19 +64,12 @@ var configCreateProfileCmd = &cobra.Command{
 	RunE:  runConfigCreateProfile,
 }
 
-var configUseProfileCmd = &cobra.Command{
-	Use:   "use NAME",
-	Short: "Set the active configuration profile",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runConfigUseProfile,
-}
-
 func init() {
 	configCmd.GroupID = shared.GroupConfiguration
 
 	// Add subcommands
 	configCmd.AddCommand(configShowCmd)
-	configCmd.AddCommand(configProfilesCmd, configCreateProfileCmd, configUseProfileCmd)
+	configCmd.AddCommand(configProfilesCmd, configCreateProfileCmd)
 
 	// Show command flags
 	configShowCmd.Flags().Bool("json", false, "Output in JSON format")
@@ -94,26 +87,9 @@ func runConfigProfiles(cmd *cobra.Command, _ []string) error {
 		fmt.Fprintln(cmd.OutOrStdout(), "Create one with: autospec config create <name>")
 		return nil
 	}
-	active, err := config.ActiveProfile()
-	if err != nil {
-		return fmt.Errorf("loading active profile: %w", err)
-	}
 	for _, name := range profiles {
-		marker := " "
-		if name == active {
-			marker = "*"
-		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", marker, name)
+		fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", name)
 	}
-	return nil
-}
-
-func runConfigUseProfile(cmd *cobra.Command, args []string) error {
-	name := args[0]
-	if err := config.SetActiveProfile(name); err != nil {
-		return fmt.Errorf("setting active profile: %w; use 'autospec config profiles' to list profiles", err)
-	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Active configuration profile: %s\n", name)
 	return nil
 }
 
@@ -154,9 +130,6 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(out, "# User config:    %s\n", userPath)
 	fmt.Fprintf(out, "# Project config: %s\n", projectPath)
 	profile, _ := cmd.Flags().GetString("profile")
-	if profile == "" {
-		profile, _ = config.ActiveProfile()
-	}
 	if profile != "" {
 		fmt.Fprintf(out, "# Active profile: %s\n", profile)
 	}
