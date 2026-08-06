@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
 - Autospec now consumes the published `github.com/ariel-frischer/jcode-go` v0.1.1 module without requiring a sibling jcode checkout
 - Agent-aware preflight no longer requires Claude-specific `.claude/commands/` directories for Codex or jcode projects
+- Claude preflight and initialization now use `.claude/skills/` and the local `claude auth status` command, with clear offline diagnostics when authentication status cannot be read
 
 ### Changed
 - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
@@ -83,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `autospec implement` now loads project constitution governance context and bundles it into phase context files when present
 
 ### Removed
-- Removed the experimental DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode
+- Removed the experimental/internal DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode
 
 ### Fixed
 - `autospec init --sandbox` now applies Claude sandbox settings even while the interactive sandbox prompt is disabled

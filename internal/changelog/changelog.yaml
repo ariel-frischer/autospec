@@ -72,7 +72,7 @@ versions:
             - Worktree creation no longer copies .codex or .opencode by default; shared agent skills are copied from .agents instead
             - '`autospec implement` now loads project constitution governance context and bundles it into phase context files when present'
         removed:
-            - Removed the experimental DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode
+            - Removed the experimental/internal DAG orchestration commands, wave visualization command, and `autospec implement --parallel` runtime mode
         fixed:
             - '`autospec init --sandbox` now applies Claude sandbox settings even while the interactive sandbox prompt is disabled'
             - '`skip_permissions` now maps to Codex yolo mode without requiring `OPENAI_API_KEY`'
