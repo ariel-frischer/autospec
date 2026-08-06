@@ -38,19 +38,31 @@ until `TurnDone` and safely ignores permission and unknown events.
 ```yaml
 agent_preset: jcode
 jcode:
-  mode: connect                 # connect or private
+  mode: connect                 # connect, private, or auto
   socket_path: ""               # optional existing runtime socket
   binary: ""                    # private mode: jcode executable
   home: ""                      # private mode: persistent home, or temporary
   inherit_logins: false
   startup_timeout: 30s
   cleanup_timeout: 30s
+  startup_command: ""          # private/auto only
+  reconnect_attempts: 2
+  restart_attempts: 1
+  retry_delay: 250ms
 ```
 
 `connect` attaches to a runtime started separately with `jcode api-bridge`.
 `private` starts an isolated runtime owned by autospec and cleans up SDK-owned
 temporary state when the execution ends. Keep login inheritance disabled for
-untrusted or multi-tenant work.
+untrusted or multi-tenant work. `auto` tries the shared bridge first and falls
+back to an SDK-owned private runtime when the shared bridge is absent.
+
+Recovery is bounded. `reconnect_attempts` applies only to a shared bridge and
+`restart_attempts` applies only to a private runtime started by this run. The
+optional `startup_command` is private/auto-only and is never used to manage a
+pre-existing shared daemon. Connect mode never starts, restarts, stops, or
+cleans up the shared runtime. If recovery is exhausted, diagnostics include the
+policy, observed state, attempt counts, and a next action.
 
 ### Using a Preset Agent
 

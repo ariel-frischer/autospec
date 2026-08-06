@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ariel-frischer/jcode-go"
 )
@@ -29,6 +30,8 @@ type mockJcodeClient struct {
 func (m mockJcodeClient) CreateSession(context.Context, string) (jcodeSession, error) {
 	return m.session, m.err
 }
+
+func (mockJcodeClient) Reconnect(context.Context) error { return nil }
 
 type mockJcodeSession struct {
 	events   jcodeEventStream
@@ -98,6 +101,43 @@ func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	}
 	if got := strings.Join(order, ","); got != "subscribe,configure,send" {
 		t.Fatalf("operation order = %q, want subscribe,configure,send", got)
+	}
+}
+
+func TestNewJcodeWithOptionsPreservesLifecyclePolicy(t *testing.T) {
+	t.Parallel()
+
+	agent := NewJcodeWithOptions(JcodeOptions{
+		Mode: "auto",
+		Lifecycle: JcodeLifecyclePolicy{
+			Mode:              JcodeLifecycleModeAuto,
+			StartupCommand:    "jcode serve",
+			ReconnectAttempts: 2,
+			RestartAttempts:   1,
+			RetryDelay:        250 * time.Millisecond,
+		},
+	})
+	if agent.options.Lifecycle.Mode != JcodeLifecycleModeAuto {
+		t.Fatalf("lifecycle mode = %q, want auto", agent.options.Lifecycle.Mode)
+	}
+	if agent.options.Lifecycle.StartupCommand != "jcode serve" {
+		t.Fatalf("startup command = %q, want configured command", agent.options.Lifecycle.StartupCommand)
+	}
+}
+
+func TestJcodeValidateRedactsPrivateBinaryPath(t *testing.T) {
+	t.Parallel()
+
+	agent := NewJcodeWithOptions(JcodeOptions{
+		Mode:   "private",
+		Binary: "/tmp/secret-jcode-binary",
+	})
+	err := agent.Validate()
+	if err == nil {
+		t.Fatal("Validate() error = nil, want missing binary error")
+	}
+	if strings.Contains(err.Error(), "secret-jcode-binary") {
+		t.Fatalf("Validate() exposed binary path: %v", err)
 	}
 }
 

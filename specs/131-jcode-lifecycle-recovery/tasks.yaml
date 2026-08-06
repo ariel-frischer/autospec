@@ -45,7 +45,7 @@ phases:
       tasks:
         - id: "T003"
           title: "Add map-based lifecycle controller contract tests for policy states, ownership, and bounded counters"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -56,7 +56,7 @@ phases:
             - "Tests assert shared, private, and unrelated ownership semantics, non-negative bounded counters, and map[string]struct table style."
         - id: "T004"
           title: "Define JcodeLifecyclePolicy, JcodeRuntimeHandle, diagnostic, and injected runtime/process/clock interfaces"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: null
@@ -68,7 +68,7 @@ phases:
             - "New functions stay under 40 lines and contextual errors are wrapped."
         - id: "T005"
           title: "Build deterministic shared/private runtime, process, readiness, and clock fakes"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: null
@@ -85,7 +85,7 @@ phases:
       tasks:
         - id: "T006"
           title: "Add map-based configuration and policy-resolution tests for modes, precedence, profiles, defaults, and corrective validation"
-          status: "Pending"
+          status: "Completed"
           type: "test"
           parallel: true
           story_id: "US-001"
@@ -97,7 +97,7 @@ phases:
             - "Tests use map[string]struct cases and verify diagnostic redaction for socket, binary, home, startup-command, and credential-like values."
         - id: "T007"
           title: "Add lifecycle fields and defaults to JcodeConfig and effective agent configuration"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -108,7 +108,7 @@ phases:
             - "Effective configuration passes the fields to native jcode construction without storing credentials or daemon state."
         - id: "T008"
           title: "Wire lifecycle configuration through effective configuration loading and agent construction"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-001"
@@ -119,7 +119,7 @@ phases:
             - "CLI and workflow callers receive the resolved policy without changing provider authentication or workflow lifecycle wrappers."
         - id: "T009"
           title: "Register lifecycle keys, enum values, descriptions, and defaults in the configuration schema"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-001"
@@ -130,7 +130,7 @@ phases:
             - "Unknown lifecycle keys and invalid enum values are rejected through the existing schema path."
         - id: "T010"
           title: "Synchronize lifecycle YAML template and runtime defaults"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-001"
@@ -141,7 +141,7 @@ phases:
             - "The defaults do not enable arbitrary startup commands or shared-daemon ownership."
         - id: "T011"
           title: "Implement lifecycle policy validation and redacted diagnostic-safe configuration values"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: true
           story_id: "US-001"
@@ -152,7 +152,7 @@ phases:
             - "Validation and diagnostics never emit raw socket, binary, home, startup-command, or credential-like values."
         - id: "T012"
           title: "Implement shared-first policy resolution and ownership-safe handle selection"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -164,7 +164,7 @@ phases:
             - "Selection outcomes include policy, runtime state, ownership, and bounded recovery context for downstream diagnostics."
         - id: "T013"
           title: "Adapt native jcode Agent construction to the lifecycle controller without leaking SDK concrete types"
-          status: "Pending"
+          status: "Completed"
           type: "implementation"
           parallel: false
           story_id: "US-001"
@@ -181,7 +181,7 @@ phases:
       tasks:
         - id: "T014"
           title: "Add map-based recovery, startup-command, diagnostic, and cleanup tests"
-          status: "Pending"
+          status: "InProgress"
           type: "test"
           parallel: false
           story_id: "US-002"
