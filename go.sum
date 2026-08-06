@@ -9,6 +9,8 @@ github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFI
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
 github.com/ariel-frischer/claude-clean v0.2.0 h1:kwrZS04YaCuQH2Zpv3bk1e2YAHqbG322bbz9uzRnHkA=
 github.com/ariel-frischer/claude-clean v0.2.0/go.mod h1:CVZOchHBOpP4EAIOi1oHibcD4O/NJksBhMKO1C3OQtk=
+github.com/ariel-frischer/jcode-go v0.1.1 h1:POzV89VGKy4GC79aHTwGs7A7eAfZqcDiMMWeDy8ds0Q=
+github.com/ariel-frischer/jcode-go v0.1.1/go.mod h1:VHg3fS2uVJooZMxSpU/2t3OS2iDh3UY+7VltX3aylKc=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/briandowns/spinner v1.23.2 h1:Zc6ecUnI+YzLmJniCfDNaMbW0Wid1d5+qcTq4L2FW8w=

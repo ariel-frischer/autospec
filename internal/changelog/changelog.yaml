@@ -7,7 +7,7 @@ versions:
             - Autospec can use native jcode as the repository workflow agent, including the OpenRouter-backed cheap profile with stage-specific reasoning settings
             - Named configuration profiles can now be selected with `--profile`; explicit `--config` paths remain available as an alternative
             - Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
-            - Native jcode workflow sessions now receive profile-selected model and reasoning settings while jcode retains provider and credential ownership
+            - Autospec now consumes the published `github.com/ariel-frischer/jcode-go` v0.1.1 module without requiring a sibling jcode checkout
         changed:
             - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
     0.11.6:

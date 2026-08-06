@@ -81,9 +81,7 @@ require (
 
 require github.com/ariel-frischer/claude-clean v0.2.0
 
-require github.com/1jehuang/jcode-go v0.0.0
-
-replace github.com/1jehuang/jcode-go => ../jcode/sdk/go
+require github.com/ariel-frischer/jcode-go v0.1.1
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

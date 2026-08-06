@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"time"
 
-	jcode "github.com/1jehuang/jcode-go"
-	"github.com/1jehuang/jcode-go/protocol"
+	jcode "github.com/ariel-frischer/jcode-go"
+	"github.com/ariel-frischer/jcode-go/protocol"
 )
 
 // JcodeOptions selects the native jcode runtime mode.

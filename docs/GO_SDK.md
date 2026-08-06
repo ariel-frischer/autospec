@@ -3,20 +3,12 @@
 The Go SDK is implemented in `sdk/go/` as a separate Go module:
 
 ```text
-module github.com/1jehuang/jcode-go
+module github.com/ariel-frischer/jcode-go
 ```
 
 ## Current availability
 
-The SDK is **in the repository source**, but it is not a globally installed command and it has not been published to the public Go module proxy. There is no `jcode-go` executable to install. Applications import the Go package, while the Jcode runtime remains a separate `jcode` executable or daemon.
-
-The public installation command will be:
-
-```bash
-go get github.com/1jehuang/jcode-go@v0.1.0
-```
-
-Do not run that command yet. It will work only after a maintainer creates and publishes an approved release. Until then, use one of the source-checkout workflows below.
+The SDK is published as a separate Go module at `github.com/ariel-frischer/jcode-go` and can be consumed directly from the public Go module proxy. The Autospec integration uses the published `v0.1.1` release. There is no `jcode-go` executable to install. Applications import the Go package, while the Jcode runtime remains a separate `jcode` executable or daemon.
 
 ## Use from a source checkout
 
@@ -29,25 +21,23 @@ go test ./...
 go vet ./...
 ```
 
-To use the SDK from another local Go application, add a local replacement to that application's `go.mod`:
+For a standalone Go application, require the published module:
 
 ```text
 module example.com/my-jcode-app
 
 go 1.23
 
-require github.com/1jehuang/jcode-go v0.0.0
-
-replace github.com/1jehuang/jcode-go => /absolute/path/to/jcode/sdk/go
+require github.com/ariel-frischer/jcode-go v0.1.1
 ```
 
 Then import it normally:
 
 ```go
-import jcode "github.com/1jehuang/jcode-go"
+import jcode "github.com/ariel-frischer/jcode-go"
 ```
 
-The `replace` directive is a development workaround. Remove it and require a published semantic version after the SDK release is available.
+For SDK source development, work from the upstream Jcode repository and run its module tests directly. Autospec consumers should use the published module above rather than committing a local replacement.
 
 ## Connect to an existing Jcode runtime
 
@@ -161,6 +151,6 @@ They compile without provider credentials or a live model. Runtime examples requ
 
 ## Release status
 
-The architecture, protocol, lifecycle, resilience, validation, documentation, and release-planning work is tracked under the closed `jcode-zqc` Bead epic. Publication remains a separate maintainer decision. Until a version is tagged and published, consumers should use the source-checkout replacement above rather than assuming `go get` can resolve the module.
+The SDK is published and the Autospec module now resolves it without a relative `replace` directive. The public module repository is [`ariel-frischer/jcode-go`](https://github.com/ariel-frischer/jcode-go). The upstream Jcode runtime repository remains [`1jehuang/jcode`](https://github.com/1jehuang/jcode).
 
 For the lower-level API and protocol details, see [`sdk/go/README.md`](../sdk/go/README.md), [`GO_SDK_ARCHITECTURE.md`](GO_SDK_ARCHITECTURE.md), and [`GO_SDK_RELEASE_PLAN.md`](GO_SDK_RELEASE_PLAN.md).

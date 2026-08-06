@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/1jehuang/jcode-go"
+	"github.com/ariel-frischer/jcode-go"
 )
 
 type mockJcodeFactory struct {
