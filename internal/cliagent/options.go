@@ -22,6 +22,12 @@ type ExecOptions struct {
 	// ExtraArgs are additional CLI arguments appended after standard args.
 	ExtraArgs []string
 
+	// Model selects the model for native agents that support session settings.
+	Model string
+
+	// ReasoningEffort selects the reasoning effort for native agents that support session settings.
+	ReasoningEffort string
+
 	// JSONOutput requests machine-readable JSON output when the agent supports it.
 	// Unsupported agents should ignore this unless their command builder opts in.
 	JSONOutput bool

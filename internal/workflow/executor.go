@@ -103,7 +103,7 @@ func (e *Executor) extraArgsForStage(stage Stage) []string {
 	if selection.Value != "" {
 		args = append(args, "--model", selection.Value)
 	}
-	if effort := e.codexReasoningEffort(agentName, stage); effort != "" {
+	if effort := e.agentReasoningEffort(agentName, stage); effort != "" {
 		args = append(args, "-c", "model_reasoning_effort="+effort)
 	}
 	if len(args) == 0 {
@@ -112,8 +112,8 @@ func (e *Executor) extraArgsForStage(stage Stage) []string {
 	return args
 }
 
-func (e *Executor) codexReasoningEffort(agentName string, stage Stage) string {
-	if agentName != "codex" {
+func (e *Executor) agentReasoningEffort(agentName string, stage Stage) string {
+	if agentName != "codex" && agentName != "jcode" {
 		return ""
 	}
 	if e.Config.ReasoningEffortOverride != "" {

@@ -126,15 +126,25 @@ Manage profiles with `autospec config profiles` and `autospec config create NAME
 Example `cheap.yml`:
 
 ```yaml
-agent_preset: codex
-model: openai/gpt-5.6-luna
+agent_preset: jcode
+jcode:
+  mode: connect
+model: openrouter:openai/gpt-5.6-luna
 reasoning_efforts:
-  specify: xhigh
+  specify: max
   plan: max
+  constitution: xhigh
+  clarify: xhigh
+  tasks: xhigh
+  checklist: xhigh
+  analyze: xhigh
+  implement: xhigh
 ```
 
-Credentials are not stored in profiles. Configure provider credentials through
-the selected agent's normal environment variables.
+Credentials are not stored in profiles. jcode owns provider selection,
+authentication, and credentials. Configure its OpenRouter provider and
+`OPENROUTER_API_KEY` through jcode's own user-level configuration. Autospec only
+selects the jcode session model and reasoning effort for each workflow stage.
 
 ## Configuration Priority
 
@@ -143,9 +153,11 @@ When determining which agent to use, autospec follows this priority order:
 1. **CLI flag** (`--agent`): Highest priority, single-command override
 2. **custom_agent**: Project or user-level custom command configuration
 3. **agent_preset**: Project or user-level preset name
-4. **Default**: Falls back to `claude` agent (hardcoded)
+4. **Default**: Falls back to the configured supported default agent
 
-> **Note**: When `agent_preset` is empty (`""`), autospec always uses `claude` as the default agent. This is a hardcoded fallback, not configurable via `default_agents`.
+> **Note**: This repository configures `agent_preset: jcode` as its effective
+> default. In an otherwise empty configuration, autospec retains its historical
+> Claude fallback for compatibility.
 
 ## Workflow Model Selection
 
@@ -177,9 +189,9 @@ only to that invocation and do not modify persistent configuration.
 
 Model identifiers are opaque: autospec does not validate them against a
 provider catalog. The effective model is transported through the existing
-`--model` contract for Claude, Codex, and OpenCode, so use an identifier
-accepted by the selected agent. Codex `reasoning_efforts.<stage>` values follow
-their own independent precedence chain and can be paired with stage models.
+model-selection contract for CLI agents and through native jcode session
+settings for `agent_preset: jcode`. Reasoning values follow the same stage
+precedence and are sent to jcode without Autospec handling provider credentials.
 
 ### `agent_preset` vs `default_agents`
 

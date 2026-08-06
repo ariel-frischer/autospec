@@ -60,7 +60,7 @@ func (s WorkflowModelSelection) with(value string, source ModelSelectionSource) 
 
 func agentSupportsWorkflowModel(agent string) bool {
 	switch agent {
-	case "claude", "codex", "opencode":
+	case "claude", "codex", "jcode", "opencode":
 		return true
 	default:
 		return false

@@ -88,3 +88,20 @@ func TestResolveWorkflowModelSelection(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveWorkflowModelSelectionSupportsJcode(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.Configuration{
+		Model:           "openai/gpt-5.6-luna",
+		Models:          config.StageModels{Plan: "openai/gpt-5.6-luna"},
+		ReasoningEffort: "xhigh",
+		ReasoningEfforts: config.StageReasoningEfforts{
+			Plan: "max",
+		},
+	}
+	got := ResolveWorkflowModelSelection(cfg, ModelSelectionInput{Agent: "jcode", Stage: StagePlan})
+
+	assert.Equal(t, "openai/gpt-5.6-luna", got.Value)
+	assert.Equal(t, ModelSourceStage, got.Source)
+}
