@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Autospec now supports jcode through the native Go SDK, with connect and isolated private runtime modes
 - Named configuration profiles can now be selected with `--profile`; explicit `--config` paths remain available as an alternative
 - Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
+- Native jcode workflow sessions now receive profile-selected model and reasoning settings while jcode retains provider and credential ownership
 
 ### Changed
 - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
