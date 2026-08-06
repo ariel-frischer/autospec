@@ -7,6 +7,46 @@ import (
 	"testing"
 )
 
+func TestApplyAuthStatusJSON(t *testing.T) {
+	t.Parallel()
+	tests := map[string]struct {
+		input    string
+		apiKey   bool
+		wantType AuthType
+		wantPlan string
+		wantErr  bool
+	}{
+		"oauth subscription": {
+			input:    `{"loggedIn":true,"authMethod":"claude.ai","subscriptionType":"pro"}`,
+			wantType: AuthTypeOAuth, wantPlan: "pro",
+		},
+		"logged out": {
+			input:    `{"loggedIn":false}`,
+			wantType: AuthTypeNone,
+		},
+		"malformed response": {
+			input: `not-json`, wantType: AuthTypeNone, wantErr: true,
+		},
+		"api auth preserves api classification": {
+			input: `{"loggedIn":true,"authMethod":"api"}`, apiKey: true,
+			wantType: AuthTypeAPI,
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			status := &ClaudeAuthStatus{AuthType: AuthTypeNone, APIKeySet: tt.apiKey}
+			applyAuthStatusJSON(status, []byte(tt.input))
+			if status.AuthType != tt.wantType || status.SubscriptionType != tt.wantPlan {
+				t.Fatalf("status = %#v, want type=%q plan=%q", status, tt.wantType, tt.wantPlan)
+			}
+			if (status.AuthStatusError != "") != tt.wantErr {
+				t.Fatalf("AuthStatusError = %q, want error=%v", status.AuthStatusError, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestClaudeAuthStatus_IsAuthenticated(t *testing.T) {
 	t.Parallel()
 

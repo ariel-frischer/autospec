@@ -707,6 +707,10 @@ func handleClaudeAuthDetection(cmd *cobra.Command, out io.Writer, configPath str
 
 	// Section header for authentication
 	printSectionHeader(out, "Authentication")
+	if status.AuthStatusError != "" {
+		fmt.Fprintf(out, "  %s Claude auth status unavailable: %s\n", cYellow("⚠"), status.AuthStatusError)
+		fmt.Fprintf(out, "     %s Provider quota cannot be checked locally; no live API request was made.\n", cDim("ℹ"))
+	}
 
 	// Show OAuth status
 	if status.AuthType == cliagent.AuthTypeOAuth {

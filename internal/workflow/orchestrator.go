@@ -303,7 +303,7 @@ func (w *WorkflowOrchestrator) runPreflightChecks() error {
 		fmt.Printf("✓ %s CLI found\n", w.preflightAgentName())
 		fmt.Println("✓ specify CLI found")
 		if w.preflightAgentName() == "claude" {
-			fmt.Println("✓ .claude/commands/ directory exists")
+			fmt.Println("✓ .claude/skills/ directory exists")
 		}
 		fmt.Println("✓ .autospec/ directory exists")
 	}

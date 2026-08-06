@@ -30,7 +30,7 @@ func TestPreflightTestFixtures(t *testing.T) {
 		"agent validation failure": {
 			name:        "claude",
 			validateErr: errors.New("agent unavailable"),
-			dirs:        []string{".claude/commands"},
+			dirs:        []string{".claude/skills"},
 		},
 	}
 
@@ -121,7 +121,7 @@ func TestRunPreflightChecksForAgent_NonClaudeIgnoresClaudeDirectory(t *testing.T
 		},
 		"codex with empty stale Claude directory": {
 			agentName: "codex",
-			dirs:      []string{".autospec", ".claude/commands"},
+			dirs:      []string{".autospec", ".claude/skills"},
 		},
 		"jcode without stale Claude state": {
 			agentName: "jcode",
@@ -129,7 +129,7 @@ func TestRunPreflightChecksForAgent_NonClaudeIgnoresClaudeDirectory(t *testing.T
 		},
 		"jcode with partial stale Claude directory": {
 			agentName: "jcode",
-			dirs:      []string{".autospec", ".claude/commands/partial"},
+			dirs:      []string{".autospec", ".claude/skills/partial"},
 		},
 	}
 
@@ -165,15 +165,15 @@ func TestRunPreflightChecksForAgent_ClaudeRequirements(t *testing.T) {
 	}{
 		"missing Claude command directory retains guidance": {
 			dirs:            []string{".autospec"},
-			wantMissing:     []string{".claude/commands/"},
-			warningContains: []string{".claude/commands/", "autospec init"},
+			wantMissing:     []string{".claude/skills/"},
+			warningContains: []string{".claude/skills/", "autospec init"},
 		},
 		"valid Claude project passes": {
-			dirs:       []string{".claude/commands", ".autospec"},
+			dirs:       []string{".claude/skills", ".autospec"},
 			wantPassed: true,
 		},
 		"Claude validation failure is reported": {
-			dirs:             []string{".claude/commands", ".autospec"},
+			dirs:             []string{".claude/skills", ".autospec"},
 			validateErr:      validationErr,
 			wantFailedChecks: []string{"claude agent validation failed: claude dependency unavailable"},
 		},
@@ -244,15 +244,15 @@ func TestRunPreflightChecks(t *testing.T) {
 		wantMissing int      // Expected number of missing directories
 	}{
 		"all directories present": {
-			setupDirs:   []string{".claude/commands", ".autospec"},
+			setupDirs:   []string{".claude/skills", ".autospec"},
 			wantMissing: 0,
 		},
-		"missing .claude/commands directory": {
+		"missing .claude/skills directory": {
 			setupDirs:   []string{".autospec"},
 			wantMissing: 1,
 		},
 		"missing .autospec directory": {
-			setupDirs:   []string{".claude/commands"},
+			setupDirs:   []string{".claude/skills"},
 			wantMissing: 1,
 		},
 		"missing both directories": {
@@ -328,22 +328,22 @@ func TestGenerateMissingDirsWarning(t *testing.T) {
 		wantContains []string
 	}{
 		"with git root": {
-			missingDirs: []string{".claude/commands/", ".autospec/"},
+			missingDirs: []string{".claude/skills/", ".autospec/"},
 			gitRoot:     "/home/user/project",
 			wantContains: []string{
 				"WARNING",
-				".claude/commands/",
+				".claude/skills/",
 				".autospec/",
 				"/home/user/project",
 				"autospec init",
 			},
 		},
 		"without git root": {
-			missingDirs: []string{".claude/commands/"},
+			missingDirs: []string{".claude/skills/"},
 			gitRoot:     "",
 			wantContains: []string{
 				"WARNING",
-				".claude/commands/",
+				".claude/skills/",
 				"autospec init",
 			},
 		},
@@ -446,7 +446,7 @@ func TestCheckProjectStructure(t *testing.T) {
 	defer func() { _ = os.Chdir(origDir) }()
 
 	// Create temporary directories
-	require.NoError(t, os.MkdirAll(".claude/commands", 0o755))
+	require.NoError(t, os.MkdirAll(".claude/skills", 0o755))
 	require.NoError(t, os.MkdirAll(".autospec", 0o755))
 
 	err = CheckProjectStructure()
@@ -471,7 +471,7 @@ func BenchmarkRunPreflightChecks(b *testing.B) {
 	defer func() { _ = os.Chdir(origDir) }()
 
 	// Setup test directories
-	os.MkdirAll(".claude/commands", 0o755)
+	os.MkdirAll(".claude/skills", 0o755)
 	os.MkdirAll(".autospec", 0o755)
 
 	// Reset timer after setup
