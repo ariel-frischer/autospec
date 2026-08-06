@@ -17,7 +17,6 @@ Practical guides for getting the most out of autospec. These how-to documents co
 | [Task Sizing](task-sizing) | When to use autospec vs just code directly |
 | [Troubleshooting](troubleshooting) | Common issues and their solutions |
 | [FAQ](faq) | Frequently asked questions |
-| [Sequential & Parallel Execution](parallel-execution) | Running multiple workflows with git worktrees |
 | [Worktree Management](worktree) | Isolated directories for parallel agent execution |
 | [Checklists](checklists) | Validate specification quality before implementation |
 | [Self-Update](self-update) | Built-in version checking and self-update functionality |
@@ -28,6 +27,5 @@ Practical guides for getting the most out of autospec. These how-to documents co
 - **Having issues?** Start with [Troubleshooting](troubleshooting)
 - **Questions about features?** Check the [FAQ](faq)
 - **Running multiple agents?** See [Worktree Management](worktree)
-- **Running multiple features?** See [Parallel Execution](parallel-execution)
 - **Need command details?** See [CLI Reference](../reference/cli)
 - **Configuration help?** Visit [Configuration](../reference/configuration)

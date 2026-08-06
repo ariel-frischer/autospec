@@ -42,8 +42,8 @@ The following paths have been pre-computed and are available for use:
    - Map endpoints from plan.yaml `api_contracts` to user stories
    - Extract decisions from plan.yaml `research_findings` for setup tasks
    - Generate tasks organized by user story (see Task Generation Rules below)
-   - Generate dependency graph showing user story completion order
-   - Create parallel execution opportunities per phase
+   - Define the user story completion order
+   - Identify phase ordering and task dependencies
    - Validate task completeness (each user story has all needed tasks)
 
 4. **Generate tasks.yaml**: Create the YAML task file with this structure:

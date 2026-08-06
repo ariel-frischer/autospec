@@ -73,8 +73,7 @@ require (
 )
 
 require (
-	// Cross-platform file system notifications for log tailing (232K)
-	// Used by dag logs command for efficient file change detection
+	// Used for cross-platform file system notifications.
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 )

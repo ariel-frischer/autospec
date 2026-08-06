@@ -118,12 +118,6 @@ func TestBuildWorktreeAddArgs(t *testing.T) {
 			startPoint:   "main",
 			want:         []string{"worktree", "add", "-b", "feature-branch", "/path/to/worktree", "main"},
 		},
-		"with staging branch as start point": {
-			worktreePath: "/worktrees/spec-001",
-			branch:       "dag/run-1/spec-001",
-			startPoint:   "dag/run-1/stage-L0",
-			want:         []string{"worktree", "add", "-b", "dag/run-1/spec-001", "/worktrees/spec-001", "dag/run-1/stage-L0"},
-		},
 		"with commit SHA as start point": {
 			worktreePath: "/worktrees/bugfix",
 			branch:       "bugfix-123",

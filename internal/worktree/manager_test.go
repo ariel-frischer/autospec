@@ -1020,11 +1020,6 @@ func TestManager_CreateWithOptions_StartPoint(t *testing.T) {
 			expectStartPoint: "main",
 			description:      "StartPoint should be passed through to git worktree add",
 		},
-		"start point from staging branch": {
-			startPoint:       "dag/run-1/stage-L0",
-			expectStartPoint: "dag/run-1/stage-L0",
-			description:      "Staging branch should be used as start point for layer worktrees",
-		},
 	}
 
 	for name, tt := range tests {

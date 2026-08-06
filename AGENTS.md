@@ -104,7 +104,6 @@ autospec implement         # Execute tasks
 | `docs/public/opencode-settings.md` | OpenCode configuration, permissions, and command patterns |
 | `docs/public/agents.md` | CLI agent configuration (Claude and OpenCode supported) |
 | `docs/public/worktree.md` | Git worktree management for parallel agent execution |
-| `docs/public/parallel-execution.md` | Sequential workflows and manual multi-worktree parallel workflows |
 | `docs/public/self-update.md` | Version checking and self-update functionality |
 | `docs/public/faq.md` | Frequently asked questions |
 

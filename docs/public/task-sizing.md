@@ -118,4 +118,3 @@ These are "projects within projects." Running them as a single spec leads to spr
 
 - [Quick Start Guide](./quickstart.md) — Get started with autospec
 - [FAQ](./faq.md) — Common questions about workflow choices
-- [Parallel Execution](./parallel-execution.md) — Running multiple specs concurrently

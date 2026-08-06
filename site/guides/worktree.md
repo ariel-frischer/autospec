@@ -304,6 +304,5 @@ The worktree directory was deleted outside of autospec. Run `autospec worktree p
 
 ## See Also
 
-- [Sequential & Parallel Execution](parallel-execution) - Running multiple workflows with git worktrees
 - [CLI Reference](../reference/cli) - Complete command documentation
 - [Configuration](../reference/configuration) - Project and user configuration
