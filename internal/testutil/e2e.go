@@ -750,10 +750,12 @@ func (e *E2EEnv) CreateBranch(name string) {
 func (e *E2EEnv) SetupAutospecInit() {
 	e.t.Helper()
 
-	// Create .claude/commands directory (needed for both agent types)
-	claudeCommandsDir := filepath.Join(e.tempDir, ".claude", "commands")
-	if err := os.MkdirAll(claudeCommandsDir, 0o755); err != nil {
-		e.t.Fatalf("creating .claude/commands directory: %v", err)
+	// Claude requires its command directory; other agents only need shared config.
+	if e.agentPreset == AgentClaude {
+		claudeCommandsDir := filepath.Join(e.tempDir, ".claude", "commands")
+		if err := os.MkdirAll(claudeCommandsDir, 0o755); err != nil {
+			e.t.Fatalf("creating .claude/commands directory: %v", err)
+		}
 	}
 
 	// Create a minimal autospec config

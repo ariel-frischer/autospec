@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,18 @@ import (
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/ariel-frischer/autospec/internal/validation"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// preflightAgent is a deterministic agent fixture for default-checker wiring tests.
+// It embeds BaseAgent so no command is built or executed by these tests.
+type preflightAgent struct {
+	cliagent.BaseAgent
+	validateErr error
+}
+
+func (a *preflightAgent) Validate() error { return a.validateErr }
 
 // testConfigWithAgent creates a test configuration with the specified agent preset.
 func testConfigWithAgent(specsDir, stateDir, agentPreset string) *config.Configuration {
@@ -34,6 +46,86 @@ func testConfigWithEchoAgent(specsDir, stateDir string) *config.Configuration {
 		SpecsDir:   specsDir,
 		StateDir:   stateDir,
 		MaxRetries: 3,
+	}
+}
+
+// TestInjectedPreflightCheckerBypassesAgentResolution proves that an injected
+// checker remains authoritative even when no usable configuration is present.
+func TestInjectedPreflightCheckerBypassesAgentResolution(t *testing.T) {
+	checker := newMockPreflightChecker()
+	orch := &WorkflowOrchestrator{
+		Config:           testConfigWithAgent(t.TempDir(), t.TempDir(), "missing-preflight-agent"),
+		PreflightChecker: checker,
+	}
+
+	err := orch.runPreflightChecks()
+
+	require.NoError(t, err)
+	assert.True(t, checker.RunChecksCalled)
+	assert.Equal(t, 1, checker.RunChecksCallCount)
+}
+
+// TestDefaultPreflightCheckerUsesResolvedAgent verifies that the concrete
+// default path obtains its agent through Configuration.GetAgent and forwards
+// that agent's validation result without invoking a real executable.
+func TestDefaultPreflightCheckerUsesResolvedAgent(t *testing.T) {
+	const preset = "preflighttestagent"
+	original := cliagent.Get(preset)
+	fixture := &preflightAgent{
+		BaseAgent:   cliagent.BaseAgent{AgentName: preset, Cmd: "does-not-run"},
+		validateErr: errors.New("controlled agent validation failure"),
+	}
+	cliagent.Register(fixture)
+	defer func() {
+		if original != nil {
+			cliagent.Register(original)
+		}
+	}()
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(tmpDir, ".autospec"), 0o755))
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	defer func() { _ = os.Chdir(originalDir) }()
+
+	checker := (&WorkflowOrchestrator{
+		Config: testConfigWithAgent(tmpDir, filepath.Join(tmpDir, "state"), preset),
+	}).getPreflightChecker()
+	result, err := checker.RunChecks()
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.False(t, result.Passed)
+	assert.Contains(t, strings.Join(result.FailedChecks, " "), preset)
+	assert.NotContains(t, strings.Join(result.FailedChecks, " "), "claude")
+}
+
+// TestPreflightAgentResolutionFailureIsContextual verifies invalid effective
+// agent configuration fails before any prompt or agent execution is attempted.
+func TestPreflightAgentResolutionFailureIsContextual(t *testing.T) {
+	tests := map[string]struct {
+		preset    string
+		wantError string
+	}{
+		"unknown preset": {
+			preset:    "missing-preflight-agent",
+			wantError: "unknown agent preset",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			orch := &WorkflowOrchestrator{
+				Config: testConfigWithAgent(t.TempDir(), t.TempDir(), tc.preset),
+			}
+
+			err := orch.runPreflightChecks()
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.wantError)
+			assert.Contains(t, err.Error(), "preflight")
+		})
 	}
 }
 

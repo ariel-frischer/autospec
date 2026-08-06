@@ -300,14 +300,27 @@ func (w *WorkflowOrchestrator) runPreflightChecks() error {
 			return fmt.Errorf("pre-flight checks failed")
 		}
 	} else {
-		fmt.Println("✓ claude CLI found")
+		fmt.Printf("✓ %s CLI found\n", w.preflightAgentName())
 		fmt.Println("✓ specify CLI found")
-		fmt.Println("✓ .claude/commands/ directory exists")
+		if w.preflightAgentName() == "claude" {
+			fmt.Println("✓ .claude/commands/ directory exists")
+		}
 		fmt.Println("✓ .autospec/ directory exists")
 	}
 
 	fmt.Println()
 	return nil
+}
+
+func (w *WorkflowOrchestrator) preflightAgentName() string {
+	if w.Config == nil {
+		return "claude"
+	}
+	agent, err := w.Config.GetAgent()
+	if err != nil || agent == nil {
+		return "configured agent"
+	}
+	return agent.Name()
 }
 
 // getPreflightChecker returns the injected PreflightChecker or a default one.
@@ -316,7 +329,29 @@ func (w *WorkflowOrchestrator) getPreflightChecker() PreflightChecker {
 	if w.PreflightChecker != nil {
 		return w.PreflightChecker
 	}
-	return NewDefaultPreflightChecker()
+	if w.Config == nil {
+		return NewDefaultPreflightChecker()
+	}
+
+	agent, err := w.Config.GetAgent()
+	if err != nil {
+		return &preflightResolutionErrorChecker{err: err}
+	}
+	return NewDefaultPreflightChecker(agent)
+}
+
+// preflightResolutionErrorChecker defers effective-agent configuration errors
+// until the standard PreflightChecker contract is evaluated.
+type preflightResolutionErrorChecker struct {
+	err error
+}
+
+func (c *preflightResolutionErrorChecker) RunChecks() (*PreflightResult, error) {
+	return nil, fmt.Errorf("resolving configured preflight agent: %w", c.err)
+}
+
+func (c *preflightResolutionErrorChecker) PromptUser(string) (bool, error) {
+	return false, fmt.Errorf("resolving configured preflight agent: %w", c.err)
 }
 
 // resolveSpecName resolves the spec name from argument or auto-detection.
