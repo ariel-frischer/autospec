@@ -99,8 +99,8 @@ func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	if got := stdout.String(); got != "answer" {
 		t.Fatalf("stdout = %q, want %q", got, "answer")
 	}
-	if got := strings.Join(order, ","); got != "subscribe,configure,send" {
-		t.Fatalf("operation order = %q, want subscribe,configure,send", got)
+	if got := strings.Join(order, ","); got != "configure,send,subscribe" {
+		t.Fatalf("operation order = %q, want configure,send,subscribe", got)
 	}
 }
 
@@ -165,8 +165,8 @@ func TestJcodeAgent_ExecuteConfiguresSessionBeforePrompt(t *testing.T) {
 	if !reflect.DeepEqual(settings, want) {
 		t.Fatalf("settings = %#v, want %#v", settings, want)
 	}
-	if got := strings.Join(order, ","); got != "subscribe,configure,send" {
-		t.Fatalf("operation order = %q, want subscribe,configure,send", got)
+	if got := strings.Join(order, ","); got != "configure,send,subscribe" {
+		t.Fatalf("operation order = %q, want configure,send,subscribe", got)
 	}
 }
 

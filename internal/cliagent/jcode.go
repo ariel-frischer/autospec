@@ -278,11 +278,6 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	if err != nil {
 		return nil, fmt.Errorf("creating jcode session: %w", err)
 	}
-	stream := session.Events(ctx)
-	if stream == nil {
-		return nil, fmt.Errorf("creating jcode event stream: nil stream")
-	}
-	defer stream.Close()
 	if err := session.Configure(ctx, JcodeSessionSettings{
 		Model: options.Model, ReasoningEffort: options.ReasoningEffort,
 	}); err != nil {
@@ -291,7 +286,7 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	if err := session.Send(ctx, prompt); err != nil {
 		return nil, fmt.Errorf("sending prompt to jcode: %w", err)
 	}
-	output, err := streamOutput(ctx, stream, outputWriter(options.Stdout))
+	output, err := streamWithRecovery(ctx, client, session, outputWriter(options.Stdout), j.options.Lifecycle)
 	if err != nil {
 		return nil, fmt.Errorf("streaming jcode output: %w", err)
 	}
@@ -300,6 +295,28 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 		result.Stdout = output
 	}
 	return result, nil
+}
+
+func streamWithRecovery(ctx context.Context, client jcodeClient, session jcodeSession, writer io.Writer, policy JcodeLifecyclePolicy) (string, error) {
+	var output string
+	for attempt := 0; ; attempt++ {
+		stream := session.Events(ctx)
+		if stream == nil {
+			return output, fmt.Errorf("creating jcode event stream: nil stream")
+		}
+		chunk, err := streamOutput(ctx, stream, writer)
+		stream.Close()
+		output += chunk
+		if err == nil {
+			return output, nil
+		}
+		if attempt >= policy.ReconnectAttempts {
+			return output, fmt.Errorf("streaming jcode output after %d reconnect attempts: %w", attempt, err)
+		}
+		if reconnectErr := client.Reconnect(ctx); reconnectErr != nil {
+			return output, fmt.Errorf("reconnecting jcode after stream disconnect: %w", reconnectErr)
+		}
+	}
 }
 func executionContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	if timeout > 0 {
