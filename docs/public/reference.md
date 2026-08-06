@@ -1095,6 +1095,35 @@ agent_preset: gemini
 
 See [CLI Agent Configuration](./agents.md) for detailed agent documentation.
 
+### Native jcode lifecycle settings
+
+When `agent_preset: jcode`, the `jcode` settings control runtime ownership:
+
+| Key | Default | Values / meaning |
+| --- | --- | --- |
+| `jcode.mode` | `connect` | `connect`, `private`, or `auto` |
+| `jcode.socket_path` | empty | Existing API socket, or SDK environment discovery |
+| `jcode.binary` | empty | Private runtime executable, defaulting to `jcode` on `PATH` |
+| `jcode.home` | empty | Persistent private home, or SDK-owned temporary state |
+| `jcode.inherit_logins` | `false` | Whether private launches inherit local jcode logins |
+| `jcode.startup_timeout` | `30s` | Maximum private startup duration |
+| `jcode.cleanup_timeout` | `30s` | Maximum private cleanup duration |
+| `jcode.startup_command` | empty | Optional private/auto-only launcher |
+| `jcode.reconnect_attempts` | `2` | Shared bridge reconnect limit, 0-10 |
+| `jcode.restart_attempts` | `1` | Run-owned private restart limit, 0-10 |
+| `jcode.retry_delay` | `250ms` | Delay between recovery attempts, 0-5m |
+
+Connect mode never starts or stops a shared daemon. Auto mode prefers a healthy
+shared bridge and falls back to a private SDK-owned runtime. Only a runtime
+created by the current run may be restarted or cleaned up.
+
+For a disposable built-binary smoke check, use a temporary repository and
+temporary `JCODE_HOME`/runtime directory, configure `mode: private` with a
+cheap profile, and run the built binary with a short timeout. Accept either a
+validated artifact or a bounded actionable failure, then assert that the
+temporary home, socket, process, and workspace are gone. Do not point this
+check at the developer's shared daemon.
+
 ### use_subscription
 
 **Type**: boolean

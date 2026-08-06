@@ -583,6 +583,13 @@ func (c *Configuration) GetAgent() (cliagent.Agent, error) {
 				Binary: c.Jcode.Binary, Home: c.Jcode.Home,
 				InheritLogins:  c.Jcode.InheritLogins,
 				StartupTimeout: c.Jcode.StartupTimeout, CleanupTimeout: c.Jcode.CleanupTimeout,
+				Lifecycle: cliagent.JcodeLifecyclePolicy{
+					Mode:              cliagent.JcodeLifecycleMode(c.Jcode.Mode),
+					StartupCommand:    c.Jcode.StartupCommand,
+					ReconnectAttempts: c.Jcode.ReconnectAttempts,
+					RestartAttempts:   c.Jcode.RestartAttempts,
+					RetryDelay:        c.Jcode.RetryDelay,
+				},
 			}), nil
 		}
 		agent := cliagent.Get(c.AgentPreset)
