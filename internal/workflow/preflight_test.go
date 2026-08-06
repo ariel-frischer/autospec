@@ -1,18 +1,239 @@
 package workflow
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPreflightTestFixtures(t *testing.T) {
+	tests := map[string]struct {
+		name        string
+		validateErr error
+		dirs        []string
+	}{
+		"valid agent and project": {
+			name: "codex",
+			dirs: []string{".autospec"},
+		},
+		"agent validation failure": {
+			name:        "claude",
+			validateErr: errors.New("agent unavailable"),
+			dirs:        []string{".claude/commands"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			agent := &fakeAgent{name: tt.name, validateErr: tt.validateErr}
+			assert.Equal(t, tt.name, agent.Name())
+			assert.ErrorIs(t, agent.Validate(), tt.validateErr)
+
+			projectDir := setupPreflightProject(t, tt.dirs...)
+			currentDir, err := os.Getwd()
+			require.NoError(t, err)
+			assert.Equal(t, projectDir, currentDir)
+			for _, dir := range tt.dirs {
+				_, err := os.Stat(filepath.Join(projectDir, dir))
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+var _ cliagent.Agent = (*fakeAgent)(nil)
+
+type fakeAgent struct {
+	name        string
+	validateErr error
+}
+
+func (f *fakeAgent) Name() string {
+	return f.name
+}
+
+func (f *fakeAgent) Version() (string, error) {
+	return "test", nil
+}
+
+func (f *fakeAgent) Validate() error {
+	return f.validateErr
+}
+
+func (f *fakeAgent) BuildCommand(_ string, _ cliagent.ExecOptions) (*exec.Cmd, error) {
+	return exec.Command("fake-agent"), nil
+}
+
+func (f *fakeAgent) Execute(
+	_ context.Context,
+	_ string,
+	_ cliagent.ExecOptions,
+) (*cliagent.Result, error) {
+	return &cliagent.Result{}, nil
+}
+
+func (f *fakeAgent) Capabilities() cliagent.Caps {
+	return cliagent.Caps{}
+}
+
+func setupPreflightProject(t *testing.T, dirs ...string) string {
+	t.Helper()
+
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	projectDir := t.TempDir()
+	require.NoError(t, os.Chdir(projectDir))
+	t.Cleanup(func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("restoring working directory: %v", err)
+		}
+	})
+
+	for _, dir := range dirs {
+		require.NoError(t, os.MkdirAll(filepath.Join(projectDir, dir), 0o755))
+	}
+	return projectDir
+}
+
+// TestRunPreflightChecksForAgent_NonClaudeIgnoresClaudeDirectory verifies that
+// supported non-Claude agents only require shared project prerequisites. The
+// agent-aware helper is intentionally exercised directly so these cases do not
+// depend on host PATH entries or a concrete configuration registry.
+func TestRunPreflightChecksForAgent_NonClaudeIgnoresClaudeDirectory(t *testing.T) {
+	tests := map[string]struct {
+		agentName string
+		dirs      []string
+	}{
+		"codex without stale Claude state": {
+			agentName: "codex",
+			dirs:      []string{".autospec"},
+		},
+		"codex with empty stale Claude directory": {
+			agentName: "codex",
+			dirs:      []string{".autospec", ".claude/commands"},
+		},
+		"jcode without stale Claude state": {
+			agentName: "jcode",
+			dirs:      []string{".autospec"},
+		},
+		"jcode with partial stale Claude directory": {
+			agentName: "jcode",
+			dirs:      []string{".autospec", ".claude/commands/partial"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			setupPreflightProject(t, tt.dirs...)
+			agent := &fakeAgent{name: tt.agentName}
+
+			first, err := runPreflightChecksForAgent(agent)
+			require.NoError(t, err)
+			require.NotNil(t, first)
+			second, err := runPreflightChecksForAgent(agent)
+			require.NoError(t, err)
+
+			assert.True(t, first.Passed)
+			assert.Empty(t, first.MissingDirs)
+			assert.Empty(t, first.FailedChecks)
+			assert.Equal(t, first, second,
+				"repeated checks of unchanged state must be identical")
+		})
+	}
+}
+
+func TestRunPreflightChecksForAgent_ClaudeRequirements(t *testing.T) {
+	validationErr := errors.New("claude dependency unavailable")
+	tests := map[string]struct {
+		dirs             []string
+		validateErr      error
+		wantPassed       bool
+		wantMissing      []string
+		wantFailedChecks []string
+		warningContains  []string
+	}{
+		"missing Claude command directory retains guidance": {
+			dirs:            []string{".autospec"},
+			wantMissing:     []string{".claude/commands/"},
+			warningContains: []string{".claude/commands/", "autospec init"},
+		},
+		"valid Claude project passes": {
+			dirs:       []string{".claude/commands", ".autospec"},
+			wantPassed: true,
+		},
+		"Claude validation failure is reported": {
+			dirs:             []string{".claude/commands", ".autospec"},
+			validateErr:      validationErr,
+			wantFailedChecks: []string{"claude agent validation failed: claude dependency unavailable"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			setupPreflightProject(t, tt.dirs...)
+			agent := &fakeAgent{name: "claude", validateErr: tt.validateErr}
+
+			first, err := runPreflightChecksForAgent(agent)
+			require.NoError(t, err)
+			second, err := runPreflightChecksForAgent(agent)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantPassed, first.Passed)
+			if len(tt.wantMissing) == 0 {
+				assert.Empty(t, first.MissingDirs)
+			} else {
+				assert.Equal(t, tt.wantMissing, first.MissingDirs)
+			}
+			if len(tt.wantFailedChecks) == 0 {
+				assert.Empty(t, first.FailedChecks)
+			} else {
+				assert.Equal(t, tt.wantFailedChecks, first.FailedChecks)
+			}
+			for _, expected := range tt.warningContains {
+				assert.Contains(t, first.WarningMessage, expected)
+			}
+			assert.Equal(t, first, second,
+				"repeated checks of unchanged state must be identical")
+		})
+	}
+}
+
+// BenchmarkRunPreflightChecksForAgent measures the deterministic agent-aware
+// requirement path. The benchmark protects the feature's under-10ms target
+// without asserting a wall-clock threshold that would be noisy in CI.
+func BenchmarkRunPreflightChecksForAgent(b *testing.B) {
+	projectDir := b.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		b.Fatal(err)
+	}
+	if err := os.Chdir(projectDir); err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(originalDir) }()
+	if err := os.Mkdir(filepath.Join(projectDir, ".autospec"), 0o755); err != nil {
+		b.Fatal(err)
+	}
+
+	agent := &fakeAgent{name: "codex"}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := runPreflightChecksForAgent(agent); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
 
 // TestRunPreflightChecks tests the pre-flight validation logic for directory checks.
 // Note: This test focuses on directory validation. The overall Passed status also depends

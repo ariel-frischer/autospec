@@ -14,6 +14,53 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestE2E_SetupAutospecInitAgentLayouts verifies that isolated initialization
+// keeps Claude-only directories scoped to the Claude preset. The jcode preset
+// is represented as a literal here because this fixture only inspects the
+// generated project layout and does not need a jcode executable.
+func TestE2E_SetupAutospecInitAgentLayouts(t *testing.T) {
+	tests := map[string]struct {
+		preset             testutil.AgentPreset
+		wantClaudeCommands bool
+	}{
+		"claude retains command directory": {
+			preset:             testutil.AgentClaude,
+			wantClaudeCommands: true,
+		},
+		"codex omits Claude command directory": {
+			preset: testutil.AgentCodex,
+		},
+		"jcode omits Claude command directory": {
+			preset: testutil.AgentPreset("jcode"),
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			env := testutil.NewE2EEnvWithAgent(t, tt.preset)
+			env.SetupAutospecInit()
+			assertE2EAgentLayout(t, env, tt.preset, tt.wantClaudeCommands)
+		})
+	}
+}
+
+func assertE2EAgentLayout(t *testing.T, env *testutil.E2EEnv, preset testutil.AgentPreset, wantClaudeCommands bool) {
+	t.Helper()
+	autospecDir := filepath.Join(env.TempDir(), ".autospec")
+	configPath := filepath.Join(autospecDir, "config.yml")
+	require.DirExists(t, autospecDir)
+	require.FileExists(t, configPath)
+	config, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	require.Contains(t, string(config), "agent_preset: "+string(preset))
+	_, err = os.Stat(filepath.Join(env.TempDir(), ".claude", "commands"))
+	if wantClaudeCommands {
+		require.NoError(t, err)
+		return
+	}
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
 // TestE2E_StatusCommand tests the status command functionality.
 // This verifies US-010: "status command shows spec state".
 func TestE2E_StatusCommand(t *testing.T) {
