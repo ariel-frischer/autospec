@@ -1,0 +1,475 @@
+tasks:
+  branch: "002-cheap-openrouter"
+  created: "2026-08-06"
+  spec_path: "specs/130-jcode-workflow-agent/spec.yaml"
+  plan_path: "specs/130-jcode-workflow-agent/plan.yaml"
+
+summary:
+  total_tasks: 30
+  total_phases: 7
+  parallel_opportunities: 14
+  estimated_complexity: "high"
+
+phases:
+  - number: 1
+    title: "Setup"
+    purpose: "Confirm the existing jcode SDK and repository seams before changing behavior."
+    tasks:
+      - id: "T001"
+        title: "Inspect the local jcode Go SDK session API and identify the minimal session-settings extension"
+        status: "Pending"
+        type: "setup"
+        parallel: false
+        story_id: null
+        file_path: "../jcode/sdk/go"
+        dependencies: []
+        acceptance_criteria:
+          - "The SDK types and methods used to create a session and send a prompt are documented in the implementation notes or task findings."
+          - "The chosen protocol carries route reference, model, and reasoning effort without credentials."
+      - id: "T002"
+        title: "Inventory registered agents, supported workflow stages, and existing model/profile precedence"
+        status: "Pending"
+        type: "setup"
+        parallel: true
+        story_id: null
+        file_path: "internal/cliagent/registry.go"
+        dependencies: []
+        acceptance_criteria:
+          - "The inventory covers constitution, specify, clarify, plan, tasks, checklist, analyze, and implement where registered."
+          - "Existing CLI, profile, environment, project, user, and default precedence seams are identified without modifying unsupported surfaces."
+
+  - number: 2
+    title: "Foundational"
+    purpose: "Create deterministic protocol seams and shared resolution types before user-story implementation."
+    tasks:
+      - id: "T003"
+        title: "Add injectable jcode SDK factory and session test doubles that capture settings and prompt ordering"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: null
+        file_path: "internal/cliagent/jcode_test.go"
+        dependencies: ["T001"]
+        acceptance_criteria:
+          - "Fakes capture working directory, route, model, reasoning, prompt, and event lifecycle."
+          - "Fixtures require no network, credentials, real jcode runtime, or repository mutation."
+      - id: "T004"
+        title: "Define the shared workflow selection and jcode session-settings boundary"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: null
+        file_path: "internal/workflow/model_selection.go"
+        dependencies: ["T001", "T002"]
+        acceptance_criteria:
+          - "The boundary represents agent, stage, route, model, and reasoning as non-secret values."
+          - "Interfaces are accepted at the SDK boundary and concrete settings are returned."
+          - "Changed functions remain under 40 lines and contextual errors are wrapped."
+      - id: "T005"
+        title: "Add foundational table fixtures for all supported stages and cheap-policy expectations"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: null
+        file_path: "internal/workflow/model_selection_test.go"
+        dependencies: ["T004"]
+        acceptance_criteria:
+          - "Tests use map[string]struct cases and enumerate every supported stage."
+          - "The expected policy distinguishes specify/plan from all other supported stages."
+
+  - number: 3
+    title: "User Story 1 - Use jcode as the primary workflow agent"
+    purpose: "Execute every supported workflow stage through the native jcode SDK while preserving explicit overrides."
+    story_reference: "US-001"
+    independent_test: "Run stage-selection and executor tests with injected jcode SDK fakes and verify each stage creates the expected native session."
+    tasks:
+      - id: "T006"
+        title: "Write tests for default jcode selection and explicit agent/profile override precedence"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-001"
+        file_path: "internal/workflow/model_selection_test.go"
+        dependencies: ["T005"]
+        acceptance_criteria:
+          - "Tests prove the effective default selects jcode where the configuration model supports an agent default."
+          - "Tests prove explicit profile and CLI agent values override the default."
+      - id: "T007"
+        title: "Implement jcode default and registered-agent resolution for supported workflow stages"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/cliagent/registry.go"
+        dependencies: ["T006"]
+        acceptance_criteria:
+          - "Jcode remains registered and resolves through the existing agent registry."
+          - "Unsupported or custom-agent behavior is unchanged."
+      - id: "T008"
+        title: "Write executor integration tests for native jcode session invocation across supported stages"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-001"
+        file_path: "internal/workflow/executor_test.go"
+        dependencies: ["T006"]
+        acceptance_criteria:
+          - "Each supported stage is exercised with an injected executor/session fake."
+          - "Tests verify session creation precedes prompt execution and preserve retry/lifecycle expectations."
+      - id: "T009"
+        title: "Pass resolved stage selection through the workflow executor to the native jcode path"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-001"
+        file_path: "internal/workflow/executor.go"
+        dependencies: ["T007", "T008"]
+        acceptance_criteria:
+          - "The executor passes session settings without changing retry semantics or lifecycle wrappers."
+          - "All supported stages use the native jcode path when selected."
+
+  - number: 4
+    title: "User Story 2 - Apply the cheap profile model and reasoning policy"
+    purpose: "Resolve the cheap profile's OpenRouter route, model, and stage-specific reasoning values."
+    story_reference: "US-002"
+    independent_test: "Resolve cheap-profile settings for every supported stage and compare captured protocol settings to the exact expected values."
+    tasks:
+      - id: "T010"
+        title: "Write map-based tests for cheap-profile route, model, and per-stage reasoning"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-002"
+        file_path: "internal/workflow/model_selection_test.go"
+        dependencies: ["T005"]
+        acceptance_criteria:
+          - "Specify and plan expect route openai, model openai/gpt-5.6-luna, and max reasoning."
+          - "Every other supported stage expects route openai, model openai/gpt-5.6-luna, and xhigh reasoning."
+          - "Repeated resolution with identical inputs produces identical settings."
+      - id: "T011"
+        title: "Implement cheap-profile stage policy and model/route resolution"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-002"
+        file_path: "internal/workflow/model_selection.go"
+        dependencies: ["T010"]
+        acceptance_criteria:
+          - "The cheap policy is applied only through existing profile/config resolution."
+          - "CLI and more-specific profile values remain able to override route, model, or reasoning values."
+          - "No credential or provider-secret fields are introduced."
+      - id: "T012"
+        title: "Add protocol-level assertions for exact cheap-profile session settings"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-002"
+        file_path: "internal/cliagent/jcode_test.go"
+        dependencies: ["T003", "T011"]
+        acceptance_criteria:
+          - "Captured SDK requests contain exact route, model, and reasoning values before prompt execution."
+          - "Tests cover specify, plan, and at least one other supported stage."
+
+  - number: 5
+    title: "User Story 3 - Keep provider ownership in jcode"
+    purpose: "Transport only opaque session settings and surface jcode failures without Autospec credential ownership."
+    story_reference: "US-003"
+    independent_test: "Inspect configuration and protocol fakes, then inject provider/authentication failures and verify contextual error propagation with no secret handling."
+    tasks:
+      - id: "T013"
+        title: "Write tests proving the jcode protocol payload contains no provider credentials"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-003"
+        file_path: "internal/cliagent/jcode_test.go"
+        dependencies: ["T012"]
+        acceptance_criteria:
+          - "Captured settings contain only route reference, model, reasoning, and workflow directory data."
+          - "Tests contain no API keys, tokens, provider secrets, or real authentication setup."
+      - id: "T014"
+        title: "Extend the local jcode SDK session protocol with non-secret session-setting fields"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "../jcode/sdk/go"
+        dependencies: ["T003", "T013"]
+        acceptance_criteria:
+          - "The SDK accepts route reference, model, and reasoning effort at session level."
+          - "Existing session creation, event streaming, and send behavior remain compatible."
+          - "The protocol does not add Autospec-owned credential storage or configuration."
+      - id: "T015"
+        title: "Map Autospec selections into jcode SDK session requests and preserve event handling"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-003"
+        file_path: "internal/cliagent/jcode.go"
+        dependencies: ["T014"]
+        acceptance_criteria:
+          - "Settings are sent before the stage prompt."
+          - "Typed events, TurnDone, permission/unknown-event handling, cleanup, timeout, and wrapped errors remain intact."
+      - id: "T016"
+        title: "Add deterministic tests for contextual provider and authentication failures"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-003"
+        file_path: "internal/cliagent/jcode_test.go"
+        dependencies: ["T015"]
+        acceptance_criteria:
+          - "Injected SDK failures are returned with contextual jcode/session information."
+          - "Autospec neither prompts for, persists, logs, nor rewrites credentials."
+
+  - number: 6
+    title: "User Story 4 - Document and verify configuration precedence"
+    purpose: "Synchronize supported defaults and explain ownership and override precedence to users and maintainers."
+    story_reference: "US-004"
+    independent_test: "Run isolated map-based config and CLI precedence tests, inspect documentation examples, and verify no credential fields exist."
+    tasks:
+      - id: "T017"
+        title: "Write map-based configuration precedence and default-resolution tests"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-004"
+        file_path: "internal/config/config_test.go"
+        dependencies: ["T007", "T011"]
+        acceptance_criteria:
+          - "Tests cover defaults, user, project, environment, named profile, and CLI override layers."
+          - "CLI wins over profile/config, and profile/config wins over the effective default."
+          - "Tests verify absence of Autospec jcode credential/provider-secret fields."
+      - id: "T018"
+        title: "Synchronize effective jcode default and supported non-secret configuration surfaces"
+        status: "Pending"
+        type: "implementation"
+        parallel: false
+        story_id: "US-004"
+        file_path: "internal/config/config.go"
+        dependencies: ["T017"]
+        acceptance_criteria:
+          - "Configuration struct, runtime resolution, and supported defaults select jcode where applicable."
+          - "No unsupported new configuration surface or secret field is invented."
+      - id: "T019"
+        title: "Update defaults template, known-key schema, and validation for supported session references"
+        status: "Pending"
+        type: "implementation"
+        parallel: true
+        story_id: "US-004"
+        file_path: "internal/config/defaults.go"
+        dependencies: ["T017"]
+        acceptance_criteria:
+          - "defaults.go, schema.go, and validate.go remain synchronized."
+          - "Validation handles only non-secret agent/session references with contextual errors."
+      - id: "T020"
+        title: "Add isolated CLI tests for effective default and explicit override behavior"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: "US-004"
+        file_path: "internal/cli"
+        dependencies: ["T018", "T019"]
+        acceptance_criteria:
+          - "CLI override precedence is observable without launching a real agent."
+          - "Existing custom-agent and explicit profile behavior remains covered."
+      - id: "T021"
+        title: "Document jcode ownership, cheap profile values, and precedence examples"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: "US-004"
+        file_path: "docs/public/agents.md"
+        dependencies: ["T018", "T019"]
+        acceptance_criteria:
+          - "Docs state that jcode owns provider selection, authentication, and credentials."
+          - "Docs state that Autospec owns stage selection and session-level model/reasoning requests."
+          - "Docs include effective default, profile, and CLI precedence examples without credentials."
+      - id: "T022"
+        title: "Update the public configuration reference for jcode defaults and session settings"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: "US-004"
+        file_path: "docs/public/reference.md"
+        dependencies: ["T018", "T019"]
+        acceptance_criteria:
+          - "User-visible defaults and supported profile/session-setting references match runtime behavior."
+          - "The reference does not document Autospec-owned provider authentication."
+
+  - number: 7
+    title: "Polish & Cross-Cutting Concerns"
+    purpose: "Create required manual and release documentation, synchronize generated artifacts, and run all quality gates."
+    tasks:
+      - id: "T023"
+        title: "Create the manual testing plan with report summaries for all supported stages and failure cases"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: ".dev/tasks/130-jcode-workflow-agent.md"
+        dependencies: ["T009", "T016", "T020", "T021", "T022"]
+        acceptance_criteria:
+          - "The plan covers every supported stage, defaults, named profiles, CLI overrides, missing authentication, and secret-redaction checks."
+          - "The document contains a Report Summaries section for later manual results."
+      - id: "T024"
+        title: "Add user-facing YAML-first changelog bullets for native jcode workflow support"
+        status: "Pending"
+        type: "documentation"
+        parallel: true
+        story_id: null
+        file_path: "internal/changelog/changelog.yaml"
+        dependencies: ["T018", "T021"]
+        acceptance_criteria:
+          - "One to three bullets describe observable jcode default, cheap-profile, or override behavior."
+          - "No maintainer-only implementation detail or secret appears in public notes."
+      - id: "T025"
+        title: "Regenerate CHANGELOG.md from the YAML changelog source"
+        status: "Pending"
+        type: "documentation"
+        parallel: false
+        story_id: null
+        file_path: "CHANGELOG.md"
+        dependencies: ["T024"]
+        acceptance_criteria:
+          - "make changelog-sync completes successfully."
+          - "CHANGELOG.md is generated from internal/changelog/changelog.yaml and is not edited manually."
+      - id: "T026"
+        title: "Run focused deterministic tests for config, workflow, cliagent, and CLI packages"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "internal"
+        dependencies: ["T023", "T025"]
+        acceptance_criteria:
+          - "Focused tests pass without network access, real agent CLIs, credentials, or active-repository mutation."
+      - id: "T027"
+        title: "Run repository formatting, lint, full test, and build validation"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "Makefile"
+        dependencies: ["T026"]
+        acceptance_criteria:
+          - "make fmt, make lint, make test, and make build all exit 0."
+      - id: "T028"
+        title: "Validate changed YAML artifacts and inspect configuration surfaces for secret leakage"
+        status: "Pending"
+        type: "test"
+        parallel: true
+        story_id: null
+        file_path: "specs/130-jcode-workflow-agent/tasks.yaml"
+        dependencies: ["T025"]
+        acceptance_criteria:
+          - "autospec artifact specs/130-jcode-workflow-agent/tasks.yaml exits successfully."
+          - "The final diff contains no provider credentials, API keys, tokens, or unrelated changes."
+      - id: "T029"
+        title: "Review changed functions and errors against project code-quality constraints"
+        status: "Pending"
+        type: "refactor"
+        parallel: true
+        story_id: null
+        file_path: "internal/cliagent/jcode.go"
+        dependencies: ["T027", "T028"]
+        acceptance_criteria:
+          - "Changed functions remain under 40 lines or are decomposed appropriately."
+          - "Contextual errors are wrapped and boundary interfaces remain narrow."
+      - id: "T030"
+        title: "Confirm final feature coverage against all functional requirements and success criteria"
+        status: "Pending"
+        type: "test"
+        parallel: false
+        story_id: null
+        file_path: "specs/130-jcode-workflow-agent/spec.yaml"
+        dependencies: ["T027", "T028", "T029"]
+        acceptance_criteria:
+          - "FR-001 through FR-009 and SC-001 through SC-004 have an implementation or validation task with evidence."
+          - "The final report records validation results and any manual-test follow-up."
+
+dependencies:
+  user_story_order:
+    - story_id: "US-001"
+      depends_on: []
+      blocks: ["US-002", "US-003", "US-004"]
+    - story_id: "US-002"
+      depends_on: ["US-001"]
+      blocks: ["US-003", "US-004"]
+    - story_id: "US-003"
+      depends_on: ["US-001", "US-002"]
+      blocks: ["US-004"]
+    - story_id: "US-004"
+      depends_on: ["US-001", "US-002", "US-003"]
+      blocks: []
+  phase_order:
+    - phase: 1
+      blocks: [2]
+    - phase: 2
+      blocks: [3]
+    - phase: 3
+      blocks: [4]
+    - phase: 4
+      blocks: [5]
+    - phase: 5
+      blocks: [6]
+    - phase: 6
+      blocks: [7]
+    - phase: 7
+      blocks: []
+
+parallel_execution:
+  - phase: 1
+    parallel_groups:
+      - tasks: ["T001", "T002"]
+        rationale: "SDK inspection and Autospec inventory inspect different boundaries."
+  - phase: 2
+    parallel_groups:
+      - tasks: ["T003", "T005"]
+        rationale: "Protocol fixtures and stage-policy test scaffolding are isolated test work after their respective seams."
+  - phase: 3
+    parallel_groups:
+      - tasks: ["T006", "T008"]
+        rationale: "Selection tests and executor integration tests cover separate behavior before implementation."
+  - phase: 4
+    parallel_groups:
+      - tasks: ["T010", "T012"]
+        rationale: "Resolution and protocol assertions can be prepared independently."
+  - phase: 5
+    parallel_groups:
+      - tasks: ["T013", "T016"]
+        rationale: "Payload ownership tests and failure-path tests target separate protocol behaviors."
+  - phase: 6
+    parallel_groups:
+      - tasks: ["T017", "T020", "T021", "T022"]
+        rationale: "Config tests, CLI tests, and two documentation updates can proceed in parallel once resolution seams are available."
+  - phase: 7
+    parallel_groups:
+      - tasks: ["T023", "T024", "T028", "T029"]
+        rationale: "Manual plan, changelog, artifact/security inspection, and code-quality review have separate primary files or validation concerns."
+
+implementation_strategy:
+  mvp_scope:
+    phases: [1, 2, 3]
+    description: "Setup, protocol/resolution foundation, and native jcode execution for all supported stages."
+    validation: "Run deterministic stage-selection and executor tests with injected SDK fakes, then verify default and explicit override behavior."
+  incremental_delivery:
+    - milestone: "Foundation Ready"
+      phases: [1, 2]
+      deliverable: "A tested, non-secret session-settings boundary and complete stage/policy fixtures are ready for implementation."
+    - milestone: "MVP Complete"
+      phases: [1, 2, 3]
+      deliverable: "All supported workflow stages can execute through native jcode with default and explicit selection behavior."
+    - milestone: "Policy Complete"
+      phases: [1, 2, 3, 4, 5]
+      deliverable: "Cheap-profile settings, provider ownership boundary, protocol failures, and deterministic precedence behavior are implemented."
+    - milestone: "Release Ready"
+      phases: [1, 2, 3, 4, 5, 6, 7]
+      deliverable: "Configuration/docs/changelog are synchronized and all repository validation gates pass."
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-08-06T05:21:14Z"
+  artifact_type: "tasks"
