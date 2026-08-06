@@ -2,11 +2,14 @@
 package cliagent
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // AuthType represents the type of Claude authentication.
@@ -33,6 +36,18 @@ type ClaudeAuthStatus struct {
 	SubscriptionType string
 	// APIKeySet indicates if ANTHROPIC_API_KEY env var is set.
 	APIKeySet bool
+	// AuthStatusChecked indicates whether `claude auth status --json` ran.
+	AuthStatusChecked bool
+	// AuthStatusError describes a local CLI/configuration/runtime failure.
+	AuthStatusError string
+}
+
+var claudeAuthStatusCommand = runClaudeAuthStatus
+
+type claudeAuthStatusResponse struct {
+	LoggedIn         bool   `json:"loggedIn"`
+	AuthMethod       string `json:"authMethod"`
+	SubscriptionType string `json:"subscriptionType"`
 }
 
 // claudeCredentials represents the structure of ~/.claude/.credentials.json.
@@ -70,16 +85,59 @@ func DetectClaudeAuth() ClaudeAuthStatus {
 	// Check for API key in environment
 	status.APIKeySet = isAPIKeySet()
 
-	// Try to read OAuth credentials - presence of file with token = authenticated
-	if oauthData := readOAuthCredentials(); oauthData != nil {
-		status.AuthType = AuthTypeOAuth
-		status.SubscriptionType = oauthData.SubscriptionType
-	} else if status.APIKeySet {
-		// Fall back to API key if no OAuth
-		status.AuthType = AuthTypeAPI
+	if status.Installed {
+		status.AuthStatusChecked = true
+		if output, err := claudeAuthStatusCommand(); err == nil {
+			applyAuthStatusJSON(&status, output)
+		} else {
+			status.AuthStatusError = err.Error()
+		}
+	}
+
+	// Fall back to local credentials when the installed CLI cannot report status.
+	if status.AuthType == AuthTypeNone {
+		if oauthData := readOAuthCredentials(); oauthData != nil {
+			status.AuthType = AuthTypeOAuth
+			status.SubscriptionType = oauthData.SubscriptionType
+		} else if status.APIKeySet {
+			// Fall back to API key if no OAuth
+			status.AuthType = AuthTypeAPI
+		}
 	}
 
 	return status
+}
+
+func runClaudeAuthStatus() ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	output, err := exec.CommandContext(ctx, "claude", "auth", "status", "--json").Output()
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("checking Claude authentication: %w", ctx.Err())
+		}
+		return nil, fmt.Errorf("checking Claude authentication: %w", err)
+	}
+	return output, nil
+}
+
+func applyAuthStatusJSON(status *ClaudeAuthStatus, output []byte) {
+	var response claudeAuthStatusResponse
+	if err := json.Unmarshal(output, &response); err != nil {
+		status.AuthStatusError = fmt.Sprintf("parsing Claude auth status: %v", err)
+		return
+	}
+	if !response.LoggedIn {
+		return
+	}
+	if response.AuthMethod == "claude.ai" {
+		status.AuthType = AuthTypeOAuth
+		status.SubscriptionType = response.SubscriptionType
+		return
+	}
+	if status.APIKeySet {
+		status.AuthType = AuthTypeAPI
+	}
 }
 
 // detectClaudeInstalled checks if Claude CLI is installed and returns version.
