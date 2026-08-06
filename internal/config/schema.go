@@ -53,7 +53,7 @@ var KnownKeys = map[string]ConfigKeySchema{
 	"agent_preset": {
 		Path:          "agent_preset",
 		Type:          TypeEnum,
-		AllowedValues: []string{"", "claude", "gemini", "cline", "codex", "opencode", "goose"},
+		AllowedValues: []string{"", "claude", "gemini", "cline", "codex", "jcode", "opencode", "goose"},
 		Description:   "Built-in agent preset to use",
 		Default:       "",
 	},
@@ -90,6 +90,49 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Type:        TypeString,
 		Description: "OpenCode sub-agent to use (build, plan, explore, etc.)",
 		Default:     "",
+	},
+	"jcode.mode": {
+		Path:          "jcode.mode",
+		Type:          TypeEnum,
+		AllowedValues: []string{"connect", "private"},
+		Description:   "Native jcode runtime ownership mode",
+		Default:       string(JcodeModeConnect),
+	},
+	"jcode.socket_path": {
+		Path:        "jcode.socket_path",
+		Type:        TypeString,
+		Description: "Existing jcode API socket path (empty uses SDK environment resolution)",
+		Default:     "",
+	},
+	"jcode.binary": {
+		Path:        "jcode.binary",
+		Type:        TypeString,
+		Description: "Private jcode executable path (empty uses jcode on PATH)",
+		Default:     "",
+	},
+	"jcode.home": {
+		Path:        "jcode.home",
+		Type:        TypeString,
+		Description: "Private jcode home (empty uses an SDK-owned temporary home)",
+		Default:     "",
+	},
+	"jcode.inherit_logins": {
+		Path:        "jcode.inherit_logins",
+		Type:        TypeBool,
+		Description: "Inherit local jcode credentials for private launch",
+		Default:     false,
+	},
+	"jcode.startup_timeout": {
+		Path:        "jcode.startup_timeout",
+		Type:        TypeDuration,
+		Description: "Maximum private jcode runtime startup duration",
+		Default:     "30s",
+	},
+	"jcode.cleanup_timeout": {
+		Path:        "jcode.cleanup_timeout",
+		Type:        TypeDuration,
+		Description: "Maximum private jcode runtime cleanup duration",
+		Default:     "30s",
 	},
 	"use_subscription": {
 		Path:        "use_subscription",

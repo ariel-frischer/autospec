@@ -81,6 +81,10 @@ require (
 
 require github.com/ariel-frischer/claude-clean v0.2.0
 
+require github.com/1jehuang/jcode-go v0.0.0
+
+replace github.com/1jehuang/jcode-go => ../jcode/sdk/go
+
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect

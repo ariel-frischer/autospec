@@ -9,7 +9,7 @@ func GetDefaultConfigTemplate() string {
 # See 'autospec config -h' for commands, 'autospec config keys' for all options
 
 # Agent settings
-agent_preset: ""                      # Built-in agent: claude | codex | opencode
+agent_preset: ""                      # Built-in agent: claude | codex | jcode | opencode
 model: ""                             # Default model for workflow agent execution
 models:                               # Optional per-stage workflow agent model overrides
   constitution: ""
@@ -32,6 +32,16 @@ reasoning_efforts:                     # Optional per-stage Codex reasoning effo
   implement: ""
 opencode_agent: ""                    # OpenCode sub-agent: build | plan | explore | etc.
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
+
+# Native jcode SDK settings
+jcode:
+  mode: connect                         # Runtime ownership: connect | private
+  socket_path: ""                      # Existing API socket (empty = SDK environment resolution)
+  binary: ""                            # Private runtime executable (empty = jcode on PATH)
+  home: ""                              # Private runtime home (empty = SDK-owned temporary home)
+  inherit_logins: false                 # Private launch credential inheritance (disable for untrusted use)
+  startup_timeout: 30s                  # Maximum private runtime startup duration
+  cleanup_timeout: 30s                  # Maximum private runtime cleanup duration
 
 # Workflow settings
 max_retries: 0                        # Max retry attempts per stage (0-10)
@@ -131,8 +141,17 @@ func GetDefaults() map[string]interface{} {
 			"analyze":      "",
 			"implement":    "",
 		},
-		"opencode_agent":     "",   // OpenCode sub-agent (empty = use OpenCode's default)
-		"use_subscription":   true, // Protect users from accidental API charges
+		"opencode_agent":   "",   // OpenCode sub-agent (empty = use OpenCode's default)
+		"use_subscription": true, // Protect users from accidental API charges
+		"jcode": map[string]interface{}{
+			"mode":            string(JcodeModeConnect),
+			"socket_path":     "",
+			"binary":          "",
+			"home":            "",
+			"inherit_logins":  false,
+			"startup_timeout": (30 * time.Second).String(),
+			"cleanup_timeout": (30 * time.Second).String(),
+		},
 		"max_retries":        0,
 		"specs_dir":          "./specs",
 		"state_dir":          "~/.autospec/state",

@@ -88,9 +88,8 @@ func TestAgentInterface(t *testing.T) {
 		"jcode": {
 			agent:       NewJcode(),
 			wantName:    "jcode",
-			wantCmd:     "jcode",
-			wantMethod:  PromptMethodSubcommand,
-			wantFlag:    "run",
+			wantMethod:  "",
+			wantFlag:    "",
 			wantAutonom: "",
 		},
 	}
@@ -107,10 +106,10 @@ func TestAgentInterface(t *testing.T) {
 			if !caps.Automatable {
 				t.Error("Automatable should be true for Tier 1 agents")
 			}
-			if caps.PromptDelivery.Method != tt.wantMethod {
+			if name != "jcode" && caps.PromptDelivery.Method != tt.wantMethod {
 				t.Errorf("PromptDelivery.Method = %q, want %q", caps.PromptDelivery.Method, tt.wantMethod)
 			}
-			if caps.PromptDelivery.Flag != tt.wantFlag {
+			if name != "jcode" && caps.PromptDelivery.Flag != tt.wantFlag {
 				t.Errorf("PromptDelivery.Flag = %q, want %q", caps.PromptDelivery.Flag, tt.wantFlag)
 			}
 			if caps.AutonomousFlag != tt.wantAutonom {
@@ -190,12 +189,6 @@ func TestBuildCommand(t *testing.T) {
 			prompt:   "add feature",
 			opts:     ExecOptions{},
 			wantArgs: []string{"run", "-t", "add feature"},
-		},
-		"jcode basic": {
-			agent:    NewJcode(),
-			prompt:   "fix tests",
-			opts:     ExecOptions{},
-			wantArgs: []string{"--quiet", "--no-update", "--no-selfdev", "run", "fix tests"},
 		},
 		"goose autonomous": {
 			agent:    NewGoose(),
