@@ -127,7 +127,7 @@ func runPreflightChecksForAgent(agent cliagent.Agent) (*PreflightResult, error) 
 func preflightDirectories(agent cliagent.Agent) []string {
 	dirs := []string{".autospec"}
 	if strings.EqualFold(agent.Name(), "claude") {
-		dirs = append([]string{".claude/commands"}, dirs...)
+		dirs = append([]string{".claude/skills"}, dirs...)
 	}
 	return dirs
 }
