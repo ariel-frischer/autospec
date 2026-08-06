@@ -8,7 +8,7 @@ module github.com/ariel-frischer/jcode-go
 
 ## Current availability
 
-The SDK is published as a separate Go module at `github.com/ariel-frischer/jcode-go` and can be consumed directly from the public Go module proxy. The Autospec integration uses the published `v0.1.1` release. There is no `jcode-go` executable to install. Applications import the Go package, while the Jcode runtime remains a separate `jcode` executable or daemon.
+The SDK is published as a separate Go module at `github.com/ariel-frischer/jcode-go` and can be consumed directly from the public Go module proxy. The Autospec integration uses the published `v0.1.2` release, which includes the safe-run ownership API. There is no `jcode-go` executable to install. Applications import the Go package, while the Jcode runtime remains a separate `jcode` executable or daemon.
 
 ## Use from a source checkout
 
@@ -28,7 +28,7 @@ module example.com/my-jcode-app
 
 go 1.23
 
-require github.com/ariel-frischer/jcode-go v0.1.1
+require github.com/ariel-frischer/jcode-go v0.1.2
 ```
 
 Then import it normally:

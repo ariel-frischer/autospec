@@ -2,6 +2,7 @@ package cliagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -103,7 +104,21 @@ func (r sdkJcodeRuntime) Launch(ctx context.Context, _ JcodeRuntimeRequest) (Jco
 	if err != nil {
 		return JcodeRuntimeHandle{}, err
 	}
-	return JcodeRuntimeHandle{ID: "private-runtime", Ownership: JcodeRuntimeOwnershipPrivate, State: JcodeRuntimeStateReady, client: sdkJcodeClient{client: client}, cleanup: client.Close}, nil
+	owner, ok := client.DetachInstance()
+	if !ok {
+		_ = client.Close()
+		return JcodeRuntimeHandle{}, fmt.Errorf("detaching owned jcode runtime: launch returned no instance")
+	}
+	cleanup := func() error {
+		if err := client.Close(); err != nil && !errors.Is(err, jcode.ErrClosed) {
+			return fmt.Errorf("closing jcode client: %w", err)
+		}
+		if err := owner.Shutdown(); err != nil {
+			return fmt.Errorf("shutting down owned jcode runtime: %w", err)
+		}
+		return nil
+	}
+	return JcodeRuntimeHandle{ID: "private-runtime", Ownership: JcodeRuntimeOwnershipPrivate, State: JcodeRuntimeStateReady, client: sdkJcodeClient{client: client}, cleanup: cleanup}, nil
 }
 
 func (sdkJcodeRuntime) Reconnect(ctx context.Context, handle JcodeRuntimeHandle) (JcodeRuntimeHandle, error) {
