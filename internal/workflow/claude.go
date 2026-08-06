@@ -107,6 +107,9 @@ func (c *ClaudeExecutor) executeWithAgentOptions(prompt string, interactive bool
 		JSONOutput:      !interactive && c.codexCompactOutputEnabled(),
 		ExtraArgs:       extraArgs,
 	}
+	if len(extraArgs) > 0 {
+		opts.Model, opts.ReasoningEffort = cliagent.ParseSessionSettings(extraArgs)
+	}
 
 	result, err := c.Agent.Execute(ctx, prompt, opts)
 

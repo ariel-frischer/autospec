@@ -8,6 +8,7 @@ import (
 	"time"
 
 	jcode "github.com/1jehuang/jcode-go"
+	"github.com/1jehuang/jcode-go/protocol"
 )
 
 // JcodeOptions selects the native jcode runtime mode.
@@ -26,8 +27,16 @@ type jcodeEventStream interface {
 	Close()
 }
 type jcodeSession interface {
+	Configure(context.Context, JcodeSessionSettings) error
 	Send(context.Context, string) error
 	Events(context.Context) jcodeEventStream
+}
+
+// JcodeSessionSettings contains non-secret per-stage settings for jcode.
+// Provider credentials remain owned by the jcode runtime.
+type JcodeSessionSettings struct {
+	Model           string
+	ReasoningEffort string
 }
 type jcodeClient interface {
 	CreateSession(context.Context, string) (jcodeSession, error)
@@ -66,10 +75,48 @@ func (c sdkJcodeClient) CreateSession(ctx context.Context, workDir string) (jcod
 	if err != nil {
 		return nil, fmt.Errorf("creating jcode session: %w", err)
 	}
-	return sdkJcodeSession{session: session}, nil
+	return sdkJcodeSession{client: c.client, session: session}, nil
 }
 
-type sdkJcodeSession struct{ session jcode.Session }
+type sdkJcodeSession struct {
+	client  *jcode.Client
+	session jcode.Session
+}
+
+func (s sdkJcodeSession) Configure(ctx context.Context, settings JcodeSessionSettings) error {
+	if settings.Model != "" {
+		if err := s.set(ctx, "set_model", struct {
+			SessionID string `json:"session_id"`
+			Model     string `json:"model"`
+		}{s.session.ID, settings.Model}); err != nil {
+			return fmt.Errorf("setting jcode model: %w", err)
+		}
+	}
+	if settings.ReasoningEffort != "" {
+		if err := s.set(ctx, "set_reasoning_effort", struct {
+			SessionID string `json:"session_id"`
+			Effort    string `json:"effort"`
+		}{s.session.ID, settings.ReasoningEffort}); err != nil {
+			return fmt.Errorf("setting jcode reasoning effort: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s sdkJcodeSession) set(ctx context.Context, request string, fields any) error {
+	raw, err := protocol.NewRawRequest(request, fields)
+	if err != nil {
+		return fmt.Errorf("building %s request: %w", request, err)
+	}
+	frame, err := s.client.Request(ctx, raw)
+	if err != nil {
+		return fmt.Errorf("sending %s request: %w", request, err)
+	}
+	if failure, ok := frame.Event.(protocol.Error); ok {
+		return fmt.Errorf("%s: %s", failure.Code, failure.Message)
+	}
+	return nil
+}
 
 func (s sdkJcodeSession) Send(ctx context.Context, prompt string) error {
 	return s.session.Send(ctx, prompt, jcode.SendOptions{})
@@ -139,6 +186,11 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 		return nil, fmt.Errorf("creating jcode event stream: nil stream")
 	}
 	defer stream.Close()
+	if err := session.Configure(ctx, JcodeSessionSettings{
+		Model: options.Model, ReasoningEffort: options.ReasoningEffort,
+	}); err != nil {
+		return nil, fmt.Errorf("configuring jcode session: %w", err)
+	}
 	if err := session.Send(ctx, prompt); err != nil {
 		return nil, fmt.Errorf("sending prompt to jcode: %w", err)
 	}

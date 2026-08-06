@@ -1081,10 +1081,10 @@ effective configuration.
 ### agent_preset
 
 **Type**: string
-**Default**: `"claude"`
+**Default**: `"claude"` (the repository project config selects `jcode`)
 **Description**: Name of the built-in agent to use for workflow execution
 
-**Available presets**: `claude`, `cline`, `gemini`, `codex`, `opencode`, `goose`
+**Available presets**: `claude`, `cline`, `gemini`, `codex`, `jcode`, `opencode`, `goose`
 
 **Example**:
 ```yaml
@@ -1118,11 +1118,11 @@ use_subscription: false
 
 **Type**: string
 **Default**: `""`
-**Description**: Default model passed to autospec workflow stages for supported CLI agents. Applies when the active workflow agent is Claude, Codex, or OpenCode and no `--model` override is provided.
+**Description**: Default model passed to autospec workflow stages for supported agents. For native jcode, Autospec sends this as a non-secret session setting while jcode retains provider and authentication ownership.
 
 **Example**:
 ```yaml
-agent_preset: codex
+agent_preset: jcode
 model: gpt-5.4
 ```
 
@@ -1158,11 +1158,11 @@ Every generated stage default is empty. An empty or absent stage value falls bac
 
 **Type**: string
 **Default**: `""`
-**Description**: Default reasoning effort passed to Codex workflow stages. Autospec forwards this as Codex's `model_reasoning_effort` config override and leaves compatibility validation to the installed Codex CLI.
+**Description**: Default reasoning effort passed to supported workflow agents. Autospec forwards this as Codex's `model_reasoning_effort` override or as a native jcode session setting, while the selected agent validates provider compatibility.
 
 **Example**:
 ```yaml
-agent_preset: codex
+agent_preset: jcode
 model: gpt-5.6-terra
 reasoning_effort: high
 ```

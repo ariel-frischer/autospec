@@ -188,17 +188,17 @@ phases:
           - "Captured settings contain only route reference, model, reasoning, and workflow directory data."
           - "Tests contain no API keys, tokens, provider secrets, or real authentication setup."
       - id: "T014"
-        title: "Extend the local jcode SDK session protocol with non-secret session-setting fields"
+        title: "Use the existing jcode Go SDK session-setting protocol without modifying the external SDK repository"
         status: "Pending"
         type: "implementation"
         parallel: false
         story_id: "US-003"
-        file_path: "../jcode/sdk/go"
+        file_path: "internal/cliagent/jcode.go"
         dependencies: ["T003", "T013"]
         acceptance_criteria:
-          - "The SDK accepts route reference, model, and reasoning effort at session level."
+          - "The Autospec adapter uses the existing SDK raw request boundary to send route/model/reasoning session settings."
           - "Existing session creation, event streaming, and send behavior remain compatible."
-          - "The protocol does not add Autospec-owned credential storage or configuration."
+          - "The external ../jcode repository remains unmodified."
       - id: "T015"
         title: "Map Autospec selections into jcode SDK session requests and preserve event handling"
         status: "Pending"

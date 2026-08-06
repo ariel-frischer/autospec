@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os/exec"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -30,9 +31,18 @@ func (m mockJcodeClient) CreateSession(context.Context, string) (jcodeSession, e
 }
 
 type mockJcodeSession struct {
-	events jcodeEventStream
-	err    error
-	order  *[]string
+	events   jcodeEventStream
+	err      error
+	order    *[]string
+	settings *[]JcodeSessionSettings
+}
+
+func (m mockJcodeSession) Configure(_ context.Context, settings JcodeSessionSettings) error {
+	*m.order = append(*m.order, "configure")
+	if m.settings != nil {
+		*m.settings = append(*m.settings, settings)
+	}
+	return nil
 }
 
 func (m mockJcodeSession) Send(context.Context, string) error {
@@ -86,8 +96,37 @@ func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	if got := stdout.String(); got != "answer" {
 		t.Fatalf("stdout = %q, want %q", got, "answer")
 	}
-	if got := strings.Join(order, ","); got != "subscribe,send" {
-		t.Fatalf("operation order = %q, want subscribe,send", got)
+	if got := strings.Join(order, ","); got != "subscribe,configure,send" {
+		t.Fatalf("operation order = %q, want subscribe,configure,send", got)
+	}
+}
+
+func TestJcodeAgent_ExecuteConfiguresSessionBeforePrompt(t *testing.T) {
+	t.Parallel()
+
+	order := []string{}
+	settings := []JcodeSessionSettings{}
+	stream := &mockJcodeEventStream{events: []jcode.TypedEvent{&jcode.TurnDone{}}}
+	agent := &JcodeAgent{
+		factory: mockJcodeFactory{client: mockJcodeClient{session: mockJcodeSession{
+			events: stream, order: &order, settings: &settings,
+		}}},
+	}
+
+	_, err := agent.Execute(context.Background(), "prompt", ExecOptions{
+		Model:           "openai/gpt-5.6-luna",
+		ReasoningEffort: "max",
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	want := []JcodeSessionSettings{{Model: "openai/gpt-5.6-luna", ReasoningEffort: "max"}}
+	if !reflect.DeepEqual(settings, want) {
+		t.Fatalf("settings = %#v, want %#v", settings, want)
+	}
+	if got := strings.Join(order, ","); got != "subscribe,configure,send" {
+		t.Fatalf("operation order = %q, want subscribe,configure,send", got)
 	}
 }
 
