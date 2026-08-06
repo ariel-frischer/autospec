@@ -1,0 +1,277 @@
+plan:
+  branch: "130-jcode-workflow-agent"
+  created: "2026-08-06"
+  spec_path: "specs/130-jcode-workflow-agent/spec.yaml"
+
+summary: |
+  Extend the existing native jcode adapter and workflow configuration path so jcode
+  is a first-class workflow agent for every supported stage. The implementation will
+  resolve the effective agent, cheap profile values, stage-specific reasoning, and
+  model settings before execution, then pass those values through the jcode Go SDK
+  session protocol. Existing profile, environment, project, and CLI precedence will
+  remain intact, while provider selection, authentication, and credentials remain
+  entirely inside jcode.
+
+  The work will preserve the existing cliagent.Agent boundary and deterministic mock
+  factory pattern. The jcode SDK boundary will expose the minimum session-level
+  settings operation needed by Autospec, without adding provider-secret fields to
+  Autospec configuration. Tests will cover all supported stages, precedence cases,
+  protocol requests, contextual SDK failures, and default resolution. Documentation
+  will explain the ownership boundary and supported overrides.
+
+technical_context:
+  language: "Go 1.25+"
+  framework: "Cobra CLI with internal workflow and cliagent packages"
+  primary_dependencies:
+    - name: "github.com/1jehuang/jcode-go"
+      version: "v0.0.0 (local replace ../jcode/sdk/go)"
+      purpose: "Native jcode runtime connection, session creation, session settings, prompt delivery, and event streaming"
+    - name: "github.com/knadh/koanf/v2"
+      version: "v2.3.0"
+      purpose: "Existing layered configuration loading and environment precedence"
+    - name: "gopkg.in/yaml.v3"
+      version: "v3.0.1"
+      purpose: "Existing profile and artifact parsing in tests and configuration tooling"
+    - name: "github.com/stretchr/testify"
+      version: "v1.11.1"
+      purpose: "Existing deterministic assertions and test helpers"
+  storage: "YAML configuration and named profile files; jcode-owned runtime/provider storage remains outside Autospec"
+  testing:
+    framework: "Go testing with testify where already used"
+    approach: "Map-based unit tests for selection and precedence, protocol-level fake SDK tests for jcode sessions, package integration tests for workflow execution, and isolated temporary configuration directories; no network, credentials, real agent runtime, or active-repository mutation"
+  target_platform: "Linux, macOS, and Windows environments supported by the Go CLI and jcode SDK"
+  project_type: "cli"
+  performance_goals: "Configuration loading under 100ms; validation and resolution paths under 10ms where applicable; no extra network or runtime startup during configuration resolution"
+  constraints:
+    - "Do not add Autospec-owned jcode provider, API key, token, or authentication fields"
+    - "Preserve explicit CLI and named-profile overrides over effective defaults"
+    - "Keep command templates agent-neutral"
+    - "Use the native jcode Go SDK rather than an Autospec-owned provider integration"
+    - "Functions under 40 lines and contextual error wrapping in changed Go code"
+    - "All new selection and protocol tests use map[string]struct table cases"
+    - "Run make test, make fmt, make lint, and make build before completion"
+  scale_scope: "One local Autospec process orchestrating the existing constitution, specify, clarify, plan, tasks, checklist, analyze, and implement stages through one jcode SDK session per execution"
+
+constitution_check:
+  constitution_path: ".autospec/constitution.yaml"
+  gates:
+    - name: "Validation-First Workflow"
+      status: "PASS"
+      notes: "The plan adds artifact validation and preserves the constitution -> specify -> plan -> tasks -> implement dependency order."
+    - name: "Test-First Development"
+      status: "PASS"
+      notes: "Each selection, protocol, precedence, and failure behavior is assigned deterministic tests before implementation changes."
+    - name: "Performance Standards"
+      status: "PASS"
+      notes: "Resolution remains in-memory and avoids runtime/network work; existing configuration and validation performance targets are retained."
+    - name: "Idempotency and Retry Safety"
+      status: "PASS"
+      notes: "Session settings are derived deterministically from immutable stage/config inputs, and existing workflow retry handling remains authoritative."
+    - name: "Command Template Independence"
+      status: "PASS"
+      notes: "No internal command templates need provider-specific instructions or jcode-only tools."
+    - name: "Configuration Consistency"
+      status: "PASS"
+      notes: "Any default or supported configuration change will update Configuration, known keys, defaults, validation, tests, and user-facing agent documentation together."
+    - name: "Workflow Lifecycle and Auditability"
+      status: "PASS"
+      notes: "Workflow command lifecycle wrappers are unchanged; implementation tasks will include manual testing notes and YAML-first changelog synchronization."
+    - name: "Deterministic Agent-Safe Testing"
+      status: "PASS"
+      notes: "The existing jcode factory/session/event interfaces provide fakes for tests, with temporary config directories and no real credentials or external calls."
+
+research_findings:
+  decisions:
+    - topic: "Native jcode integration boundary"
+      decision: "Keep jcode behind internal/cliagent.Agent and extend the SDK-facing adapter/factory only for session-level settings needed by workflow execution."
+      rationale: "The repository already has cliagent/jcode.go, a local jcode-go dependency, connect/private runtime modes, and injectable factory interfaces. This avoids a second provider implementation and keeps agent-specific coupling in cliagent."
+      alternatives_considered:
+        - "Implement jcode as a command-backed BaseAgent"
+        - "Add a separate Autospec provider/authentication subsystem"
+        - "Call undocumented SDK internals directly from workflow"
+    - topic: "Model and reasoning delivery"
+      decision: "Resolve stage settings in Autospec, then send model and reasoning through typed/native jcode session protocol requests before sending the stage prompt."
+      rationale: "The spec assigns workflow-stage selection to Autospec but provider/auth ownership to jcode. The SDK already models sessions and typed events, so the minimum additive session API is the appropriate boundary."
+      alternatives_considered:
+        - "Encode settings into the prompt"
+        - "Pass provider credentials or provider config through Autospec"
+        - "Use CLI flags or environment variables around the jcode runtime"
+    - topic: "Cheap profile values"
+      decision: "Use the existing named profile overlay and precedence machinery, setting agent_preset to jcode, model to openai/gpt-5.6-luna, the OpenRouter openai route as a session-level selection value, max for specify/plan, and xhigh for other supported stages."
+      rationale: "Existing profile tests demonstrate profile overlays and environment precedence. Extending the established model/reasoning structures preserves compatibility and makes the policy table-testable."
+      alternatives_considered:
+        - "Create a special hard-coded cheap-profile code path"
+        - "Add provider credentials to the cheap profile"
+        - "Apply one reasoning value to every stage"
+    - topic: "Effective default agent"
+      decision: "Change only existing effective-default surfaces that currently fall back to claude, including runtime resolution, generated defaults, init guidance, and relevant docs/tests; do not invent a new config field."
+      rationale: "The spec explicitly limits the default change to supported configuration surfaces, while current docs and init behavior still describe claude as the fallback."
+      alternatives_considered:
+        - "Add a second default-agent configuration field"
+        - "Change default_agents, which only controls init checkbox selection"
+        - "Leave runtime fallback unchanged"
+    - topic: "Failure and secret handling"
+      decision: "Wrap SDK connect, settings, send, and event failures with stage and operation context, while diagnostics expose only safe setting identifiers and never credentials."
+      rationale: "This meets the security boundary and lets users distinguish missing jcode authentication from workflow validation failures without Autospec collecting or persisting secrets."
+      alternatives_considered:
+        - "Retry authentication inside Autospec"
+        - "Persist SDK error payloads wholesale"
+        - "Silently fall back to another provider"
+
+data_model:
+  entities:
+    - name: "Workflow agent selection"
+      description: "Resolved agent and session-level settings for one workflow stage after defaults, profile, environment, and CLI precedence."
+      fields:
+        - name: "agent"
+          type: "string"
+          description: "Selected workflow agent name, including jcode"
+          constraints: "Must be a registered supported agent"
+        - name: "profile"
+          type: "string"
+          description: "Optional named profile contributing configuration"
+          constraints: "Validated profile basename; empty when no profile is selected"
+        - name: "stage"
+          type: "workflow.Stage"
+          description: "Constitution, specify, clarify, plan, tasks, checklist, analyze, or implement"
+          constraints: "Must be a currently supported stage"
+        - name: "route"
+          type: "string"
+          description: "Session-level provider route reference, such as OpenRouter openai"
+          constraints: "Selection identifier only; must not contain credentials"
+        - name: "model"
+          type: "string"
+          description: "Session-level model identifier"
+          constraints: "CLI override wins over profile/stage/config/default values"
+        - name: "reasoning"
+          type: "string"
+          description: "Stage-specific reasoning effort"
+          constraints: "max for specify and plan in cheap profile; xhigh for other supported stages"
+      relationships:
+        - target: "jcode SDK session"
+          type: "one-to-one"
+          description: "One resolved stage selection configures one native jcode session"
+    - name: "jcode SDK session"
+      description: "Native jcode session used to apply settings, send the rendered workflow prompt, and stream output events."
+      fields:
+        - name: "session_id"
+          type: "string"
+          description: "Runtime-assigned jcode session identifier"
+          constraints: "Owned by jcode; Autospec does not persist credentials"
+        - name: "session_settings"
+          type: "struct"
+          description: "Model, route, and reasoning requests sent through the SDK protocol"
+          constraints: "Must be deterministic and applied before prompt delivery"
+        - name: "events"
+          type: "typed event stream"
+          description: "Text, reasoning, tool, error, and turn completion events"
+          constraints: "Closed on completion or failure"
+      relationships:
+        - target: "Workflow agent selection"
+          type: "many-to-one"
+          description: "Session is created from one stage selection"
+
+api_contracts:
+  endpoints: []
+
+project_structure:
+  documentation:
+    - path: "docs/public/agents.md"
+      description: "Document jcode as the effective default where supported, cheap profile examples, precedence, and the ownership boundary for provider/auth configuration."
+    - path: "docs/public/reference.md"
+      description: "Update agent_preset, profile, and model/reasoning configuration reference examples and defaults."
+    - path: "docs/public/quickstart.md"
+      description: "Update quickstart default agent examples if they describe the effective runtime default."
+    - path: "docs/internal/architecture.md"
+      description: "Record the cliagent-to-jcode SDK session boundary and ownership split for maintainers."
+    - path: ".dev/tasks/130-jcode-workflow-agent.md"
+      description: "Final implementation task manual testing plan with Report Summaries section, created during task execution."
+    - path: "internal/changelog/changelog.yaml"
+      description: "Add user-facing jcode default/profile integration bullets, then regenerate CHANGELOG.md with make changelog-sync."
+  source_code:
+    - path: "internal/cliagent/jcode.go"
+      description: "Extend native SDK client/session interfaces and apply model, route, and reasoning settings before prompt execution."
+    - path: "internal/workflow/model_selection.go"
+      description: "Resolve jcode-supported model and route values while retaining CLI, stage, config, and default precedence."
+    - path: "internal/workflow/executor.go"
+      description: "Integrate stage-specific jcode session settings without changing retry and lifecycle ownership."
+    - path: "internal/config/config.go"
+      description: "Update effective default handling only where the existing agent preset model supports it."
+    - path: "internal/config/defaults.go"
+      description: "Synchronize generated template and runtime defaults for the supported effective agent and cheap profile values."
+    - path: "internal/config/schema.go"
+      description: "Keep all existing and any newly supported keys recognized without adding credential fields."
+    - path: "internal/config/validate.go"
+      description: "Validate route/model/reasoning identifiers and unsupported stages at the trust boundary."
+    - path: "internal/cliagent/registry.go"
+      description: "Ensure jcode remains registered, discoverable, and selected as the supported runtime default where appropriate."
+  tests:
+    - path: "internal/cliagent/jcode_test.go"
+      description: "Fake SDK factory/session tests for settings request ordering, protocol payloads, event streaming, and contextual failures."
+    - path: "internal/workflow/model_selection_test.go"
+      description: "Map-based table tests for jcode model/route and CLI, stage, profile, config precedence."
+    - path: "internal/workflow/executor_test.go"
+      description: "Supported-stage coverage asserting jcode receives the expected reasoning policy."
+    - path: "internal/config/profile_test.go"
+      description: "Cheap profile overlay and explicit override tests using temporary user/project config directories."
+    - path: "internal/config/defaults_test.go"
+      description: "Effective default agent and generated-template assertions."
+    - path: "internal/cliagent/registry_test.go"
+      description: "Registration, capability, and default-support assertions for jcode."
+
+implementation_phases:
+  - phase: 1
+    name: "Lock down contracts and configuration resolution"
+    goal: "Define deterministic stage settings and precedence behavior before changing runtime execution."
+    deliverables:
+      - "Map-based tests for all supported stages, cheap profile model/route/reasoning values, profile/config/environment/CLI precedence, and effective default resolution"
+      - "Configuration/default/schema/validation updates with no provider-secret or credential fields"
+      - "Updated internal and public documentation for ownership and override precedence"
+  - phase: 2
+    name: "Extend the native jcode SDK session boundary"
+    goal: "Provide the minimum typed session protocol operation for Autospec to apply route, model, and reasoning settings."
+    dependencies:
+      - "Phase 1"
+    deliverables:
+      - "SDK-facing request/response types and adapter interfaces for session-level settings"
+      - "Injectable fake SDK session tests proving exact request payloads and deterministic ordering"
+      - "Contextual handling for connection, authentication/provider, settings, send, and event failures"
+  - phase: 3
+    name: "Integrate settings into workflow execution"
+    goal: "Execute every supported workflow stage through jcode when selected, applying resolved settings before prompt delivery while preserving retry behavior."
+    dependencies:
+      - "Phase 1"
+      - "Phase 2"
+    deliverables:
+      - "jcode agent execution path wired through the existing cliagent.Agent and workflow executor boundaries"
+      - "max reasoning for specify and plan and xhigh for all other supported stages under the cheap profile"
+      - "Explicit profile and CLI overrides preserved over defaults"
+      - "No credential exposure in diagnostics, logs, artifacts, or tests"
+  - phase: 4
+    name: "Validate, document, and polish"
+    goal: "Prove the implementation is deterministic, compatible, documented, and ready for release."
+    dependencies:
+      - "Phase 3"
+    deliverables:
+      - "Focused and package-level deterministic tests for all acceptance scenarios"
+      - "Manual testing plan in .dev/tasks/130-jcode-workflow-agent.md with Report Summaries section"
+      - "YAML-first changelog update followed by make changelog-sync"
+      - "make test, make fmt, make lint, and make build all pass"
+
+open_questions:
+  - question: "What exact typed request names and fields does the current jcode Go SDK expose for session-level model, route, and reasoning settings?"
+    context: "The current visible Go session surface includes create, attach, send, and events, while the feature requires session-level settings."
+    proposed_resolution: "Confirm the sibling SDK protocol implementation during Phase 2 and add the smallest additive typed API, preserving raw protocol compatibility and fakeability."
+  - question: "Is the OpenRouter openai route represented as a distinct session route field or encoded in the model/provider selection identifier?"
+    context: "Cheap-profile acceptance requires both the OpenRouter openai route and openai/gpt-5.6-luna, but Autospec must not own provider configuration."
+    proposed_resolution: "Use the SDK's canonical session selection representation; keep Autospec's value opaque and test the exact serialized protocol request rather than inventing a provider schema."
+  - question: "Which existing fallback and init surfaces are considered the repository's effective default agent contract?"
+    context: "Current docs and init helpers distinguish agent_preset from default_agents and several surfaces still describe claude as the fallback."
+    proposed_resolution: "Enumerate runtime resolution, defaults template, init selection guidance, docs, and production-agent lists in Phase 1, changing only surfaces that control effective execution."
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-08-06T04:51:02Z"
+  artifact_type: "plan"
