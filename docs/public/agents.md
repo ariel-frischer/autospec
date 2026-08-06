@@ -129,7 +129,7 @@ Example `cheap.yml`:
 agent_preset: jcode
 jcode:
   mode: connect
-model: openai/gpt-5.6-luna
+model: openrouter:openai/gpt-5.6-luna
 reasoning_efforts:
   specify: max
   plan: max
