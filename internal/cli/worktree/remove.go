@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
@@ -40,7 +41,7 @@ func runRemove(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	force, _ := cmd.Flags().GetBool("force")
 
-	cfg, err := config.Load("")
+	cfg, err := shared.LoadConfig(cmd, "")
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}

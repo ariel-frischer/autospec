@@ -238,6 +238,8 @@ type LoadOptions struct {
 	WarningWriter io.Writer
 	// SkipWarnings suppresses deprecation warnings
 	SkipWarnings bool
+	// Profile selects a named profile overlay. Empty means no profile overlay.
+	Profile string
 }
 
 // Load loads configuration from user, project, and environment sources.
@@ -254,7 +256,8 @@ func Load(projectConfigPath string) (*Configuration, error) {
 	return LoadWithOptions(LoadOptions{ProjectConfigPath: projectConfigPath})
 }
 
-// LoadWithOptions loads configuration with custom options
+// LoadWithOptions loads configuration with custom options.
+// Priority: environment > selected profile > project config > user config > defaults.
 func LoadWithOptions(opts LoadOptions) (*Configuration, error) {
 	k := koanf.New(".")
 	warningWriter := getWarningWriter(opts.WarningWriter)
@@ -267,6 +270,12 @@ func LoadWithOptions(opts LoadOptions) (*Configuration, error) {
 
 	if err := loadProjectConfig(k, opts.ProjectConfigPath, warningWriter, opts.SkipWarnings); err != nil {
 		return nil, err
+	}
+
+	if opts.Profile != "" {
+		if err := loadProfileConfig(k, opts.Profile); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := loadEnvironmentConfig(k); err != nil {
@@ -356,6 +365,32 @@ func loadProjectConfig(k *koanf.Koanf, customPath string, warningWriter io.Write
 		if err := loadLegacyJSONConfig(k, legacyProjectPath, "project", warningWriter, skipWarnings, "--project"); err != nil {
 			return fmt.Errorf("loading legacy project JSON config: %w", err)
 		}
+	}
+	return nil
+}
+
+// loadProfileConfig loads user and project profile overlays in precedence order.
+func loadProfileConfig(k *koanf.Koanf, name string) error {
+	userPath, projectPath, err := ProfileLocations(name)
+	if err != nil {
+		return err
+	}
+
+	loaded := false
+	if fileExists(userPath) {
+		if err := loadYAMLConfig(k, userPath, "user profile"); err != nil {
+			return fmt.Errorf("loading user profile %q: %w", name, err)
+		}
+		loaded = true
+	}
+	if fileExists(projectPath) {
+		if err := loadYAMLConfig(k, projectPath, "project profile"); err != nil {
+			return fmt.Errorf("loading project profile %q: %w", name, err)
+		}
+		loaded = true
+	}
+	if !loaded {
+		return fmt.Errorf("profile %q not found; searched %s and %s", name, userPath, projectPath)
 	}
 	return nil
 }

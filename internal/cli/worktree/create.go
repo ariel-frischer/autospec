@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
@@ -63,7 +64,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	skipSetup, _ := cmd.Flags().GetBool("skip-setup")
 	noRollback, _ := cmd.Flags().GetBool("no-rollback")
 
-	cfg, err := config.Load("")
+	cfg, err := shared.LoadConfig(cmd, "")
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}

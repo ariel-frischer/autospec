@@ -3,7 +3,7 @@ package worktree
 import (
 	"fmt"
 
-	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/worktree"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +22,7 @@ The prune command only removes tracking entries - it does not delete any files.`
 }
 
 func runPrune(cmd *cobra.Command, _ []string) error {
-	cfg, err := config.Load("")
+	cfg, err := shared.LoadConfig(cmd, "")
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}

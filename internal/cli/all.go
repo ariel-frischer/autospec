@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/ariel-frischer/autospec/internal/cli/shared"
-	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
 	"github.com/ariel-frischer/autospec/internal/history"
 	"github.com/ariel-frischer/autospec/internal/lifecycle"
@@ -57,7 +56,7 @@ This is equivalent to running 'autospec run -a <feature-description>'.`,
 		specName, _ := cmd.Flags().GetString("spec")
 
 		// Load configuration
-		cfg, err := config.Load(configPath)
+		cfg, err := shared.LoadConfig(cmd, configPath)
 		if err != nil {
 			cliErr := clierrors.ConfigParseError(configPath, err)
 			clierrors.PrintError(cliErr)

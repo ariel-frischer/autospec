@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/prereqs"
 	"github.com/ariel-frischer/autospec/internal/spec"
 	"github.com/spf13/cobra"
@@ -70,7 +70,7 @@ func init() {
 
 func runPrereqs(cmd *cobra.Command, args []string) error {
 	configPath, _ := cmd.Flags().GetString("config")
-	cfg, err := config.Load(configPath)
+	cfg, err := shared.LoadConfig(cmd, configPath)
 	if err != nil {
 		return err
 	}

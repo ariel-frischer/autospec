@@ -4,9 +4,11 @@ Complete reference for autospec commands, configuration options, exit codes, and
 
 ## CLI Commands
 
-All commands support global flags: `--config`, `--specs-dir`, `--debug`, `--verbose`, `--output-style`
+All commands support global flags: `--config`, `--profile`, `--specs-dir`, `--debug`, `--verbose`, `--output-style`
 
 - `--output-style <style>`: Output formatting style (`default`, `compact`, `minimal`, `plain`, `raw`)
+- `--config <path>`: Load one explicit YAML configuration file
+- `--profile <name>`: Load a named profile overlay from `~/.config/autospec/profiles/<name>.yml` and/or `.autospec/profiles/<name>.yml`
 
 ### autospec all
 
@@ -1057,6 +1059,24 @@ See [docs/worktree.md](worktree.md) for detailed documentation.
 ## Configuration Options
 
 Configuration sources (priority order): Environment variables > Local config > Global config > Defaults
+
+### Named profiles
+
+Named profiles are selected per invocation with `--profile`:
+
+```bash
+autospec run -a --profile cheap "Add a feature"
+autospec config show --profile cheap
+autospec config profiles
+autospec config create cheap
+```
+
+The user profile is loaded first and the project profile with the same name is
+loaded afterward. Environment variables remain the highest-priority overrides.
+Profile names use 1-64 letters, numbers, hyphens, or underscores. `--config`
+and `--profile` cannot be combined. Use `autospec config profiles` to list
+profiles and `autospec config create NAME [--force]` to save the current
+effective configuration.
 
 ### agent_preset
 

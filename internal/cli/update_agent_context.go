@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ariel-frischer/autospec/internal/agent"
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
 	"github.com/ariel-frischer/autospec/internal/git"
@@ -61,7 +62,7 @@ func init() {
 func runUpdateAgentContext(cmd *cobra.Command, args []string) error {
 	configPath, _ := cmd.Flags().GetString("config")
 
-	cfg, err := loadAgentContextConfig(configPath)
+	cfg, err := loadAgentContextConfig(cmd, configPath)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
@@ -99,8 +100,8 @@ func runUpdateAgentContext(cmd *cobra.Command, args []string) error {
 }
 
 // loadAgentContextConfig loads config for agent context command
-func loadAgentContextConfig(configPath string) (*config.Configuration, error) {
-	cfg, err := config.Load(configPath)
+func loadAgentContextConfig(cmd *cobra.Command, configPath string) (*config.Configuration, error) {
+	cfg, err := shared.LoadConfig(cmd, configPath)
 	if err != nil {
 		cliErr := clierrors.ConfigParseError(configPath, err)
 		if !updateAgentContextJSONFlag {

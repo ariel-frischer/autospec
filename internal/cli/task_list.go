@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/config"
 	clierrors "github.com/ariel-frischer/autospec/internal/errors"
 	"github.com/ariel-frischer/autospec/internal/validation"
@@ -76,7 +77,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 // loadTasksConfig loads config and returns the tasks.yaml path
 func loadTasksConfig(cmd *cobra.Command) (*config.Configuration, string, error) {
 	configPath, _ := cmd.Flags().GetString("config")
-	cfg, err := config.Load(configPath)
+	cfg, err := shared.LoadConfig(cmd, configPath)
 	if err != nil {
 		cliErr := clierrors.ConfigParseError(configPath, err)
 		clierrors.PrintError(cliErr)
