@@ -68,6 +68,9 @@ type Configuration struct {
 	// Can be set via AUTOSPEC_OPENCODE_AGENT env var.
 	OpenCodeAgent string `koanf:"opencode_agent"`
 
+	// Jcode configures the native jcode SDK agent runtime.
+	Jcode JcodeConfig `koanf:"jcode"`
+
 	MaxRetries              int                   `koanf:"max_retries"`
 	SpecsDir                string                `koanf:"specs_dir"`
 	StateDir                string                `koanf:"state_dir"`
@@ -504,6 +507,9 @@ func finalizeConfigWithWarnings(k *koanf.Koanf, warningWriter io.Writer, skipWar
 
 	cfg.StateDir = expandHomePath(cfg.StateDir)
 	cfg.SpecsDir = expandHomePath(cfg.SpecsDir)
+	cfg.Jcode.SocketPath = expandHomePath(cfg.Jcode.SocketPath)
+	cfg.Jcode.Binary = expandHomePath(cfg.Jcode.Binary)
+	cfg.Jcode.Home = expandHomePath(cfg.Jcode.Home)
 
 	if os.Getenv("AUTOSPEC_YES") != "" {
 		cfg.SkipConfirmations = true
@@ -538,7 +544,7 @@ func envTransform(s string) string {
 
 	// Known nested config prefixes that need dot notation.
 	// Order matters: longer prefixes must come first to avoid partial matches.
-	nestedPrefixes := []string{"reasoning_efforts_", "custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_", "models_"}
+	nestedPrefixes := []string{"reasoning_efforts_", "custom_agent_", "codex_output_", "notifications_", "verification_", "worktree_", "cclean_", "models_", "jcode_"}
 	for _, prefix := range nestedPrefixes {
 		if strings.HasPrefix(key, prefix) {
 			// Replace the trailing underscore of the prefix with a dot
@@ -571,6 +577,14 @@ func (c *Configuration) GetAgent() (cliagent.Agent, error) {
 
 	// Second priority: agent_preset (built-in agent by name)
 	if c.AgentPreset != "" {
+		if c.AgentPreset == "jcode" {
+			return cliagent.NewJcodeWithOptions(cliagent.JcodeOptions{
+				Mode: string(c.Jcode.Mode), SocketPath: c.Jcode.SocketPath,
+				Binary: c.Jcode.Binary, Home: c.Jcode.Home,
+				InheritLogins:  c.Jcode.InheritLogins,
+				StartupTimeout: c.Jcode.StartupTimeout, CleanupTimeout: c.Jcode.CleanupTimeout,
+			}), nil
+		}
 		agent := cliagent.Get(c.AgentPreset)
 		if agent == nil {
 			return nil, fmt.Errorf("unknown agent preset %q; available: %v", c.AgentPreset, cliagent.List())

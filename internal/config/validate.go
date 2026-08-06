@@ -158,6 +158,10 @@ func ValidateConfigValues(cfg *Configuration, filePath string) error {
 		}
 	}
 
+	if err := validateJcodeConfig(cfg.Jcode, filePath); err != nil {
+		return err
+	}
+
 	// Validate notification settings
 	if err := validateNotificationConfig(&cfg.Notifications, filePath); err != nil {
 		return err

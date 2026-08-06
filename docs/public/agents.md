@@ -11,7 +11,7 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 | `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.139 |
 | `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.145.0-alpha.23 |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.14.46 |
-| `jcode` | `jcode` | jcode coding-agent harness | ✅ Supported; uses quiet, no-update wrapper mode |
+| `jcode` | Native Go SDK | jcode coding-agent harness | ✅ Supported; connects to an existing runtime or launches a private runtime |
 
 ### Experimental Agents (Untested)
 
@@ -28,6 +28,29 @@ These agents have code-level support (agent abstraction, command building, docto
 You can configure any CLI tool as an agent using a command template with `{{PROMPT}}` placeholder.
 
 ## Configuration
+
+### Native jcode SDK
+
+Select jcode with `agent_preset: jcode`. The native integration does not invoke
+the experimental `jcode run` exec wrapper. It streams SDK `TextDelta` events
+until `TurnDone` and safely ignores permission and unknown events.
+
+```yaml
+agent_preset: jcode
+jcode:
+  mode: connect                 # connect or private
+  socket_path: ""               # optional existing runtime socket
+  binary: ""                    # private mode: jcode executable
+  home: ""                      # private mode: persistent home, or temporary
+  inherit_logins: false
+  startup_timeout: 30s
+  cleanup_timeout: 30s
+```
+
+`connect` attaches to a runtime started separately with `jcode api-bridge`.
+`private` starts an isolated runtime owned by autospec and cleans up SDK-owned
+temporary state when the execution ends. Keep login inheritance disabled for
+untrusted or multi-tenant work.
 
 ### Using a Preset Agent
 

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Workflow stages can now persist independent models for constitution, specify, clarify, plan, tasks, checklist, analyze, and implement
-- Autospec now supports jcode as a built-in coding-agent preset for non-interactive workflows
+- Autospec now supports jcode through the native Go SDK, with connect and isolated private runtime modes
 - Named configuration profiles can now be selected with `--profile`; explicit `--config` paths remain available as an alternative
 - Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
 
