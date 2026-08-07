@@ -14,6 +14,15 @@ const (
 	JcodeModeAuto    JcodeMode = "auto"
 )
 
+// JcodeRunner selects the implementation used for jcode execution.
+type JcodeRunner string
+
+const (
+	JcodeRunnerExec   JcodeRunner = "exec"
+	JcodeRunnerSDK    JcodeRunner = "sdk"
+	JcodeRunnerCustom JcodeRunner = "custom"
+)
+
 const redactedJcodeValue = "[redacted]"
 
 const (
