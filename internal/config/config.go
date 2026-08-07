@@ -578,12 +578,7 @@ func (c *Configuration) GetAgent() (cliagent.Agent, error) {
 	// Second priority: agent_preset (built-in agent by name)
 	if c.AgentPreset != "" {
 		if c.AgentPreset == "jcode" {
-			return cliagent.NewJcodeWithOptions(cliagent.JcodeOptions{
-				Mode: string(c.Jcode.Mode), SocketPath: c.Jcode.SocketPath,
-				Binary: c.Jcode.Binary, Home: c.Jcode.Home,
-				InheritLogins:  c.Jcode.InheritLogins,
-				StartupTimeout: c.Jcode.StartupTimeout, CleanupTimeout: c.Jcode.CleanupTimeout,
-			}), nil
+			return c.newJcodeAgent()
 		}
 		agent := cliagent.Get(c.AgentPreset)
 		if agent == nil {
@@ -598,6 +593,27 @@ func (c *Configuration) GetAgent() (cliagent.Agent, error) {
 		return nil, fmt.Errorf("default agent 'claude' not registered")
 	}
 	return agent, nil
+}
+
+func (c *Configuration) newJcodeAgent() (cliagent.Agent, error) {
+	switch c.Jcode.EffectiveRunner() {
+	case JcodeRunnerExec:
+		return cliagent.NewJcodeExec(c.Jcode.Binary), nil
+	case JcodeRunnerSDK:
+		return cliagent.NewJcodeWithOptions(cliagent.JcodeOptions{
+			Mode: string(c.Jcode.Mode), SocketPath: c.Jcode.SocketPath,
+			Binary: c.Jcode.Binary, Home: c.Jcode.Home,
+			InheritLogins:  c.Jcode.InheritLogins,
+			StartupTimeout: c.Jcode.StartupTimeout, CleanupTimeout: c.Jcode.CleanupTimeout,
+		}), nil
+	case JcodeRunnerCustom:
+		if c.Jcode.Binary == "" {
+			return nil, fmt.Errorf("jcode runner %q requires jcode.binary", JcodeRunnerCustom)
+		}
+		return cliagent.NewJcodeExec(c.Jcode.Binary), nil
+	default:
+		return nil, fmt.Errorf("unsupported jcode runner %q", c.Jcode.Runner)
+	}
 }
 
 // ToMap converts Configuration to a map[string]interface{} using koanf struct tags.

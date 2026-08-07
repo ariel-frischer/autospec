@@ -35,6 +35,7 @@ use_subscription: true                # Force subscription mode (no API charges)
 
 # Native jcode SDK settings
 jcode:
+  runner: exec                          # Runner: exec | sdk | custom; empty also resolves to exec
   mode: connect                         # Runtime ownership: connect | private
   socket_path: ""                      # Existing API socket (empty = SDK environment resolution)
   binary: ""                            # Private runtime executable (empty = jcode on PATH)
@@ -144,6 +145,7 @@ func GetDefaults() map[string]interface{} {
 		"opencode_agent":   "",   // OpenCode sub-agent (empty = use OpenCode's default)
 		"use_subscription": true, // Protect users from accidental API charges
 		"jcode": map[string]interface{}{
+			"runner":          string(JcodeRunnerExec),
 			"mode":            string(JcodeModeConnect),
 			"socket_path":     "",
 			"binary":          "",

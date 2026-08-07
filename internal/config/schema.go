@@ -98,6 +98,13 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description:   "Native jcode runtime ownership mode",
 		Default:       string(JcodeModeConnect),
 	},
+	"jcode.runner": {
+		Path:          "jcode.runner",
+		Type:          TypeEnum,
+		AllowedValues: []string{"", "exec", "sdk", "custom"},
+		Description:   "jcode execution runner; defaults to the CLI-compatible exec runner",
+		Default:       string(JcodeRunnerExec),
+	},
 	"jcode.socket_path": {
 		Path:        "jcode.socket_path",
 		Type:        TypeString,

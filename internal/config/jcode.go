@@ -13,10 +13,21 @@ const (
 	JcodeModePrivate JcodeMode = "private"
 )
 
+// JcodeRunner selects the implementation used for jcode execution.
+type JcodeRunner string
+
+const (
+	JcodeRunnerExec   JcodeRunner = "exec"
+	JcodeRunnerSDK    JcodeRunner = "sdk"
+	JcodeRunnerCustom JcodeRunner = "custom"
+)
+
 const redactedJcodeValue = "[redacted]"
 
 // JcodeConfig contains runtime and SDK settings for the native jcode agent.
 type JcodeConfig struct {
+	// Runner defaults to the production CLI-compatible exec runner when unset.
+	Runner         JcodeRunner   `yaml:"runner,omitempty" koanf:"runner"`
 	Mode           JcodeMode     `yaml:"mode,omitempty" koanf:"mode"`
 	SocketPath     string        `yaml:"socket_path,omitempty" koanf:"socket_path"`
 	Binary         string        `yaml:"binary,omitempty" koanf:"binary"`
@@ -24,6 +35,15 @@ type JcodeConfig struct {
 	InheritLogins  bool          `yaml:"inherit_logins" koanf:"inherit_logins"`
 	StartupTimeout time.Duration `yaml:"startup_timeout,omitempty" koanf:"startup_timeout"`
 	CleanupTimeout time.Duration `yaml:"cleanup_timeout,omitempty" koanf:"cleanup_timeout"`
+}
+
+// EffectiveRunner returns the configured runner, defaulting to the production
+// exec implementation. Native SDK settings do not change this resolution.
+func (c JcodeConfig) EffectiveRunner() JcodeRunner {
+	if c.Runner == "" {
+		return JcodeRunnerExec
+	}
+	return c.Runner
 }
 
 // Redacted returns a copy safe for user-facing diagnostics.
@@ -41,6 +61,9 @@ func (c JcodeConfig) Redacted() JcodeConfig {
 }
 
 func validateJcodeConfig(c JcodeConfig, filePath string) error {
+	if c.Runner != "" && c.Runner != JcodeRunnerExec && c.Runner != JcodeRunnerSDK && c.Runner != JcodeRunnerCustom {
+		return &ValidationError{FilePath: filePath, Field: "jcode.runner", Message: "must be one of: exec, sdk, custom"}
+	}
 	if c.Mode != "" && c.Mode != JcodeModeConnect && c.Mode != JcodeModePrivate {
 		return &ValidationError{FilePath: filePath, Field: "jcode.mode", Message: "must be one of: connect, private"}
 	}

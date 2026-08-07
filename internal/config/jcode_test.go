@@ -19,6 +19,7 @@ func TestJcodeConfigDefaultsAndRedaction(t *testing.T) {
 	require.True(t, ok, "jcode defaults should be a nested map")
 
 	assert.Equal(t, string(JcodeModeConnect), jcodeDefaults["mode"])
+	assert.Equal(t, string(JcodeRunnerExec), jcodeDefaults["runner"])
 	assert.Equal(t, "", jcodeDefaults["socket_path"])
 	assert.Equal(t, "", jcodeDefaults["binary"])
 	assert.Equal(t, "", jcodeDefaults["home"])
@@ -41,6 +42,119 @@ func TestJcodeConfigDefaultsAndRedaction(t *testing.T) {
 	assert.Equal(t, "[redacted]", redacted.Home)
 	assert.Equal(t, cfg.Mode, redacted.Mode)
 	assert.Equal(t, cfg.InheritLogins, redacted.InheritLogins)
+}
+
+func TestJcodeRunnerValues(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		runner JcodeRunner
+		valid  bool
+	}{
+		"exec":    {runner: JcodeRunnerExec, valid: true},
+		"sdk":     {runner: JcodeRunnerSDK, valid: true},
+		"custom":  {runner: JcodeRunnerCustom, valid: true},
+		"unset":   {runner: "", valid: true},
+		"invalid": {runner: "shell", valid: false},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			err := validateJcodeConfig(JcodeConfig{Runner: tt.runner}, "config")
+			if tt.valid {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "jcode.runner")
+		})
+	}
+}
+
+func TestEffectiveJcodeRunner(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		config JcodeConfig
+		want   JcodeRunner
+	}{
+		"unset defaults to exec": {
+			config: JcodeConfig{Mode: JcodeModePrivate, Binary: "/custom/jcode"},
+			want:   JcodeRunnerExec,
+		},
+		"explicit exec": {
+			config: JcodeConfig{Runner: JcodeRunnerExec},
+			want:   JcodeRunnerExec,
+		},
+		"explicit sdk": {
+			config: JcodeConfig{Runner: JcodeRunnerSDK},
+			want:   JcodeRunnerSDK,
+		},
+		"explicit custom": {
+			config: JcodeConfig{Runner: JcodeRunnerCustom},
+			want:   JcodeRunnerCustom,
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, tt.config.EffectiveRunner())
+		})
+	}
+}
+
+func TestJcodeExplicitRunnerFixtures(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		fixture string
+		want    JcodeRunner
+	}{
+		"custom binary remains explicit exec": {
+			fixture: "custom-binary.yaml",
+			want:    JcodeRunnerExec,
+		},
+		"SDK requires explicit opt in": {
+			fixture: "sdk-opt-in.yaml",
+			want:    JcodeRunnerSDK,
+		},
+		"missing binary still resolves as exec": {
+			fixture: "missing-binary.yaml",
+			want:    JcodeRunnerExec,
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assertJcodeRunner(t, tt.fixture, tt.want)
+		})
+	}
+}
+
+func TestJcodeExplicitRunnerValidationErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		fixture string
+		want    string
+	}{
+		"unsupported runner": {
+			fixture: "unsupported-runner.yaml",
+			want:    "jcode.runner",
+		},
+		"unsafe custom binary": {
+			fixture: "unsafe-binary.yaml",
+			want:    "jcode.binary",
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			err := requireJcodeFixtureError(t, tt.fixture)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.want)
+		})
+	}
 }
 
 func TestValidateJcodeConfig(t *testing.T) {

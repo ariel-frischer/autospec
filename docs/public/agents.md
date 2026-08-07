@@ -11,7 +11,7 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 | `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.139 |
 | `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.145.0-alpha.23 |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.14.46 |
-| `jcode` | Native Go SDK | jcode coding-agent harness | ✅ Supported; connects to an existing runtime or launches a private runtime |
+| `jcode` | `jcode` | jcode coding-agent harness | ✅ Supported; CLI exec is the default, with explicit SDK compatibility |
 
 ### Experimental Agents (Untested)
 
@@ -29,15 +29,59 @@ You can configure any CLI tool as an agent using a command template with `{{PROM
 
 ## Configuration
 
-### Native jcode SDK
+### jcode runner selection and CLI contract
 
-Select jcode with `agent_preset: jcode`. The native integration does not invoke
-the experimental `jcode run` exec wrapper. It streams SDK `TextDelta` events
-until `TurnDone` and safely ignores permission and unknown events.
+The production jcode integration uses the installed `jcode` executable and its
+`run` subcommand by default:
+
+```bash
+jcode run --quiet --model <model> "<rendered prompt>"
+```
+
+Autospec passes the workflow working directory through the command execution
+environment. The rendered prompt is transported as the required positional
+`MESSAGE` argument, and configured model values are passed with `--model`. The
+verified CLI does not expose a reasoning-effort option, so Autospec does not
+invent or forward one. Missing executables and non-zero exits are reported with
+context and do not silently switch to another runner.
+
+Runner selection is configured under `jcode.runner`. Omitting it selects the
+production exec runner:
 
 ```yaml
 agent_preset: jcode
 jcode:
+  runner: exec                 # default when omitted
+```
+
+To use a different executable explicitly, select the custom runner and provide
+the binary path or name:
+
+```yaml
+agent_preset: jcode
+jcode:
+  runner: custom
+  binary: /opt/tools/jcode
+```
+
+`runner: custom` requires `jcode.binary`. The configured executable is used as
+selected after validation. Autospec does not silently fall back if it is
+missing or not usable.
+
+### Native jcode SDK (explicit compatibility)
+
+The native integration remains available for configurations that explicitly
+set `runner: sdk`. It connects to an existing runtime or launches a private runtime,
+streams SDK `TextDelta` events until `TurnDone`, and safely ignores permission
+and unknown events. Native SDK settings do not select or override the CLI
+default. Stale SDK settings such as `mode`, `socket_path`, or
+`startup_timeout` are ignored by the default `runner: exec` path. SDK startup
+or lifecycle errors are returned directly when SDK mode is selected.
+
+```yaml
+agent_preset: jcode
+jcode:
+  runner: sdk
   mode: connect                 # connect or private
   socket_path: ""               # optional existing runtime socket
   binary: ""                    # private mode: jcode executable
@@ -51,6 +95,20 @@ jcode:
 `private` starts an isolated runtime owned by autospec and cleans up SDK-owned
 temporary state when the execution ends. Keep login inheritance disabled for
 untrusted or multi-tenant work.
+
+The SDK runner is an opt-in compatibility path. Its lifecycle settings are
+ignored by the default exec runner and cannot override `runner: exec`. Use
+`runner: sdk` only when the native SDK integration and its runtime are available.
+
+If an older configuration contains native SDK fields but no `jcode.runner`, it
+continues to resolve to exec. Set `runner: sdk` explicitly to retain native SDK
+behavior. Missing executables, unavailable SDKs, and non-zero command exits are
+reported with context. Autospec does not silently fall back after an explicit
+selection fails.
+
+The supported runner values are `exec`, `custom`, and `sdk`. There is no
+implicit fallback between them, so choose the runner deliberately when
+migrating an existing configuration.
 
 ### Using a Preset Agent
 
@@ -189,7 +247,10 @@ For each invocation, model precedence is:
 4. The selected agent's default
 
 Empty or absent stage values continue to the next level. CLI overrides apply
-only to that invocation and do not modify persistent configuration.
+only to that invocation and do not modify persistent configuration. For the
+jcode `run` runner, configured reasoning values are not forwarded because the
+verified CLI has no reasoning-effort option. Native SDK mode continues to
+receive its configured session settings.
 
 Model identifiers are opaque: autospec does not validate them against a
 provider catalog. The effective model is transported through the existing

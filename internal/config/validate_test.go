@@ -179,6 +179,52 @@ func TestValidateConfigValues_Valid(t *testing.T) {
 	}
 }
 
+func TestValidateConfigValues_JcodeRunnerCompatibility(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		runner  JcodeRunner
+		wantErr bool
+	}{
+		"unset runner is compatible":     {runner: "", wantErr: false},
+		"exec runner is compatible":      {runner: JcodeRunnerExec, wantErr: false},
+		"sdk runner is compatible":       {runner: JcodeRunnerSDK, wantErr: false},
+		"custom runner is compatible":    {runner: JcodeRunnerCustom, wantErr: false},
+		"unsupported runner is rejected": {runner: JcodeRunner("legacy-sdk"), wantErr: true},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := &Configuration{SpecsDir: "./specs", StateDir: "./state", Jcode: JcodeConfig{
+				Runner: tt.runner,
+			}}
+			err := ValidateConfigValues(cfg, "config.yml")
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ValidateConfigValues() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				if !strings.Contains(err.Error(), "jcode.runner") {
+					t.Errorf("error = %q, want jcode.runner context", err)
+				}
+				return
+			}
+			if got := cfg.Jcode.EffectiveRunner(); got == "" {
+				t.Error("effective jcode runner must never be empty")
+			}
+		})
+	}
+}
+
+func BenchmarkValidateConfigValues_JcodeRunner(b *testing.B) {
+	cfg := &Configuration{SpecsDir: "./specs", StateDir: "./state", Jcode: JcodeConfig{Runner: JcodeRunnerExec}}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := ValidateConfigValues(cfg, "config.yml"); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestValidateStageModelsAcceptOpaqueIdentifiers(t *testing.T) {
 	t.Parallel()
 

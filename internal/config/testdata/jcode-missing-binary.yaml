@@ -1,0 +1,3 @@
+jcode:
+  binary: "/fixtures/missing-jcode"
+  mode: "private"

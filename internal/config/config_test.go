@@ -58,6 +58,40 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, "./specs", cfg.SpecsDir)
 }
 
+func TestLoad_JcodeRunnerDefaultsToExec(t *testing.T) {
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	defer os.Chdir(originalWd)
+
+	tests := map[string]struct {
+		content string
+	}{
+		"unset runner with jcode preset": {
+			content: "agent_preset: jcode\n",
+		},
+		"stale SDK settings do not override unset runner": {
+			content: "agent_preset: jcode\njcode:\n  mode: private\n  socket_path: /tmp/stale-jcode.sock\n  binary: stale-jcode\n",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			require.NoError(t, os.Chdir(tmpDir))
+			t.Setenv("HOME", tmpDir)
+			t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, ".config"))
+
+			configPath := filepath.Join(tmpDir, "config.yml")
+			require.NoError(t, os.WriteFile(configPath, []byte(tt.content), 0o644))
+
+			cfg, err := Load(configPath)
+			require.NoError(t, err)
+			assert.Equal(t, "jcode", cfg.AgentPreset)
+			assert.Equal(t, JcodeRunnerExec, cfg.Jcode.EffectiveRunner())
+		})
+	}
+}
+
 func TestLoad_LocalOverride(t *testing.T) {
 	t.Parallel()
 
@@ -1004,6 +1038,211 @@ func TestConfiguration_GetAgent_AllPresets(t *testing.T) {
 			agent, err := cfg.GetAgent()
 			require.NoError(t, err)
 			assert.Equal(t, preset, agent.Name())
+		})
+	}
+}
+
+func TestConfiguration_GetAgent_JcodeDefaultsToExec(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		config JcodeConfig
+	}{
+		"unset runner": {},
+		"stale SDK settings": {
+			config: JcodeConfig{
+				Mode:       JcodeModePrivate,
+				SocketPath: "/tmp/stale-jcode.sock",
+				Binary:     "stale-jcode",
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := Configuration{
+				AgentPreset: "jcode",
+				Jcode:       tt.config,
+			}
+			agent, err := cfg.GetAgent()
+			require.NoError(t, err)
+			assert.Equal(t, "jcode", agent.Name())
+			_, isSDK := agent.(*cliagent.Jcode)
+			assert.False(t, isSDK, "default jcode resolution must not construct the native SDK agent")
+		})
+	}
+}
+
+func TestConfiguration_GetAgent_JcodeExplicitRunners(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		runner       JcodeRunner
+		binary       string
+		wantSDK      bool
+		wantErr      string
+		wantExecPath string
+	}{
+		"explicit exec": {
+			runner:       JcodeRunnerExec,
+			binary:       "/custom/jcode",
+			wantExecPath: "/custom/jcode",
+		},
+		"explicit sdk": {
+			runner:  JcodeRunnerSDK,
+			wantSDK: true,
+		},
+		"explicit custom runner is actionable": {
+			runner:       JcodeRunnerCustom,
+			binary:       "custom-jcode",
+			wantExecPath: "custom-jcode",
+		},
+		"custom runner requires an executable": {
+			runner:  JcodeRunnerCustom,
+			wantErr: "requires jcode.binary",
+		},
+		"unsupported runner is rejected": {
+			runner:  JcodeRunner("shell"),
+			wantErr: "unsupported jcode runner",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := Configuration{AgentPreset: "jcode", Jcode: JcodeConfig{
+				Runner: tt.runner, Binary: tt.binary,
+			}}
+			agent, err := cfg.GetAgent()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantSDK {
+				_, ok := agent.(*cliagent.Jcode)
+				assert.True(t, ok, "explicit SDK selection must use the SDK agent")
+				return
+			}
+			execAgent, ok := agent.(*cliagent.JcodeExec)
+			require.True(t, ok, "explicit exec selection must use the exec agent")
+			cmd, err := execAgent.BuildCommand("prompt", cliagent.ExecOptions{})
+			if tt.wantExecPath != "" {
+				if tt.runner == JcodeRunnerCustom {
+					require.Error(t, err, "missing explicit custom binary should fail without fallback")
+					assert.Contains(t, err.Error(), tt.wantExecPath)
+					return
+				}
+				require.Error(t, err, "missing explicit binary should fail without fallback")
+				assert.Contains(t, err.Error(), tt.wantExecPath)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "jcode", cmd.Path)
+		})
+	}
+}
+
+func TestConfiguration_JcodeExplicitSelectionFixtures(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		fixture   string
+		want      JcodeRunner
+		wantSDK   bool
+		wantError string
+	}{
+		"custom binary preserves explicit exec selection": {
+			fixture: "jcode-custom-binary.yaml",
+			want:    JcodeRunnerExec,
+		},
+		"SDK settings require explicit SDK runner": {
+			fixture: "jcode-sdk-opt-in.yaml",
+			want:    JcodeRunnerSDK,
+			wantSDK: true,
+		},
+		"unsupported mode is actionable": {
+			fixture:   "jcode-unsupported.yaml",
+			wantError: "jcode.mode",
+		},
+		"missing binary does not silently fall back": {
+			fixture:   "jcode-missing-binary.yaml",
+			wantError: "missing-jcode",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if tt.wantError != "" {
+				if tt.fixture == "jcode-unsupported.yaml" {
+					err := requireJcodeFixtureError(t, tt.fixture)
+					require.Error(t, err)
+					assert.Contains(t, err.Error(), tt.wantError)
+					return
+				}
+				cfg := requireJcodeFixture(t, tt.fixture)
+				if tt.wantError == "missing-jcode" {
+					configuration := Configuration{AgentPreset: "jcode", Jcode: cfg}
+					agent, err := configuration.GetAgent()
+					require.NoError(t, err)
+					_, err = agent.(*cliagent.JcodeExec).BuildCommand("prompt", cliagent.ExecOptions{})
+					require.Error(t, err)
+					assert.Contains(t, err.Error(), tt.wantError)
+					return
+				}
+			}
+			cfg := requireJcodeFixture(t, tt.fixture)
+			assert.Equal(t, tt.want, cfg.EffectiveRunner())
+			configuration := Configuration{AgentPreset: "jcode", Jcode: cfg}
+			agent, err := configuration.GetAgent()
+			require.NoError(t, err)
+			if tt.wantSDK {
+				_, ok := agent.(*cliagent.Jcode)
+				assert.True(t, ok)
+				return
+			}
+			execAgent, ok := agent.(*cliagent.JcodeExec)
+			require.True(t, ok)
+			_, err = execAgent.BuildCommand("prompt", cliagent.ExecOptions{})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), cfg.Binary)
+		})
+	}
+}
+
+func TestConfiguration_JcodeRejectsUnsafeExplicitSelections(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		runner JcodeRunner
+		binary string
+		field  string
+	}{
+		"unsupported runner": {
+			runner: JcodeRunner("shell"),
+			field:  "jcode.runner",
+		},
+		"shell metacharacters in custom binary": {
+			runner: JcodeRunnerExec,
+			binary: "/tmp/jcode;echo unsafe",
+			field:  "jcode.binary",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cfg := Configuration{SpecsDir: "./specs", StateDir: "./state", Jcode: JcodeConfig{
+				Runner: tt.runner,
+				Binary: tt.binary,
+			}}
+			err := ValidateConfigValues(&cfg, "config.yml")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.field)
+			assert.NotContains(t, err.Error(), "unsafe")
 		})
 	}
 }

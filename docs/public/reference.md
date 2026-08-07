@@ -1095,6 +1095,48 @@ agent_preset: gemini
 
 See [CLI Agent Configuration](./agents.md) for detailed agent documentation.
 
+### jcode.runner
+
+**Type**: string (enum)
+**Default**: `"exec"`
+**Values**: `exec` | `custom` | `sdk`
+
+Selects how the `jcode` agent is executed. An omitted or empty value resolves to
+the production CLI-compatible `exec` runner. Native SDK settings do not select
+the SDK runner implicitly.
+
+```yaml
+agent_preset: jcode
+jcode:
+  runner: exec       # default: invoke `jcode run --quiet`
+```
+
+Use `custom` with `jcode.binary` for an explicit executable path, or `sdk` only
+when the native SDK integration is available. Runner selection does not silently
+fall back to another mode.
+
+**Environment**: `AUTOSPEC_JCODE_RUNNER`
+
+### jcode.binary
+
+**Type**: string
+**Default**: `""`
+**Description**: Executable path used by explicit `jcode.runner: custom` mode.
+An empty value does not change the default runner from `exec`.
+
+**Environment**: `AUTOSPEC_JCODE_BINARY`
+
+### jcode.mode
+
+**Type**: string (enum)
+**Default**: `"connect"`
+**Values**: `connect` | `private`
+
+Controls native SDK runtime ownership when `jcode.runner: sdk` is explicitly
+selected. It is ignored by the default `exec` runner and cannot override it.
+
+**Environment**: `AUTOSPEC_JCODE_MODE`
+
 ### use_subscription
 
 **Type**: boolean
@@ -1118,7 +1160,7 @@ use_subscription: false
 
 **Type**: string
 **Default**: `""`
-**Description**: Default model passed to autospec workflow stages for supported agents. For native jcode, Autospec sends this as a non-secret session setting while jcode retains provider and authentication ownership.
+**Description**: Default model passed to autospec workflow stages for supported agents. For the jcode exec runner, Autospec forwards it to the CLI; for the explicit native SDK runner, it is sent as a non-secret session setting while jcode retains provider and authentication ownership.
 
 **Example**:
 ```yaml
@@ -1158,7 +1200,7 @@ Every generated stage default is empty. An empty or absent stage value falls bac
 
 **Type**: string
 **Default**: `""`
-**Description**: Default reasoning effort passed to supported workflow agents. Autospec forwards this as Codex's `model_reasoning_effort` override or as a native jcode session setting, while the selected agent validates provider compatibility.
+**Description**: Default reasoning effort passed to supported workflow agents. For the jcode `run` runner, Autospec does not forward this value because the verified CLI has no reasoning-effort option; for the explicit native SDK runner, it is sent as a session setting. The selected agent validates provider compatibility.
 
 **Example**:
 ```yaml
