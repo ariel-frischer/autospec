@@ -9,5 +9,5 @@ func init() {
 	Register(NewCodex())
 	Register(NewOpenCode())
 	Register(NewGoose())
-	Register(NewJcode())
+	Register(NewJcodeExec(""))
 }

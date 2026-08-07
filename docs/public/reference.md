@@ -1097,6 +1097,15 @@ See [CLI Agent Configuration](./agents.md) for detailed agent documentation.
 
 ### Native jcode lifecycle settings
 
+### jcode.runner
+
+**Default**: `exec`
+
+Selects the jcode implementation. The default and empty value invoke
+`jcode run --quiet` through the installed CLI. Use `custom` with `jcode.binary`
+for an alternate executable, or `sdk` explicitly for native SDK lifecycle
+behavior. Native SDK settings do not override an unset runner.
+
 When `agent_preset: jcode`, the `jcode` settings control runtime ownership:
 
 | Key | Default | Values / meaning |

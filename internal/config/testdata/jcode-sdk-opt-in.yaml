@@ -1,0 +1,4 @@
+jcode:
+  runner: sdk
+  binary: "/fixtures/jcode"
+  mode: "private"

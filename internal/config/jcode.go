@@ -14,6 +14,15 @@ const (
 	JcodeModeAuto    JcodeMode = "auto"
 )
 
+// JcodeRunner selects the implementation used for jcode execution.
+type JcodeRunner string
+
+const (
+	JcodeRunnerExec   JcodeRunner = "exec"
+	JcodeRunnerSDK    JcodeRunner = "sdk"
+	JcodeRunnerCustom JcodeRunner = "custom"
+)
+
 const redactedJcodeValue = "[redacted]"
 
 const (
@@ -26,6 +35,8 @@ const (
 
 // JcodeConfig contains runtime and SDK settings for the native jcode agent.
 type JcodeConfig struct {
+	// Runner selects the production CLI runner or an explicit compatibility path.
+	Runner            JcodeRunner   `yaml:"runner,omitempty" koanf:"runner"`
 	Mode              JcodeMode     `yaml:"mode,omitempty" koanf:"mode"`
 	SocketPath        string        `yaml:"socket_path,omitempty" koanf:"socket_path"`
 	Binary            string        `yaml:"binary,omitempty" koanf:"binary"`
@@ -37,6 +48,14 @@ type JcodeConfig struct {
 	ReconnectAttempts int           `yaml:"reconnect_attempts,omitempty" koanf:"reconnect_attempts"`
 	RestartAttempts   int           `yaml:"restart_attempts,omitempty" koanf:"restart_attempts"`
 	RetryDelay        time.Duration `yaml:"retry_delay,omitempty" koanf:"retry_delay"`
+}
+
+// EffectiveRunner returns the CLI-compatible runner unless explicitly changed.
+func (c JcodeConfig) EffectiveRunner() JcodeRunner {
+	if c.Runner == "" {
+		return JcodeRunnerExec
+	}
+	return c.Runner
 }
 
 // Redacted returns a copy safe for user-facing diagnostics.
@@ -57,6 +76,9 @@ func (c JcodeConfig) Redacted() JcodeConfig {
 }
 
 func validateJcodeConfig(c JcodeConfig, filePath string) error {
+	if c.Runner != "" && c.Runner != JcodeRunnerExec && c.Runner != JcodeRunnerSDK && c.Runner != JcodeRunnerCustom {
+		return &ValidationError{FilePath: filePath, Field: "jcode.runner", Message: "must be one of: exec, sdk, custom"}
+	}
 	if c.Mode != "" && c.Mode != JcodeModeConnect && c.Mode != JcodeModePrivate && c.Mode != JcodeModeAuto {
 		return &ValidationError{FilePath: filePath, Field: "jcode.mode", Message: "must be one of: connect, private, auto"}
 	}

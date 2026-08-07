@@ -298,3 +298,21 @@ func TestTestedVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestDefaultRegistry_JcodeUsesExecRunner(t *testing.T) {
+	t.Parallel()
+
+	agent := Get("jcode")
+	if agent == nil {
+		t.Fatal("Get(\"jcode\") returned nil")
+	}
+	if _, ok := agent.(*JcodeExec); !ok {
+		t.Fatalf("Get(\"jcode\") type = %T, want *JcodeExec", agent)
+	}
+	if got := agent.Name(); got != "jcode" {
+		t.Errorf("Name() = %q, want jcode", got)
+	}
+	if !agent.Capabilities().Automatable {
+		t.Error("jcode exec runner should be automatable")
+	}
+}
