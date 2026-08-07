@@ -29,6 +29,19 @@ You can configure any CLI tool as an agent using a command template with `{{PROM
 
 ## Configuration
 
+### jcode runner selection
+
+The production default uses the installed CLI:
+
+```bash
+jcode run --quiet --model <model> "<rendered prompt>"
+```
+
+Set `jcode.runner: custom` with `jcode.binary` for a custom executable. Set
+`jcode.runner: sdk` explicitly to use the native SDK and its lifecycle policy.
+An omitted runner always resolves to the CLI-compatible `exec` runner, even
+when SDK lifecycle fields are present.
+
 ### Native jcode SDK
 
 Select jcode with `agent_preset: jcode`. The native integration does not invoke
@@ -38,6 +51,7 @@ until `TurnDone` and safely ignores permission and unknown events.
 ```yaml
 agent_preset: jcode
 jcode:
+  runner: sdk
   mode: connect                 # connect, private, or auto
   socket_path: ""               # optional existing runtime socket
   binary: ""                    # private mode: jcode executable

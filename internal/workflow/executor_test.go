@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -287,6 +288,14 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 			agent: cliagent.NewClaude(),
 			cfg:   config.Configuration{},
 		},
+		"jcode receives configured model and reasoning effort": {
+			agent: cliagent.NewJcodeExec("jcode"),
+			cfg: config.Configuration{
+				Model:           "openai/gpt-5.6-luna",
+				ReasoningEffort: "high",
+			},
+			want: []string{"--model", "openai/gpt-5.6-luna", "-c", "model_reasoning_effort=high"},
+		},
 	}
 
 	for name, tt := range tests {
@@ -304,6 +313,26 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 			}
 			assert.Equal(t, tt.want, executor.extraArgsForStage(stage))
 		})
+	}
+}
+
+func TestExecutorJcodeModelAndReasoningOptionsRemainStableAcrossRetry(t *testing.T) {
+	t.Parallel()
+
+	executor := &Executor{
+		Claude: &ClaudeExecutor{Agent: cliagent.NewJcodeExec("jcode")},
+		Config: config.Configuration{
+			Model:           "openai/gpt-5.6-luna",
+			ReasoningEffort: "max",
+		},
+	}
+
+	want := []string{"--model", "openai/gpt-5.6-luna", "-c", "model_reasoning_effort=max"}
+	if got := executor.extraArgsForStage(StageImplement); !reflect.DeepEqual(got, want) {
+		t.Fatalf("initial extra args = %#v, want %#v", got, want)
+	}
+	if got := executor.extraArgsForStage(StageImplement); !reflect.DeepEqual(got, want) {
+		t.Fatalf("retry extra args = %#v, want %#v", got, want)
 	}
 }
 

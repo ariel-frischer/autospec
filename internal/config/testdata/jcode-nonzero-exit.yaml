@@ -1,0 +1,6 @@
+jcode:
+  binary: "/fixtures/fake-jcode"
+  mode: "private"
+
+fixture:
+  exit_code: 7

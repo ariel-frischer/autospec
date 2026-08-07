@@ -1,0 +1,5 @@
+jcode:
+  mode: private
+  binary: /opt/custom/jcode
+  startup_timeout: 5s
+  cleanup_timeout: 5s

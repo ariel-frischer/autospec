@@ -1,0 +1,3 @@
+jcode:
+  mode: connect
+  runner: sdk

@@ -148,6 +148,42 @@ func TestMigrateJSONToYAML_PreservesAllFields(t *testing.T) {
 	assert.Contains(t, yamlStr, "skip_preflight: true")
 }
 
+func TestMigrateJSONToYAML_PreservesJcodeCompatibilityFields(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		jsonContent string
+		want        []string
+	}{
+		"stale SDK settings remain explicit data": {
+			jsonContent: `{"agent_preset":"jcode","jcode":{"mode":"private","socket_path":"/tmp/stale.sock","binary":"stale-jcode"}}`,
+			want:        []string{"agent_preset: jcode", "mode: private", "socket_path: /tmp/stale.sock", "binary: stale-jcode"},
+		},
+		"explicit runner survives migration": {
+			jsonContent: `{"agent_preset":"jcode","jcode":{"runner":"sdk","mode":"connect"}}`,
+			want:        []string{"runner: sdk", "mode: connect"},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			tmpDir := t.TempDir()
+			jsonPath := filepath.Join(tmpDir, "config.json")
+			yamlPath := filepath.Join(tmpDir, "config.yml")
+			require.NoError(t, os.WriteFile(jsonPath, []byte(tt.jsonContent), 0o644))
+
+			result, err := MigrateJSONToYAML(jsonPath, yamlPath, false)
+			require.NoError(t, err)
+			require.True(t, result.Success)
+			data, err := os.ReadFile(yamlPath)
+			require.NoError(t, err)
+			for _, want := range tt.want {
+				assert.Contains(t, string(data), want)
+			}
+		})
+	}
+}
+
 func TestRemoveLegacyConfig(t *testing.T) {
 	t.Parallel()
 
