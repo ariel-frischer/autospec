@@ -66,6 +66,8 @@ func (m mockJcodeClient) CreateSession(context.Context, string) (jcodeSession, e
 	return m.session, m.err
 }
 
+func (mockJcodeClient) Reconnect(context.Context) error { return nil }
+
 type mockJcodeSession struct {
 	events   jcodeEventStream
 	err      error
@@ -132,8 +134,45 @@ func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	if got := stdout.String(); got != "answer" {
 		t.Fatalf("stdout = %q, want %q", got, "answer")
 	}
-	if got := strings.Join(order, ","); got != "subscribe,configure,send" {
-		t.Fatalf("operation order = %q, want subscribe,configure,send", got)
+	if got := strings.Join(order, ","); got != "configure,send,subscribe" {
+		t.Fatalf("operation order = %q, want configure,send,subscribe", got)
+	}
+}
+
+func TestNewJcodeWithOptionsPreservesLifecyclePolicy(t *testing.T) {
+	t.Parallel()
+
+	agent := NewJcodeWithOptions(JcodeOptions{
+		Mode: "auto",
+		Lifecycle: JcodeLifecyclePolicy{
+			Mode:              JcodeLifecycleModeAuto,
+			StartupCommand:    "jcode serve",
+			ReconnectAttempts: 2,
+			RestartAttempts:   1,
+			RetryDelay:        250 * time.Millisecond,
+		},
+	})
+	if agent.options.Lifecycle.Mode != JcodeLifecycleModeAuto {
+		t.Fatalf("lifecycle mode = %q, want auto", agent.options.Lifecycle.Mode)
+	}
+	if agent.options.Lifecycle.StartupCommand != "jcode serve" {
+		t.Fatalf("startup command = %q, want configured command", agent.options.Lifecycle.StartupCommand)
+	}
+}
+
+func TestJcodeValidateRedactsPrivateBinaryPath(t *testing.T) {
+	t.Parallel()
+
+	agent := NewJcodeWithOptions(JcodeOptions{
+		Mode:   "private",
+		Binary: "/tmp/secret-jcode-binary",
+	})
+	err := agent.Validate()
+	if err == nil {
+		t.Fatal("Validate() error = nil, want missing binary error")
+	}
+	if strings.Contains(err.Error(), "secret-jcode-binary") {
+		t.Fatalf("Validate() exposed binary path: %v", err)
 	}
 }
 
@@ -161,8 +200,8 @@ func TestJcodeAgent_ExecuteConfiguresSessionBeforePrompt(t *testing.T) {
 	if !reflect.DeepEqual(settings, want) {
 		t.Fatalf("settings = %#v, want %#v", settings, want)
 	}
-	if got := strings.Join(order, ","); got != "subscribe,configure,send" {
-		t.Fatalf("operation order = %q, want subscribe,configure,send", got)
+	if got := strings.Join(order, ","); got != "configure,send,subscribe" {
+		t.Fatalf("operation order = %q, want configure,send,subscribe", got)
 	}
 }
 

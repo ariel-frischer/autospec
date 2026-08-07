@@ -26,15 +26,23 @@ func TestJcodeConfigDefaultsAndRedaction(t *testing.T) {
 	assert.False(t, jcodeDefaults["inherit_logins"].(bool))
 	assert.Equal(t, (30 * time.Second).String(), jcodeDefaults["startup_timeout"])
 	assert.Equal(t, (30 * time.Second).String(), jcodeDefaults["cleanup_timeout"])
+	assert.Equal(t, "", jcodeDefaults["startup_command"])
+	assert.Equal(t, 2, jcodeDefaults["reconnect_attempts"])
+	assert.Equal(t, 1, jcodeDefaults["restart_attempts"])
+	assert.Equal(t, (250 * time.Millisecond).String(), jcodeDefaults["retry_delay"])
 
 	cfg := JcodeConfig{
-		Mode:           JcodeModePrivate,
-		SocketPath:     "/Users/alice/.jcode/run/jcode-api.sock",
-		Binary:         "/Users/alice/bin/jcode",
-		Home:           "/Users/alice/.jcode",
-		InheritLogins:  true,
-		StartupTimeout: 10 * time.Second,
-		CleanupTimeout: 20 * time.Second,
+		Mode:              JcodeModePrivate,
+		SocketPath:        "/Users/alice/.jcode/run/jcode-api.sock",
+		Binary:            "/Users/alice/bin/jcode",
+		Home:              "/Users/alice/.jcode",
+		InheritLogins:     true,
+		StartupTimeout:    10 * time.Second,
+		CleanupTimeout:    20 * time.Second,
+		StartupCommand:    "jcode serve --token=secret",
+		ReconnectAttempts: 2,
+		RestartAttempts:   1,
+		RetryDelay:        250 * time.Millisecond,
 	}
 	redacted := cfg.Redacted()
 	assert.Equal(t, "[redacted]", redacted.SocketPath)
@@ -42,6 +50,7 @@ func TestJcodeConfigDefaultsAndRedaction(t *testing.T) {
 	assert.Equal(t, "[redacted]", redacted.Home)
 	assert.Equal(t, cfg.Mode, redacted.Mode)
 	assert.Equal(t, cfg.InheritLogins, redacted.InheritLogins)
+	assert.Equal(t, redactedJcodeValue, redacted.StartupCommand)
 }
 
 func TestJcodeRunnerValues(t *testing.T) {
@@ -177,6 +186,9 @@ func TestValidateJcodeConfig(t *testing.T) {
 				CleanupTimeout: 20 * time.Second,
 			},
 		},
+		"auto mode": {
+			config: JcodeConfig{Mode: JcodeModeAuto, StartupCommand: "jcode serve", ReconnectAttempts: 2, RestartAttempts: 1, RetryDelay: 250 * time.Millisecond},
+		},
 		"invalid mode": {
 			config:       JcodeConfig{Mode: "launch"},
 			wantErrField: "jcode.mode",
@@ -188,6 +200,26 @@ func TestValidateJcodeConfig(t *testing.T) {
 		"invalid cleanup timeout": {
 			config:       JcodeConfig{Mode: JcodeModeConnect, CleanupTimeout: -time.Second},
 			wantErrField: "jcode.cleanup_timeout",
+		},
+		"startup command in connect mode": {
+			config:       JcodeConfig{Mode: JcodeModeConnect, StartupCommand: "jcode serve"},
+			wantErrField: "jcode.startup_command",
+		},
+		"blank startup command": {
+			config:       JcodeConfig{Mode: JcodeModePrivate, StartupCommand: " \t"},
+			wantErrField: "jcode.startup_command",
+		},
+		"negative reconnect attempts": {
+			config:       JcodeConfig{Mode: JcodeModePrivate, ReconnectAttempts: -1},
+			wantErrField: "jcode.reconnect_attempts",
+		},
+		"too many restart attempts": {
+			config:       JcodeConfig{Mode: JcodeModePrivate, RestartAttempts: 11},
+			wantErrField: "jcode.restart_attempts",
+		},
+		"unbounded retry delay": {
+			config:       JcodeConfig{Mode: JcodeModePrivate, RetryDelay: 6 * time.Minute},
+			wantErrField: "jcode.retry_delay",
 		},
 		"unsafe socket path": {
 			config:       JcodeConfig{Mode: JcodeModeConnect, SocketPath: "/tmp/$(secret).sock"},
@@ -242,6 +274,36 @@ func TestLoadJcodeConfigFromYAMLAndEnvironment(t *testing.T) {
 	assert.True(t, cfg.Jcode.InheritLogins)
 	assert.Equal(t, 45*time.Second, cfg.Jcode.StartupTimeout)
 	assert.Equal(t, 20*time.Second, cfg.Jcode.CleanupTimeout)
+}
+
+func TestLoadJcodeLifecycleConfigPrecedenceAndProfile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), ".config"))
+	projectDir := t.TempDir()
+	original, err := os.Getwd()
+	require.NoError(t, err)
+	defer os.Chdir(original)
+	require.NoError(t, os.Chdir(projectDir))
+
+	userPath, err := UserConfigPath()
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Dir(userPath), 0o755))
+	require.NoError(t, os.WriteFile(userPath, []byte("jcode:\n  mode: private\n  reconnect_attempts: 1\n"), 0o644))
+	projectPath := filepath.Join(projectDir, ".autospec", "config.yml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(projectPath), 0o755))
+	require.NoError(t, os.WriteFile(projectPath, []byte("jcode:\n  mode: auto\n  restart_attempts: 2\n"), 0o644))
+	profilePath := ProjectProfilePath("cheap")
+	require.NoError(t, os.MkdirAll(filepath.Dir(profilePath), 0o755))
+	require.NoError(t, os.WriteFile(profilePath, []byte("jcode:\n  startup_command: jcode serve\n  retry_delay: 1s\n"), 0o644))
+	t.Setenv("AUTOSPEC_JCODE_MODE", "auto")
+
+	cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: projectPath, Profile: "cheap", SkipWarnings: true})
+	require.NoError(t, err)
+	assert.Equal(t, JcodeModeAuto, cfg.Jcode.Mode)
+	assert.Equal(t, 1, cfg.Jcode.ReconnectAttempts)
+	assert.Equal(t, 2, cfg.Jcode.RestartAttempts)
+	assert.Equal(t, "jcode serve", cfg.Jcode.StartupCommand)
+	assert.Equal(t, time.Second, cfg.Jcode.RetryDelay)
 }
 
 func TestEnvTransformJcodeKeys(t *testing.T) {

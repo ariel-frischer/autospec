@@ -2,13 +2,17 @@ package cliagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	jcode "github.com/ariel-frischer/jcode-go"
 	"github.com/ariel-frischer/jcode-go/protocol"
+	"github.com/ariel-frischer/jcode-go/transport"
 )
 
 // JcodeOptions selects the native jcode runtime mode.
@@ -20,6 +24,7 @@ type JcodeOptions struct {
 	InheritLogins  bool
 	StartupTimeout time.Duration
 	CleanupTimeout time.Duration
+	Lifecycle      JcodeLifecyclePolicy
 }
 
 type jcodeEventStream interface {
@@ -40,6 +45,7 @@ type JcodeSessionSettings struct {
 }
 type jcodeClient interface {
 	CreateSession(context.Context, string) (jcodeSession, error)
+	Reconnect(context.Context) error
 }
 type jcodeFactory interface {
 	Open(context.Context, JcodeOptions, ExecOptions) (jcodeClient, func() error, error)
@@ -48,27 +54,129 @@ type jcodeFactory interface {
 type sdkJcodeFactory struct{}
 
 func (sdkJcodeFactory) Open(ctx context.Context, options JcodeOptions, execOptions ExecOptions) (jcodeClient, func() error, error) {
-	if options.Mode == "private" {
-		inherit := options.InheritLogins
-		client, err := jcode.Launch(ctx, jcode.LaunchOptions{
-			Binary: options.Binary, JcodeHome: options.Home, WorkingDir: execOptions.WorkDir,
-			InheritLogins: &inherit, StartupTimeout: options.StartupTimeout,
-			CleanupTimeout: options.CleanupTimeout,
-			ClientOptions:  jcode.Options{ClientName: "autospec/jcode"},
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("launching private jcode runtime: %w", err)
-		}
-		return sdkJcodeClient{client: client}, client.Close, nil
+	policy := options.Lifecycle
+	if policy.Mode == "" {
+		policy.Mode = JcodeLifecycleMode(options.Mode)
 	}
-	client, err := jcode.Connect(ctx, jcode.ConnectOptions{SocketPath: options.SocketPath, ClientOptions: jcode.Options{ClientName: "autospec/jcode"}})
+	runtime := sdkJcodeRuntime{options: options, execOptions: execOptions}
+	handle, _, err := NewJcodeLifecycleController(policy, runtime).Select(ctx, JcodeRuntimeRequest{Options: options, WorkDir: execOptions.WorkDir})
 	if err != nil {
-		return nil, nil, fmt.Errorf("connecting to jcode runtime: %w", err)
+		return nil, nil, fmt.Errorf("opening jcode runtime: %w", err)
 	}
-	return sdkJcodeClient{client: client}, client.Close, nil
+	if handle.client == nil || handle.cleanup == nil {
+		return nil, nil, fmt.Errorf("opening jcode runtime: lifecycle selection returned no client")
+	}
+	return handle.client, handle.cleanup, nil
+}
+
+type sdkJcodeRuntime struct {
+	options     JcodeOptions
+	execOptions ExecOptions
+}
+
+func (r sdkJcodeRuntime) Connect(ctx context.Context, _ JcodeRuntimeRequest) (JcodeRuntimeHandle, error) {
+	socketPath := r.options.SocketPath
+	clientOptions := jcode.Options{ClientName: "autospec/jcode"}
+	if r.options.Lifecycle.ReconnectAttempts > 0 {
+		clientOptions.Reconnect = jcode.ReconnectPolicy{
+			Factory:     transport.UnixSocket(resolveJcodeSocket(socketPath)),
+			MaxAttempts: r.options.Lifecycle.ReconnectAttempts,
+			Backoff:     r.options.Lifecycle.RetryDelay,
+			MaxBackoff:  r.options.Lifecycle.RetryDelay,
+			Resume:      true,
+		}
+	}
+	client, err := jcode.Connect(ctx, jcode.ConnectOptions{SocketPath: socketPath, ClientOptions: clientOptions})
+	if err != nil {
+		return JcodeRuntimeHandle{}, err
+	}
+	return JcodeRuntimeHandle{ID: "shared-runtime", Ownership: JcodeRuntimeOwnershipShared, State: JcodeRuntimeStateReady, client: sdkJcodeClient{client: client}, cleanup: client.Close}, nil
+}
+
+func (r sdkJcodeRuntime) Launch(ctx context.Context, _ JcodeRuntimeRequest) (JcodeRuntimeHandle, error) {
+	inherit := r.options.InheritLogins
+	client, err := jcode.Launch(ctx, jcode.LaunchOptions{
+		Binary: r.options.Binary, JcodeHome: r.options.Home, WorkingDir: r.execOptions.WorkDir,
+		InheritLogins: &inherit, StartupTimeout: r.options.StartupTimeout,
+		CleanupTimeout: r.options.CleanupTimeout,
+		ClientOptions:  jcode.Options{ClientName: "autospec/jcode"},
+	})
+	if err != nil {
+		return JcodeRuntimeHandle{}, err
+	}
+	owner, ok := client.DetachInstance()
+	if !ok {
+		_ = client.Close()
+		return JcodeRuntimeHandle{}, fmt.Errorf("detaching owned jcode runtime: launch returned no instance")
+	}
+	cleanup := func() error {
+		if err := client.Close(); err != nil && !errors.Is(err, jcode.ErrClosed) {
+			return fmt.Errorf("closing jcode client: %w", err)
+		}
+		if err := owner.Shutdown(); err != nil {
+			return fmt.Errorf("shutting down owned jcode runtime: %w", err)
+		}
+		return nil
+	}
+	return JcodeRuntimeHandle{ID: "private-runtime", Ownership: JcodeRuntimeOwnershipPrivate, State: JcodeRuntimeStateReady, client: sdkJcodeClient{client: client}, cleanup: cleanup}, nil
+}
+
+func (sdkJcodeRuntime) Reconnect(ctx context.Context, handle JcodeRuntimeHandle) (JcodeRuntimeHandle, error) {
+	client, ok := handle.client.(interface{ Reconnect(context.Context) error })
+	if !ok {
+		return handle, fmt.Errorf("jcode client does not support reconnect")
+	}
+	if err := client.Reconnect(ctx); err != nil {
+		return handle, fmt.Errorf("reconnecting jcode runtime: %w", err)
+	}
+	handle.State = JcodeRuntimeStateReady
+	return handle, nil
+}
+
+func (r sdkJcodeRuntime) Restart(ctx context.Context, handle JcodeRuntimeHandle) (JcodeRuntimeHandle, error) {
+	if !handle.CanRestart() {
+		return handle, fmt.Errorf("jcode runtime is not owned by this run")
+	}
+	if handle.cleanup != nil {
+		if err := handle.cleanup(); err != nil {
+			return handle, fmt.Errorf("stopping owned jcode runtime before restart: %w", err)
+		}
+	}
+	return r.Launch(ctx, JcodeRuntimeRequest{})
+}
+
+func (sdkJcodeRuntime) Cleanup(_ context.Context, handle JcodeRuntimeHandle) error {
+	if !handle.CanCleanup() || handle.cleanup == nil {
+		return fmt.Errorf("jcode runtime is not owned by this run")
+	}
+	return handle.cleanup()
 }
 
 type sdkJcodeClient struct{ client *jcode.Client }
+
+func (c sdkJcodeClient) Reconnect(ctx context.Context) error {
+	return c.client.Reconnect(ctx)
+}
+
+func resolveJcodeSocket(socketPath string) string {
+	if socketPath != "" {
+		return socketPath
+	}
+	if value := os.Getenv("JCODE_API_SOCKET"); value != "" {
+		return value
+	}
+	if value := os.Getenv("JCODE_RUNTIME_DIR"); value != "" {
+		return filepath.Join(value, "jcode-api.sock")
+	}
+	if value := os.Getenv("XDG_RUNTIME_DIR"); value != "" {
+		return filepath.Join(value, "jcode-api.sock")
+	}
+	home, err := os.UserHomeDir()
+	if err == nil {
+		return filepath.Join(home, ".jcode", "run", "jcode-api.sock")
+	}
+	return filepath.Join(os.TempDir(), "jcode-api.sock")
+}
 
 func (c sdkJcodeClient) CreateSession(ctx context.Context, workDir string) (jcodeSession, error) {
 	session, err := c.client.CreateSession(ctx, jcode.CreateSessionOptions{WorkingDir: workDir})
@@ -148,15 +256,19 @@ func NewJcodeWithOptions(options JcodeOptions) *Jcode {
 	if options.Mode == "" {
 		options.Mode = "connect"
 	}
+	if options.Lifecycle.Mode == "" {
+		options.Lifecycle.Mode = JcodeLifecycleMode(options.Mode)
+	}
 	return &Jcode{options: options, factory: sdkJcodeFactory{}}
 }
 func (j *Jcode) Name() string             { return "jcode" }
 func (j *Jcode) Capabilities() Caps       { return Caps{Automatable: true} }
 func (j *Jcode) Version() (string, error) { return "native-sdk", nil }
 func (j *Jcode) Validate() error {
-	if j.options.Mode == "private" && j.options.Binary != "" {
+	mode := j.options.Lifecycle.ResolvedMode()
+	if (mode == JcodeLifecycleModePrivate || mode == JcodeLifecycleModeAuto) && j.options.Binary != "" {
 		if _, err := exec.LookPath(j.options.Binary); err != nil {
-			return fmt.Errorf("jcode binary %q not found: %w", j.options.Binary, err)
+			return fmt.Errorf("jcode private runtime binary is unavailable")
 		}
 	}
 	return nil
@@ -181,11 +293,6 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	if err != nil {
 		return nil, fmt.Errorf("creating jcode session: %w", err)
 	}
-	stream := session.Events(ctx)
-	if stream == nil {
-		return nil, fmt.Errorf("creating jcode event stream: nil stream")
-	}
-	defer stream.Close()
 	if err := session.Configure(ctx, JcodeSessionSettings{
 		Model: options.Model, ReasoningEffort: options.ReasoningEffort,
 	}); err != nil {
@@ -194,7 +301,7 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	if err := session.Send(ctx, prompt); err != nil {
 		return nil, fmt.Errorf("sending prompt to jcode: %w", err)
 	}
-	output, err := streamOutput(ctx, stream, outputWriter(options.Stdout))
+	output, err := streamWithRecovery(ctx, client, session, outputWriter(options.Stdout), j.options.Lifecycle)
 	if err != nil {
 		return nil, fmt.Errorf("streaming jcode output: %w", err)
 	}
@@ -203,6 +310,28 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 		result.Stdout = output
 	}
 	return result, nil
+}
+
+func streamWithRecovery(ctx context.Context, client jcodeClient, session jcodeSession, writer io.Writer, policy JcodeLifecyclePolicy) (string, error) {
+	var output string
+	for attempt := 0; ; attempt++ {
+		stream := session.Events(ctx)
+		if stream == nil {
+			return output, fmt.Errorf("creating jcode event stream: nil stream")
+		}
+		chunk, err := streamOutput(ctx, stream, writer)
+		stream.Close()
+		output += chunk
+		if err == nil {
+			return output, nil
+		}
+		if attempt >= policy.ReconnectAttempts {
+			return output, fmt.Errorf("streaming jcode output after %d reconnect attempts: %w", attempt, err)
+		}
+		if reconnectErr := client.Reconnect(ctx); reconnectErr != nil {
+			return output, fmt.Errorf("reconnecting jcode after stream disconnect: %w", reconnectErr)
+		}
+	}
 }
 func executionContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	if timeout > 0 {

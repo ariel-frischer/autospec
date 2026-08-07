@@ -1095,47 +1095,43 @@ agent_preset: gemini
 
 See [CLI Agent Configuration](./agents.md) for detailed agent documentation.
 
+### Native jcode lifecycle settings
+
 ### jcode.runner
 
-**Type**: string (enum)
-**Default**: `"exec"`
-**Values**: `exec` | `custom` | `sdk`
+**Default**: `exec`
 
-Selects how the `jcode` agent is executed. An omitted or empty value resolves to
-the production CLI-compatible `exec` runner. Native SDK settings do not select
-the SDK runner implicitly.
+Selects the jcode implementation. The default and empty value invoke
+`jcode run --quiet` through the installed CLI. Use `custom` with `jcode.binary`
+for an alternate executable, or `sdk` explicitly for native SDK lifecycle
+behavior. Native SDK settings do not override an unset runner.
 
-```yaml
-agent_preset: jcode
-jcode:
-  runner: exec       # default: invoke `jcode run --quiet`
-```
+When `agent_preset: jcode`, the `jcode` settings control runtime ownership:
 
-Use `custom` with `jcode.binary` for an explicit executable path, or `sdk` only
-when the native SDK integration is available. Runner selection does not silently
-fall back to another mode.
+| Key | Default | Values / meaning |
+| --- | --- | --- |
+| `jcode.mode` | `connect` | `connect`, `private`, or `auto` |
+| `jcode.socket_path` | empty | Existing API socket, or SDK environment discovery |
+| `jcode.binary` | empty | Private runtime executable, defaulting to `jcode` on `PATH` |
+| `jcode.home` | empty | Persistent private home, or SDK-owned temporary state |
+| `jcode.inherit_logins` | `false` | Whether private launches inherit local jcode logins |
+| `jcode.startup_timeout` | `30s` | Maximum private startup duration |
+| `jcode.cleanup_timeout` | `30s` | Maximum private cleanup duration |
+| `jcode.startup_command` | empty | Optional private/auto-only launcher |
+| `jcode.reconnect_attempts` | `2` | Shared bridge reconnect limit, 0-10 |
+| `jcode.restart_attempts` | `1` | Run-owned private restart limit, 0-10 |
+| `jcode.retry_delay` | `250ms` | Delay between recovery attempts, 0-5m |
 
-**Environment**: `AUTOSPEC_JCODE_RUNNER`
+Connect mode never starts or stops a shared daemon. Auto mode prefers a healthy
+shared bridge and falls back to a private SDK-owned runtime. Only a runtime
+created by the current run may be restarted or cleaned up.
 
-### jcode.binary
-
-**Type**: string
-**Default**: `""`
-**Description**: Executable path used by explicit `jcode.runner: custom` mode.
-An empty value does not change the default runner from `exec`.
-
-**Environment**: `AUTOSPEC_JCODE_BINARY`
-
-### jcode.mode
-
-**Type**: string (enum)
-**Default**: `"connect"`
-**Values**: `connect` | `private`
-
-Controls native SDK runtime ownership when `jcode.runner: sdk` is explicitly
-selected. It is ignored by the default `exec` runner and cannot override it.
-
-**Environment**: `AUTOSPEC_JCODE_MODE`
+For a disposable built-binary smoke check, use a temporary repository and
+temporary `JCODE_HOME`/runtime directory, configure `mode: private` with a
+cheap profile, and run the built binary with a short timeout. Accept either a
+validated artifact or a bounded actionable failure, then assert that the
+temporary home, socket, process, and workspace are gone. Do not point this
+check at the developer's shared daemon.
 
 ### use_subscription
 
@@ -1160,7 +1156,7 @@ use_subscription: false
 
 **Type**: string
 **Default**: `""`
-**Description**: Default model passed to autospec workflow stages for supported agents. For the jcode exec runner, Autospec forwards it to the CLI; for the explicit native SDK runner, it is sent as a non-secret session setting while jcode retains provider and authentication ownership.
+**Description**: Default model passed to autospec workflow stages for supported agents. For native jcode, Autospec sends this as a non-secret session setting while jcode retains provider and authentication ownership.
 
 **Example**:
 ```yaml
@@ -1200,7 +1196,7 @@ Every generated stage default is empty. An empty or absent stage value falls bac
 
 **Type**: string
 **Default**: `""`
-**Description**: Default reasoning effort passed to supported workflow agents. For the jcode `run` runner, Autospec does not forward this value because the verified CLI has no reasoning-effort option; for the explicit native SDK runner, it is sent as a session setting. The selected agent validates provider compatibility.
+**Description**: Default reasoning effort passed to supported workflow agents. Autospec forwards this as Codex's `model_reasoning_effort` override or as a native jcode session setting, while the selected agent validates provider compatibility.
 
 **Example**:
 ```yaml

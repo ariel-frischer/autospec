@@ -35,14 +35,18 @@ use_subscription: true                # Force subscription mode (no API charges)
 
 # Native jcode SDK settings
 jcode:
-  runner: exec                          # Runner: exec | sdk | custom; empty also resolves to exec
-  mode: connect                         # Runtime ownership: connect | private
+  runner: exec                          # Runner: exec | sdk | custom; empty resolves to exec
+  mode: connect                         # Runtime ownership: connect | private | auto
   socket_path: ""                      # Existing API socket (empty = SDK environment resolution)
   binary: ""                            # Private runtime executable (empty = jcode on PATH)
   home: ""                              # Private runtime home (empty = SDK-owned temporary home)
   inherit_logins: false                 # Private launch credential inheritance (disable for untrusted use)
   startup_timeout: 30s                  # Maximum private runtime startup duration
   cleanup_timeout: 30s                  # Maximum private runtime cleanup duration
+  startup_command: ""                   # Optional private runtime startup command
+  reconnect_attempts: 2                  # Shared bridge reconnect attempts (0-10)
+  restart_attempts: 1                    # Owned private runtime restart attempts (0-10)
+  retry_delay: 250ms                     # Delay between bounded recovery attempts (0-5m)
 
 # Workflow settings
 max_retries: 0                        # Max retry attempts per stage (0-10)
@@ -145,14 +149,18 @@ func GetDefaults() map[string]interface{} {
 		"opencode_agent":   "",   // OpenCode sub-agent (empty = use OpenCode's default)
 		"use_subscription": true, // Protect users from accidental API charges
 		"jcode": map[string]interface{}{
-			"runner":          string(JcodeRunnerExec),
-			"mode":            string(JcodeModeConnect),
-			"socket_path":     "",
-			"binary":          "",
-			"home":            "",
-			"inherit_logins":  false,
-			"startup_timeout": (30 * time.Second).String(),
-			"cleanup_timeout": (30 * time.Second).String(),
+			"runner":             string(JcodeRunnerExec),
+			"mode":               string(JcodeModeConnect),
+			"socket_path":        "",
+			"binary":             "",
+			"home":               "",
+			"inherit_logins":     false,
+			"startup_timeout":    (30 * time.Second).String(),
+			"cleanup_timeout":    (30 * time.Second).String(),
+			"startup_command":    "",
+			"reconnect_attempts": defaultJcodeReconnectAttempts,
+			"restart_attempts":   defaultJcodeRestartAttempts,
+			"retry_delay":        defaultJcodeRetryDelay.String(),
 		},
 		"max_retries":        0,
 		"specs_dir":          "./specs",

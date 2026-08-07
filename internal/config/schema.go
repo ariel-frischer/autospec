@@ -94,8 +94,8 @@ var KnownKeys = map[string]ConfigKeySchema{
 	"jcode.mode": {
 		Path:          "jcode.mode",
 		Type:          TypeEnum,
-		AllowedValues: []string{"connect", "private"},
-		Description:   "Native jcode runtime ownership mode",
+		AllowedValues: []string{"connect", "private", "auto"},
+		Description:   "Native jcode runtime ownership and recovery mode",
 		Default:       string(JcodeModeConnect),
 	},
 	"jcode.runner": {
@@ -140,6 +140,30 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Type:        TypeDuration,
 		Description: "Maximum private jcode runtime cleanup duration",
 		Default:     "30s",
+	},
+	"jcode.startup_command": {
+		Path:        "jcode.startup_command",
+		Type:        TypeString,
+		Description: "Optional command used only to start an owned private runtime",
+		Default:     "",
+	},
+	"jcode.reconnect_attempts": {
+		Path:        "jcode.reconnect_attempts",
+		Type:        TypeInt,
+		Description: "Maximum shared-runtime reconnect attempts",
+		Default:     defaultJcodeReconnectAttempts,
+	},
+	"jcode.restart_attempts": {
+		Path:        "jcode.restart_attempts",
+		Type:        TypeInt,
+		Description: "Maximum owned-private runtime restart attempts",
+		Default:     defaultJcodeRestartAttempts,
+	},
+	"jcode.retry_delay": {
+		Path:        "jcode.retry_delay",
+		Type:        TypeDuration,
+		Description: "Delay between bounded runtime recovery attempts",
+		Default:     defaultJcodeRetryDelay.String(),
 	},
 	"use_subscription": {
 		Path:        "use_subscription",

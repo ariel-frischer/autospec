@@ -1,0 +1,429 @@
+tasks:
+    branch: "132-jcode-lifecycle"
+    created: "2026-08-06"
+    spec_path: "specs/131-jcode-lifecycle-recovery/spec.yaml"
+    plan_path: "specs/131-jcode-lifecycle-recovery/plan.yaml"
+summary:
+    total_tasks: 28
+    total_phases: 6
+    parallel_opportunities: 15
+    estimated_complexity: "high"
+phases:
+    - number: 1
+      title: "Setup"
+      purpose: "Confirm the installed SDK contract and repository seams before changing lifecycle behavior."
+      tasks:
+        - id: "T001"
+          title: "Inspect jcode-go v0.1.1 safe-run lifecycle APIs and record connect, launch, readiness, session, event, and close seams"
+          status: "Completed"
+          implementation_notes: >-
+            Inspected github.com/ariel-frischer/jcode-go v0.1.1. Shared connect uses jcode.Connect(ctx, ConnectOptions) and never starts or stops a process; private startup uses jcode.Launch(ctx, LaunchOptions), or jcode.LaunchInstance(LaunchOptions) for an explicit Instance ownership handle. Client.State exposes connecting, connected, disconnected, reconnecting, closing, and closed; Client.Reconnect(ctx) is explicit and bounded by Options.Reconnect. Client.Close is idempotent. Session creation uses Client.CreateSession, prompt execution uses Session.Send, events use Session.Events and TypedEventStream.Next, with TurnDone as completion and typed disconnect errors from the stream. Instance has Shutdown and Close for private cleanup. The SDK has no separate readiness method; successful Connect/Launch/NewClient handshake is the readiness boundary, so the local adapter must hide state/error classification behind interfaces. Provider protocol and auth remain SDK-owned.
+          type: "setup"
+          parallel: false
+          story_id: null
+          file_path: "internal/cliagent/jcode.go"
+          dependencies: []
+          acceptance_criteria:
+            - "The task records the exact SDK methods and typed outcomes available for shared connect, private launch, readiness, disconnect, session, event-stream, and cleanup handling."
+            - "The selected seam preserves jcode protocol and provider-authentication ownership and identifies any missing signal that must be hidden behind a local interface."
+        - id: "T002"
+          title: "Inventory existing jcode configuration, lifecycle wrappers, test doubles, and E2E fixture conventions"
+          status: "Completed"
+          implementation_notes: >-
+            Existing seams are internal/config/jcode.go and Configuration.Jcode, loaded with environment > selected profile > project > user > defaults precedence. Native construction is Configuration.GetAgent, while workflow commands use lifecycle.RunWithHistory or its context-aware variant. Deterministic native-agent tests use cliagent.jcodeFactory, jcodeClient, jcodeSession, and jcodeEventStream fakes in internal/cliagent/jcode_test.go. Temporary directories and built-binary isolation are provided by t.TempDir and internal/testutil.E2EEnv. Planned changes stay within config and cliagent plus focused tests and docs; command templates, provider credentials, and daemon state storage are not part of the integration.
+          type: "setup"
+          parallel: true
+          story_id: null
+          file_path: "internal/config/jcode.go"
+          dependencies: []
+          acceptance_criteria:
+            - "The inventory names the effective configuration precedence, profile overlay, lifecycle wrapper, mock, temporary-directory, and built-binary test seams used by the implementation."
+            - "The inventory confirms the exact files that must change without adding command-template or credential-storage behavior."
+    - number: 2
+      title: "Foundational"
+      purpose: "Define lifecycle state and ownership boundaries plus deterministic fixtures before user-story implementation."
+      tasks:
+        - id: "T003"
+          title: "Add map-based lifecycle controller contract tests for policy states, ownership, and bounded counters"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/cliagent/jcode_lifecycle_test.go"
+          dependencies: ["T001", "T002"]
+          acceptance_criteria:
+            - "Tests cover connect, private, and auto policy states plus absent, connecting, ready, disconnected, failed, and cleaned runtime states."
+            - "Tests assert shared, private, and unrelated ownership semantics, non-negative bounded counters, and map[string]struct table style."
+        - id: "T004"
+          title: "Define JcodeLifecyclePolicy, JcodeRuntimeHandle, diagnostic, and injected runtime/process/clock interfaces"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: null
+          file_path: "internal/cliagent/jcode_lifecycle.go"
+          dependencies: ["T001", "T002", "T003"]
+          acceptance_criteria:
+            - "The local types represent the plan data model and isolate SDK, process, readiness, sleep, and clock behavior behind narrow interfaces."
+            - "Only private handles created by the current run expose restart or cleanup capability; shared and unrelated handles cannot be mutated."
+            - "New functions stay under 40 lines and contextual errors are wrapped."
+        - id: "T005"
+          title: "Build deterministic shared/private runtime, process, readiness, and clock fakes"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "internal/testutil/jcode_lifecycle_fakes.go"
+          dependencies: ["T001"]
+          acceptance_criteria:
+            - "Fakes record connect, launch, readiness, reconnect, restart, stop, cleanup, attempt counts, and delays."
+            - "Fixtures support missing-runtime, disconnect, recovery, and ownership assertions without real agents, APIs, processes, or workspace mutation."
+    - number: 3
+      title: "User Story 1 - Choose a runtime lifecycle policy"
+      purpose: "Expose validated connect, private, and auto policy selection and enforce shared-first ownership-safe behavior."
+      story_reference: "US-001"
+      independent_test: "Run policy scenarios against healthy, absent, and disconnected fake bridges and assert outcomes plus start, restart, stop, and cleanup calls."
+      tasks:
+        - id: "T006"
+          title: "Add map-based configuration and policy-resolution tests for modes, precedence, profiles, defaults, and corrective validation"
+          status: "Completed"
+          type: "test"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/config/jcode_test.go"
+          dependencies: ["T004", "T005"]
+          acceptance_criteria:
+            - "Tests accept only connect, private, and auto and reject unknown modes, negative counts, and unbounded or invalid delays with corrective errors."
+            - "Tests preserve environment > project > user > defaults, profile overlays, CLI precedence, and omitted startup command defaults."
+            - "Tests use map[string]struct cases and verify diagnostic redaction for socket, binary, home, startup-command, and credential-like values."
+        - id: "T007"
+          title: "Add lifecycle fields and defaults to JcodeConfig and effective agent configuration"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/config/jcode.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "JcodeConfig carries mode, optional startup command, reconnect attempts, restart attempts, and bounded retry delay with safe defaults."
+            - "Effective configuration passes the fields to native jcode construction without storing credentials or daemon state."
+        - id: "T008"
+          title: "Wire lifecycle configuration through effective configuration loading and agent construction"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/config/config.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "All supported configuration sources and profile overlays resolve the lifecycle fields consistently."
+            - "CLI and workflow callers receive the resolved policy without changing provider authentication or workflow lifecycle wrappers."
+        - id: "T009"
+          title: "Register lifecycle keys, enum values, descriptions, and defaults in the configuration schema"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/config/schema.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "KnownKeys includes every lifecycle setting with the accepted values and user-facing descriptions."
+            - "Unknown lifecycle keys and invalid enum values are rejected through the existing schema path."
+        - id: "T010"
+          title: "Synchronize lifecycle YAML template and runtime defaults"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/config/defaults.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "The generated YAML template and GetDefaults return identical lifecycle defaults."
+            - "The defaults do not enable arbitrary startup commands or shared-daemon ownership."
+        - id: "T011"
+          title: "Implement lifecycle policy validation and redacted diagnostic-safe configuration values"
+          status: "Completed"
+          type: "implementation"
+          parallel: true
+          story_id: "US-001"
+          file_path: "internal/config/validate.go"
+          dependencies: ["T006"]
+          acceptance_criteria:
+            - "Validation enforces allowed modes, bounded non-negative counts and durations, private-only startup command use, and contextual corrective errors."
+            - "Validation and diagnostics never emit raw socket, binary, home, startup-command, or credential-like values."
+        - id: "T012"
+          title: "Implement shared-first policy resolution and ownership-safe handle selection"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cliagent/jcode_lifecycle.go"
+          dependencies: ["T004", "T005", "T007", "T008", "T009", "T010", "T011"]
+          acceptance_criteria:
+            - "Connect uses only a reachable shared bridge and never starts, restarts, stops, or cleans it up."
+            - "Private creates an owned handle, while auto prefers a healthy shared bridge and selects private ownership only for absent or disconnected shared state."
+            - "Selection outcomes include policy, runtime state, ownership, and bounded recovery context for downstream diagnostics."
+        - id: "T013"
+          title: "Adapt native jcode Agent construction to the lifecycle controller without leaking SDK concrete types"
+          status: "Completed"
+          type: "implementation"
+          parallel: false
+          story_id: "US-001"
+          file_path: "internal/cliagent/jcode.go"
+          dependencies: ["T012"]
+          acceptance_criteria:
+            - "The existing Jcode factory and Agent contract invoke lifecycle selection through local interfaces."
+            - "Connect-mode missing or disconnected bridges fail promptly with wrapped diagnostics and no ownership-changing side effects."
+    - number: 4
+      title: "User Story 2 - Recover native execution safely"
+      purpose: "Implement bounded reconnect, private startup/restart, readiness checks, actionable diagnostics, and ownership-safe cleanup."
+      story_reference: "US-002"
+      independent_test: "Use deterministic fixtures that fail on connect or disconnect, recover within configured limits, and verify terminal counts and cleanup ownership."
+      tasks:
+        - id: "T014"
+          title: "Add map-based recovery, startup-command, diagnostic, and cleanup tests"
+          status: "InProgress"
+          type: "test"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cliagent/jcode_lifecycle_test.go"
+          dependencies: ["T013"]
+          acceptance_criteria:
+            - "Tests cover missing runtime, disconnect mid-run, private SDK launch, private startup command, readiness failure, bounded reconnect, bounded restart, and terminal failure."
+            - "Tests assert diagnostics include policy, state, attempts, and next action while redacting sensitive configuration values."
+            - "Tests prove completion and failure clean up only private handles created by the current run."
+        - id: "T015"
+          title: "Implement bounded reconnect and owned-private startup/restart orchestration"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cliagent/jcode_lifecycle.go"
+          dependencies: ["T014"]
+          acceptance_criteria:
+            - "Shared reconnect and private restart attempts stop at configured limits with bounded delays and no indefinite waits."
+            - "Private recovery uses SDK launch by default and invokes startup_command only when explicitly configured for private ownership."
+            - "Readiness is confirmed through the injected SDK seam before retrying the session or request."
+        - id: "T016"
+          title: "Map SDK safe-run connect, readiness, disconnect, session, event, and cleanup outcomes to wrapped diagnostics"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-002"
+          file_path: "internal/cliagent/jcode.go"
+          dependencies: ["T015"]
+          acceptance_criteria:
+            - "Typed SDK outcomes classify absent, disconnected, failed, ready, and cleaned states without changing protocol or provider authentication."
+            - "Terminal errors name the selected policy, observed state, accurate attempt counts and limits, and an actionable next operator step."
+            - "All contextual errors are wrapped and lifecycle cleanup remains idempotent."
+    - number: 5
+      title: "User Story 3 - Understand and validate lifecycle behavior"
+      purpose: "Document lifecycle operation and provide a disposable built-binary cheap-profile smoke path plus manual testing artifacts."
+      story_reference: "US-003"
+      independent_test: "Review public docs, run deterministic package tests, and execute the isolated built-binary smoke fixture while asserting no persistent runtime or workspace state remains."
+      tasks:
+        - id: "T017"
+          title: "Add built-binary cheap-profile smoke test with temporary home, runtime, socket, and workspace cleanup assertions"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: "US-003"
+          file_path: "tests/e2e/jcode_lifecycle_test.go"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "The test uses a built autospec binary and disposable fixtures without real agents, provider APIs, credentials, or developer workspace mutation."
+            - "Both successful and bounded-failure outcomes are accepted only when diagnostics are actionable and all temporary processes, sockets, files, and directories are cleaned up."
+        - id: "T018"
+          title: "Implement reusable disposable jcode smoke fixture and invocation helper"
+          status: "Pending"
+          type: "implementation"
+          parallel: false
+          story_id: "US-003"
+          file_path: "internal/cliagent/jcode_smoke.go"
+          dependencies: ["T017"]
+          acceptance_criteria:
+            - "The helper creates isolated runtime/home/workspace state, applies a cheap profile, bounds execution, and returns cleanup-safe results."
+            - "The helper does not discover, stop, or mutate arbitrary user-owned daemons."
+        - id: "T019"
+          title: "Document connect, private, and auto configuration, ownership boundaries, limits, diagnostics, and troubleshooting"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "docs/public/agents.md"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "Documentation includes examples for all policies, private-only startup command rules, bounded retry settings, and explicit may-own/may-not-own behavior."
+            - "Troubleshooting guidance explains missing and disconnected bridge diagnostics without exposing sensitive values."
+        - id: "T020"
+          title: "Document lifecycle keys, defaults, restrictions, and the disposable cheap-profile smoke invocation"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "docs/public/reference.md"
+          dependencies: ["T016"]
+          acceptance_criteria:
+            - "Reference documentation lists every lifecycle configuration key, default, allowed value, and bounded limit."
+            - "The smoke procedure identifies the build/binary command, temporary state requirements, expected bounded outcomes, and cleanup checks."
+        - id: "T021"
+          title: "Link the disposable lifecycle smoke procedure from the internal manual-testing index"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "docs/internal/codex-manual-testing.md"
+          dependencies: ["T017", "T018"]
+          acceptance_criteria:
+            - "The manual-testing index points to the exact disposable smoke invocation and its no-persistent-state assertions."
+        - id: "T022"
+          title: "Create the manual test plan and Report Summaries section for lifecycle recovery"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: "US-003"
+          file_path: ".dev/tasks/131-jcode-lifecycle-recovery.md"
+          dependencies: ["T016", "T017", "T019", "T020"]
+          acceptance_criteria:
+            - "The plan covers missing runtime, disconnect, private recovery, connect no-restart, cheap-profile smoke, ownership, diagnostics, and cleanup scenarios."
+            - "The document includes a Report Summaries section reserved for results after manual execution and does not claim tests were run."
+        - id: "T023"
+          title: "Add YAML-first user-facing lifecycle recovery changelog bullets and regenerate CHANGELOG.md"
+          status: "Pending"
+          type: "documentation"
+          parallel: true
+          story_id: "US-003"
+          file_path: "internal/changelog/changelog.yaml"
+          dependencies: ["T019", "T020"]
+          acceptance_criteria:
+            - "The changelog contains 1-3 user-visible bullets for lifecycle policy and recovery behavior."
+            - "make changelog-sync regenerates CHANGELOG.md and no direct edits are made to the generated file."
+    - number: 6
+      title: "Polish & Cross-Cutting Concerns"
+      purpose: "Run artifact, focused, repository-wide, and ownership/security validation before handoff."
+      tasks:
+        - id: "T024"
+          title: "Run focused lifecycle, configuration, testutil, and E2E tests and record failures or passes"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: ".dev/tasks/131-jcode-lifecycle-recovery.md"
+          dependencies: ["T018", "T022", "T023"]
+          acceptance_criteria:
+            - "Focused tests run without real agents, provider APIs, credentials, or developer workspace mutation."
+            - "The manual test artifact records the focused command outcomes in Report Summaries without hiding failures."
+        - id: "T025"
+          title: "Validate the generated tasks, feature spec, and implementation plan YAML artifacts"
+          status: "Pending"
+          type: "test"
+          parallel: true
+          story_id: null
+          file_path: "specs/131-jcode-lifecycle-recovery/tasks.yaml"
+          dependencies: ["T023"]
+          acceptance_criteria:
+            - "autospec artifact validates tasks.yaml, spec.yaml, and plan.yaml with no schema, dependency, or required-field errors."
+            - "All task IDs are unique and sequential, every dependency names an earlier task, and every user story has an independently testable phase."
+        - id: "T026"
+          title: "Run make fmt, make lint, make test, and make build and record successful exit statuses"
+          status: "Pending"
+          type: "test"
+          parallel: false
+          story_id: null
+          file_path: ".dev/tasks/131-jcode-lifecycle-recovery.md"
+          dependencies: ["T024", "T025"]
+          acceptance_criteria:
+            - "make fmt, make lint, make test, and make build each exit 0, or any pre-existing/unrelated failure is explicitly recorded with evidence."
+            - "The validation record confirms the performance, test-first, idempotency, and lifecycle-wrapper gates relevant to this feature."
+        - id: "T027"
+          title: "Audit the final diff for secret leakage, arbitrary daemon mutation, unbounded waits, and unrelated changes"
+          status: "Pending"
+          type: "refactor"
+          parallel: true
+          story_id: null
+          file_path: "specs/131-jcode-lifecycle-recovery/plan.yaml"
+          dependencies: ["T026"]
+          acceptance_criteria:
+            - "The audit finds no raw credentials or sensitive diagnostic values, no connect-mode stop/restart/cleanup path, and no unbounded retry or sleep."
+            - "The final diff is limited to the planned source, tests, docs, manual-test, changelog, and generated artifact changes."
+        - id: "T028"
+          title: "Synchronize final artifact and documentation status for handoff"
+          status: "Pending"
+          type: "documentation"
+          parallel: false
+          story_id: null
+          file_path: "specs/131-jcode-lifecycle-recovery/tasks.yaml"
+          dependencies: ["T027"]
+          acceptance_criteria:
+            - "tasks.yaml statuses, summary counts, dependency graph, and validation notes reflect the completed implementation and evidence."
+            - "Public documentation, manual-test report summaries, changelog YAML, and generated CHANGELOG.md are synchronized before handoff."
+dependencies:
+    user_story_order:
+        - story_id: "US-001"
+          depends_on: []
+          blocks: ["US-002", "US-003"]
+        - story_id: "US-002"
+          depends_on: ["US-001"]
+          blocks: ["US-003"]
+        - story_id: "US-003"
+          depends_on: ["US-001", "US-002"]
+          blocks: []
+    phase_order:
+        - phase: 1
+          blocks: [2]
+        - phase: 2
+          blocks: [3]
+        - phase: 3
+          blocks: [4, 5]
+        - phase: 4
+          blocks: [5]
+        - phase: 5
+          blocks: [6]
+        - phase: 6
+          blocks: []
+parallel_execution:
+    - phase: 1
+      parallel_groups:
+        - tasks: ["T001", "T002"]
+          rationale: "SDK inspection and repository inventory are independent read-only setup tasks."
+    - phase: 2
+      parallel_groups:
+        - tasks: ["T003", "T005"]
+          rationale: "Lifecycle contract tests and reusable fakes can be authored independently after setup."
+    - phase: 3
+      parallel_groups:
+        - tasks: ["T008", "T009", "T010", "T011"]
+          rationale: "The effective configuration, schema, defaults, and validation surfaces are separate files and can progress after the configuration tests."
+    - phase: 5
+      parallel_groups:
+        - tasks: ["T019", "T020"]
+          rationale: "The public agent guide and public reference are separate documentation surfaces with the same lifecycle prerequisites."
+        - tasks: ["T021", "T023"]
+          rationale: "The internal smoke index and YAML-first changelog touch separate artifacts after their own prerequisites."
+    - phase: 6
+      parallel_groups:
+        - tasks: ["T024", "T025"]
+          rationale: "Focused tests and artifact validation are independent checks after implementation and documentation prerequisites."
+implementation_strategy:
+    mvp_scope:
+        phases: [1, 2, 3, 4]
+        description: "Setup, foundational seams, explicit policy selection, and bounded native runtime recovery."
+        validation: "Run focused cliagent/config tests with deterministic fakes, then verify connect no-restart, private recovery, auto shared-first fallback, bounded diagnostics, and cleanup ownership."
+    incremental_delivery:
+        - milestone: "Foundation Ready"
+          phases: [1, 2]
+          deliverable: "SDK lifecycle seam, lifecycle entities, ownership rules, and deterministic fake runtime fixtures are ready for implementation."
+        - milestone: "Policy Selection Ready"
+          phases: [1, 2, 3]
+          deliverable: "Configuration resolves connect/private/auto with synchronized defaults and connect/private/auto selection behavior is testable."
+        - milestone: "MVP Complete"
+          phases: [1, 2, 3, 4]
+          deliverable: "Native jcode execution performs bounded reconnect/restart and ownership-safe cleanup with actionable diagnostics."
+        - milestone: "Operationally Ready"
+          phases: [1, 2, 3, 4, 5, 6]
+          deliverable: "Public docs, disposable smoke path, manual test plan, changelog, artifact validation, and repository quality gates are complete."
+_meta:
+    version: "1.0.0"
+    generator: "autospec"
+    generator_version: "autospec dev"
+    created: "2026-08-06T09:28:56Z"
+    artifact_type: "tasks"

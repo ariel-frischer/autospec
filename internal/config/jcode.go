@@ -11,34 +11,37 @@ type JcodeMode string
 const (
 	JcodeModeConnect JcodeMode = "connect"
 	JcodeModePrivate JcodeMode = "private"
-)
-
-// JcodeRunner selects the implementation used for jcode execution.
-type JcodeRunner string
-
-const (
-	JcodeRunnerExec   JcodeRunner = "exec"
-	JcodeRunnerSDK    JcodeRunner = "sdk"
-	JcodeRunnerCustom JcodeRunner = "custom"
+	JcodeModeAuto    JcodeMode = "auto"
 )
 
 const redactedJcodeValue = "[redacted]"
 
+const (
+	defaultJcodeReconnectAttempts = 2
+	defaultJcodeRestartAttempts   = 1
+	defaultJcodeRetryDelay        = 250 * time.Millisecond
+	maxJcodeRecoveryAttempts      = 10
+	maxJcodeRetryDelay            = 5 * time.Minute
+)
+
 // JcodeConfig contains runtime and SDK settings for the native jcode agent.
 type JcodeConfig struct {
-	// Runner defaults to the production CLI-compatible exec runner when unset.
-	Runner         JcodeRunner   `yaml:"runner,omitempty" koanf:"runner"`
-	Mode           JcodeMode     `yaml:"mode,omitempty" koanf:"mode"`
-	SocketPath     string        `yaml:"socket_path,omitempty" koanf:"socket_path"`
-	Binary         string        `yaml:"binary,omitempty" koanf:"binary"`
-	Home           string        `yaml:"home,omitempty" koanf:"home"`
-	InheritLogins  bool          `yaml:"inherit_logins" koanf:"inherit_logins"`
-	StartupTimeout time.Duration `yaml:"startup_timeout,omitempty" koanf:"startup_timeout"`
-	CleanupTimeout time.Duration `yaml:"cleanup_timeout,omitempty" koanf:"cleanup_timeout"`
+	// Runner selects the production CLI runner or an explicit compatibility path.
+	Runner            JcodeRunner   `yaml:"runner,omitempty" koanf:"runner"`
+	Mode              JcodeMode     `yaml:"mode,omitempty" koanf:"mode"`
+	SocketPath        string        `yaml:"socket_path,omitempty" koanf:"socket_path"`
+	Binary            string        `yaml:"binary,omitempty" koanf:"binary"`
+	Home              string        `yaml:"home,omitempty" koanf:"home"`
+	InheritLogins     bool          `yaml:"inherit_logins" koanf:"inherit_logins"`
+	StartupTimeout    time.Duration `yaml:"startup_timeout,omitempty" koanf:"startup_timeout"`
+	CleanupTimeout    time.Duration `yaml:"cleanup_timeout,omitempty" koanf:"cleanup_timeout"`
+	StartupCommand    string        `yaml:"startup_command,omitempty" koanf:"startup_command"`
+	ReconnectAttempts int           `yaml:"reconnect_attempts,omitempty" koanf:"reconnect_attempts"`
+	RestartAttempts   int           `yaml:"restart_attempts,omitempty" koanf:"restart_attempts"`
+	RetryDelay        time.Duration `yaml:"retry_delay,omitempty" koanf:"retry_delay"`
 }
 
-// EffectiveRunner returns the configured runner, defaulting to the production
-// exec implementation. Native SDK settings do not change this resolution.
+// EffectiveRunner returns the CLI-compatible runner unless explicitly changed.
 func (c JcodeConfig) EffectiveRunner() JcodeRunner {
 	if c.Runner == "" {
 		return JcodeRunnerExec
@@ -57,6 +60,9 @@ func (c JcodeConfig) Redacted() JcodeConfig {
 	if c.Home != "" {
 		c.Home = redactedJcodeValue
 	}
+	if c.StartupCommand != "" {
+		c.StartupCommand = redactedJcodeValue
+	}
 	return c
 }
 
@@ -64,14 +70,36 @@ func validateJcodeConfig(c JcodeConfig, filePath string) error {
 	if c.Runner != "" && c.Runner != JcodeRunnerExec && c.Runner != JcodeRunnerSDK && c.Runner != JcodeRunnerCustom {
 		return &ValidationError{FilePath: filePath, Field: "jcode.runner", Message: "must be one of: exec, sdk, custom"}
 	}
-	if c.Mode != "" && c.Mode != JcodeModeConnect && c.Mode != JcodeModePrivate {
-		return &ValidationError{FilePath: filePath, Field: "jcode.mode", Message: "must be one of: connect, private"}
+	if c.Mode != "" && c.Mode != JcodeModeConnect && c.Mode != JcodeModePrivate && c.Mode != JcodeModeAuto {
+		return &ValidationError{FilePath: filePath, Field: "jcode.mode", Message: "must be one of: connect, private, auto"}
 	}
 	if c.StartupTimeout < 0 {
 		return &ValidationError{FilePath: filePath, Field: "jcode.startup_timeout", Message: "must be positive when set"}
 	}
 	if c.CleanupTimeout < 0 {
 		return &ValidationError{FilePath: filePath, Field: "jcode.cleanup_timeout", Message: "must be positive when set"}
+	}
+	mode := c.Mode
+	if mode == "" {
+		mode = JcodeModeConnect
+	}
+	if c.StartupCommand != "" && mode == JcodeModeConnect {
+		return &ValidationError{FilePath: filePath, Field: "jcode.startup_command", Message: "is only valid for private or auto mode"}
+	}
+	if c.StartupCommand != "" && strings.TrimSpace(c.StartupCommand) == "" {
+		return &ValidationError{FilePath: filePath, Field: "jcode.startup_command", Message: "must not be blank"}
+	}
+	if strings.ContainsAny(c.StartupCommand, ";&|$`\n\r") {
+		return &ValidationError{FilePath: filePath, Field: "jcode.startup_command", Message: "must not contain shell metacharacters"}
+	}
+	if c.ReconnectAttempts < 0 || c.ReconnectAttempts > maxJcodeRecoveryAttempts {
+		return &ValidationError{FilePath: filePath, Field: "jcode.reconnect_attempts", Message: "must be between 0 and 10"}
+	}
+	if c.RestartAttempts < 0 || c.RestartAttempts > maxJcodeRecoveryAttempts {
+		return &ValidationError{FilePath: filePath, Field: "jcode.restart_attempts", Message: "must be between 0 and 10"}
+	}
+	if c.RetryDelay < 0 || c.RetryDelay > maxJcodeRetryDelay {
+		return &ValidationError{FilePath: filePath, Field: "jcode.retry_delay", Message: "must be between 0 and 5m"}
 	}
 	paths := []struct {
 		field string
