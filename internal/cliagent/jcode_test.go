@@ -276,9 +276,39 @@ func TestJcodeExec_BuildCommandContract(t *testing.T) {
 		binary,
 		"run", "--quiet",
 		"--model", "openai/gpt-5.6-luna",
+		"--reasoning-effort", "max",
 		"fixture prompt",
 	}, cmd.Args)
 	require.Contains(t, cmd.Env, "JCODE_FIXTURE_ENV=isolated")
+}
+
+func TestJcodeExec_BuildCommandReasoningEffort(t *testing.T) {
+	t.Parallel()
+
+	binary, _ := installJcodeFixture(t)
+	tests := map[string]struct {
+		opts ExecOptions
+		want []string
+	}{
+		"direct option uses current jcode flag": {
+			opts: ExecOptions{ReasoningEffort: "medium"},
+			want: []string{binary, "run", "--quiet", "--reasoning-effort", "medium", "prompt"},
+		},
+		"workflow codex arguments are translated": {
+			opts: ExecOptions{ExtraArgs: []string{"-c", "model_reasoning_effort=medium", "--trace"}},
+			want: []string{binary, "run", "--quiet", "--reasoning-effort", "medium", "prompt", "--trace"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cmd, err := NewJcodeExec(binary).BuildCommand("prompt", tt.opts)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, cmd.Args)
+		})
+	}
 }
 
 func TestJcodeExec_ExecuteTransportsPromptAndOptions(t *testing.T) {
@@ -303,7 +333,7 @@ func TestJcodeExec_ExecuteTransportsPromptAndOptions(t *testing.T) {
 	require.Contains(t, got, "env_fixture: isolated")
 	for _, want := range []string{
 		"  - run\n", "  - --quiet\n", "  - --model\n", "  - openai/gpt-5.6-luna\n",
-		"  - fixture prompt\n", "  - --trace\n",
+		"  - --reasoning-effort\n", "  - high\n", "  - fixture prompt\n", "  - --trace\n",
 	} {
 		require.Contains(t, got, want)
 	}

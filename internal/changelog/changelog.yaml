@@ -13,6 +13,8 @@ versions:
             - Native jcode workflows now support connect, private, and auto runtime policies with bounded reconnect/restart recovery
         changed:
             - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
+        fixed:
+            - Jcode CLI workflows now pass reasoning effort with the current `--reasoning-effort` flag while Codex retains its native configuration argument
     0.11.6:
         date: 2026-07-22
         added:
