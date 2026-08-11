@@ -295,8 +295,21 @@ func TestJcodeExec_BuildCommandReasoningEffort(t *testing.T) {
 			want: []string{binary, "run", "--quiet", "--reasoning-effort", "medium", "prompt"},
 		},
 		"workflow codex arguments are translated": {
-			opts: ExecOptions{ExtraArgs: []string{"-c", "model_reasoning_effort=medium", "--trace"}},
-			want: []string{binary, "run", "--quiet", "--reasoning-effort", "medium", "prompt", "--trace"},
+			opts: ExecOptions{
+				Model:           "openai:gpt-5.6-sol",
+				ReasoningEffort: "medium",
+				ExtraArgs: []string{
+					"--model", "openai:gpt-5.6-sol",
+					"-c", "model_reasoning_effort=medium",
+					"--trace",
+				},
+			},
+			want: []string{
+				binary, "run", "--quiet",
+				"--model", "openai:gpt-5.6-sol",
+				"--reasoning-effort", "medium",
+				"prompt", "--trace",
+			},
 		},
 	}
 
