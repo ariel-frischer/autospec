@@ -51,27 +51,39 @@ func (j *JcodeExec) BuildCommand(prompt string, opts ExecOptions) (*exec.Cmd, er
 	}
 
 	args := []string{"run", "--quiet"}
-	if opts.Model != "" {
-		args = append(args, "--model", opts.Model)
-	}
-	reasoningEffort := opts.ReasoningEffort
-	if reasoningEffort == "" {
-		_, reasoningEffort = ParseSessionSettings(opts.ExtraArgs)
+	model, reasoningEffort := sessionSettings(opts)
+	if model != "" {
+		args = append(args, "--model", model)
 	}
 	if reasoningEffort != "" {
 		args = append(args, "--reasoning-effort", reasoningEffort)
 	}
 	args = append(args, sanitizePromptForCLI(prompt))
-	args = append(args, withoutCodexReasoningEffort(opts.ExtraArgs)...)
+	args = append(args, withoutSessionSettings(opts.ExtraArgs)...)
 
 	cmd := exec.Command(j.binary, args...)
 	j.base.configureCmd(cmd, opts)
 	return cmd, nil
 }
 
-func withoutCodexReasoningEffort(args []string) []string {
+func sessionSettings(opts ExecOptions) (string, string) {
+	model, effort := ParseSessionSettings(opts.ExtraArgs)
+	if opts.Model != "" {
+		model = opts.Model
+	}
+	if opts.ReasoningEffort != "" {
+		effort = opts.ReasoningEffort
+	}
+	return model, effort
+}
+
+func withoutSessionSettings(args []string) []string {
 	filtered := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
+		if args[i] == "--model" && i+1 < len(args) {
+			i++
+			continue
+		}
 		if args[i] == "-c" && i+1 < len(args) {
 			_, reasoningEffort := ParseSessionSettings(args[i : i+2])
 			if reasoningEffort != "" {
