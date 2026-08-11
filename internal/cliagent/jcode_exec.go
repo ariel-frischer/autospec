@@ -54,12 +54,34 @@ func (j *JcodeExec) BuildCommand(prompt string, opts ExecOptions) (*exec.Cmd, er
 	if opts.Model != "" {
 		args = append(args, "--model", opts.Model)
 	}
+	reasoningEffort := opts.ReasoningEffort
+	if reasoningEffort == "" {
+		_, reasoningEffort = ParseSessionSettings(opts.ExtraArgs)
+	}
+	if reasoningEffort != "" {
+		args = append(args, "--reasoning-effort", reasoningEffort)
+	}
 	args = append(args, sanitizePromptForCLI(prompt))
-	args = append(args, opts.ExtraArgs...)
+	args = append(args, withoutCodexReasoningEffort(opts.ExtraArgs)...)
 
 	cmd := exec.Command(j.binary, args...)
 	j.base.configureCmd(cmd, opts)
 	return cmd, nil
+}
+
+func withoutCodexReasoningEffort(args []string) []string {
+	filtered := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "-c" && i+1 < len(args) {
+			_, reasoningEffort := ParseSessionSettings(args[i : i+2])
+			if reasoningEffort != "" {
+				i++
+				continue
+			}
+		}
+		filtered = append(filtered, args[i])
+	}
+	return filtered
 }
 
 // Execute runs jcode and treats a non-zero CLI exit as a contextual error.
