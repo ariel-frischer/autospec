@@ -1085,9 +1085,8 @@ func TestConfiguration_GetAgent_JcodeExplicitRunners(t *testing.T) {
 		wantExecPath string
 	}{
 		"explicit exec": {
-			runner:       JcodeRunnerExec,
-			binary:       "/custom/jcode",
-			wantExecPath: "/custom/jcode",
+			runner: JcodeRunnerExec,
+			binary: "/custom/jcode",
 		},
 		"explicit sdk": {
 			runner:  JcodeRunnerSDK,
@@ -1128,7 +1127,7 @@ func TestConfiguration_GetAgent_JcodeExplicitRunners(t *testing.T) {
 			}
 			execAgent, ok := agent.(*cliagent.JcodeExec)
 			require.True(t, ok, "explicit exec selection must use the exec agent")
-			cmd, err := execAgent.BuildCommand("prompt", cliagent.ExecOptions{})
+			_, err = execAgent.BuildCommand("prompt", cliagent.ExecOptions{})
 			if tt.wantExecPath != "" {
 				if tt.runner == JcodeRunnerCustom {
 					require.Error(t, err, "missing explicit custom binary should fail without fallback")
@@ -1140,7 +1139,6 @@ func TestConfiguration_GetAgent_JcodeExplicitRunners(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, "jcode", cmd.Path)
 		})
 	}
 }
@@ -1167,9 +1165,9 @@ func TestConfiguration_JcodeExplicitSelectionFixtures(t *testing.T) {
 			fixture:   "jcode-unsupported.yaml",
 			wantError: "jcode.mode",
 		},
-		"missing binary does not silently fall back": {
-			fixture:   "jcode-missing-binary.yaml",
-			wantError: "missing-jcode",
+		"exec ignores custom binary and uses official path command": {
+			fixture: "jcode-missing-binary.yaml",
+			want:    JcodeRunnerExec,
 		},
 	}
 
@@ -1179,16 +1177,6 @@ func TestConfiguration_JcodeExplicitSelectionFixtures(t *testing.T) {
 			if tt.wantError != "" {
 				if tt.fixture == "jcode-unsupported.yaml" {
 					err := requireJcodeFixtureError(t, tt.fixture)
-					require.Error(t, err)
-					assert.Contains(t, err.Error(), tt.wantError)
-					return
-				}
-				cfg := requireJcodeFixture(t, tt.fixture)
-				if tt.wantError == "missing-jcode" {
-					configuration := Configuration{AgentPreset: "jcode", Jcode: cfg}
-					agent, err := configuration.GetAgent()
-					require.NoError(t, err)
-					_, err = agent.(*cliagent.JcodeExec).BuildCommand("prompt", cliagent.ExecOptions{})
 					require.Error(t, err)
 					assert.Contains(t, err.Error(), tt.wantError)
 					return
@@ -1207,8 +1195,7 @@ func TestConfiguration_JcodeExplicitSelectionFixtures(t *testing.T) {
 			execAgent, ok := agent.(*cliagent.JcodeExec)
 			require.True(t, ok)
 			_, err = execAgent.BuildCommand("prompt", cliagent.ExecOptions{})
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), cfg.Binary)
+			require.NoError(t, err)
 		})
 	}
 }

@@ -11,7 +11,7 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 | `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.139 |
 | `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.145.0-alpha.23 |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.14.46 |
-| `jcode` | Native Go SDK | jcode coding-agent harness | ✅ Supported; connects to an existing runtime or launches a private runtime |
+| `jcode` | `jcode` | Official Jcode CLI | ✅ Supported; SDK integration remains an explicit opt-in |
 
 ### Experimental Agents (Untested)
 
@@ -34,19 +34,26 @@ You can configure any CLI tool as an agent using a command template with `{{PROM
 The production default uses the installed CLI:
 
 ```bash
-jcode run --quiet --model <model> "<rendered prompt>"
+jcode --quiet --no-update --no-selfdev --model <model> run "<rendered prompt>"
 ```
 
-Set `jcode.runner: custom` with `jcode.binary` for a custom executable. Set
-`jcode.runner: sdk` explicitly to use the native SDK and its lifecycle policy.
+Autospec follows the wrapper contract published by the official
+[`1jehuang/jcode`](https://github.com/1jehuang/jcode) project. Global flags are
+placed before `run`, and one rendered prompt is passed positionally. Reasoning
+effort and arbitrary workflow extra arguments are not forwarded by exec mode.
+
+Set `jcode.runner: custom` with `jcode.binary` for a custom executable. The
+default `exec` runner always resolves the official `jcode` command from `PATH`.
+Set `jcode.runner: sdk` explicitly to use the native SDK and its lifecycle policy.
 An omitted runner always resolves to the CLI-compatible `exec` runner, even
 when SDK lifecycle fields are present.
 
 ### Native jcode SDK
 
-Select jcode with `agent_preset: jcode`. The native integration does not invoke
-the experimental `jcode run` exec wrapper. It streams SDK `TextDelta` events
-until `TurnDone` and safely ignores permission and unknown events.
+Select jcode with `agent_preset: jcode`. The native SDK integration is a custom
+compatibility path and is disabled unless `jcode.runner: sdk` is set. It uses
+owned SDK turns so event subscription begins before the prompt is sent, and it
+does not reconnect in the middle of an active turn.
 
 ```yaml
 agent_preset: jcode
@@ -63,6 +70,25 @@ jcode:
   reconnect_attempts: 2
   restart_attempts: 1
   retry_delay: 250ms
+```
+
+Exec mode also supports stable upstream wrapper settings:
+
+```yaml
+agent_preset: jcode
+model: gpt-5.4
+jcode:
+  runner: exec
+  provider: openai
+  provider_profile: ""
+  socket_path: ""
+  trace: false
+  tool_profile: minimal
+  tools: bash,read
+  disabled_tools: write
+  disable_base_tools: false
+  mcp_tools: auto          # auto, eager, or deferred
+  mcp_tools_token_threshold: 4096
 ```
 
 `connect` attaches to a runtime started separately with `jcode api-bridge`.

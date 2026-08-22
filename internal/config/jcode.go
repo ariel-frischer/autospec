@@ -17,10 +17,17 @@ const (
 // JcodeRunner selects the implementation used for jcode execution.
 type JcodeRunner string
 
+// JcodeMCPTools controls how MCP tools are exposed to the model.
+type JcodeMCPTools string
+
 const (
 	JcodeRunnerExec   JcodeRunner = "exec"
 	JcodeRunnerSDK    JcodeRunner = "sdk"
 	JcodeRunnerCustom JcodeRunner = "custom"
+
+	JcodeMCPToolsAuto     JcodeMCPTools = "auto"
+	JcodeMCPToolsEager    JcodeMCPTools = "eager"
+	JcodeMCPToolsDeferred JcodeMCPTools = "deferred"
 )
 
 const redactedJcodeValue = "[redacted]"
@@ -33,7 +40,7 @@ const (
 	maxJcodeRetryDelay            = 5 * time.Minute
 )
 
-// JcodeConfig contains runtime and SDK settings for the native jcode agent.
+// JcodeConfig contains official CLI options and opt-in SDK runtime settings.
 type JcodeConfig struct {
 	// Runner selects the production CLI runner or an explicit compatibility path.
 	Runner            JcodeRunner   `yaml:"runner,omitempty" koanf:"runner"`
@@ -48,6 +55,15 @@ type JcodeConfig struct {
 	ReconnectAttempts int           `yaml:"reconnect_attempts,omitempty" koanf:"reconnect_attempts"`
 	RestartAttempts   int           `yaml:"restart_attempts,omitempty" koanf:"restart_attempts"`
 	RetryDelay        time.Duration `yaml:"retry_delay,omitempty" koanf:"retry_delay"`
+	Provider          string        `yaml:"provider,omitempty" koanf:"provider"`
+	ProviderProfile   string        `yaml:"provider_profile,omitempty" koanf:"provider_profile"`
+	Trace             bool          `yaml:"trace" koanf:"trace"`
+	ToolProfile       string        `yaml:"tool_profile,omitempty" koanf:"tool_profile"`
+	Tools             string        `yaml:"tools,omitempty" koanf:"tools"`
+	DisabledTools     string        `yaml:"disabled_tools,omitempty" koanf:"disabled_tools"`
+	DisableBaseTools  bool          `yaml:"disable_base_tools" koanf:"disable_base_tools"`
+	MCPTools          JcodeMCPTools `yaml:"mcp_tools,omitempty" koanf:"mcp_tools"`
+	MCPToolsThreshold int           `yaml:"mcp_tools_token_threshold,omitempty" koanf:"mcp_tools_token_threshold"`
 }
 
 // EffectiveRunner returns the CLI-compatible runner unless explicitly changed.
@@ -76,12 +92,33 @@ func (c JcodeConfig) Redacted() JcodeConfig {
 }
 
 func validateJcodeConfig(c JcodeConfig, filePath string) error {
+	for _, validate := range []func(JcodeConfig, string) error{
+		validateJcodeEnums,
+		validateJcodeLifecycle,
+		validateJcodeExecOptions,
+		validateJcodePaths,
+	} {
+		if err := validate(c, filePath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateJcodeEnums(c JcodeConfig, filePath string) error {
 	if c.Runner != "" && c.Runner != JcodeRunnerExec && c.Runner != JcodeRunnerSDK && c.Runner != JcodeRunnerCustom {
 		return &ValidationError{FilePath: filePath, Field: "jcode.runner", Message: "must be one of: exec, sdk, custom"}
 	}
 	if c.Mode != "" && c.Mode != JcodeModeConnect && c.Mode != JcodeModePrivate && c.Mode != JcodeModeAuto {
 		return &ValidationError{FilePath: filePath, Field: "jcode.mode", Message: "must be one of: connect, private, auto"}
 	}
+	if c.MCPTools != "" && c.MCPTools != JcodeMCPToolsAuto && c.MCPTools != JcodeMCPToolsEager && c.MCPTools != JcodeMCPToolsDeferred {
+		return &ValidationError{FilePath: filePath, Field: "jcode.mcp_tools", Message: "must be one of: auto, eager, deferred"}
+	}
+	return nil
+}
+
+func validateJcodeLifecycle(c JcodeConfig, filePath string) error {
 	if c.StartupTimeout < 0 {
 		return &ValidationError{FilePath: filePath, Field: "jcode.startup_timeout", Message: "must be positive when set"}
 	}
@@ -110,6 +147,35 @@ func validateJcodeConfig(c JcodeConfig, filePath string) error {
 	if c.RetryDelay < 0 || c.RetryDelay > maxJcodeRetryDelay {
 		return &ValidationError{FilePath: filePath, Field: "jcode.retry_delay", Message: "must be between 0 and 5m"}
 	}
+	return nil
+}
+
+func validateJcodeExecOptions(c JcodeConfig, filePath string) error {
+	if c.MCPToolsThreshold < 0 {
+		return &ValidationError{FilePath: filePath, Field: "jcode.mcp_tools_token_threshold", Message: "must be positive when set"}
+	}
+	values := []struct{ field, value string }{
+		{field: "jcode.provider", value: c.Provider},
+		{field: "jcode.provider_profile", value: c.ProviderProfile},
+		{field: "jcode.tool_profile", value: c.ToolProfile},
+	}
+	for _, value := range values {
+		if err := validateJcodeValue(value.field, value.value, filePath); err != nil {
+			return err
+		}
+	}
+	for _, list := range []struct{ field, value string }{
+		{field: "jcode.tools", value: c.Tools},
+		{field: "jcode.disabled_tools", value: c.DisabledTools},
+	} {
+		if err := validateJcodeList(list.field, list.value, filePath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateJcodePaths(c JcodeConfig, filePath string) error {
 	paths := []struct {
 		field string
 		value string
@@ -124,6 +190,25 @@ func validateJcodeConfig(c JcodeConfig, filePath string) error {
 		}
 	}
 	return nil
+}
+
+func validateJcodeList(field, value, filePath string) error {
+	if value == "" {
+		return nil
+	}
+	for _, item := range strings.Split(value, ",") {
+		if err := validateJcodeValue(field, item, filePath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateJcodeValue(field, value, filePath string) error {
+	if value == "" || (strings.TrimSpace(value) == value && !strings.ContainsAny(value, ",;&|$`\n\r")) {
+		return nil
+	}
+	return &ValidationError{FilePath: filePath, Field: field, Message: "must be non-blank and contain no commas or shell metacharacters"}
 }
 
 func validateJcodePath(field, value, filePath string) error {

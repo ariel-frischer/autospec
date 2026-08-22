@@ -1018,3 +1018,11 @@ AUTOSPEC_TIMEOUT=0 autospec <command>  # Disable timeout
 ~/.autospec/state/             # State files
 AUTOSPEC_*                     # Environment variables
 ```
+## Jcode CLI compatibility
+
+When `agent_preset: jcode` is selected, Autospec expects the official `jcode`
+binary on `PATH` and invokes its documented wrapper surface. Verify it with
+`jcode --version` and `jcode --quiet --no-update --no-selfdev run "Reply OK"`.
+If you intentionally use another executable, configure `jcode.runner: custom`
+and `jcode.binary`. The custom Go SDK path requires `jcode.runner: sdk`; stale
+SDK lifecycle fields alone never enable it.

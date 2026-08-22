@@ -12,6 +12,15 @@ This document explains autospec's internal systems that power workflow execution
   - [Command Template Handling](#command-template-handling)
 - [Phase Context Injection](#phase-context-injection)
 
+## Jcode integration maintenance
+
+Official Autospec behavior is tested against the upstream `1jehuang/jcode`
+command contract. Do not infer supported exec flags from Ariel's daily-use fork
+or from the custom Go SDK. Before changing exec argv, verify the official CLI
+source and add an exact deterministic argv test. SDK upgrades must retain the
+explicit `jcode.runner: sdk` gate, owned-turn event ordering, bounded
+cancellation, and the rule that shared runtimes are never stopped by Autospec.
+
 ---
 
 ## Spec Detection

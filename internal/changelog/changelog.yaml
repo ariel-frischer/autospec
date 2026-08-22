@@ -8,14 +8,21 @@ versions:
             - Autospec can use native jcode as the repository workflow agent, including the OpenRouter-backed cheap profile with stage-specific reasoning settings
             - Named configuration profiles can now be selected with `--profile`; explicit `--config` paths remain available as an alternative
             - Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
-            - Autospec now consumes the published `github.com/ariel-frischer/jcode-go` v0.1.2 module, including the safe-run ownership API, without requiring a sibling jcode checkout
+            - Autospec now consumes the experimental [`github.com/ariel-frischer/jcode-go`](https://github.com/ariel-frischer/jcode-go) v0.1.5 SDK with race-free owned turns, without requiring a sibling jcode checkout
             - Agent-aware preflight no longer requires Claude-specific `.claude/commands/` directories for Codex or jcode projects
             - Claude preflight and initialization now use `.claude/skills/` and the local `claude auth status` command, with clear offline diagnostics when authentication status cannot be read
             - Native jcode workflows now support connect, private, and auto runtime policies with bounded reconnect/restart recovery
         changed:
             - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
+            - 'Jcode uses the official upstream CLI wrapper by default, while Ariel Frischer''s experimental [`jcode-go`](https://github.com/ariel-frischer/jcode-go) SDK remains available through explicit `jcode.runner: sdk` configuration, including model and reasoning-effort session settings'
+            - Jcode exec configuration now supports provider, provider profile, socket, trace, tool policy, and MCP exposure settings
         fixed:
-            - Jcode CLI workflows now pass reasoning effort with the current `--reasoning-effort` flag while Codex retains its native configuration argument
+            - Jcode CLI workflows now place wrapper flags before `run`, suppress update and self-development behavior, and omit custom-fork-only arguments
+            - Experimental Jcode SDK workflows now render as native SDK execution instead of showing a misleading unsupported-command error
+            - Experimental Jcode SDK workflows now cancel owned turns when local output streaming fails and preserve cancellation errors
+        security:
+            - Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2
+            - Updated the documentation site's `json` gem from v2.19.2 to v2.19.9
     0.11.6:
         date: 2026-07-22
         added:

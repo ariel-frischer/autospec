@@ -84,6 +84,10 @@ func TestGetSupportedAgents_DisplayNames(t *testing.T) {
 			agentName:       "opencode",
 			wantDisplayName: "OpenCode",
 		},
+		"jcode has display name": {
+			agentName:       "jcode",
+			wantDisplayName: "Jcode",
+		},
 	}
 
 	agents := GetSupportedAgents()
@@ -143,8 +147,8 @@ func TestGetSupportedAgentsWithDefaults(t *testing.T) {
 			wantSelected:  []string{"claude"},
 		},
 		"all agents selected": {
-			defaultAgents: []string{"claude", "cline", "codex", "gemini", "goose", "opencode"},
-			wantSelected:  []string{"claude", "cline", "codex", "gemini", "goose", "opencode"},
+			defaultAgents: []string{"claude", "cline", "codex", "gemini", "goose", "jcode", "opencode"},
+			wantSelected:  []string{"claude", "cline", "codex", "gemini", "goose", "jcode", "opencode"},
 		},
 	}
 

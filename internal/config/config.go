@@ -598,7 +598,7 @@ func (c *Configuration) GetAgent() (cliagent.Agent, error) {
 func (c *Configuration) newJcodeAgent() (cliagent.Agent, error) {
 	switch c.Jcode.EffectiveRunner() {
 	case JcodeRunnerExec:
-		return cliagent.NewJcodeExec(c.Jcode.Binary), nil
+		return cliagent.NewJcodeExecWithOptions("", c.jcodeExecOptions()), nil
 	case JcodeRunnerSDK:
 		return cliagent.NewJcodeWithOptions(cliagent.JcodeOptions{
 			Mode: string(c.Jcode.Mode), SocketPath: c.Jcode.SocketPath,
@@ -617,9 +617,19 @@ func (c *Configuration) newJcodeAgent() (cliagent.Agent, error) {
 		if c.Jcode.Binary == "" {
 			return nil, fmt.Errorf("jcode runner %q requires jcode.binary", JcodeRunnerCustom)
 		}
-		return cliagent.NewJcodeExec(c.Jcode.Binary), nil
+		return cliagent.NewJcodeExecWithOptions(c.Jcode.Binary, c.jcodeExecOptions()), nil
 	default:
 		return nil, fmt.Errorf("unsupported jcode runner %q", c.Jcode.Runner)
+	}
+}
+
+func (c *Configuration) jcodeExecOptions() cliagent.JcodeExecOptions {
+	return cliagent.JcodeExecOptions{
+		Provider: c.Jcode.Provider, ProviderProfile: c.Jcode.ProviderProfile,
+		SocketPath: c.Jcode.SocketPath, Trace: c.Jcode.Trace,
+		ToolProfile: c.Jcode.ToolProfile, Tools: c.Jcode.Tools,
+		DisabledTools: c.Jcode.DisabledTools, DisableBaseTools: c.Jcode.DisableBaseTools,
+		MCPTools: string(c.Jcode.MCPTools), MCPToolsTokenThreshold: c.Jcode.MCPToolsThreshold,
 	}
 }
 

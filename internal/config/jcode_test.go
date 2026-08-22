@@ -30,6 +30,15 @@ func TestJcodeConfigDefaultsAndRedaction(t *testing.T) {
 	assert.Equal(t, 2, jcodeDefaults["reconnect_attempts"])
 	assert.Equal(t, 1, jcodeDefaults["restart_attempts"])
 	assert.Equal(t, (250 * time.Millisecond).String(), jcodeDefaults["retry_delay"])
+	assert.Equal(t, "", jcodeDefaults["provider"])
+	assert.Equal(t, "", jcodeDefaults["provider_profile"])
+	assert.False(t, jcodeDefaults["trace"].(bool))
+	assert.Equal(t, "", jcodeDefaults["tool_profile"])
+	assert.Equal(t, "", jcodeDefaults["tools"])
+	assert.Equal(t, "", jcodeDefaults["disabled_tools"])
+	assert.False(t, jcodeDefaults["disable_base_tools"].(bool))
+	assert.Equal(t, "", jcodeDefaults["mcp_tools"])
+	assert.Equal(t, 0, jcodeDefaults["mcp_tools_token_threshold"])
 
 	cfg := JcodeConfig{
 		Mode:              JcodeModePrivate,
@@ -228,6 +237,25 @@ func TestValidateJcodeConfig(t *testing.T) {
 		"unsafe binary path": {
 			config:       JcodeConfig{Mode: JcodeModePrivate, Binary: "/tmp/jcode;echo secret"},
 			wantErrField: "jcode.binary",
+		},
+		"stable upstream exec options": {
+			config: JcodeConfig{
+				Provider: "openai", ProviderProfile: "team", Trace: true,
+				ToolProfile: "minimal", Tools: "bash,read", DisabledTools: "write",
+				DisableBaseTools: true, MCPTools: JcodeMCPToolsDeferred, MCPToolsThreshold: 4096,
+			},
+		},
+		"invalid MCP mode": {
+			config: JcodeConfig{MCPTools: "lazy"}, wantErrField: "jcode.mcp_tools",
+		},
+		"negative MCP threshold": {
+			config: JcodeConfig{MCPToolsThreshold: -1}, wantErrField: "jcode.mcp_tools_token_threshold",
+		},
+		"unsafe provider profile": {
+			config: JcodeConfig{ProviderProfile: "team;unsafe"}, wantErrField: "jcode.provider_profile",
+		},
+		"blank tool list item": {
+			config: JcodeConfig{Tools: "bash, read"}, wantErrField: "jcode.tools",
 		},
 	}
 

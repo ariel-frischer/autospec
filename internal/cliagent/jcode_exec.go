@@ -4,24 +4,48 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strconv"
 )
 
 const defaultJcodeExecBinary = "jcode"
 
 // JcodeExec implements the production jcode CLI integration.
 type JcodeExec struct {
-	base   BaseAgent
-	binary string
+	base    BaseAgent
+	binary  string
+	options JcodeExecOptions
+}
+
+// JcodeExecOptions contains the stable upstream jcode wrapper flags supported
+// by autospec. Values are passed as argv and never through a shell.
+type JcodeExecOptions struct {
+	Provider               string
+	ProviderProfile        string
+	SocketPath             string
+	Trace                  bool
+	ToolProfile            string
+	Tools                  string
+	DisabledTools          string
+	DisableBaseTools       bool
+	MCPTools               string
+	MCPToolsTokenThreshold int
 }
 
 // NewJcodeExec creates a command-backed jcode agent. An empty binary uses jcode
 // from PATH, while a non-empty value is used exactly as configured.
 func NewJcodeExec(binary string) *JcodeExec {
+	return NewJcodeExecWithOptions(binary, JcodeExecOptions{})
+}
+
+// NewJcodeExecWithOptions creates a command-backed jcode agent with stable
+// upstream wrapper options.
+func NewJcodeExecWithOptions(binary string, options JcodeExecOptions) *JcodeExec {
 	if binary == "" {
 		binary = defaultJcodeExecBinary
 	}
 	return &JcodeExec{
-		binary: binary,
+		binary:  binary,
+		options: options,
 		base: BaseAgent{
 			AgentName:   "jcode",
 			Cmd:         binary,
@@ -50,20 +74,45 @@ func (j *JcodeExec) BuildCommand(prompt string, opts ExecOptions) (*exec.Cmd, er
 		return nil, fmt.Errorf("jcode executable %q not found: %w", j.binary, err)
 	}
 
-	args := []string{"run", "--quiet"}
-	model, reasoningEffort := sessionSettings(opts)
+	args := []string{"--quiet", "--no-update", "--no-selfdev"}
+	args = append(args, j.globalArgs()...)
+	model, _ := sessionSettings(opts)
 	if model != "" {
 		args = append(args, "--model", model)
 	}
-	if reasoningEffort != "" {
-		args = append(args, "--reasoning-effort", reasoningEffort)
-	}
-	args = append(args, sanitizePromptForCLI(prompt))
-	args = append(args, withoutSessionSettings(opts.ExtraArgs)...)
+	args = append(args, "run", sanitizePromptForCLI(prompt))
 
 	cmd := exec.Command(j.binary, args...)
 	j.base.configureCmd(cmd, opts)
 	return cmd, nil
+}
+
+func (j *JcodeExec) globalArgs() []string {
+	args := make([]string, 0, 20)
+	args = appendStringFlag(args, "--provider", j.options.Provider)
+	args = appendStringFlag(args, "--provider-profile", j.options.ProviderProfile)
+	args = appendStringFlag(args, "--socket", j.options.SocketPath)
+	if j.options.Trace {
+		args = append(args, "--trace")
+	}
+	args = appendStringFlag(args, "--tool-profile", j.options.ToolProfile)
+	args = appendStringFlag(args, "--tools", j.options.Tools)
+	args = appendStringFlag(args, "--disabled-tools", j.options.DisabledTools)
+	if j.options.DisableBaseTools {
+		args = append(args, "--disable-base-tools")
+	}
+	args = appendStringFlag(args, "--mcp-tools", j.options.MCPTools)
+	if j.options.MCPToolsTokenThreshold > 0 {
+		args = append(args, "--mcp-tools-token-threshold", strconv.Itoa(j.options.MCPToolsTokenThreshold))
+	}
+	return args
+}
+
+func appendStringFlag(args []string, flag, value string) []string {
+	if value == "" {
+		return args
+	}
+	return append(args, flag, value)
 }
 
 func sessionSettings(opts ExecOptions) (string, string) {
@@ -75,25 +124,6 @@ func sessionSettings(opts ExecOptions) (string, string) {
 		effort = opts.ReasoningEffort
 	}
 	return model, effort
-}
-
-func withoutSessionSettings(args []string) []string {
-	filtered := make([]string, 0, len(args))
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--model" && i+1 < len(args) {
-			i++
-			continue
-		}
-		if args[i] == "-c" && i+1 < len(args) {
-			_, reasoningEffort := ParseSessionSettings(args[i : i+2])
-			if reasoningEffort != "" {
-				i++
-				continue
-			}
-		}
-		filtered = append(filtered, args[i])
-	}
-	return filtered
 }
 
 // Execute runs jcode and treats a non-zero CLI exit as a contextual error.

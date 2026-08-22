@@ -69,6 +69,9 @@ type Caps struct {
 	// Required for autospec automation.
 	Automatable bool
 
+	// Commandless indicates Execute uses a native integration rather than an exec.Cmd.
+	Commandless bool
+
 	// PromptDelivery describes how to pass prompts to this agent.
 	PromptDelivery PromptDelivery
 

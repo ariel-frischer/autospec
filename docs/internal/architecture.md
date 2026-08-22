@@ -13,6 +13,15 @@ Deep dive into autospec's system design, component structure, and execution patt
 
 ## Component Overview
 
+### Jcode upstream compatibility boundary
+
+The production Jcode adapter targets the official `1jehuang/jcode` CLI wrapper
+contract, not a developer fork. `internal/cliagent/jcode_exec.go` must keep
+wrapper globals before `run`, pass exactly one positional prompt, and add flags
+only after checking the official upstream `docs/WRAPPERS.md` and
+`src/cli/args.rs`. The `ariel-frischer/jcode-go` adapter is a custom, opt-in SDK
+path selected only by `jcode.runner: sdk`; it must not influence exec defaults.
+
 autospec is built as a modular Go application with clear separation of concerns across several packages:
 
 ```mermaid

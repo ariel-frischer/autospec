@@ -27,14 +27,14 @@ type JcodeOptions struct {
 	Lifecycle      JcodeLifecyclePolicy
 }
 
-type jcodeEventStream interface {
+type jcodeTurn interface {
 	Next(context.Context) (jcode.TypedEvent, error)
-	Close()
+	Cancel(context.Context) error
+	Wait(context.Context) (jcode.TurnResult, error)
 }
 type jcodeSession interface {
 	Configure(context.Context, JcodeSessionSettings) error
-	Send(context.Context, string) error
-	Events(context.Context) jcodeEventStream
+	StartTurn(context.Context, string) (jcodeTurn, error)
 }
 
 // JcodeSessionSettings contains non-secret per-stage settings for jcode.
@@ -226,19 +226,23 @@ func (s sdkJcodeSession) set(ctx context.Context, request string, fields any) er
 	return nil
 }
 
-func (s sdkJcodeSession) Send(ctx context.Context, prompt string) error {
-	return s.session.Send(ctx, prompt, jcode.SendOptions{})
-}
-func (s sdkJcodeSession) Events(ctx context.Context) jcodeEventStream {
-	return sdkJcodeStream{stream: s.session.Events(ctx)}
+func (s sdkJcodeSession) StartTurn(ctx context.Context, prompt string) (jcodeTurn, error) {
+	turn, err := s.session.StartTurn(ctx, prompt, jcode.SendOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("starting jcode turn: %w", err)
+	}
+	return sdkJcodeTurn{turn: turn}, nil
 }
 
-type sdkJcodeStream struct{ stream *jcode.TypedEventStream }
+type sdkJcodeTurn struct{ turn *jcode.Turn }
 
-func (s sdkJcodeStream) Next(ctx context.Context) (jcode.TypedEvent, error) {
-	return s.stream.Next(ctx)
+func (t sdkJcodeTurn) Next(ctx context.Context) (jcode.TypedEvent, error) {
+	return t.turn.Next(ctx)
 }
-func (s sdkJcodeStream) Close() { s.stream.Close() }
+func (t sdkJcodeTurn) Cancel(ctx context.Context) error { return t.turn.Cancel(ctx) }
+func (t sdkJcodeTurn) Wait(ctx context.Context) (jcode.TurnResult, error) {
+	return t.turn.Wait(ctx)
+}
 
 // Jcode implements the native jcode Go SDK agent.
 type Jcode struct {
@@ -262,7 +266,7 @@ func NewJcodeWithOptions(options JcodeOptions) *Jcode {
 	return &Jcode{options: options, factory: sdkJcodeFactory{}}
 }
 func (j *Jcode) Name() string             { return "jcode" }
-func (j *Jcode) Capabilities() Caps       { return Caps{Automatable: true} }
+func (j *Jcode) Capabilities() Caps       { return Caps{Automatable: true, Commandless: true} }
 func (j *Jcode) Version() (string, error) { return "native-sdk", nil }
 func (j *Jcode) Validate() error {
 	mode := j.options.Lifecycle.ResolvedMode()
@@ -277,7 +281,7 @@ func (*Jcode) BuildCommand(string, ExecOptions) (*exec.Cmd, error) {
 	return nil, fmt.Errorf("jcode uses the native SDK; command execution is unsupported")
 }
 
-func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptions) (*Result, error) {
+func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptions) (result *Result, execErr error) {
 	started := time.Now()
 	if j.factory == nil {
 		j.factory = sdkJcodeFactory{}
@@ -288,7 +292,11 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	if err != nil {
 		return nil, fmt.Errorf("opening jcode runtime: %w", err)
 	}
-	defer func() { _ = cleanup() }()
+	defer func() {
+		if err := cleanup(); err != nil {
+			execErr = errors.Join(execErr, fmt.Errorf("cleaning up jcode runtime: %w", err))
+		}
+	}()
 	session, err := client.CreateSession(ctx, options.WorkDir)
 	if err != nil {
 		return nil, fmt.Errorf("creating jcode session: %w", err)
@@ -298,40 +306,55 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	}); err != nil {
 		return nil, fmt.Errorf("configuring jcode session: %w", err)
 	}
-	if err := session.Send(ctx, prompt); err != nil {
-		return nil, fmt.Errorf("sending prompt to jcode: %w", err)
+	turnCtx, stopTurn := context.WithCancel(context.Background())
+	defer stopTurn()
+	turn, err := session.StartTurn(turnCtx, prompt)
+	if err != nil {
+		return nil, fmt.Errorf("starting jcode turn: %w", err)
 	}
-	output, err := streamWithRecovery(ctx, client, session, outputWriter(options.Stdout), j.options.Lifecycle)
+	output, err := streamTurn(ctx, turn, outputWriter(options.Stdout), j.options.CleanupTimeout, stopTurn)
 	if err != nil {
 		return nil, fmt.Errorf("streaming jcode output: %w", err)
 	}
-	result := &Result{ExitCode: 0, Duration: time.Since(started)}
+	result = &Result{ExitCode: 0, Duration: time.Since(started)}
 	if options.Stdout == nil {
 		result.Stdout = output
 	}
 	return result, nil
 }
 
-func streamWithRecovery(ctx context.Context, client jcodeClient, session jcodeSession, writer io.Writer, policy JcodeLifecyclePolicy) (string, error) {
-	var output string
-	for attempt := 0; ; attempt++ {
-		stream := session.Events(ctx)
-		if stream == nil {
-			return output, fmt.Errorf("creating jcode event stream: nil stream")
-		}
-		chunk, err := streamOutput(ctx, stream, writer)
-		stream.Close()
-		output += chunk
-		if err == nil {
-			return output, nil
-		}
-		if attempt >= policy.ReconnectAttempts {
-			return output, fmt.Errorf("streaming jcode output after %d reconnect attempts: %w", attempt, err)
-		}
-		if reconnectErr := client.Reconnect(ctx); reconnectErr != nil {
-			return output, fmt.Errorf("reconnecting jcode after stream disconnect: %w", reconnectErr)
-		}
+func streamTurn(ctx context.Context, turn jcodeTurn, writer io.Writer, cleanupTimeout time.Duration, stopTurn context.CancelFunc) (string, error) {
+	output, streamErr := streamOutput(ctx, turn, writer)
+	if streamErr != nil {
+		streamErr = errors.Join(streamErr, cancelJcodeTurn(turn, cleanupTimeout))
+		stopTurn()
 	}
+	waitCtx, cancel := context.WithTimeout(context.Background(), boundedCleanupTimeout(cleanupTimeout))
+	defer cancel()
+	terminal, waitErr := turn.Wait(waitCtx)
+	if waitErr != nil {
+		return output, errors.Join(streamErr, fmt.Errorf("waiting for jcode turn: %w", waitErr))
+	}
+	if terminal.Err != nil {
+		return output, errors.Join(streamErr, fmt.Errorf("jcode turn %s: %w", terminal.Kind, terminal.Err))
+	}
+	return output, streamErr
+}
+
+func cancelJcodeTurn(turn jcodeTurn, cleanupTimeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), boundedCleanupTimeout(cleanupTimeout))
+	defer cancel()
+	if err := turn.Cancel(ctx); err != nil {
+		return fmt.Errorf("canceling jcode turn: %w", err)
+	}
+	return nil
+}
+
+func boundedCleanupTimeout(value time.Duration) time.Duration {
+	if value > 0 {
+		return value
+	}
+	return 5 * time.Second
 }
 func executionContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	if timeout > 0 {
@@ -345,7 +368,9 @@ func outputWriter(writer io.Writer) io.Writer {
 	}
 	return io.Discard
 }
-func streamOutput(ctx context.Context, stream jcodeEventStream, writer io.Writer) (string, error) {
+func streamOutput(ctx context.Context, stream interface {
+	Next(context.Context) (jcode.TypedEvent, error)
+}, writer io.Writer) (string, error) {
 	var output []byte
 	for {
 		event, err := stream.Next(ctx)
