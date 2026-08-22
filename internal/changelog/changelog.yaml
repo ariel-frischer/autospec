@@ -15,6 +15,9 @@ versions:
             - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
         fixed:
             - Jcode CLI workflows now pass reasoning effort with the current `--reasoning-effort` flag while Codex retains its native configuration argument
+        security:
+            - Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2
+            - Updated the documentation site's `json` gem from v2.19.2 to v2.19.9
     0.11.6:
         date: 2026-07-22
         added:

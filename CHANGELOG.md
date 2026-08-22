@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Jcode CLI workflows now pass reasoning effort with the current `--reasoning-effort` flag while Codex retains its native configuration argument
 
+### Security
+- Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2
+- Updated the documentation site's `json` gem from v2.19.2 to v2.19.9
+
 ## [0.11.6] - 2026-07-22
 
 ### Added
