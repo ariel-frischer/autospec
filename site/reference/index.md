@@ -24,8 +24,10 @@ This reference section provides detailed documentation for:
 - **[Agent Configuration](agents.html)** - Configure Claude, Codex, OpenCode, and custom agents
 - **[Claude Settings](claude-settings.html)** - Sandboxing, permissions, and Claude Code configuration
 - **[Codex Settings](codex-settings.html)** - Codex CLI auth, sandboxing, and yolo mode
+- **[OpenCode Settings](opencode-settings.html)** - OpenCode configuration and workflow integration
 - **[Shell Completion](shell-completion.html)** - Tab completion setup for bash, zsh, and fish
 - **[Timeout Configuration](timeout.html)** - Command timeout settings and behavior
+- **[Render Command](render-command.html)** - Render an embedded autospec command prompt
 
 ---
 

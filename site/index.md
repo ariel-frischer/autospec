@@ -26,9 +26,9 @@ Stop AI slop. Build features systematically with AI-powered specification workfl
 
 autospec brings structure to AI coding: **spec → plan → tasks → implement** - all in one command.
 
-Built for CLI coding agents including Claude Code, Codex, and OpenCode, and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
+Built for Claude Code, Codex, OpenCode, and the native jcode runtime, and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation.
 
-Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), and [OpenCode](https://opencode.ai).
+Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), [OpenCode](https://opencode.ai), and [jcode](https://github.com/1jehuang/jcode).
 
 ```bash
 # Generate everything: spec → plan → tasks → implement
@@ -75,6 +75,14 @@ Creates `specs/<feature-name>/` with YAML artifacts at each stage:
     <p>Automatic retries with persistent state tracking. Resume from failures without losing progress.</p>
   </div>
   <div class="feature-card">
+    <h3>Profiles and Stage Settings</h3>
+    <p>Save named configuration profiles and select stage-specific models and reasoning settings per workflow.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Native jcode Runtime</h3>
+    <p>Connect to a shared jcode bridge or use an isolated private runtime with bounded reconnect and restart recovery.</p>
+  </div>
+  <div class="feature-card">
     <h3>Performance Optimized</h3>
     <p>Sub-second validation (&lt;10ms per check), &lt;50ms startup. Built for speed.</p>
   </div>
@@ -86,7 +94,7 @@ Creates `specs/<feature-name>/` with YAML artifacts at each stage:
 
 ### Prerequisites
 
-- Claude Code, Codex CLI, or OpenCode installed and configured
+- Claude Code, Codex CLI, OpenCode, or jcode installed/configured
 - Git
 
 ### Installation
@@ -117,7 +125,7 @@ autospec run -s "Add user authentication with OAuth"
 
 ## The Workflow
 
-autospec runs four core stages in sequence:
+autospec runs four core stages in sequence, with optional constitution, clarify, checklist, and analyze stages:
 
 | Stage | Command | Creates | Description |
 |:------|:--------|:--------|:------------|
@@ -125,6 +133,8 @@ autospec runs four core stages in sequence:
 | **plan** | `autospec plan` | `plan.yaml` | Implementation design and architecture |
 | **tasks** | `autospec tasks` | `tasks.yaml` | Actionable task breakdown with dependencies |
 | **implement** | `autospec implement` | — | Executes tasks, updates status |
+
+Optional stages run in the same canonical order with `autospec run`: `constitution`, `clarify`, `checklist`, and `analyze`.
 
 Each artifact is validated before proceeding to the next stage, ensuring quality at every step.
 
@@ -154,6 +164,8 @@ Each artifact is validated before proceeding to the next stage, ensuring quality
 | Status Visibility | No built-in core status command | **Built-in phase/task progress** via `autospec st` |
 | Phase Orchestration | Agent-driven `/speckit.*` commands | **CLI-orchestrated** stages with dependency handling |
 | Workflow Engine | Prompt files + shell/PowerShell helpers | **Typed Go orchestration** in a single binary |
+| Configuration | Per-project settings only | **Named profiles** with stage-specific model and reasoning overrides |
+| Runtime Options | External CLI agents | **Native jcode** connect, private, and auto runtime policies |
 
 ---
 

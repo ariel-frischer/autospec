@@ -14,6 +14,7 @@ Practical guides for getting the most out of autospec. These how-to documents co
 
 | Guide | Description |
 |-------|-------------|
+| [Prerequisites](prerequisites) | Supported agents and required dependencies |
 | [Task Sizing](task-sizing) | When to use autospec vs just code directly |
 | [Troubleshooting](troubleshooting) | Common issues and their solutions |
 | [FAQ](faq) | Frequently asked questions |

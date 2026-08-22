@@ -4,7 +4,7 @@
 
 ## What is autospec?
 
-autospec is a command-line tool that orchestrates the complete software development lifecycle by integrating with CLI coding agents such as Claude Code, Codex, and OpenCode. It transforms natural language feature descriptions into fully-specified, planned, and implemented features through a structured workflow.
+autospec is a command-line tool that orchestrates the complete software development lifecycle by integrating with CLI coding agents such as Claude Code, Codex, OpenCode, and the native jcode runtime. It transforms natural language feature descriptions into fully-specified, planned, and implemented features through a structured workflow.
 
 The tool automates the SpecKit methodology—a systematic approach to feature development that ensures thorough planning, clear task breakdown, and validated implementation before writing code.
 
@@ -15,6 +15,9 @@ The tool automates the SpecKit methodology—a systematic approach to feature de
 - **Multi-Stage Execution**: Run individual stages (specify, plan, tasks, implement) or complete workflows
 - **Smart Spec Detection**: Automatically detects current feature from git branch or directory structure
 - **Flexible Configuration**: Hierarchical configuration system supporting global, local, and environment-based settings
+- **Named Profiles**: Save reusable configuration overlays and select one per command with `--profile`
+- **Agent-Aware Execution**: Choose Claude, Codex, OpenCode, jcode, or a custom agent, with stage-specific model settings
+- **Native jcode Runtime**: Connect to a shared jcode bridge or run an isolated private runtime with bounded recovery
 - **Health Checks**: Built-in dependency verification and system health diagnostics
 - **Cross-Platform**: Runs on Linux and macOS (Windows users: use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install))
 - **Performance-Optimized**: Sub-second validation checks with <10ms validation functions
@@ -90,7 +93,7 @@ Each phase includes:
 Ready to streamline your development workflow?
 
 - **[Quick Start Guide](./quickstart.md)**: Install and run your first workflow in 10 minutes
-- **[Architecture Overview](./architecture.md)**: Understand system design and components
+- **[Architecture Overview](../internal/architecture.md)**: Understand system design and components
 - **[Command Reference](./reference.md)**: Complete command and configuration documentation
 - **[Troubleshooting](./troubleshooting.md)**: Solve common issues and debug problems
 
@@ -103,13 +106,14 @@ autospec is actively developed and maintained. The project recently transitioned
 - Improved retry logic and state management
 - Enhanced progress indicators and user feedback
 
-For contributors, see [CLAUDE.md](../CLAUDE.md) for detailed development guidelines and architectural documentation.
+For contributors, see [AGENTS.md](../../AGENTS.md) for detailed development guidelines and architectural documentation.
 
 ## Links
 
 - **GitHub Repository**: [ariel-frischer/autospec](https://github.com/ariel-frischer/autospec)
 - **Issue Tracker**: [Report bugs or request features](https://github.com/ariel-frischer/autospec/issues)
 - **Agent Configuration**: [Configure Claude, Codex, OpenCode, or custom agents](./agents.md)
+- **Configuration Reference**: [Profiles, models, reasoning, and runtime settings](./reference.md#configuration-options)
 - **SpecKit Methodology**: Documentation coming soon
 
 ## License

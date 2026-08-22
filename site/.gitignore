@@ -7,11 +7,15 @@ _site/
 # These are generated during CI build, not committed
 reference/agents.md
 reference/claude-settings.md
+reference/codex-settings.md
 reference/shell-completion.md
 reference/timeout.md
+reference/opencode-settings.md
+reference/render-command.md
 guides/checklists.md
 guides/self-update.md
 guides/task-sizing.md
+guides/prerequisites.md
 contributing/architecture.md
 contributing/go-best-practices.md
 contributing/internals.md

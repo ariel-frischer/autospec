@@ -4,12 +4,13 @@
 
 ### 1. Supported CLI Coding Agent (Required)
 
-autospec orchestrates feature development workflows using a supported CLI coding agent. Production-supported agents are Claude Code, Codex, and OpenCode.
+autospec orchestrates feature development workflows using a supported coding agent. Production-supported integrations are Claude Code, Codex, OpenCode, and native jcode. jcode can connect to an existing runtime or launch an isolated private runtime through the SDK.
 
 **Installation:**
 - Claude Code: https://claude.ai/download
 - Codex CLI: https://developers.openai.com/codex/cli/reference
 - OpenCode: https://opencode.ai
+- jcode: https://github.com/1jehuang/jcode (only required when using the CLI-compatible jcode runner)
 
 **Verify installation:**
 ```bash
@@ -18,6 +19,8 @@ claude --version
 codex --version
 # or
 opencode --version
+# or, when using the jcode CLI runner
+jcode --version
 ```
 
 ### 2. Git (Required)
@@ -57,6 +60,8 @@ claude --version
 codex --version
 # or
 opencode --version
+# or, when using the jcode CLI runner
+jcode --version
 
 # Verify Git
 git --version
@@ -67,7 +72,7 @@ git --version
 ### CLI Coding Agent
 
 **Installation guide:**
-See the installation links above for Claude Code, Codex CLI, or OpenCode.
+See the installation links above for Claude Code, Codex CLI, OpenCode, or the jcode CLI runner. Native jcode connect mode can use an existing runtime without a separate agent CLI; private and auto modes may need the jcode binary or a configured startup command to launch a runtime.
 
 ### Git
 
