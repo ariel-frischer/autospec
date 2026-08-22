@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `autospec init --help` now lists jcode and every other production agent accepted by `--ai`
+- Workflow help now describes `--reasoning-effort` as an agent-neutral setting supported by the experimental Jcode SDK as well as Codex
 - Jcode CLI workflows now place wrapper flags before `run`, suppress update and self-development behavior, and omit custom-fork-only arguments
 - Experimental Jcode SDK workflows now render as native SDK execution instead of showing a misleading unsupported-command error
 - Experimental Jcode SDK workflows now cancel owned turns when local output streaming fails and preserve cancellation errors
