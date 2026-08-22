@@ -17,6 +17,9 @@ versions:
             - Jcode exec configuration now supports provider, provider profile, socket, trace, tool policy, and MCP exposure settings
         fixed:
             - Jcode CLI workflows now place wrapper flags before `run`, suppress update and self-development behavior, and omit custom-fork-only arguments
+        security:
+            - Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2
+            - Updated the documentation site's `json` gem from v2.19.2 to v2.19.9
     0.11.6:
         date: 2026-07-22
         added:
