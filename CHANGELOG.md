@@ -13,14 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Autospec can use native jcode as the repository workflow agent, including the OpenRouter-backed cheap profile with stage-specific reasoning settings
 - Named configuration profiles can now be selected with `--profile`; explicit `--config` paths remain available as an alternative
 - Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
-- Autospec now consumes the published `github.com/ariel-frischer/jcode-go` v0.1.5 module with race-free owned turns, without requiring a sibling jcode checkout
+- Autospec now consumes the experimental [`github.com/ariel-frischer/jcode-go`](https://github.com/ariel-frischer/jcode-go) v0.1.5 SDK with race-free owned turns, without requiring a sibling jcode checkout
 - Agent-aware preflight no longer requires Claude-specific `.claude/commands/` directories for Codex or jcode projects
 - Claude preflight and initialization now use `.claude/skills/` and the local `claude auth status` command, with clear offline diagnostics when authentication status cannot be read
 - Native jcode workflows now support connect, private, and auto runtime policies with bounded reconnect/restart recovery
 
 ### Changed
 - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
-- Jcode uses the official upstream CLI wrapper by default, while the custom Go SDK remains available only through explicit `jcode.runner: sdk` configuration
+- Jcode uses the official upstream CLI wrapper by default, while Ariel Frischer's experimental [`jcode-go`](https://github.com/ariel-frischer/jcode-go) SDK remains available through explicit `jcode.runner: sdk` configuration, including model and reasoning-effort session settings
 - Jcode exec configuration now supports provider, provider profile, socket, trace, tool policy, and MCP exposure settings
 
 ### Fixed

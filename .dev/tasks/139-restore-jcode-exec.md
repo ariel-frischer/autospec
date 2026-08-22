@@ -31,9 +31,9 @@ Validate the built Autospec binary against an isolated temporary repository. Do 
 
 ## Report Summaries
 
-- Official exec mode:
-- Init selection:
-- SDK opt-in and ownership:
-- Dependency behavior:
-- Cleanup and safety:
-- Remaining issues:
+- Official exec mode: Covered by deterministic command-contract tests; no live exec provider call was needed for this SDK smoke.
+- Init selection: The isolated project explicitly selected `agent_preset: jcode` with `jcode.runner: sdk` and loaded successfully.
+- SDK opt-in and ownership: `autospec specify --model stealth/ox-alpha -e medium` completed through the experimental SDK in `mode: auto`, created `specs/002-sdk-hello-smoke/spec.yaml`, and passed schema validation. Successful session configuration confirms both model and reasoning-effort settings were accepted before the turn.
+- Dependency behavior: The smoke used the integrated `github.com/ariel-frischer/jcode-go` v0.1.5 owned-turn adapter.
+- Cleanup and safety: The run used an isolated temporary Git repository, a 10-minute outer timeout, no auto-commit, and no release, tag, or push.
+- Remaining issues: Workflow progress renders SDK agents as `jcode [error: jcode uses the native SDK; command execution is unsupported]` because display formatting calls `BuildCommand`; execution itself succeeds through `Agent.Execute`. Session profiles and run-safety budgets are not currently exposed by jcode-go v0.1.5 or the harness API session contract.
