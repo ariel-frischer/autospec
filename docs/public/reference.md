@@ -1102,7 +1102,8 @@ See [CLI Agent Configuration](./agents.md) for detailed agent documentation.
 **Default**: `exec`
 
 Selects the jcode implementation. The default and empty value invoke
-`jcode run --quiet` through the installed CLI. Use `custom` with `jcode.binary`
+`jcode --quiet --no-update --no-selfdev run` through the official installed CLI.
+The exec runner ignores `jcode.binary`; use `custom` with `jcode.binary`
 for an alternate executable, or `sdk` explicitly for native SDK lifecycle
 behavior. Native SDK settings do not override an unset runner.
 
@@ -1121,10 +1122,21 @@ When `agent_preset: jcode`, the `jcode` settings control runtime ownership:
 | `jcode.reconnect_attempts` | `2` | Shared bridge reconnect limit, 0-10 |
 | `jcode.restart_attempts` | `1` | Run-owned private restart limit, 0-10 |
 | `jcode.retry_delay` | `250ms` | Delay between recovery attempts, 0-5m |
+| `jcode.provider` | empty | Official CLI provider ID |
+| `jcode.provider_profile` | empty | Named provider profile |
+| `jcode.trace` | `false` | Log tool activity and token usage to stderr |
+| `jcode.tool_profile` | empty | Tool profile such as `full`, `minimal`, `lite`, or `none` |
+| `jcode.tools` | empty | Comma-separated explicit tool allow-list |
+| `jcode.disabled_tools` | empty | Comma-separated tools hidden after profile selection |
+| `jcode.disable_base_tools` | `false` | Hide built-in tools unless explicitly enabled |
+| `jcode.mcp_tools` | empty | `auto`, `eager`, or `deferred` MCP exposure |
+| `jcode.mcp_tools_token_threshold` | `0` | Auto-to-deferred threshold; zero uses the CLI default |
 
 Connect mode never starts or stops a shared daemon. Auto mode prefers a healthy
 shared bridge and falls back to a private SDK-owned runtime. Only a runtime
-created by the current run may be restarted or cleaned up.
+created by the current run may be restarted or cleaned up. Exec options are
+passed as argv before `run`; Autospec does not pass shell fragments, arbitrary
+extra arguments, or SDK-only reasoning configuration to the official CLI.
 
 For a disposable built-binary smoke check, use a temporary repository and
 temporary `JCODE_HOME`/runtime directory, configure `mode: private` with a

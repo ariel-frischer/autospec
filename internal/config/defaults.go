@@ -33,7 +33,7 @@ reasoning_efforts:                     # Optional per-stage Codex reasoning effo
 opencode_agent: ""                    # OpenCode sub-agent: build | plan | explore | etc.
 use_subscription: true                # Force subscription mode (no API charges); set false to use API key
 
-# Native jcode SDK settings
+# Jcode settings. The official CLI exec runner is the default; SDK is opt-in.
 jcode:
   runner: exec                          # Runner: exec | sdk | custom; empty resolves to exec
   mode: connect                         # Runtime ownership: connect | private | auto
@@ -47,6 +47,15 @@ jcode:
   reconnect_attempts: 2                  # Shared bridge reconnect attempts (0-10)
   restart_attempts: 1                    # Owned private runtime restart attempts (0-10)
   retry_delay: 250ms                     # Delay between bounded recovery attempts (0-5m)
+  provider: ""                          # Upstream provider ID
+  provider_profile: ""                  # Named upstream provider profile
+  trace: false                           # Log tool activity and token usage to stderr
+  tool_profile: ""                      # Upstream tool profile: full | minimal | lite | none
+  tools: ""                             # Comma-separated explicit tool allow-list
+  disabled_tools: ""                    # Comma-separated tools hidden after profile selection
+  disable_base_tools: false              # Hide built-in tools unless explicitly enabled
+  mcp_tools: ""                         # MCP exposure: auto | eager | deferred
+  mcp_tools_token_threshold: 0           # Auto-to-deferred token threshold (0 = upstream default)
 
 # Workflow settings
 max_retries: 0                        # Max retry attempts per stage (0-10)
@@ -149,18 +158,27 @@ func GetDefaults() map[string]interface{} {
 		"opencode_agent":   "",   // OpenCode sub-agent (empty = use OpenCode's default)
 		"use_subscription": true, // Protect users from accidental API charges
 		"jcode": map[string]interface{}{
-			"runner":             string(JcodeRunnerExec),
-			"mode":               string(JcodeModeConnect),
-			"socket_path":        "",
-			"binary":             "",
-			"home":               "",
-			"inherit_logins":     false,
-			"startup_timeout":    (30 * time.Second).String(),
-			"cleanup_timeout":    (30 * time.Second).String(),
-			"startup_command":    "",
-			"reconnect_attempts": defaultJcodeReconnectAttempts,
-			"restart_attempts":   defaultJcodeRestartAttempts,
-			"retry_delay":        defaultJcodeRetryDelay.String(),
+			"runner":                    string(JcodeRunnerExec),
+			"mode":                      string(JcodeModeConnect),
+			"socket_path":               "",
+			"binary":                    "",
+			"home":                      "",
+			"inherit_logins":            false,
+			"startup_timeout":           (30 * time.Second).String(),
+			"cleanup_timeout":           (30 * time.Second).String(),
+			"startup_command":           "",
+			"reconnect_attempts":        defaultJcodeReconnectAttempts,
+			"restart_attempts":          defaultJcodeRestartAttempts,
+			"retry_delay":               defaultJcodeRetryDelay.String(),
+			"provider":                  "",
+			"provider_profile":          "",
+			"trace":                     false,
+			"tool_profile":              "",
+			"tools":                     "",
+			"disabled_tools":            "",
+			"disable_base_tools":        false,
+			"mcp_tools":                 "",
+			"mcp_tools_token_threshold": 0,
 		},
 		"max_retries":        0,
 		"specs_dir":          "./specs",

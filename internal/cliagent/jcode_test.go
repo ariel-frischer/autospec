@@ -69,7 +69,7 @@ func (m mockJcodeClient) CreateSession(context.Context, string) (jcodeSession, e
 func (mockJcodeClient) Reconnect(context.Context) error { return nil }
 
 type mockJcodeSession struct {
-	events   jcodeEventStream
+	events   jcodeTurn
 	err      error
 	order    *[]string
 	settings *[]JcodeSessionSettings
@@ -83,19 +83,16 @@ func (m mockJcodeSession) Configure(_ context.Context, settings JcodeSessionSett
 	return nil
 }
 
-func (m mockJcodeSession) Send(context.Context, string) error {
-	*m.order = append(*m.order, "send")
-	return m.err
-}
-
-func (m mockJcodeSession) Events(context.Context) jcodeEventStream {
-	*m.order = append(*m.order, "subscribe")
-	return m.events
+func (m mockJcodeSession) StartTurn(context.Context, string) (jcodeTurn, error) {
+	*m.order = append(*m.order, "start")
+	return m.events, m.err
 }
 
 type mockJcodeEventStream struct {
-	events []jcode.TypedEvent
-	index  int
+	events      []jcode.TypedEvent
+	index       int
+	terminal    jcode.TurnResult
+	cancelCount *int
 }
 
 func (m *mockJcodeEventStream) Next(context.Context) (jcode.TypedEvent, error) {
@@ -108,6 +105,18 @@ func (m *mockJcodeEventStream) Next(context.Context) (jcode.TypedEvent, error) {
 }
 
 func (*mockJcodeEventStream) Close() {}
+func (m *mockJcodeEventStream) Cancel(context.Context) error {
+	if m.cancelCount != nil {
+		*m.cancelCount++
+	}
+	return nil
+}
+func (m *mockJcodeEventStream) Wait(context.Context) (jcode.TurnResult, error) {
+	if m.terminal.Kind != "" || m.terminal.Err != nil {
+		return m.terminal, nil
+	}
+	return jcode.TurnResult{Kind: jcode.TurnResultCompleted}, nil
+}
 
 func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	t.Parallel()
@@ -134,8 +143,8 @@ func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	if got := stdout.String(); got != "answer" {
 		t.Fatalf("stdout = %q, want %q", got, "answer")
 	}
-	if got := strings.Join(order, ","); got != "configure,send,subscribe" {
-		t.Fatalf("operation order = %q, want configure,send,subscribe", got)
+	if got := strings.Join(order, ","); got != "configure,start" {
+		t.Fatalf("operation order = %q, want configure,start", got)
 	}
 }
 
@@ -200,8 +209,8 @@ func TestJcodeAgent_ExecuteConfiguresSessionBeforePrompt(t *testing.T) {
 	if !reflect.DeepEqual(settings, want) {
 		t.Fatalf("settings = %#v, want %#v", settings, want)
 	}
-	if got := strings.Join(order, ","); got != "configure,send,subscribe" {
-		t.Fatalf("operation order = %q, want configure,send,subscribe", got)
+	if got := strings.Join(order, ","); got != "configure,start" {
+		t.Fatalf("operation order = %q, want configure,start", got)
 	}
 }
 
@@ -220,7 +229,7 @@ func TestJcodeAgent_ExecuteWrapsSessionFailures(t *testing.T) {
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Execute() error = %v, want wrapped session error", err)
 	}
-	if !strings.Contains(err.Error(), "sending prompt") {
+	if !strings.Contains(err.Error(), "starting jcode turn") {
 		t.Fatalf("Execute() error = %q, want operation context", err)
 	}
 }
@@ -260,7 +269,12 @@ func TestJcodeExec_BuildCommandContract(t *testing.T) {
 	t.Parallel()
 
 	binary, _ := installJcodeFixture(t)
-	agent := NewJcodeExec(binary)
+	agent := NewJcodeExecWithOptions(binary, JcodeExecOptions{
+		Provider: "openai", ProviderProfile: "team", SocketPath: "/tmp/jcode.sock",
+		Trace: true, ToolProfile: "minimal", Tools: "bash,read",
+		DisabledTools: "write", DisableBaseTools: true,
+		MCPTools: "deferred", MCPToolsTokenThreshold: 4096,
+	})
 	workDir := t.TempDir()
 
 	cmd, err := agent.BuildCommand("fixture prompt", ExecOptions{
@@ -274,15 +288,19 @@ func TestJcodeExec_BuildCommandContract(t *testing.T) {
 	require.Equal(t, workDir, cmd.Dir)
 	require.Equal(t, []string{
 		binary,
-		"run", "--quiet",
+		"--quiet", "--no-update", "--no-selfdev",
+		"--provider", "openai", "--provider-profile", "team",
+		"--socket", "/tmp/jcode.sock", "--trace",
+		"--tool-profile", "minimal", "--tools", "bash,read",
+		"--disabled-tools", "write", "--disable-base-tools",
+		"--mcp-tools", "deferred", "--mcp-tools-token-threshold", "4096",
 		"--model", "openai/gpt-5.6-luna",
-		"--reasoning-effort", "max",
-		"fixture prompt",
+		"run", "fixture prompt",
 	}, cmd.Args)
 	require.Contains(t, cmd.Env, "JCODE_FIXTURE_ENV=isolated")
 }
 
-func TestJcodeExec_BuildCommandReasoningEffort(t *testing.T) {
+func TestJcodeExec_BuildCommandOmitsForkOnlyOptions(t *testing.T) {
 	t.Parallel()
 
 	binary, _ := installJcodeFixture(t)
@@ -290,11 +308,11 @@ func TestJcodeExec_BuildCommandReasoningEffort(t *testing.T) {
 		opts ExecOptions
 		want []string
 	}{
-		"direct option uses current jcode flag": {
+		"reasoning effort is SDK only": {
 			opts: ExecOptions{ReasoningEffort: "medium"},
-			want: []string{binary, "run", "--quiet", "--reasoning-effort", "medium", "prompt"},
+			want: []string{binary, "--quiet", "--no-update", "--no-selfdev", "run", "prompt"},
 		},
-		"workflow codex arguments are translated": {
+		"arbitrary extra arguments are omitted": {
 			opts: ExecOptions{
 				Model:           "openai:gpt-5.6-sol",
 				ReasoningEffort: "medium",
@@ -304,12 +322,7 @@ func TestJcodeExec_BuildCommandReasoningEffort(t *testing.T) {
 					"--trace",
 				},
 			},
-			want: []string{
-				binary, "run", "--quiet",
-				"--model", "openai:gpt-5.6-sol",
-				"--reasoning-effort", "medium",
-				"prompt", "--trace",
-			},
+			want: []string{binary, "--quiet", "--no-update", "--no-selfdev", "--model", "openai:gpt-5.6-sol", "run", "prompt"},
 		},
 	}
 
@@ -334,8 +347,7 @@ func TestJcodeExec_ExecuteTransportsPromptAndOptions(t *testing.T) {
 	opts.Model = "openai/gpt-5.6-luna"
 	opts.ReasoningEffort = "high"
 	opts.Env["JCODE_FIXTURE_ENV"] = "isolated"
-	opts.ExtraArgs = []string{"--trace"}
-	result, err := NewJcodeExec(binary).Execute(context.Background(), "fixture prompt", opts)
+	result, err := NewJcodeExecWithOptions(binary, JcodeExecOptions{Trace: true}).Execute(context.Background(), "fixture prompt", opts)
 	require.NoError(t, err)
 	require.Equal(t, 0, result.ExitCode)
 
@@ -345,8 +357,8 @@ func TestJcodeExec_ExecuteTransportsPromptAndOptions(t *testing.T) {
 	require.Contains(t, got, "cwd: "+workDir)
 	require.Contains(t, got, "env_fixture: isolated")
 	for _, want := range []string{
-		"  - run\n", "  - --quiet\n", "  - --model\n", "  - openai/gpt-5.6-luna\n",
-		"  - --reasoning-effort\n", "  - high\n", "  - fixture prompt\n", "  - --trace\n",
+		"  - --quiet\n", "  - --no-update\n", "  - --no-selfdev\n", "  - --trace\n",
+		"  - --model\n", "  - openai/gpt-5.6-luna\n", "  - run\n", "  - fixture prompt\n",
 	} {
 		require.Contains(t, got, want)
 	}
@@ -425,6 +437,25 @@ func TestJcodeSDK_ExecuteCleansUpAndWrapsLifecycleErrors(t *testing.T) {
 	require.True(t, cleanupCalled)
 }
 
+func TestJcodeSDK_ExecuteSurfacesCleanupFailure(t *testing.T) {
+	t.Parallel()
+
+	wantErr := errors.New("cleanup failed")
+	agent := NewJcodeWithOptions(JcodeOptions{Mode: "connect"})
+	agent.factory = mockJcodeFactory{
+		client: mockJcodeClient{session: mockJcodeSession{
+			events: &mockJcodeEventStream{events: []jcode.TypedEvent{&jcode.TurnDone{}}},
+			order:  new([]string),
+		}},
+		cleanup: func() error { return wantErr },
+	}
+
+	_, err := agent.Execute(context.Background(), "prompt", ExecOptions{})
+
+	require.ErrorIs(t, err, wantErr)
+	require.Contains(t, err.Error(), "cleaning up jcode runtime")
+}
+
 func TestJcodeSDK_ExecuteHonorsConfiguredTimeout(t *testing.T) {
 	t.Parallel()
 
@@ -441,6 +472,36 @@ func TestJcodeSDK_ExecuteHonorsConfiguredTimeout(t *testing.T) {
 	require.Less(t, time.Since(started), time.Second)
 }
 
+func TestJcodeSDK_StreamTurnPreservesTerminalFailure(t *testing.T) {
+	t.Parallel()
+
+	wantErr := jcode.EventError{Code: "provider_error", ProviderCode: "rate_limit"}
+	turn := &mockJcodeEventStream{terminal: jcode.TurnResult{
+		Kind: jcode.TurnResultProviderError, Err: wantErr,
+	}}
+
+	_, err := streamTurn(context.Background(), turn, io.Discard, time.Second, func() {})
+
+	require.Error(t, err)
+	var eventErr jcode.EventError
+	require.ErrorAs(t, err, &eventErr)
+	require.Equal(t, "rate_limit", eventErr.ProviderCode)
+}
+
+func TestJcodeSDK_StreamTurnCancelsOnceOnContextDeadline(t *testing.T) {
+	t.Parallel()
+
+	cancelCount := 0
+	turn := &blockingOwnedJcodeTurn{cancelCount: &cancelCount}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	_, err := streamTurn(ctx, turn, io.Discard, time.Second, func() {})
+
+	require.Error(t, err)
+	require.Equal(t, 1, cancelCount)
+}
+
 type blockingJcodeEventStream struct{}
 
 func (*blockingJcodeEventStream) Next(ctx context.Context) (jcode.TypedEvent, error) {
@@ -448,4 +509,21 @@ func (*blockingJcodeEventStream) Next(ctx context.Context) (jcode.TypedEvent, er
 	return nil, ctx.Err()
 }
 
-func (*blockingJcodeEventStream) Close() {}
+type blockingOwnedJcodeTurn struct{ cancelCount *int }
+
+func (*blockingOwnedJcodeTurn) Next(ctx context.Context) (jcode.TypedEvent, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+func (t *blockingOwnedJcodeTurn) Cancel(context.Context) error {
+	*t.cancelCount++
+	return nil
+}
+func (*blockingOwnedJcodeTurn) Wait(context.Context) (jcode.TurnResult, error) {
+	return jcode.TurnResult{Kind: jcode.TurnResultLifecycleDeadlineExceeded, Err: context.DeadlineExceeded}, nil
+}
+
+func (*blockingJcodeEventStream) Cancel(context.Context) error { return nil }
+func (*blockingJcodeEventStream) Wait(context.Context) (jcode.TurnResult, error) {
+	return jcode.TurnResult{Kind: jcode.TurnResultLifecycleDeadlineExceeded, Err: context.DeadlineExceeded}, nil
+}

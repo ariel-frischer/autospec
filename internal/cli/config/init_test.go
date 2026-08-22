@@ -1403,6 +1403,35 @@ func TestConfigureSpecificAgents_Codex(t *testing.T) {
 	}
 }
 
+func TestConfigureSpecificAgents_Jcode(t *testing.T) {
+	tempDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	defer func() { _ = os.Chdir(origDir) }()
+
+	configDir := filepath.Join(tempDir, ".autospec")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	configPath := filepath.Join(configDir, "config.yml")
+	require.NoError(t, os.WriteFile(configPath, []byte("specs_dir: specs\nagent_preset: \"\"\ndefault_agents: []\n"), 0o644))
+
+	cmd := &cobra.Command{Use: "init"}
+	cmd.Flags().BoolP("project", "p", false, "")
+	cmd.Flags().BoolP("force", "f", false, "")
+	cmd.Flags().StringSlice("ai", nil, "")
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	configured, _, err := configureSpecificAgents(cmd, &buf, true, []string{"jcode"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"jcode"}, configured)
+	content, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(content), `default_agents: ["jcode"]`)
+	assert.Contains(t, string(content), "agent_preset: jcode")
+}
+
 // TestConfigureSpecificAgents_Both tests --ai claude,opencode configures both.
 func TestConfigureSpecificAgents_Both(t *testing.T) {
 	// Cannot run in parallel: changes working directory
@@ -1534,6 +1563,7 @@ func TestGetValidAgentNames(t *testing.T) {
 	if !build.MultiAgentEnabled() {
 		assert.True(t, valid["claude"], "claude should be valid in production")
 		assert.True(t, valid["opencode"], "opencode should be valid in production")
+		assert.True(t, valid["jcode"], "jcode should be valid in production")
 		// Other agents should not be valid in production
 		assert.False(t, valid["gemini"], "gemini should not be valid in production")
 		assert.False(t, valid["cline"], "cline should not be valid in production")

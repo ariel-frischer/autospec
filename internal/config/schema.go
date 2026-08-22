@@ -165,6 +165,43 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Description: "Delay between bounded runtime recovery attempts",
 		Default:     defaultJcodeRetryDelay.String(),
 	},
+	"jcode.provider": {
+		Path: "jcode.provider", Type: TypeString,
+		Description: "Provider ID passed to the official jcode CLI", Default: "",
+	},
+	"jcode.provider_profile": {
+		Path: "jcode.provider_profile", Type: TypeString,
+		Description: "Named provider profile passed to the official jcode CLI", Default: "",
+	},
+	"jcode.trace": {
+		Path: "jcode.trace", Type: TypeBool,
+		Description: "Log jcode tool activity and token usage to stderr", Default: false,
+	},
+	"jcode.tool_profile": {
+		Path: "jcode.tool_profile", Type: TypeString,
+		Description: "Tool profile passed to the official jcode CLI", Default: "",
+	},
+	"jcode.tools": {
+		Path: "jcode.tools", Type: TypeString,
+		Description: "Comma-separated explicit jcode tool allow-list", Default: "",
+	},
+	"jcode.disabled_tools": {
+		Path: "jcode.disabled_tools", Type: TypeString,
+		Description: "Comma-separated jcode tools hidden after profile selection", Default: "",
+	},
+	"jcode.disable_base_tools": {
+		Path: "jcode.disable_base_tools", Type: TypeBool,
+		Description: "Hide built-in jcode tools unless explicitly enabled", Default: false,
+	},
+	"jcode.mcp_tools": {
+		Path: "jcode.mcp_tools", Type: TypeEnum,
+		AllowedValues: []string{"", "auto", "eager", "deferred"},
+		Description:   "MCP tool exposure mode for the official jcode CLI", Default: "",
+	},
+	"jcode.mcp_tools_token_threshold": {
+		Path: "jcode.mcp_tools_token_threshold", Type: TypeInt,
+		Description: "Token threshold where automatic MCP exposure becomes deferred", Default: 0,
+	},
 	"use_subscription": {
 		Path:        "use_subscription",
 		Type:        TypeBool,
