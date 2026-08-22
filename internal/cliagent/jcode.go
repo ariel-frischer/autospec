@@ -324,26 +324,30 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 }
 
 func streamTurn(ctx context.Context, turn jcodeTurn, writer io.Writer, cleanupTimeout time.Duration, stopTurn context.CancelFunc) (string, error) {
-	output, err := streamOutput(ctx, turn, writer)
-	if err != nil && ctx.Err() != nil {
-		cancelCtx, cancel := context.WithTimeout(context.Background(), boundedCleanupTimeout(cleanupTimeout))
-		_ = turn.Cancel(cancelCtx)
-		cancel()
+	output, streamErr := streamOutput(ctx, turn, writer)
+	if streamErr != nil {
+		streamErr = errors.Join(streamErr, cancelJcodeTurn(turn, cleanupTimeout))
 		stopTurn()
 	}
 	waitCtx, cancel := context.WithTimeout(context.Background(), boundedCleanupTimeout(cleanupTimeout))
 	defer cancel()
 	terminal, waitErr := turn.Wait(waitCtx)
 	if waitErr != nil {
-		return output, fmt.Errorf("waiting for jcode turn: %w", waitErr)
+		return output, errors.Join(streamErr, fmt.Errorf("waiting for jcode turn: %w", waitErr))
 	}
 	if terminal.Err != nil {
-		return output, fmt.Errorf("jcode turn %s: %w", terminal.Kind, terminal.Err)
+		return output, errors.Join(streamErr, fmt.Errorf("jcode turn %s: %w", terminal.Kind, terminal.Err))
 	}
-	if err != nil {
-		return output, err
+	return output, streamErr
+}
+
+func cancelJcodeTurn(turn jcodeTurn, cleanupTimeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), boundedCleanupTimeout(cleanupTimeout))
+	defer cancel()
+	if err := turn.Cancel(ctx); err != nil {
+		return fmt.Errorf("canceling jcode turn: %w", err)
 	}
-	return output, nil
+	return nil
 }
 
 func boundedCleanupTimeout(value time.Duration) time.Duration {

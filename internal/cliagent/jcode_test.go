@@ -93,6 +93,7 @@ type mockJcodeEventStream struct {
 	index       int
 	terminal    jcode.TurnResult
 	cancelCount *int
+	cancelErr   error
 }
 
 func (m *mockJcodeEventStream) Next(context.Context) (jcode.TypedEvent, error) {
@@ -109,7 +110,7 @@ func (m *mockJcodeEventStream) Cancel(context.Context) error {
 	if m.cancelCount != nil {
 		*m.cancelCount++
 	}
-	return nil
+	return m.cancelErr
 }
 func (m *mockJcodeEventStream) Wait(context.Context) (jcode.TurnResult, error) {
 	if m.terminal.Kind != "" || m.terminal.Err != nil {
@@ -501,6 +502,41 @@ func TestJcodeSDK_StreamTurnCancelsOnceOnContextDeadline(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, 1, cancelCount)
 }
+
+func TestJcodeSDK_StreamTurnCancelsOnLocalOutputFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		streamErr error
+		cancelErr error
+	}{
+		"preserves stream and cancellation failures": {
+			streamErr: errors.New("write failed"),
+			cancelErr: errors.New("cancel failed"),
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			cancelCount := 0
+			turn := &mockJcodeEventStream{
+				events:      []jcode.TypedEvent{&jcode.TextDelta{Text: "answer"}},
+				cancelCount: &cancelCount,
+				cancelErr:   tt.cancelErr,
+			}
+
+			_, err := streamTurn(context.Background(), turn, errorJcodeWriter{err: tt.streamErr}, time.Second, func() {})
+
+			require.ErrorIs(t, err, tt.streamErr)
+			require.ErrorIs(t, err, tt.cancelErr)
+			require.Equal(t, 1, cancelCount)
+		})
+	}
+}
+
+type errorJcodeWriter struct{ err error }
+
+func (w errorJcodeWriter) Write([]byte) (int, error) { return 0, w.err }
 
 type blockingJcodeEventStream struct{}
 

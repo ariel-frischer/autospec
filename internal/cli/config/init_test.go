@@ -1559,7 +1559,7 @@ func TestGetValidAgentNames(t *testing.T) {
 
 	valid := getValidAgentNames()
 
-	// In production builds (MultiAgentEnabled() == false), only claude and opencode are valid
+	// In production builds, claude, jcode, and opencode are valid.
 	if !build.MultiAgentEnabled() {
 		assert.True(t, valid["claude"], "claude should be valid in production")
 		assert.True(t, valid["opencode"], "opencode should be valid in production")

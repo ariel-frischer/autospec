@@ -18,6 +18,7 @@ versions:
         fixed:
             - Jcode CLI workflows now place wrapper flags before `run`, suppress update and self-development behavior, and omit custom-fork-only arguments
             - Experimental Jcode SDK workflows now render as native SDK execution instead of showing a misleading unsupported-command error
+            - Experimental Jcode SDK workflows now cancel owned turns when local output streaming fails and preserve cancellation errors
         security:
             - Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2
             - Updated the documentation site's `json` gem from v2.19.2 to v2.19.9
