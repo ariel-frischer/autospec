@@ -266,7 +266,7 @@ func NewJcodeWithOptions(options JcodeOptions) *Jcode {
 	return &Jcode{options: options, factory: sdkJcodeFactory{}}
 }
 func (j *Jcode) Name() string             { return "jcode" }
-func (j *Jcode) Capabilities() Caps       { return Caps{Automatable: true} }
+func (j *Jcode) Capabilities() Caps       { return Caps{Automatable: true, Commandless: true} }
 func (j *Jcode) Version() (string, error) { return "native-sdk", nil }
 func (j *Jcode) Validate() error {
 	mode := j.options.Lifecycle.ResolvedMode()

@@ -57,6 +57,24 @@ func TestClaudeExecutor_FormatCommand_NoAgent(t *testing.T) {
 	assert.Equal(t, "[no agent configured]", result)
 }
 
+func TestClaudeExecutor_FormatCommand_NativeAgent(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agent cliagent.Agent
+		want  string
+	}{
+		"jcode sdk": {agent: cliagent.NewJcode(), want: "jcode [native SDK]"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			executor := &ClaudeExecutor{Agent: tt.agent}
+			assert.Equal(t, tt.want, executor.FormatCommand("test prompt"))
+		})
+	}
+}
+
 // TestClaudeExecutor_Execute_WithAgent tests successful execution with an agent
 func TestClaudeExecutor_Execute_WithAgent(t *testing.T) {
 	t.Parallel()

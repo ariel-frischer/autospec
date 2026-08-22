@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Jcode CLI workflows now place wrapper flags before `run`, suppress update and self-development behavior, and omit custom-fork-only arguments
+- Experimental Jcode SDK workflows now render as native SDK execution instead of showing a misleading unsupported-command error
 
 ### Security
 - Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2

@@ -151,6 +151,9 @@ func (c *ClaudeExecutor) FormatCommandWithExtraArgs(prompt string, extraArgs []s
 	if c.Agent == nil {
 		return "[no agent configured]"
 	}
+	if c.Agent.Capabilities().Commandless {
+		return fmt.Sprintf("%s [native SDK]", c.Agent.Name())
+	}
 	cmd, err := c.Agent.BuildCommand(prompt, cliagent.ExecOptions{ExtraArgs: extraArgs})
 	if err != nil {
 		return fmt.Sprintf("%s [error: %v]", c.Agent.Name(), err)
