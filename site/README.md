@@ -31,6 +31,14 @@ site/
 └── contributing/     # Generated from docs/internal/
 ```
 
+The generated public pages include agent, Claude, Codex, OpenCode, shell
+completion, timeout, render-command, and prerequisite documentation. Keep
+`docs/public/` as the source of truth for those pages and run the sync script
+after changing them. The landing page, quickstart, CLI reference, and
+configuration reference remain web-specific pages, so changes to their
+duplicated setup or command examples should be checked against the matching
+public source docs in the same change.
+
 ## Deployment
 
 Deployment is fully automated via GitHub Actions (`.github/workflows/docs.yml`):
@@ -61,7 +69,8 @@ Open http://localhost:4000/autospec/
 ### User-facing docs (public)
 1. Add to `docs/public/`
 2. Update `scripts/sync-docs-to-site.sh` with the new file mapping
-3. Update `site/{reference,guides}/index.md` with a link
+3. Add the generated destination to `site/.gitignore` when the page is created during CI
+4. Update `site/{reference,guides}/index.md` with a link
 
 ### Contributor docs (internal)
 1. Add to `docs/internal/`

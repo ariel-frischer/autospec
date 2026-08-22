@@ -1081,7 +1081,7 @@ effective configuration.
 ### agent_preset
 
 **Type**: string
-**Default**: `"claude"` (the repository project config selects `jcode`)
+**Default**: `""` (uses the default agent; the repository project config selects `jcode`)
 **Description**: Name of the built-in agent to use for workflow execution
 
 **Available presets**: `claude`, `cline`, `gemini`, `codex`, `jcode`, `opencode`, `goose`

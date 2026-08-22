@@ -1,7 +1,7 @@
 ---
 title: FAQ
 parent: Guides
-nav_order: 2
+nav_order: 3
 ---
 
 # Frequently Asked Questions

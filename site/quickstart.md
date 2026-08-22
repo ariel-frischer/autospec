@@ -18,7 +18,7 @@ Get up and running with autospec in 5 minutes.
 
 Before you begin, ensure you have:
 
-- **Supported CLI agent**: Claude Code, Codex CLI, or OpenCode installed and authenticated
+- **Supported agent**: Claude Code, Codex CLI, OpenCode, or the native jcode integration configured for your project
 - **Git**: For version control and branch-based spec detection
 
 Verify your agent is installed:
@@ -29,6 +29,8 @@ claude --version
 codex --version
 # or
 opencode --version
+# or, when using the jcode CLI runner
+jcode --version
 ```
 
 If you see `command not found`, visit the [troubleshooting guide](/autospec/guides/troubleshooting).
@@ -86,10 +88,7 @@ sudo make install
 autospec version
 ```
 
-Expected output:
-```
-autospec version 1.0.0
-```
+Expected output: the installed autospec version. Do not rely on a fixed version string because releases update independently.
 
 ---
 
@@ -133,13 +132,27 @@ This command:
 Default config:
 
 ```yaml
-agent_preset: ""        # Empty falls back to claude; built-in: claude | codex | opencode
+agent_preset: ""        # Empty uses the default; built-ins include claude | codex | jcode | opencode
 max_retries: 0
 specs_dir: ./specs
 state_dir: ~/.autospec/state
 timeout: 2400           # 40 min default, 0 = no timeout
 skip_permissions: true  # Autonomous mode for supported agents
+model: ""              # Optional top-level model fallback
+reasoning_effort: ""    # Optional Codex/jcode reasoning default
 ```
+
+Named profiles can layer reusable settings without replacing the project config:
+
+```bash
+autospec config create cheap
+autospec run --profile cheap -a "Add a feature"
+autospec config show --profile cheap
+```
+
+Stage-specific `models.<stage>` and `reasoning_efforts.<stage>` values override
+their top-level fallbacks. See the [Configuration Reference](/autospec/reference/configuration)
+for the full precedence rules and native jcode runtime settings.
 
 See [Configuration Reference](/autospec/reference/configuration) for customization options.
 
@@ -168,7 +181,7 @@ On your first workflow run with autonomous mode enabled, you'll see a one-time s
 {: .note }
 > Suppress this notice: `autospec config set skip_permissions_notice_shown true` or `AUTOSPEC_SKIP_PERMISSIONS_NOTICE=1`
 
-`autospec init` installs agent-native prompts for interactive sessions. Claude Code receives project skills under `.claude/skills/autospec.*/`, preserving `/autospec.specify`-style invocation. Codex and OpenCode share skills under `.agents/skills/autospec-*/`. Codex and OpenCode workflow runs receive rendered prompt text directly through `codex exec` and `opencode run`; OpenCode init no longer creates `.opencode/command` files.
+`autospec init` installs agent-native prompts for interactive sessions. Claude Code receives project skills under `.claude/skills/autospec.*/`, preserving `/autospec.specify`-style invocation. Codex and OpenCode share skills under `.agents/skills/autospec-*/`. Codex and OpenCode workflow runs receive rendered prompt text directly through `codex exec` and `opencode run`; OpenCode init no longer creates `.opencode/command` files. Native jcode workflows can use the CLI-compatible runner or the SDK lifecycle with `connect`, `private`, and `auto` runtime policies.
 
 | Invocation | Purpose |
 |:--------|:--------|
@@ -401,7 +414,7 @@ autospec run -a "Create GitHub Actions CI pipeline with test and lint stages"
 
 The selected agent CLI is not installed or not in PATH.
 
-**Solution**: Install Claude Code, Codex CLI, or OpenCode, then verify with `claude --version`, `codex --version`, or `opencode --version`.
+**Solution**: Install Claude Code, Codex CLI, or OpenCode, or configure the native jcode integration. Verify the selected CLI with `claude --version`, `codex --version`, `opencode --version`, or `jcode --version`.
 
 ### "autospec: command not found"
 

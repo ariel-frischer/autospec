@@ -106,6 +106,13 @@ main() {
         5
 
     generate_doc \
+        "$DOCS_DIR/public/codex-settings.md" \
+        "$SITE_DIR/reference/codex-settings.md" \
+        "Codex Settings" \
+        "Reference" \
+        6
+
+    generate_doc \
         "$DOCS_DIR/public/SHELL-COMPLETION.md" \
         "$SITE_DIR/reference/shell-completion.md" \
         "Shell Completion" \
@@ -118,6 +125,20 @@ main() {
         "Timeout Configuration" \
         "Reference" \
         7
+
+    generate_doc \
+        "$DOCS_DIR/public/opencode-settings.md" \
+        "$SITE_DIR/reference/opencode-settings.md" \
+        "OpenCode Settings" \
+        "Reference" \
+        8
+
+    generate_doc \
+        "$DOCS_DIR/public/render-command.md" \
+        "$SITE_DIR/reference/render-command.md" \
+        "Render Command" \
+        "Reference" \
+        9
 
     # Guide docs (parent: Guides)
     echo ""
@@ -143,6 +164,13 @@ main() {
         "Self-Update" \
         "Guides" \
         7
+
+    generate_doc \
+        "$DOCS_DIR/public/PREREQUISITES.md" \
+        "$SITE_DIR/guides/prerequisites.md" \
+        "Prerequisites" \
+        "Guides" \
+        1
 
     # Contributing docs (parent: Contributing)
     echo ""

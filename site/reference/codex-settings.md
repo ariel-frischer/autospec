@@ -1,5 +1,4 @@
 ---
-layout: default
 title: Codex Settings
 parent: Reference
 nav_order: 6
@@ -20,7 +19,7 @@ autospec does not require `OPENAI_API_KEY` for Codex. Authentication is owned by
 Optional environment variables:
 
 | Variable | Purpose |
-|:---------|:--------|
+|----------|---------|
 | `OPENAI_API_KEY` | API authentication when using API billing |
 | `OPENAI_BASE_URL` | API-compatible base URL override |
 | `CODEX_HOME` | Alternate Codex config and auth directory |
@@ -43,6 +42,8 @@ The project file is intentionally minimal. autospec records project metadata onl
 
 ## Models And Reasoning Effort
 
+Set a persistent Codex model and reasoning effort in autospec config:
+
 ```yaml
 agent_preset: codex
 model: gpt-5.6-terra
@@ -55,21 +56,21 @@ reasoning_efforts:
   implement: xhigh
 ```
 
-Each stage uses its configured model and effort together. All eight workflow
-stages are supported: `constitution`, `specify`, `clarify`, `plan`, `tasks`,
-`checklist`, `analyze`, and `implement`.
+Here `specify` uses its stage model and effort together, as does `implement`.
+Every workflow stage is supported: `constitution`, `specify`, `clarify`,
+`plan`, `tasks`, `checklist`, `analyze`, and `implement`.
 
-The two settings resolve independently, so configuring only one leaves the
-other on its own fallback chain:
+The settings are independent. Configuring only one leaves the other on its own
+fallback chain:
 
 ```yaml
 models:
-  plan: gpt-5.6-sol
+  plan: gpt-5.6-sol        # Plan model only; effort falls back.
 reasoning_efforts:
-  tasks: high
+  tasks: high              # Tasks effort only; model falls back.
 ```
 
-For one run:
+Or override both for one workflow run:
 
 ```bash
 autospec run -a "Add billing exports" --agent codex --model gpt-5.6-sol --reasoning-effort xhigh
@@ -77,13 +78,25 @@ autospec run -a "Add billing exports" --agent codex --model gpt-5.6-sol --reason
 
 Use the equivalent `-e xhigh` shorthand for faster typing.
 
-Autospec translates the effort to `-c model_reasoning_effort=<effort>`. It passes model IDs and effort values through to the installed Codex CLI. Sol and Terra currently support `low` through `ultra`; Luna supports `low` through `max`. Run `codex debug models` for the exact catalog installed locally.
+Autospec invokes Codex with `--model <model>` and `-c model_reasoning_effort=<effort>`. Model IDs and effort values are passed through so the installed Codex CLI remains the source of truth.
 
-Model precedence is CLI `--model`, stage-specific `models.<stage>`, top-level
-`model`, then the Codex CLI default. Reasoning precedence is CLI
-`-e`/`--reasoning-effort`, stage-specific `reasoning_efforts.<stage>`, top-level
-`reasoning_effort`, then the Codex model default. CLI overrides are
-invocation-scoped and do not rewrite persistent configuration.
+Model precedence is CLI `--model`, the current stage's `models.<stage>`,
+top-level `model`, then the Codex CLI default. Reasoning precedence is CLI
+`-e`/`--reasoning-effort`, the current stage's
+`reasoning_efforts.<stage>`, top-level `reasoning_effort`, then the Codex model
+default. CLI overrides apply only to that invocation and do not rewrite either
+persistent setting.
+
+The Codex 0.145.0-alpha.23 catalog reports these visible models and efforts:
+
+| Model | Default | Supported efforts |
+|-------|---------|-------------------|
+| `gpt-5.6-sol` | `low` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `gpt-5.6-terra` | `medium` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `gpt-5.6-luna` | `medium` | `low`, `medium`, `high`, `xhigh`, `max` |
+| `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex-spark`, `codex-auto-review` | varies | `low`, `medium`, `high`, `xhigh` |
+
+Run `codex debug models` to inspect the catalog available to your installed version.
 
 ## Sandboxing And Approvals
 
@@ -116,7 +129,7 @@ autospec init --ai codex
 autospec init --project --ai codex
 ```
 
-Codex does not use Claude/OpenCode slash-command files, so autospec does not install command templates for Codex. Workflow stages started through the autospec CLI send rendered prompt text directly to `codex exec`.
+Codex does not use slash-command files, so autospec does not install command templates for Codex. Workflow stages started through the autospec CLI send rendered prompt text directly to `codex exec`.
 
 For interactive Codex sessions, project-level init installs one shared Agent Skill per autospec command template:
 
@@ -145,7 +158,7 @@ codex_output:
   color: true
 ```
 
-In compact mode autospec runs `codex exec --json`, parses the JSONL event stream, and displays concise colorized agent messages, command summaries, file-change summaries, and useful reasoning/tool labels. Each displayed block is capped by `max_lines_per_message`; truncated blocks include a hint to switch to full mode. Set `codex_output.color: false` to disable ANSI color.
+In compact mode autospec runs `codex exec --json`, parses the JSONL event stream, and displays color-coded concise agent messages, command summaries, file-change summaries, and useful reasoning/tool labels. Each displayed block is capped by `max_lines_per_message`; truncated blocks include a hint to switch to full mode. Set `codex_output.color: false` to disable ANSI color.
 
 To restore Codex's native terminal transcript:
 
@@ -174,7 +187,7 @@ autospec still relies on Codex process exit status plus generated workflow artif
 
 ## References
 
-- Codex CLI reference: <https://developers.openai.com/codex/cli/reference>
-- Codex non-interactive mode: <https://developers.openai.com/codex/noninteractive>
-- Codex approvals and sandboxing: <https://developers.openai.com/codex/agent-approvals-security>
-- Codex config reference: <https://developers.openai.com/codex/config-reference>
+- Codex CLI reference: https://developers.openai.com/codex/cli/reference
+- Codex non-interactive mode: https://developers.openai.com/codex/noninteractive
+- Codex approvals and sandboxing: https://developers.openai.com/codex/agent-approvals-security
+- Codex config reference: https://developers.openai.com/codex/config-reference

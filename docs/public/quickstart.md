@@ -6,7 +6,7 @@ Get started with autospec and complete your first workflow in 10 minutes.
 
 Before you begin, ensure you have:
 
-- **Supported CLI agent**: Claude Code, Codex CLI, or OpenCode installed and authenticated
+- **Supported agent**: Claude Code, Codex CLI, OpenCode, or the native jcode integration configured for your project
 - **Git** (recommended): For branch-based spec detection
 - **Go 1.25+** (if building from source): For compilation
 - **Command Line Familiarity**: Basic terminal/shell knowledge
@@ -18,6 +18,8 @@ claude --version
 codex --version
 # or
 opencode --version
+# or, when using the jcode CLI runner
+jcode --version
 ```
 
 Expected output: agent CLI version number.
@@ -62,7 +64,7 @@ Verify installation:
 autospec version
 ```
 
-Expected output: Version number (e.g., `autospec version 1.0.0`)
+Expected output: the installed autospec version. Do not rely on a fixed version string because releases update independently.
 
 ## Your First Workflow
 
@@ -80,11 +82,12 @@ autospec init
 
 This creates `~/.config/autospec/config.yml` with default settings:
 ```yaml
-agent_preset: claude              # Built-in agent: claude | codex | opencode
+agent_preset: ""                 # Empty uses the default; built-ins include claude | codex | jcode | opencode
 max_retries: 0                    # Max retry attempts per stage (0-10)
 specs_dir: ./specs                # Directory for feature specs
 state_dir: ~/.autospec/state      # Directory for state files
 timeout: 2400                     # Timeout in seconds (40 min default, 0 = no timeout)
+skip_permissions: true             # Autonomous mode for supported agents
 ```
 
 You can customize these settings later. See [Configuration Basics](#configuration-basics) for details.
@@ -262,8 +265,19 @@ Essential configuration options (stored in `~/.config/autospec/config.yml` or `.
 
 ```yaml
 # Agent settings (recommended)
-agent_preset: claude              # Built-in agent: claude | codex | opencode
+agent_preset: ""                 # Empty uses the default; built-ins include claude | codex | jcode | opencode
 custom_agent_cmd: ""              # Custom agent template with {{PROMPT}} placeholder
+
+# Optional model and reasoning defaults
+model: ""                         # Top-level model fallback
+models:
+  plan: ""                        # Stage-specific model override
+reasoning_effort: ""              # Codex/jcode reasoning default
+reasoning_efforts:
+  implement: ""                   # Stage-specific reasoning override
+
+# Optional reusable configuration overlay
+# Select with: autospec run --profile cheap -a "Add a feature"
 
 # Maximum retry attempts (default: 0, range: 0-10)
 # Controls how many times to retry on validation failure
@@ -303,7 +317,7 @@ Quick solutions for common first-time issues:
 ### "agent: command not found"
 **Problem**: The selected agent CLI is not installed or not in PATH
 
-**Solution**: Install Claude Code, Codex CLI, or OpenCode, then verify with `claude --version`, `codex --version`, or `opencode --version`.
+**Solution**: Install Claude Code, Codex CLI, or OpenCode, or configure the native jcode integration. Verify the selected CLI with `claude --version`, `codex --version`, `opencode --version`, or `jcode --version`.
 
 ### "autospec: command not found"
 **Problem**: autospec binary is not in PATH

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Web documentation now covers native jcode runtimes, named profiles, stage-specific model and reasoning settings, and current agent setup
 - Workflow stages can now persist independent models for constitution, specify, clarify, plan, tasks, checklist, analyze, and implement
 - Autospec now supports jcode through the native Go SDK, with connect and isolated private runtime modes
 - Autospec can use native jcode as the repository workflow agent, including the OpenRouter-backed cheap profile with stage-specific reasoning settings
