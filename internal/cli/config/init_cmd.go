@@ -98,7 +98,8 @@ func init() {
 	initCmd.GroupID = shared.GroupGettingStarted
 	initCmd.Flags().BoolP("project", "p", false, "Create project-level config (.autospec/config.yml)")
 	initCmd.Flags().BoolP("force", "f", false, "Overwrite existing config with defaults")
-	initCmd.Flags().StringSlice("ai", nil, "Configure specific agents (comma-separated: claude,opencode)")
+	agents := strings.Join(build.ProductionAgents(), ",")
+	initCmd.Flags().StringSlice("ai", nil, "Configure specific agents (comma-separated: "+agents+")")
 	initCmd.Flags().Bool("no-agents", false, "Skip agent configuration prompt")
 	initCmd.Flags().Bool("here", false, "Initialize in current directory (same as 'init .')")
 	// Keep --global as hidden alias for backward compatibility

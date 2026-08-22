@@ -1575,6 +1575,28 @@ func TestGetValidAgentNames(t *testing.T) {
 	}
 }
 
+func TestInitAIFlagListsProductionAgents(t *testing.T) {
+	t.Parallel()
+
+	flag := initCmd.Flags().Lookup("ai")
+	require.NotNil(t, flag)
+
+	tests := map[string]struct {
+		agent string
+	}{
+		"claude":   {agent: "claude"},
+		"codex":    {agent: "codex"},
+		"jcode":    {agent: "jcode"},
+		"opencode": {agent: "opencode"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Contains(t, flag.Usage, tt.agent)
+		})
+	}
+}
+
 // TestProductionAgents tests build.ProductionAgents returns expected agents.
 func TestProductionAgents(t *testing.T) {
 	t.Parallel()

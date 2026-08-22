@@ -73,6 +73,15 @@ func commandWithModelFlags() *cobra.Command {
 	return cmd
 }
 
+func TestReasoningEffortFlagHelpIsAgentNeutral(t *testing.T) {
+	t.Parallel()
+
+	flag := commandWithModelFlags().Flags().Lookup(ReasoningEffortFlagName)
+	require.NotNil(t, flag)
+	assert.Contains(t, flag.Usage, "reasoning effort")
+	assert.NotContains(t, flag.Usage, "Codex")
+}
+
 func TestResolveOpenCodeAgent(t *testing.T) {
 	t.Parallel()
 
