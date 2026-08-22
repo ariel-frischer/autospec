@@ -117,28 +117,28 @@ main() {
         "$SITE_DIR/reference/shell-completion.md" \
         "Shell Completion" \
         "Reference" \
-        6
+        7
 
     generate_doc \
         "$DOCS_DIR/public/TIMEOUT.md" \
         "$SITE_DIR/reference/timeout.md" \
         "Timeout Configuration" \
         "Reference" \
-        7
+        8
 
     generate_doc \
         "$DOCS_DIR/public/opencode-settings.md" \
         "$SITE_DIR/reference/opencode-settings.md" \
         "OpenCode Settings" \
         "Reference" \
-        8
+        9
 
     generate_doc \
         "$DOCS_DIR/public/render-command.md" \
         "$SITE_DIR/reference/render-command.md" \
         "Render Command" \
         "Reference" \
-        9
+        10
 
     # Guide docs (parent: Guides)
     echo ""
