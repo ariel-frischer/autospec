@@ -58,21 +58,26 @@ func (m mockJcodeFactory) Open(context.Context, JcodeOptions, ExecOptions) (jcod
 }
 
 type mockJcodeClient struct {
-	session jcodeSession
-	err     error
+	session       jcodeSession
+	err           error
+	createOptions *[]jcode.CreateSessionOptions
 }
 
-func (m mockJcodeClient) CreateSession(context.Context, string) (jcodeSession, error) {
+func (m mockJcodeClient) CreateSession(_ context.Context, options jcode.CreateSessionOptions) (jcodeSession, error) {
+	if m.createOptions != nil {
+		*m.createOptions = append(*m.createOptions, options)
+	}
 	return m.session, m.err
 }
 
 func (mockJcodeClient) Reconnect(context.Context) error { return nil }
 
 type mockJcodeSession struct {
-	events   jcodeTurn
-	err      error
-	order    *[]string
-	settings *[]JcodeSessionSettings
+	events      jcodeTurn
+	err         error
+	order       *[]string
+	settings    *[]JcodeSessionSettings
+	sendOptions *[]jcode.SendOptions
 }
 
 func (m mockJcodeSession) Configure(_ context.Context, settings JcodeSessionSettings) error {
@@ -83,14 +88,18 @@ func (m mockJcodeSession) Configure(_ context.Context, settings JcodeSessionSett
 	return nil
 }
 
-func (m mockJcodeSession) StartTurn(context.Context, string) (jcodeTurn, error) {
+func (m mockJcodeSession) StartTurn(_ context.Context, _ string, options jcode.SendOptions) (jcodeTurn, error) {
 	*m.order = append(*m.order, "start")
+	if m.sendOptions != nil {
+		*m.sendOptions = append(*m.sendOptions, options)
+	}
 	return m.events, m.err
 }
 
 type mockJcodeEventStream struct {
 	events      []jcode.TypedEvent
 	index       int
+	nextErr     error
 	terminal    jcode.TurnResult
 	cancelCount *int
 	cancelErr   error
@@ -98,6 +107,9 @@ type mockJcodeEventStream struct {
 
 func (m *mockJcodeEventStream) Next(context.Context) (jcode.TypedEvent, error) {
 	if m.index >= len(m.events) {
+		if m.nextErr != nil {
+			return nil, m.nextErr
+		}
 		return nil, io.EOF
 	}
 	event := m.events[m.index]
@@ -147,6 +159,53 @@ func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	if got := strings.Join(order, ","); got != "configure,start" {
 		t.Fatalf("operation order = %q, want configure,start", got)
 	}
+}
+
+func TestJcodeAgent_MapsTypedSessionControls(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		options    JcodeOptions
+		wantCreate jcode.CreateSessionOptions
+		wantSend   jcode.SendOptions
+	}{
+		"omitted": {wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}},
+		"session profile": {
+			options:    JcodeOptions{SessionProfile: "bounded"},
+			wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo", Profile: "bounded"},
+		},
+		"maximum turns": {options: JcodeOptions{MaxTurns: 7}, wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}, wantSend: jcode.SendOptions{MaxTurns: 7}},
+		"token budget":  {options: JcodeOptions{TokenBudget: 4096}, wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}, wantSend: jcode.SendOptions{TokenBudget: 4096}},
+		"deadline":      {options: JcodeOptions{Deadline: "2026-08-23T08:00:00Z"}, wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}, wantSend: jcode.SendOptions{Deadline: "2026-08-23T08:00:00Z"}},
+		"all controls": {
+			options:    JcodeOptions{SessionProfile: "bounded", MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z"},
+			wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo", Profile: "bounded"},
+			wantSend:   jcode.SendOptions{MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z"},
+		},
+	}
+
+	for name, tt := range tests {
+		name, tt := name, tt
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assertJcodeTypedSessionControls(t, tt.options, tt.wantCreate, tt.wantSend)
+		})
+	}
+}
+
+func assertJcodeTypedSessionControls(t *testing.T, options JcodeOptions, wantCreate jcode.CreateSessionOptions, wantSend jcode.SendOptions) {
+	t.Helper()
+	createOptions := []jcode.CreateSessionOptions{}
+	sendOptions := []jcode.SendOptions{}
+	order := []string{}
+	stream := &mockJcodeEventStream{events: []jcode.TypedEvent{&jcode.TurnDone{}}}
+	session := mockJcodeSession{events: stream, order: &order, sendOptions: &sendOptions}
+	agent := &Jcode{options: options, factory: mockJcodeFactory{client: mockJcodeClient{session: session, createOptions: &createOptions}}}
+
+	_, err := agent.Execute(context.Background(), "prompt", ExecOptions{WorkDir: "/repo"})
+	require.NoError(t, err)
+	require.Equal(t, []jcode.CreateSessionOptions{wantCreate}, createOptions)
+	require.Equal(t, []jcode.SendOptions{wantSend}, sendOptions)
 }
 
 func TestNewJcodeWithOptionsPreservesLifecyclePolicy(t *testing.T) {
@@ -233,6 +292,70 @@ func TestJcodeAgent_ExecuteWrapsSessionFailures(t *testing.T) {
 	if !strings.Contains(err.Error(), "starting jcode turn") {
 		t.Fatalf("Execute() error = %q, want operation context", err)
 	}
+}
+
+func TestJcodeAgent_ExecutePreservesSDKFailureCauses(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		agent       *Jcode
+		wantErr     error
+		wantContext string
+	}{
+		"create session option failure": {
+			agent:       &Jcode{factory: mockJcodeFactory{client: mockJcodeClient{err: &jcode.OptionError{Field: "profile"}}}},
+			wantErr:     &jcode.OptionError{Field: "profile"},
+			wantContext: "creating jcode session",
+		},
+		"start turn option failure": {
+			agent: &Jcode{factory: mockJcodeFactory{client: mockJcodeClient{session: mockJcodeSession{
+				err: &jcode.OptionError{Field: "deadline"}, order: new([]string), events: &mockJcodeEventStream{},
+			}}}},
+			wantErr:     &jcode.OptionError{Field: "deadline"},
+			wantContext: "starting jcode turn",
+		},
+		"multiline execution diagnostic": {
+			agent: &Jcode{factory: mockJcodeFactory{client: mockJcodeClient{session: mockJcodeSession{
+				events: &mockJcodeEventStream{nextErr: errors.New("provider rejected request\nretry after 30s")}, order: new([]string),
+			}}}},
+			wantErr:     errors.New("provider rejected request\nretry after 30s"),
+			wantContext: "streaming jcode output",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := tt.agent.Execute(context.Background(), "prompt", ExecOptions{})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.wantContext)
+			require.Contains(t, err.Error(), tt.wantErr.Error())
+			var optionErr *jcode.OptionError
+			if errors.As(tt.wantErr, &optionErr) {
+				require.ErrorAs(t, err, &optionErr)
+			}
+		})
+	}
+}
+
+func TestJcodeAgent_PastDeadlineReachesSDKFailure(t *testing.T) {
+	t.Parallel()
+
+	wantErr := errors.New("deadline exceeded\nchoose a future RFC3339 value")
+	sendOptions := []jcode.SendOptions{}
+	session := mockJcodeSession{
+		err: wantErr, order: new([]string), events: &mockJcodeEventStream{}, sendOptions: &sendOptions,
+	}
+	agent := &Jcode{
+		options: JcodeOptions{Deadline: "2020-01-02T03:04:05Z"},
+		factory: mockJcodeFactory{client: mockJcodeClient{session: session}},
+	}
+
+	_, err := agent.Execute(context.Background(), "prompt", ExecOptions{})
+
+	require.ErrorIs(t, err, wantErr)
+	require.Contains(t, err.Error(), "starting jcode turn")
+	require.Equal(t, []jcode.SendOptions{{Deadline: "2020-01-02T03:04:05Z"}}, sendOptions)
 }
 
 func TestJcodeAgent_BuildCommandIsUnsupported(t *testing.T) {

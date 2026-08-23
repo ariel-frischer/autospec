@@ -8,12 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 var stageModelEffortCases = map[string]struct {
@@ -90,6 +92,259 @@ func TestLoad_JcodeRunnerDefaultsToExec(t *testing.T) {
 			assert.Equal(t, JcodeRunnerExec, cfg.Jcode.EffectiveRunner())
 		})
 	}
+}
+
+func TestLoad_JcodeSDKSessionControls(t *testing.T) {
+	t.Setenv("AUTOSPEC_JCODE_RUNNER", "sdk")
+
+	tests := map[string]struct {
+		yaml string
+		want JcodeConfig
+	}{
+		"omitted":         {yaml: "jcode:\n  runner: sdk\n", want: JcodeConfig{Runner: JcodeRunnerSDK}},
+		"session profile": {yaml: "jcode:\n  runner: sdk\n  session_profile: bounded\n", want: JcodeConfig{Runner: JcodeRunnerSDK, SessionProfile: "bounded"}},
+		"maximum turns":   {yaml: "jcode:\n  runner: sdk\n  max_turns: 7\n", want: JcodeConfig{Runner: JcodeRunnerSDK, MaxTurns: 7}},
+		"token budget":    {yaml: "jcode:\n  runner: sdk\n  token_budget: 4096\n", want: JcodeConfig{Runner: JcodeRunnerSDK, TokenBudget: 4096}},
+		"deadline":        {yaml: "jcode:\n  runner: sdk\n  deadline: \"2026-08-23T10:00:00+02:00\"\n", want: JcodeConfig{Runner: JcodeRunnerSDK, Deadline: "2026-08-23T10:00:00+02:00"}},
+		"all controls": {
+			yaml: "jcode:\n  runner: sdk\n  session_profile: bounded\n  max_turns: 7\n  token_budget: 4096\n  deadline: \"2026-08-23T08:00:00Z\"\n",
+			want: JcodeConfig{Runner: JcodeRunnerSDK, SessionProfile: "bounded", MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join(t.TempDir(), "config.yml")
+			require.NoError(t, os.WriteFile(path, []byte(tt.yaml), 0o644))
+			cfg, err := Load(path)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want.Runner, cfg.Jcode.Runner)
+			assert.Equal(t, tt.want.SessionProfile, cfg.Jcode.SessionProfile)
+			assert.Equal(t, tt.want.MaxTurns, cfg.Jcode.MaxTurns)
+			assert.Equal(t, tt.want.TokenBudget, cfg.Jcode.TokenBudget)
+			assert.Equal(t, tt.want.Deadline, cfg.Jcode.Deadline)
+		})
+	}
+}
+
+func TestLoadWithOptions_JcodeSDKSessionControlOverlays(t *testing.T) {
+	tmpDir := t.TempDir()
+	configDir := filepath.Join(tmpDir, ".config")
+	userDir := filepath.Join(configDir, "autospec")
+	projectDir := filepath.Join(tmpDir, "project")
+	projectConfig := filepath.Join(projectDir, ".autospec", "config.yml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(projectConfig), 0o755))
+	require.NoError(t, os.MkdirAll(userDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(userDir, "config.yml"), []byte("jcode:\n  session_profile: user\n"), 0o644))
+	require.NoError(t, SaveProfileTo(userDir, "bounded", map[string]interface{}{"jcode": map[string]interface{}{"max_turns": 4}}, false))
+	require.NoError(t, os.WriteFile(projectConfig, []byte("jcode:\n  runner: sdk\n  token_budget: 2048\n"), 0o644))
+
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer os.Chdir(originalDir)
+	require.NoError(t, os.Chdir(projectDir))
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("AUTOSPEC_JCODE_RUNNER", "sdk")
+	t.Setenv("AUTOSPEC_JCODE_DEADLINE", "2026-08-23T08:00:00Z")
+
+	cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: projectConfig, Profile: "bounded", SkipWarnings: true})
+	require.NoError(t, err)
+	assert.Equal(t, JcodeRunnerSDK, cfg.Jcode.Runner)
+	assert.Equal(t, "user", cfg.Jcode.SessionProfile)
+	assert.Equal(t, 4, cfg.Jcode.MaxTurns)
+	assert.Equal(t, 2048, cfg.Jcode.TokenBudget)
+	assert.Equal(t, "2026-08-23T08:00:00Z", cfg.Jcode.Deadline)
+}
+
+func TestConfiguration_GetAgent_TransfersJcodeSDKSessionControls(t *testing.T) {
+	t.Parallel()
+
+	cfg := Configuration{AgentPreset: "jcode", Jcode: JcodeConfig{
+		Runner: JcodeRunnerSDK, SessionProfile: "bounded", MaxTurns: 7,
+		TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z",
+	}}
+	agent, err := cfg.GetAgent()
+	require.NoError(t, err)
+	sdkAgent, ok := agent.(*cliagent.Jcode)
+	require.True(t, ok)
+	options := reflect.ValueOf(sdkAgent).Elem().FieldByName("options")
+	assert.Equal(t, "bounded", options.FieldByName("SessionProfile").String())
+	assert.Equal(t, int64(7), options.FieldByName("MaxTurns").Int())
+	assert.Equal(t, int64(4096), options.FieldByName("TokenBudget").Int())
+	assert.Equal(t, "2026-08-23T08:00:00Z", options.FieldByName("Deadline").String())
+}
+
+func TestJcodeSDKSessionControlContractStaysSynchronized(t *testing.T) {
+	t.Parallel()
+
+	var templateDefaults map[string]interface{}
+	require.NoError(t, yaml.Unmarshal([]byte(GetDefaultConfigTemplate()), &templateDefaults))
+	runtimeDefaults := GetDefaults()
+	tests := jcodeSDKContractCases()
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assertJcodeConfigField(t, tt)
+			assertJcodeSchemaAndDefaults(t, tt, templateDefaults, runtimeDefaults)
+			require.NoError(t, validateJcodeConfig(tt.config, "config"))
+			assert.Equal(t, tt.value, jcodeSDKOptionValue(t, tt.config, tt.field))
+		})
+	}
+	assertUnsupportedJcodeControlsAbsent(t)
+}
+
+type jcodeSDKContractCase struct {
+	key        string
+	field      string
+	schemaType ConfigValueType
+	zero       interface{}
+	value      interface{}
+	config     JcodeConfig
+}
+
+func jcodeSDKContractCases() map[string]jcodeSDKContractCase {
+	return map[string]jcodeSDKContractCase{
+		"session profile": {key: "session_profile", field: "SessionProfile", schemaType: TypeString, zero: "", value: "bounded", config: JcodeConfig{SessionProfile: "bounded"}},
+		"maximum turns":   {key: "max_turns", field: "MaxTurns", schemaType: TypeInt, zero: 0, value: 7, config: JcodeConfig{MaxTurns: 7}},
+		"token budget":    {key: "token_budget", field: "TokenBudget", schemaType: TypeInt, zero: 0, value: 4096, config: JcodeConfig{TokenBudget: 4096}},
+		"deadline":        {key: "deadline", field: "Deadline", schemaType: TypeString, zero: "", value: "2026-08-23T08:00:00Z", config: JcodeConfig{Deadline: "2026-08-23T08:00:00Z"}},
+	}
+}
+
+func assertJcodeConfigField(t *testing.T, tt jcodeSDKContractCase) {
+	t.Helper()
+	field, ok := reflect.TypeOf(JcodeConfig{}).FieldByName(tt.field)
+	require.True(t, ok)
+	assert.Equal(t, tt.key+",omitempty", field.Tag.Get("yaml"))
+	assert.Equal(t, tt.key, field.Tag.Get("koanf"))
+}
+
+func assertJcodeSchemaAndDefaults(t *testing.T, tt jcodeSDKContractCase, template, runtime map[string]interface{}) {
+	t.Helper()
+	path := "jcode." + tt.key
+	known, ok := KnownKeys[path]
+	require.True(t, ok, "KnownKeys missing %s", path)
+	assert.Equal(t, tt.schemaType, known.Type)
+	assert.Equal(t, tt.zero, known.Default)
+	assert.Equal(t, tt.zero, nestedConfigDefault(t, template, tt.key))
+	assert.Equal(t, tt.zero, nestedConfigDefault(t, runtime, tt.key))
+}
+
+func nestedConfigDefault(t *testing.T, defaults map[string]interface{}, key string) interface{} {
+	t.Helper()
+	jcodeDefaults, ok := defaults["jcode"].(map[string]interface{})
+	require.True(t, ok)
+	value, ok := jcodeDefaults[key]
+	require.True(t, ok, "jcode defaults missing %s", key)
+	return value
+}
+
+func jcodeSDKOptionValue(t *testing.T, config JcodeConfig, field string) interface{} {
+	t.Helper()
+	config.Runner = JcodeRunnerSDK
+	agent, err := (&Configuration{AgentPreset: "jcode", Jcode: config}).GetAgent()
+	require.NoError(t, err)
+	sdkAgent, ok := agent.(*cliagent.Jcode)
+	require.True(t, ok)
+	value := reflect.ValueOf(sdkAgent).Elem().FieldByName("options").FieldByName(field)
+	if value.Kind() == reflect.Int {
+		return int(value.Int())
+	}
+	return value.String()
+}
+
+func assertUnsupportedJcodeControlsAbsent(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{"jcode.max_tool_steps", "jcode.extra_args", "jcode.credentials"} {
+		assert.NotContains(t, KnownKeys, key)
+	}
+	configType := reflect.TypeOf(JcodeConfig{})
+	for _, field := range []string{"MaxToolSteps", "ExtraArgs", "Credentials"} {
+		_, ok := configType.FieldByName(field)
+		assert.False(t, ok)
+	}
+	agent, err := (&Configuration{AgentPreset: "jcode", Jcode: JcodeConfig{SessionProfile: "bounded"}}).GetAgent()
+	require.NoError(t, err)
+	_, isExec := agent.(*cliagent.JcodeExec)
+	assert.True(t, isExec, "SDK controls must not change the default runner")
+}
+
+func TestConfiguration_GetAgent_IsolatesJcodeSDKSessionControls(t *testing.T) {
+	binDir, customBinary := installJcodeCommandFixture(t)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	workDir := t.TempDir()
+
+	tests := map[string]struct {
+		runner JcodeRunner
+		binary string
+	}{
+		"omitted runner defaults to exec": {},
+		"explicit exec":                   {runner: JcodeRunnerExec},
+		"custom runner":                   {runner: JcodeRunnerCustom, binary: customBinary},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			baseline := jcodeExecCommandSnapshot(t, JcodeConfig{Runner: tt.runner, Binary: tt.binary}, workDir)
+			withControls := JcodeConfig{
+				Runner: tt.runner, Binary: tt.binary, SessionProfile: "bounded",
+				MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z",
+			}
+			wantRunner := JcodeRunnerExec
+			if tt.runner == JcodeRunnerCustom {
+				wantRunner = JcodeRunnerCustom
+			}
+			require.Equal(t, wantRunner, withControls.EffectiveRunner())
+			require.Equal(t, baseline, jcodeExecCommandSnapshot(t, withControls, workDir))
+		})
+	}
+}
+
+type execCommandSnapshot struct {
+	path string
+	args []string
+	dir  string
+	env  string
+}
+
+func jcodeExecCommandSnapshot(t *testing.T, jcodeConfig JcodeConfig, workDir string) execCommandSnapshot {
+	t.Helper()
+	agent, err := (&Configuration{AgentPreset: "jcode", Jcode: jcodeConfig}).GetAgent()
+	require.NoError(t, err)
+	execAgent, ok := agent.(*cliagent.JcodeExec)
+	require.True(t, ok, "non-SDK runner must construct the exec adapter")
+	cmd, err := execAgent.BuildCommand("prompt", cliagent.ExecOptions{
+		WorkDir: workDir, Env: map[string]string{"JCODE_TEST": "isolated"},
+	})
+	require.NoError(t, err)
+	return execCommandSnapshot{
+		path: cmd.Path, args: cmd.Args, dir: cmd.Dir,
+		env: commandEnvValue(cmd.Env, "JCODE_TEST"),
+	}
+}
+
+func commandEnvValue(env []string, key string) string {
+	prefix := key + "="
+	for _, entry := range env {
+		if strings.HasPrefix(entry, prefix) {
+			return strings.TrimPrefix(entry, prefix)
+		}
+	}
+	return ""
+}
+
+func installJcodeCommandFixture(t *testing.T) (string, string) {
+	t.Helper()
+	binDir := t.TempDir()
+	name := "jcode"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	binary := filepath.Join(binDir, name)
+	require.NoError(t, os.WriteFile(binary, []byte("fixture"), 0o755))
+	return binDir, binary
 }
 
 func TestLoad_LocalOverride(t *testing.T) {

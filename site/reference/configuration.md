@@ -89,6 +89,16 @@ When `agent_preset: jcode`, the `jcode` settings control runtime ownership:
 | `jcode.reconnect_attempts` | `2` | Shared bridge reconnect limit, 0-10 |
 | `jcode.restart_attempts` | `1` | Run-owned private restart limit, 0-10 |
 | `jcode.retry_delay` | `250ms` | Delay between recovery attempts, 0-5m |
+| `jcode.session_profile` | empty | Experimental SDK-only named session profile; maps to `CreateSessionOptions.Profile` |
+| `jcode.max_turns` | `0` (unset) | Experimental SDK-only positive turn limit; maps to `SendOptions.MaxTurns` |
+| `jcode.token_budget` | `0` (unset) | Experimental SDK-only positive token limit; maps to `SendOptions.TokenBudget` |
+| `jcode.deadline` | empty | Experimental SDK-only RFC3339 deadline with explicit `Z` or numeric UTC offset; maps to `SendOptions.Deadline` |
+
+The four experimental session controls apply only when `jcode.runner: sdk` is
+selected explicitly. They never alter the official `exec` invocation or the
+default runner. Omitted controls preserve the SDK defaults. A syntactically
+valid past deadline reaches the SDK unchanged so its actionable runtime error is
+preserved.
 
 Connect mode never starts or stops a shared daemon. Auto mode prefers a healthy
 shared bridge and falls back to a private SDK-owned runtime. Only a runtime

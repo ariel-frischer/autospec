@@ -57,6 +57,10 @@ type JcodeConfig struct {
 	RetryDelay        time.Duration `yaml:"retry_delay,omitempty" koanf:"retry_delay"`
 	Provider          string        `yaml:"provider,omitempty" koanf:"provider"`
 	ProviderProfile   string        `yaml:"provider_profile,omitempty" koanf:"provider_profile"`
+	SessionProfile    string        `yaml:"session_profile,omitempty" koanf:"session_profile"`
+	MaxTurns          int           `yaml:"max_turns,omitempty" koanf:"max_turns"`
+	TokenBudget       int           `yaml:"token_budget,omitempty" koanf:"token_budget"`
+	Deadline          string        `yaml:"deadline,omitempty" koanf:"deadline"`
 	Trace             bool          `yaml:"trace" koanf:"trace"`
 	ToolProfile       string        `yaml:"tool_profile,omitempty" koanf:"tool_profile"`
 	Tools             string        `yaml:"tools,omitempty" koanf:"tools"`
@@ -95,6 +99,7 @@ func validateJcodeConfig(c JcodeConfig, filePath string) error {
 	for _, validate := range []func(JcodeConfig, string) error{
 		validateJcodeEnums,
 		validateJcodeLifecycle,
+		validateJcodeSDKSessionControls,
 		validateJcodeExecOptions,
 		validateJcodePaths,
 	} {
@@ -103,6 +108,52 @@ func validateJcodeConfig(c JcodeConfig, filePath string) error {
 		}
 	}
 	return nil
+}
+
+func validateJcodeSDKSessionControls(c JcodeConfig, filePath string) error {
+	if c.EffectiveRunner() != JcodeRunnerSDK {
+		return nil
+	}
+	if c.SessionProfile != "" && strings.TrimSpace(c.SessionProfile) == "" {
+		return &ValidationError{FilePath: filePath, Field: "jcode.session_profile", Message: "must be non-blank when set"}
+	}
+	for _, limit := range []struct {
+		field string
+		value int
+	}{
+		{field: "jcode.max_turns", value: c.MaxTurns},
+		{field: "jcode.token_budget", value: c.TokenBudget},
+	} {
+		if limit.value < 0 {
+			return &ValidationError{FilePath: filePath, Field: limit.field, Message: "must be positive when set"}
+		}
+	}
+	return validateJcodeDeadline(c.Deadline, filePath)
+}
+
+func validateJcodeDeadline(value, filePath string) error {
+	if value == "" {
+		return nil
+	}
+	if _, err := time.Parse(time.RFC3339, value); err == nil && hasExplicitRFC3339Offset(value) {
+		return nil
+	}
+	return &ValidationError{
+		FilePath: filePath,
+		Field:    "jcode.deadline",
+		Message:  "must be an RFC3339 timestamp with an explicit UTC offset (Z or +HH:MM/-HH:MM)",
+	}
+}
+
+func hasExplicitRFC3339Offset(value string) bool {
+	if strings.HasSuffix(value, "Z") {
+		return true
+	}
+	if len(value) < 6 || value[len(value)-3] != ':' {
+		return false
+	}
+	sign := value[len(value)-6]
+	return sign == '+' || sign == '-'
 }
 
 func validateJcodeEnums(c JcodeConfig, filePath string) error {

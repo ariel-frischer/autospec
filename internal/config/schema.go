@@ -173,6 +173,22 @@ var KnownKeys = map[string]ConfigKeySchema{
 		Path: "jcode.provider_profile", Type: TypeString,
 		Description: "Named provider profile passed to the official jcode CLI", Default: "",
 	},
+	"jcode.session_profile": {
+		Path: "jcode.session_profile", Type: TypeString,
+		Description: "Experimental named session profile for the SDK runner", Default: "",
+	},
+	"jcode.max_turns": {
+		Path: "jcode.max_turns", Type: TypeInt,
+		Description: "Experimental maximum turn count for the SDK runner", Default: 0,
+	},
+	"jcode.token_budget": {
+		Path: "jcode.token_budget", Type: TypeInt,
+		Description: "Experimental token budget for the SDK runner", Default: 0,
+	},
+	"jcode.deadline": {
+		Path: "jcode.deadline", Type: TypeString,
+		Description: "Experimental explicit-offset RFC3339 deadline for the SDK runner", Default: "",
+	},
 	"jcode.trace": {
 		Path: "jcode.trace", Type: TypeBool,
 		Description: "Log jcode tool activity and token usage to stderr", Default: false,
