@@ -708,10 +708,7 @@ func handleClaudeAuthDetection(cmd *cobra.Command, out io.Writer, configPath str
 
 	// Section header for authentication
 	printSectionHeader(out, "Authentication")
-	if status.AuthStatusError != "" {
-		fmt.Fprintf(out, "  %s Claude auth status unavailable: %s\n", cYellow("⚠"), status.AuthStatusError)
-		fmt.Fprintf(out, "     %s Provider quota cannot be checked locally; no live API request was made.\n", cDim("ℹ"))
-	}
+	printClaudeAuthStatusError(out, status)
 
 	// Show OAuth status
 	if status.AuthType == cliagent.AuthTypeOAuth {
@@ -785,6 +782,15 @@ func handleClaudeAuthDetection(cmd *cobra.Command, out io.Writer, configPath str
 
 	fmt.Fprintf(out, "\n  %s use_subscription: %v %s\n",
 		cGreen("→"), useSubscription, cDim("("+reason+")"))
+}
+
+func printClaudeAuthStatusError(out io.Writer, status cliagent.ClaudeAuthStatus) {
+	if status.AuthStatusError == "" {
+		return
+	}
+	fmt.Fprintf(out, "  %s Claude auth status unavailable: %s\n", cYellow("⚠"), status.AuthStatusError)
+	fmt.Fprintf(out, "     %s Retry locally with: claude auth status --json\n", cDim("→"))
+	fmt.Fprintf(out, "     %s Provider quota cannot be checked locally; no live API request was made.\n", cDim("ℹ"))
 }
 
 // updateUseSubscriptionInConfig updates the use_subscription value in the config file.
