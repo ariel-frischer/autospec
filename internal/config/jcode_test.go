@@ -295,12 +295,19 @@ func TestValidateJcodeSDKSessionControls(t *testing.T) {
 		"past deadline remains valid": {config: JcodeConfig{Deadline: "2020-01-02T03:04:05-07:00"}},
 		"malformed deadline":          {config: JcodeConfig{Deadline: "tomorrow"}, wantErrField: "jcode.deadline", wantMessage: "explicit UTC offset"},
 		"offset-free deadline":        {config: JcodeConfig{Deadline: "2026-08-23T08:00:00"}, wantErrField: "jcode.deadline", wantMessage: "explicit UTC offset"},
+		"exec ignores invalid controls": {
+			config: JcodeConfig{Runner: JcodeRunnerExec, SessionProfile: " \t", MaxTurns: -1, TokenBudget: -1, Deadline: "tomorrow"},
+		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			err := validateJcodeConfig(tt.config, "config")
+			config := tt.config
+			if config.Runner == "" {
+				config.Runner = JcodeRunnerSDK
+			}
+			err := validateJcodeConfig(config, "config")
 			if tt.wantErrField == "" {
 				require.NoError(t, err)
 				return
@@ -316,6 +323,7 @@ func TestValidateJcodeSDKSessionControlsPerformance(t *testing.T) {
 	t.Parallel()
 
 	config := JcodeConfig{
+		Runner:         JcodeRunnerSDK,
 		SessionProfile: "bounded",
 		MaxTurns:       7,
 		TokenBudget:    4096,

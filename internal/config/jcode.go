@@ -111,6 +111,9 @@ func validateJcodeConfig(c JcodeConfig, filePath string) error {
 }
 
 func validateJcodeSDKSessionControls(c JcodeConfig, filePath string) error {
+	if c.EffectiveRunner() != JcodeRunnerSDK {
+		return nil
+	}
 	if c.SessionProfile != "" && strings.TrimSpace(c.SessionProfile) == "" {
 		return &ValidationError{FilePath: filePath, Field: "jcode.session_profile", Message: "must be non-blank when set"}
 	}
