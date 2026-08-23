@@ -275,6 +275,60 @@ func TestValidateJcodeConfig(t *testing.T) {
 	}
 }
 
+func TestValidateJcodeSDKSessionControls(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		config       JcodeConfig
+		wantErrField string
+		wantMessage  string
+	}{
+		"omitted controls":            {},
+		"nonblank profile":            {config: JcodeConfig{SessionProfile: "bounded"}},
+		"blank profile":               {config: JcodeConfig{SessionProfile: " \t"}, wantErrField: "jcode.session_profile", wantMessage: "non-blank"},
+		"positive maximum turns":      {config: JcodeConfig{MaxTurns: 7}},
+		"negative maximum turns":      {config: JcodeConfig{MaxTurns: -1}, wantErrField: "jcode.max_turns", wantMessage: "positive when set"},
+		"positive token budget":       {config: JcodeConfig{TokenBudget: 4096}},
+		"negative token budget":       {config: JcodeConfig{TokenBudget: -1}, wantErrField: "jcode.token_budget", wantMessage: "positive when set"},
+		"UTC deadline":                {config: JcodeConfig{Deadline: "2026-08-23T08:00:00Z"}},
+		"signed offset deadline":      {config: JcodeConfig{Deadline: "2026-08-23T10:00:00+02:00"}},
+		"past deadline remains valid": {config: JcodeConfig{Deadline: "2020-01-02T03:04:05-07:00"}},
+		"malformed deadline":          {config: JcodeConfig{Deadline: "tomorrow"}, wantErrField: "jcode.deadline", wantMessage: "explicit UTC offset"},
+		"offset-free deadline":        {config: JcodeConfig{Deadline: "2026-08-23T08:00:00"}, wantErrField: "jcode.deadline", wantMessage: "explicit UTC offset"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			err := validateJcodeConfig(tt.config, "config")
+			if tt.wantErrField == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErrField)
+			assert.Contains(t, err.Error(), tt.wantMessage)
+		})
+	}
+}
+
+func TestValidateJcodeSDKSessionControlsPerformance(t *testing.T) {
+	t.Parallel()
+
+	config := JcodeConfig{
+		SessionProfile: "bounded",
+		MaxTurns:       7,
+		TokenBudget:    4096,
+		Deadline:       "2026-08-23T10:00:00+02:00",
+	}
+	started := time.Now()
+	const iterations = 1000
+	for range iterations {
+		require.NoError(t, validateJcodeConfig(config, "config"))
+	}
+	assert.Less(t, time.Since(started)/iterations, 10*time.Millisecond)
+}
+
 func TestLoadJcodeConfigFromYAMLAndEnvironment(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", filepath.Join(tmpDir, "home"))
