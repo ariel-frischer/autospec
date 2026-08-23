@@ -92,6 +92,88 @@ func TestLoad_JcodeRunnerDefaultsToExec(t *testing.T) {
 	}
 }
 
+func TestLoad_JcodeSDKSessionControls(t *testing.T) {
+	t.Setenv("AUTOSPEC_JCODE_RUNNER", "sdk")
+
+	tests := map[string]struct {
+		yaml string
+		want JcodeConfig
+	}{
+		"omitted":         {yaml: "jcode:\n  runner: sdk\n", want: JcodeConfig{Runner: JcodeRunnerSDK}},
+		"session profile": {yaml: "jcode:\n  runner: sdk\n  session_profile: bounded\n", want: JcodeConfig{Runner: JcodeRunnerSDK, SessionProfile: "bounded"}},
+		"maximum turns":   {yaml: "jcode:\n  runner: sdk\n  max_turns: 7\n", want: JcodeConfig{Runner: JcodeRunnerSDK, MaxTurns: 7}},
+		"token budget":    {yaml: "jcode:\n  runner: sdk\n  token_budget: 4096\n", want: JcodeConfig{Runner: JcodeRunnerSDK, TokenBudget: 4096}},
+		"deadline":        {yaml: "jcode:\n  runner: sdk\n  deadline: \"2026-08-23T10:00:00+02:00\"\n", want: JcodeConfig{Runner: JcodeRunnerSDK, Deadline: "2026-08-23T10:00:00+02:00"}},
+		"all controls": {
+			yaml: "jcode:\n  runner: sdk\n  session_profile: bounded\n  max_turns: 7\n  token_budget: 4096\n  deadline: \"2026-08-23T08:00:00Z\"\n",
+			want: JcodeConfig{Runner: JcodeRunnerSDK, SessionProfile: "bounded", MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join(t.TempDir(), "config.yml")
+			require.NoError(t, os.WriteFile(path, []byte(tt.yaml), 0o644))
+			cfg, err := Load(path)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want.Runner, cfg.Jcode.Runner)
+			assert.Equal(t, tt.want.SessionProfile, cfg.Jcode.SessionProfile)
+			assert.Equal(t, tt.want.MaxTurns, cfg.Jcode.MaxTurns)
+			assert.Equal(t, tt.want.TokenBudget, cfg.Jcode.TokenBudget)
+			assert.Equal(t, tt.want.Deadline, cfg.Jcode.Deadline)
+		})
+	}
+}
+
+func TestLoadWithOptions_JcodeSDKSessionControlOverlays(t *testing.T) {
+	tmpDir := t.TempDir()
+	configDir := filepath.Join(tmpDir, ".config")
+	userDir := filepath.Join(configDir, "autospec")
+	projectDir := filepath.Join(tmpDir, "project")
+	projectConfig := filepath.Join(projectDir, ".autospec", "config.yml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(projectConfig), 0o755))
+	require.NoError(t, os.MkdirAll(userDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(userDir, "config.yml"), []byte("jcode:\n  session_profile: user\n"), 0o644))
+	require.NoError(t, SaveProfileTo(userDir, "bounded", map[string]interface{}{"jcode": map[string]interface{}{"max_turns": 4}}, false))
+	require.NoError(t, os.WriteFile(projectConfig, []byte("jcode:\n  runner: sdk\n  token_budget: 2048\n"), 0o644))
+
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer os.Chdir(originalDir)
+	require.NoError(t, os.Chdir(projectDir))
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("AUTOSPEC_JCODE_RUNNER", "sdk")
+	t.Setenv("AUTOSPEC_JCODE_DEADLINE", "2026-08-23T08:00:00Z")
+
+	cfg, err := LoadWithOptions(LoadOptions{ProjectConfigPath: projectConfig, Profile: "bounded", SkipWarnings: true})
+	require.NoError(t, err)
+	assert.Equal(t, JcodeRunnerSDK, cfg.Jcode.Runner)
+	assert.Equal(t, "user", cfg.Jcode.SessionProfile)
+	assert.Equal(t, 4, cfg.Jcode.MaxTurns)
+	assert.Equal(t, 2048, cfg.Jcode.TokenBudget)
+	assert.Equal(t, "2026-08-23T08:00:00Z", cfg.Jcode.Deadline)
+}
+
+func TestConfiguration_GetAgent_TransfersJcodeSDKSessionControls(t *testing.T) {
+	t.Parallel()
+
+	cfg := Configuration{AgentPreset: "jcode", Jcode: JcodeConfig{
+		Runner: JcodeRunnerSDK, SessionProfile: "bounded", MaxTurns: 7,
+		TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z",
+	}}
+	agent, err := cfg.GetAgent()
+	require.NoError(t, err)
+	sdkAgent, ok := agent.(*cliagent.Jcode)
+	require.True(t, ok)
+	options := reflect.ValueOf(sdkAgent).Elem().FieldByName("options")
+	assert.Equal(t, "bounded", options.FieldByName("SessionProfile").String())
+	assert.Equal(t, int64(7), options.FieldByName("MaxTurns").Int())
+	assert.Equal(t, int64(4096), options.FieldByName("TokenBudget").Int())
+	assert.Equal(t, "2026-08-23T08:00:00Z", options.FieldByName("Deadline").String())
+}
+
 func TestLoad_LocalOverride(t *testing.T) {
 	t.Parallel()
 

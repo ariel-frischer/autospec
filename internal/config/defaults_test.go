@@ -150,6 +150,32 @@ func TestGetDefaults(t *testing.T) {
 	}
 }
 
+func TestJcodeSDKSessionControlDefaults(t *testing.T) {
+	t.Parallel()
+
+	var template map[string]interface{}
+	require.NoError(t, yaml.Unmarshal([]byte(GetDefaultConfigTemplate()), &template))
+	tests := map[string]struct {
+		want interface{}
+	}{
+		"session_profile": {want: ""},
+		"max_turns":       {want: 0},
+		"token_budget":    {want: 0},
+		"deadline":        {want: ""},
+	}
+
+	for key, tt := range tests {
+		key, tt := key, tt
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, nestedDefault(t, template, "jcode", key))
+			assert.Equal(t, tt.want, nestedDefault(t, GetDefaults(), "jcode", key))
+		})
+	}
+	assert.Equal(t, "exec", nestedDefault(t, template, "jcode", "runner"))
+	assert.Equal(t, "exec", nestedDefault(t, GetDefaults(), "jcode", "runner"))
+}
+
 func TestStageModelDefaults(t *testing.T) {
 	t.Parallel()
 

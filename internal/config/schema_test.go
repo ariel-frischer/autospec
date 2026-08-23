@@ -4,6 +4,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetKeySchema(t *testing.T) {
@@ -149,6 +152,52 @@ func TestKnownKeysComplete(t *testing.T) {
 		if _, ok := KnownKeys[key]; !ok {
 			t.Errorf("missing expected key in KnownKeys: %q", key)
 		}
+	}
+}
+
+func TestKnownJcodeSDKSessionControlKeys(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		wantType    ConfigValueType
+		wantDefault interface{}
+	}{
+		"jcode.session_profile": {wantType: TypeString, wantDefault: ""},
+		"jcode.max_turns":       {wantType: TypeInt, wantDefault: 0},
+		"jcode.token_budget":    {wantType: TypeInt, wantDefault: 0},
+		"jcode.deadline":        {wantType: TypeString, wantDefault: ""},
+	}
+
+	for key, tt := range tests {
+		key, tt := key, tt
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			schema, err := GetKeySchema(key)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantType, schema.Type)
+			assert.Equal(t, tt.wantDefault, schema.Default)
+			assert.NotEmpty(t, schema.Description)
+		})
+	}
+}
+
+func TestUnknownJcodeSDKSessionControlKeysRejected(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct{}{
+		"jcode.max_tool_steps": {},
+		"jcode.extra_args":     {},
+		"jcode.api_key":        {},
+	}
+	for key := range tests {
+		key := key
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			_, err := GetKeySchema(key)
+			require.Error(t, err)
+			var unknownKeyErr ErrUnknownKey
+			assert.ErrorAs(t, err, &unknownKeyErr)
+		})
 	}
 }
 

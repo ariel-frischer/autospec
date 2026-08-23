@@ -157,6 +157,53 @@ func TestJcodeAgent_ExecuteStreamsTypedEvents(t *testing.T) {
 	}
 }
 
+func TestJcodeAgent_MapsTypedSessionControls(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		options    JcodeOptions
+		wantCreate jcode.CreateSessionOptions
+		wantSend   jcode.SendOptions
+	}{
+		"omitted": {wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}},
+		"session profile": {
+			options:    JcodeOptions{SessionProfile: "bounded"},
+			wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo", Profile: "bounded"},
+		},
+		"maximum turns": {options: JcodeOptions{MaxTurns: 7}, wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}, wantSend: jcode.SendOptions{MaxTurns: 7}},
+		"token budget":  {options: JcodeOptions{TokenBudget: 4096}, wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}, wantSend: jcode.SendOptions{TokenBudget: 4096}},
+		"deadline":      {options: JcodeOptions{Deadline: "2026-08-23T08:00:00Z"}, wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo"}, wantSend: jcode.SendOptions{Deadline: "2026-08-23T08:00:00Z"}},
+		"all controls": {
+			options:    JcodeOptions{SessionProfile: "bounded", MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z"},
+			wantCreate: jcode.CreateSessionOptions{WorkingDir: "/repo", Profile: "bounded"},
+			wantSend:   jcode.SendOptions{MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z"},
+		},
+	}
+
+	for name, tt := range tests {
+		name, tt := name, tt
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assertJcodeTypedSessionControls(t, tt.options, tt.wantCreate, tt.wantSend)
+		})
+	}
+}
+
+func assertJcodeTypedSessionControls(t *testing.T, options JcodeOptions, wantCreate jcode.CreateSessionOptions, wantSend jcode.SendOptions) {
+	t.Helper()
+	createOptions := []jcode.CreateSessionOptions{}
+	sendOptions := []jcode.SendOptions{}
+	order := []string{}
+	stream := &mockJcodeEventStream{events: []jcode.TypedEvent{&jcode.TurnDone{}}}
+	session := mockJcodeSession{events: stream, order: &order, sendOptions: &sendOptions}
+	agent := &Jcode{options: options, factory: mockJcodeFactory{client: mockJcodeClient{session: session, createOptions: &createOptions}}}
+
+	_, err := agent.Execute(context.Background(), "prompt", ExecOptions{WorkDir: "/repo"})
+	require.NoError(t, err)
+	require.Equal(t, []jcode.CreateSessionOptions{wantCreate}, createOptions)
+	require.Equal(t, []jcode.SendOptions{wantSend}, sendOptions)
+}
+
 func TestNewJcodeWithOptionsPreservesLifecyclePolicy(t *testing.T) {
 	t.Parallel()
 

@@ -605,6 +605,8 @@ func (c *Configuration) newJcodeAgent() (cliagent.Agent, error) {
 			Binary: c.Jcode.Binary, Home: c.Jcode.Home,
 			InheritLogins:  c.Jcode.InheritLogins,
 			StartupTimeout: c.Jcode.StartupTimeout, CleanupTimeout: c.Jcode.CleanupTimeout,
+			SessionProfile: c.Jcode.SessionProfile, MaxTurns: c.Jcode.MaxTurns,
+			TokenBudget: c.Jcode.TokenBudget, Deadline: c.Jcode.Deadline,
 			Lifecycle: cliagent.JcodeLifecyclePolicy{
 				Mode:              cliagent.JcodeLifecycleMode(c.Jcode.Mode),
 				StartupCommand:    c.Jcode.StartupCommand,

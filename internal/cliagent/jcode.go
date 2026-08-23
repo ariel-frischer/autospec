@@ -24,6 +24,10 @@ type JcodeOptions struct {
 	InheritLogins  bool
 	StartupTimeout time.Duration
 	CleanupTimeout time.Duration
+	SessionProfile string
+	MaxTurns       int
+	TokenBudget    int
+	Deadline       string
 	Lifecycle      JcodeLifecyclePolicy
 }
 
@@ -297,7 +301,7 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 			execErr = errors.Join(execErr, fmt.Errorf("cleaning up jcode runtime: %w", err))
 		}
 	}()
-	session, err := client.CreateSession(ctx, jcode.CreateSessionOptions{WorkingDir: options.WorkDir})
+	session, err := client.CreateSession(ctx, j.createSessionOptions(options.WorkDir))
 	if err != nil {
 		return nil, fmt.Errorf("creating jcode session: %w", err)
 	}
@@ -308,7 +312,7 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	}
 	turnCtx, stopTurn := context.WithCancel(context.Background())
 	defer stopTurn()
-	turn, err := session.StartTurn(turnCtx, prompt, jcode.SendOptions{})
+	turn, err := session.StartTurn(turnCtx, prompt, j.sendOptions())
 	if err != nil {
 		return nil, fmt.Errorf("starting jcode turn: %w", err)
 	}
@@ -321,6 +325,21 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 		result.Stdout = output
 	}
 	return result, nil
+}
+
+func (j *Jcode) createSessionOptions(workDir string) jcode.CreateSessionOptions {
+	return jcode.CreateSessionOptions{
+		WorkingDir: workDir,
+		Profile:    j.options.SessionProfile,
+	}
+}
+
+func (j *Jcode) sendOptions() jcode.SendOptions {
+	return jcode.SendOptions{
+		MaxTurns:    j.options.MaxTurns,
+		TokenBudget: j.options.TokenBudget,
+		Deadline:    j.options.Deadline,
+	}
 }
 
 func streamTurn(ctx context.Context, turn jcodeTurn, writer io.Writer, cleanupTimeout time.Duration, stopTurn context.CancelFunc) (string, error) {

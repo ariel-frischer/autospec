@@ -57,6 +57,10 @@ type JcodeConfig struct {
 	RetryDelay        time.Duration `yaml:"retry_delay,omitempty" koanf:"retry_delay"`
 	Provider          string        `yaml:"provider,omitempty" koanf:"provider"`
 	ProviderProfile   string        `yaml:"provider_profile,omitempty" koanf:"provider_profile"`
+	SessionProfile    string        `yaml:"session_profile,omitempty" koanf:"session_profile"`
+	MaxTurns          int           `yaml:"max_turns,omitempty" koanf:"max_turns"`
+	TokenBudget       int           `yaml:"token_budget,omitempty" koanf:"token_budget"`
+	Deadline          string        `yaml:"deadline,omitempty" koanf:"deadline"`
 	Trace             bool          `yaml:"trace" koanf:"trace"`
 	ToolProfile       string        `yaml:"tool_profile,omitempty" koanf:"tool_profile"`
 	Tools             string        `yaml:"tools,omitempty" koanf:"tools"`

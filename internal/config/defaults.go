@@ -49,6 +49,10 @@ jcode:
   retry_delay: 250ms                     # Delay between bounded recovery attempts (0-5m)
   provider: ""                          # Upstream provider ID
   provider_profile: ""                  # Named upstream provider profile
+  session_profile: ""                   # Experimental SDK-only named session profile
+  max_turns: 0                           # Experimental SDK-only maximum turns (0 = unset)
+  token_budget: 0                        # Experimental SDK-only token budget (0 = unset)
+  deadline: ""                          # Experimental SDK-only explicit-offset RFC3339 deadline
   trace: false                           # Log tool activity and token usage to stderr
   tool_profile: ""                      # Upstream tool profile: full | minimal | lite | none
   tools: ""                             # Comma-separated explicit tool allow-list
@@ -172,6 +176,10 @@ func GetDefaults() map[string]interface{} {
 			"retry_delay":               defaultJcodeRetryDelay.String(),
 			"provider":                  "",
 			"provider_profile":          "",
+			"session_profile":           "",
+			"max_turns":                 0,
+			"token_budget":              0,
+			"deadline":                  "",
 			"trace":                     false,
 			"tool_profile":              "",
 			"tools":                     "",
