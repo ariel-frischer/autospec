@@ -301,20 +301,11 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 			execErr = errors.Join(execErr, fmt.Errorf("cleaning up jcode runtime: %w", err))
 		}
 	}()
-	session, err := client.CreateSession(ctx, j.createSessionOptions(options.WorkDir))
-	if err != nil {
-		return nil, fmt.Errorf("creating jcode session: %w", err)
-	}
-	if err := session.Configure(ctx, JcodeSessionSettings{
-		Model: options.Model, ReasoningEffort: options.ReasoningEffort,
-	}); err != nil {
-		return nil, fmt.Errorf("configuring jcode session: %w", err)
-	}
 	turnCtx, stopTurn := context.WithCancel(context.Background())
 	defer stopTurn()
-	turn, err := session.StartTurn(turnCtx, prompt, j.sendOptions())
+	turn, err := j.startTurn(ctx, turnCtx, client, prompt, options)
 	if err != nil {
-		return nil, fmt.Errorf("starting jcode turn: %w", err)
+		return nil, err
 	}
 	output, err := streamTurn(ctx, turn, outputWriter(options.Stdout), j.options.CleanupTimeout, stopTurn)
 	if err != nil {
@@ -325,6 +316,22 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 		result.Stdout = output
 	}
 	return result, nil
+}
+
+func (j *Jcode) startTurn(ctx, turnCtx context.Context, client jcodeClient, prompt string, options ExecOptions) (jcodeTurn, error) {
+	session, err := client.CreateSession(ctx, j.createSessionOptions(options.WorkDir))
+	if err != nil {
+		return nil, fmt.Errorf("creating jcode session: %w", err)
+	}
+	settings := JcodeSessionSettings{Model: options.Model, ReasoningEffort: options.ReasoningEffort}
+	if err := session.Configure(ctx, settings); err != nil {
+		return nil, fmt.Errorf("configuring jcode session: %w", err)
+	}
+	turn, err := session.StartTurn(turnCtx, prompt, j.sendOptions())
+	if err != nil {
+		return nil, fmt.Errorf("starting jcode turn: %w", err)
+	}
+	return turn, nil
 }
 
 func (j *Jcode) createSessionOptions(workDir string) jcode.CreateSessionOptions {
