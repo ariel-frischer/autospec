@@ -235,11 +235,14 @@ Confirm no file in the active Autospec repository changed during the smoke workf
 
 ### Manual smoke execution
 
-- Status: Failed before the first provider turn on 2026-08-23.
-- Approval: Ariel explicitly approved a free-model live validation using `stealth/ox-alpha` on OpenRouter.
-- Disposable setup: An isolated Git repository, Jcode home, runtime directory, server socket, harness API bridge, named `free-smoke` profile, and temporary credential file were created with restricted permissions.
-- Profile observation: `jcode profile resolve free-smoke --json` reported the expected OpenRouter provider, `stealth/ox-alpha` model, medium reasoning effort, full tool policy, no skills, and profile-specific instructions.
-- Autospec observation: The built feature binary loaded `session_profile: free-smoke`, `max_turns: 8`, `token_budget: 16000`, and a future explicit-offset deadline, then failed during `create_session` with `jcode client disconnected` before any model request.
-- Root cause: `jcode-go` v0.1.6 sends `CreateSessionOptions.Profile` as a string, while the current Jcode harness bridge forwards `request.profile` directly to daemon `subscribe`, whose profile field is a resolved `SessionProfileStartup` object. The same bridge `send_message` translation does not forward `max_turns`, `token_budget`, or `deadline`.
-- Upstream blocker: `jcode-8on` in `/home/ari/repos/jcode` owns the canonical harness/API compatibility closure.
-- Cleanup verification: The isolated server and bridges were stopped, and all disposable repositories, sockets, runtime homes, and the temporary credential file were removed. No provider turn, push, or release occurred.
+- Status: The public opt-in SDK path reached the approved free model through Jcode `29d7ec132` and `jcode-go` v0.1.7 on 2026-08-23.
+- Approval: Ariel explicitly approved free-model live validation using `stealth/ox-alpha` on OpenRouter.
+- Disposable setup: An isolated Git repository, Jcode home, private runtime, named `free-smoke` profile, and explicit future deadline were used. The profile contained no credentials; the runtime inherited only the approved provider environment credential.
+- Profile observation: Session metadata recorded `profile_name: free-smoke`, OpenRouter, `stealth/ox-alpha`, medium reasoning effort, disabled skills, and a present profile instruction overlay. This confirms the named profile resolved through the public Autospec → jcode-go → Jcode harness path.
+- Model observation: The first diagnostic run showed that Autospec's configured workflow model has higher precedence than the profile model. The final run used the explicit workflow model `stealth/ox-alpha`, matching the profile and exercising the intended free route.
+- Max-turn observation: With `max_turns: 1`, exactly one provider call completed and its tool result was recorded before the turn stopped. Autospec then reported the expected missing-artifact validation failure, proving the limit reached the real turn.
+- Token-budget observation: With `max_turns: 4` and `token_budget: 30000`, two provider calls used 14,949 and 15,069 input tokens. The second requested tool was not executed once cumulative usage crossed the configured budget, and the bounded turn completed without a third provider call.
+- Deadline observation: Both provider runs began and completed before the explicit future RFC3339 deadline. Invalid and past-deadline behavior remains covered by deterministic SDK/config tests.
+- Workflow result: The deliberately tight safety limits prevented the free model from completing a constitution artifact, so the Autospec stage exited with its actionable artifact-validation error. The acceptance purpose was propagation and enforcement of the opt-in profile and safety controls, not successful artifact generation under an intentionally terminating budget.
+- Setup correction: The first launch used a duration string for Autospec's integer `timeout` field and failed before runtime creation. It was corrected to seconds before the live provider path was exercised.
+- Cleanup verification: The owned private runtimes stopped after each run. Disposable session evidence was sanitized before removal; no push, release, shared runtime mutation, or production-adjacent action occurred.
