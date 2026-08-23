@@ -58,21 +58,26 @@ func (m mockJcodeFactory) Open(context.Context, JcodeOptions, ExecOptions) (jcod
 }
 
 type mockJcodeClient struct {
-	session jcodeSession
-	err     error
+	session       jcodeSession
+	err           error
+	createOptions *[]jcode.CreateSessionOptions
 }
 
-func (m mockJcodeClient) CreateSession(context.Context, string) (jcodeSession, error) {
+func (m mockJcodeClient) CreateSession(_ context.Context, options jcode.CreateSessionOptions) (jcodeSession, error) {
+	if m.createOptions != nil {
+		*m.createOptions = append(*m.createOptions, options)
+	}
 	return m.session, m.err
 }
 
 func (mockJcodeClient) Reconnect(context.Context) error { return nil }
 
 type mockJcodeSession struct {
-	events   jcodeTurn
-	err      error
-	order    *[]string
-	settings *[]JcodeSessionSettings
+	events      jcodeTurn
+	err         error
+	order       *[]string
+	settings    *[]JcodeSessionSettings
+	sendOptions *[]jcode.SendOptions
 }
 
 func (m mockJcodeSession) Configure(_ context.Context, settings JcodeSessionSettings) error {
@@ -83,8 +88,11 @@ func (m mockJcodeSession) Configure(_ context.Context, settings JcodeSessionSett
 	return nil
 }
 
-func (m mockJcodeSession) StartTurn(context.Context, string) (jcodeTurn, error) {
+func (m mockJcodeSession) StartTurn(_ context.Context, _ string, options jcode.SendOptions) (jcodeTurn, error) {
 	*m.order = append(*m.order, "start")
+	if m.sendOptions != nil {
+		*m.sendOptions = append(*m.sendOptions, options)
+	}
 	return m.events, m.err
 }
 

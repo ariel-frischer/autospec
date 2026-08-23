@@ -34,7 +34,7 @@ type jcodeTurn interface {
 }
 type jcodeSession interface {
 	Configure(context.Context, JcodeSessionSettings) error
-	StartTurn(context.Context, string) (jcodeTurn, error)
+	StartTurn(context.Context, string, jcode.SendOptions) (jcodeTurn, error)
 }
 
 // JcodeSessionSettings contains non-secret per-stage settings for jcode.
@@ -44,7 +44,7 @@ type JcodeSessionSettings struct {
 	ReasoningEffort string
 }
 type jcodeClient interface {
-	CreateSession(context.Context, string) (jcodeSession, error)
+	CreateSession(context.Context, jcode.CreateSessionOptions) (jcodeSession, error)
 	Reconnect(context.Context) error
 }
 type jcodeFactory interface {
@@ -178,8 +178,8 @@ func resolveJcodeSocket(socketPath string) string {
 	return filepath.Join(os.TempDir(), "jcode-api.sock")
 }
 
-func (c sdkJcodeClient) CreateSession(ctx context.Context, workDir string) (jcodeSession, error) {
-	session, err := c.client.CreateSession(ctx, jcode.CreateSessionOptions{WorkingDir: workDir})
+func (c sdkJcodeClient) CreateSession(ctx context.Context, options jcode.CreateSessionOptions) (jcodeSession, error) {
+	session, err := c.client.CreateSession(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("creating jcode session: %w", err)
 	}
@@ -226,8 +226,8 @@ func (s sdkJcodeSession) set(ctx context.Context, request string, fields any) er
 	return nil
 }
 
-func (s sdkJcodeSession) StartTurn(ctx context.Context, prompt string) (jcodeTurn, error) {
-	turn, err := s.session.StartTurn(ctx, prompt, jcode.SendOptions{})
+func (s sdkJcodeSession) StartTurn(ctx context.Context, prompt string, options jcode.SendOptions) (jcodeTurn, error) {
+	turn, err := s.session.StartTurn(ctx, prompt, options)
 	if err != nil {
 		return nil, fmt.Errorf("starting jcode turn: %w", err)
 	}
@@ -297,7 +297,7 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 			execErr = errors.Join(execErr, fmt.Errorf("cleaning up jcode runtime: %w", err))
 		}
 	}()
-	session, err := client.CreateSession(ctx, options.WorkDir)
+	session, err := client.CreateSession(ctx, jcode.CreateSessionOptions{WorkingDir: options.WorkDir})
 	if err != nil {
 		return nil, fmt.Errorf("creating jcode session: %w", err)
 	}
@@ -308,7 +308,7 @@ func (j *Jcode) Execute(parent context.Context, prompt string, options ExecOptio
 	}
 	turnCtx, stopTurn := context.WithCancel(context.Background())
 	defer stopTurn()
-	turn, err := session.StartTurn(turnCtx, prompt)
+	turn, err := session.StartTurn(turnCtx, prompt, jcode.SendOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("starting jcode turn: %w", err)
 	}
