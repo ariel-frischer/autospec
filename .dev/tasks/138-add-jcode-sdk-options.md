@@ -227,7 +227,9 @@ Confirm no file in the active Autospec repository changed during the smoke workf
 - `go test ./internal/config ./internal/cliagent` passed on 2026-08-23: 1,052 tests passed across both packages.
 - The passing package suites include typed create/send option mapping, omitted and all-control cases, validation averaging under 10ms, wrapped causal SDK errors, and complete official exec argv equality with all four SDK-only keys configured.
 - `autospec artifact` passed for `spec.yaml`, `plan.yaml`, and `tasks.yaml` with no schema or dependency errors.
-- `make fmt`, `make lint`, `make test`, and `make build` all passed against the current diff in a disposable regular clone at commit `853fcf7` plus the phase patch.
+- `make fmt`, `make lint`, `make test`, and `make build` all passed in a disposable regular clone of final commit `855504f`, with `TMPDIR=/var/tmp/autospec-tests` keeping temporary repositories outside parent Git metadata.
+- The built binary loaded all four controls unchanged from an isolated configuration and rejected negative `jcode.max_turns` plus an offset-free `jcode.deadline` with key-specific actionable diagnostics.
+- `make changelog-check`, `make docs-sync`, `git diff --check`, and final worktree cleanliness checks passed; the public docs and separately maintained site configuration reference both expose the new SDK-only controls.
 - The first worktree-local `make test` attempt exposed pre-existing environment assumptions: `TMPDIR` was nested inside `/home/ari/.jcode`, which is a Git repository, and `internal/git` real-repository tests do not support linked-worktree metadata. The minimal isolated retries confirmed both causes; no feature code was changed to mask them.
 - No real agent, external API, credential, shared runtime, or live SDK smoke test was invoked.
 
