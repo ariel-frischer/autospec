@@ -23,6 +23,10 @@ can trust for their critical development workflows.
 
 Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), and [OpenCode](https://opencode.ai).
 
+### Jcode Go SDK
+
+Autospec's opt-in native jcode SDK runner works with the published [`github.com/ariel-frischer/jcode-go`](https://pkg.go.dev/github.com/ariel-frischer/jcode-go) module. This is Ariel Frischer's unofficial community SDK for upstream Jcode; the official CLI runner remains the default.
+
 ## 📦 Installation
 
 ```bash

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Native jcode workflows now support connect, private, and auto runtime policies with bounded reconnect/restart recovery
 
 ### Changed
+- The README now identifies the published `github.com/ariel-frischer/jcode-go` module as Autospec's unofficial, opt-in Jcode SDK integration
 - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
 - Jcode uses the official upstream CLI wrapper by default, while Ariel Frischer's experimental [`jcode-go`](https://github.com/ariel-frischer/jcode-go) SDK remains available through explicit `jcode.runner: sdk` configuration, including model and reasoning-effort session settings
 - Jcode exec configuration now supports provider, provider profile, socket, trace, tool policy, and MCP exposure settings

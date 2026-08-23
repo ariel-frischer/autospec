@@ -1,0 +1,104 @@
+feature:
+  branch: "131-sdk-readme-note"
+  created: "2026-08-06"
+  status: "Draft"
+  input: "Add a short README note confirming the published jcode Go SDK works"
+
+user_stories:
+  - id: "US-001"
+    title: "Confirm published Go SDK support"
+    priority: "P1"
+    as_a: "developer evaluating Autospec"
+    i_want: "a short README note confirming that Autospec works with the published jcode Go SDK"
+    so_that: "I can understand the SDK dependency status and trust that the documented integration is usable"
+    why_this_priority: "The note communicates an important compatibility and dependency fact to users without changing product behavior."
+    independent_test: "Inspect the rendered README and verify the note clearly identifies the published SDK and states that the integration works."
+    acceptance_scenarios:
+      - given: "A reader opens the repository README"
+        when: "The reader scans the project overview or dependency information"
+        then: "The reader can find a concise note confirming the published jcode Go SDK works with Autospec."
+      - given: "The README note is compared with the current published dependency"
+        when: "A maintainer checks the SDK reference"
+        then: "The note refers to the published SDK accurately and does not imply that a local replacement or unpublished SDK is required."
+
+requirements:
+  functional:
+    - id: "FR-001"
+      description: "MUST add a short, user-facing README note confirming that the published jcode Go SDK works with Autospec."
+      acceptance_criteria: "A reviewer can locate the note in README.md and verify that it explicitly confirms the published SDK integration."
+    - id: "FR-002"
+      description: "MUST identify the SDK as published and distinguish it from a local checkout or unpublished replacement."
+      acceptance_criteria: "The note uses accurate published-module wording consistent with the repository's current dependency and SDK documentation."
+    - id: "FR-003"
+      description: "MUST preserve the README's existing structure, tone, links, and technical accuracy while limiting the change to the requested short note."
+      acceptance_criteria: "The README diff contains only the focused documentation addition, and existing Markdown remains valid and readable."
+    - id: "FR-004"
+      description: "MUST pass the repository validation commands: make test, make fmt, make lint, and make build."
+      acceptance_criteria: "Each command exits with status 0 after the README note is added."
+  non_functional:
+    - id: "NFR-001"
+      category: "code_quality"
+      description: "Documentation changes SHOULD remain focused and avoid unnecessary implementation or formatting churn."
+      measurable_target: "The implementation changes only the README content needed for the confirmation note."
+    - id: "NFR-002"
+      category: "code_quality"
+      description: "Any new Go functions MUST remain under 40 lines."
+      measurable_target: "No new function exceeds 40 lines."
+    - id: "NFR-003"
+      category: "code_quality"
+      description: "Any new Go errors MUST be wrapped with context using fmt.Errorf when implementation changes make error handling necessary."
+      measurable_target: "All new non-pass-through errors include contextual wrapping."
+    - id: "NFR-004"
+      category: "code_quality"
+      description: "Any new Go table-driven tests MUST use map[string]struct cases when implementation changes make tests necessary."
+      measurable_target: "All new table-driven Go tests use map[string]struct test cases."
+    - id: "NFR-005"
+      category: "code_quality"
+      description: "New Go APIs MUST accept interfaces at boundaries and return concrete types when implementation changes make APIs necessary."
+      measurable_target: "Any new Go API follows the repository interface and concrete-return convention."
+
+success_criteria:
+  - id: "SC-001"
+    description: "Users can confirm from the README that the published jcode Go SDK works with Autospec."
+    metric: "Independent reviewers who can locate and correctly interpret the note"
+    target: "100% of reviewers in a documentation review"
+  - id: "SC-002"
+    description: "The documentation update remains concise and focused on the published SDK confirmation."
+    metric: "Added README prose"
+    target: "One short note of no more than three sentences"
+  - id: "SC-003"
+    description: "The repository remains fully validated after the documentation update."
+    metric: "Required validation commands completing successfully"
+    target: "make test, make fmt, make lint, and make build all exit 0"
+
+edge_cases:
+  - scenario: "The README already contains SDK-related content or links."
+    expected_behavior: "Add the confirmation in the most relevant existing section or make the smallest coherent adjustment without duplicating contradictory information."
+  - scenario: "A reader interprets the note as requiring a local jcode source checkout."
+    expected_behavior: "Use explicit wording that the published Go SDK is the supported dependency for this integration."
+  - scenario: "The published SDK version changes before implementation."
+    expected_behavior: "Verify the note against the repository's current declared dependency and avoid hard-coding a stale version unless the README already uses version-specific language."
+
+assumptions:
+  - "The target document is the repository-root README.md."
+  - "The current published SDK reference and dependency are the source of truth for wording during implementation."
+  - "No code, dependency, release, or API behavior changes are needed for this documentation-only request."
+  - "Documentation-only changes are exempt from adding new automated tests, but the existing repository validation commands still run."
+
+constraints:
+  - "Keep the note short and user-facing."
+  - "Do not edit generated CHANGELOG.md directly."
+  - "Do not introduce a local replace directive or alter the published SDK dependency as part of this request."
+
+out_of_scope:
+  - "Changing the jcode Go SDK implementation or release."
+  - "Adding SDK examples, tutorials, or a broader README rewrite."
+  - "Changing Autospec runtime behavior or dependency resolution."
+  - "Running live provider or external service tests."
+
+_meta:
+  version: "1.0.0"
+  generator: "autospec"
+  generator_version: "autospec dev"
+  created: "2026-08-06T07:39:40Z"
+  artifact_type: "spec"
