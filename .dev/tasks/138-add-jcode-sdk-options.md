@@ -14,7 +14,7 @@ Do not run the live SDK steps by default. They may start or connect to a Jcode r
 ## Preconditions
 
 - Use an Autospec binary built from the feature branch under review.
-- Use a Jcode runtime compatible with `github.com/ariel-frischer/jcode-go` v0.1.6.
+- Use a Jcode runtime compatible with `github.com/ariel-frischer/jcode-go` v0.1.7.
 - Keep credentials outside configuration files and command output.
 - Prefer an isolated private runtime. If connect mode is required, use only a disposable test runtime and socket.
 

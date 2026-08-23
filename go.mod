@@ -80,7 +80,7 @@ require (
 
 require github.com/ariel-frischer/claude-clean v0.2.0
 
-require github.com/ariel-frischer/jcode-go v0.1.6
+require github.com/ariel-frischer/jcode-go v0.1.7
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
