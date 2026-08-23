@@ -231,16 +231,15 @@ Confirm no file in the active Autospec repository changed during the smoke workf
 - The built binary loaded all four controls unchanged from an isolated configuration and rejected negative `jcode.max_turns` plus an offset-free `jcode.deadline` with key-specific actionable diagnostics.
 - `make changelog-check`, `make docs-sync`, `git diff --check`, and final worktree cleanliness checks passed; the public docs and separately maintained site configuration reference both expose the new SDK-only controls.
 - The first worktree-local `make test` attempt exposed pre-existing environment assumptions: `TMPDIR` was nested inside `/home/ari/.jcode`, which is a Git repository, and `internal/git` real-repository tests do not support linked-worktree metadata. The minimal isolated retries confirmed both causes; no feature code was changed to mask them.
-- No real agent, external API, credential, shared runtime, or live SDK smoke test was invoked.
+- Automated validation invoked no real agent, external API, credential, or shared runtime; the separately approved disposable live attempt is recorded below.
 
 ### Manual smoke execution
 
-- Status: Not run by default.
-- Approval: Not requested.
-- Disposable root: Not created for live testing.
-- Valid single-control cases: Not run live.
-- Valid all-controls case: Not run live.
-- Invalid-control cases: Not run live.
-- Past-deadline and SDK-error cases: Not run live.
-- Exec-isolation comparison: Not run live.
-- Cleanup verification: Not applicable until approved execution.
+- Status: Failed before the first provider turn on 2026-08-23.
+- Approval: Ariel explicitly approved a free-model live validation using `stealth/ox-alpha` on OpenRouter.
+- Disposable setup: An isolated Git repository, Jcode home, runtime directory, server socket, harness API bridge, named `free-smoke` profile, and temporary credential file were created with restricted permissions.
+- Profile observation: `jcode profile resolve free-smoke --json` reported the expected OpenRouter provider, `stealth/ox-alpha` model, medium reasoning effort, full tool policy, no skills, and profile-specific instructions.
+- Autospec observation: The built feature binary loaded `session_profile: free-smoke`, `max_turns: 8`, `token_budget: 16000`, and a future explicit-offset deadline, then failed during `create_session` with `jcode client disconnected` before any model request.
+- Root cause: `jcode-go` v0.1.6 sends `CreateSessionOptions.Profile` as a string, while the current Jcode harness bridge forwards `request.profile` directly to daemon `subscribe`, whose profile field is a resolved `SessionProfileStartup` object. The same bridge `send_message` translation does not forward `max_turns`, `token_budget`, or `deadline`.
+- Upstream blocker: `jcode-8on` in `/home/ari/repos/jcode` owns the canonical harness/API compatibility closure.
+- Cleanup verification: The isolated server and bridges were stopped, and all disposable repositories, sockets, runtime homes, and the temporary credential file were removed. No provider turn, push, or release occurred.
