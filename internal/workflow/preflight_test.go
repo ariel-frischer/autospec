@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,37 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCheckPreflightDirectory(t *testing.T) {
+	t.Parallel()
+	tests := map[string]struct {
+		stat        func(string) (os.FileInfo, error)
+		wantMissing bool
+		wantErr     string
+	}{
+		"present": {stat: func(string) (os.FileInfo, error) { return nil, nil }},
+		"missing": {
+			stat:        func(string) (os.FileInfo, error) { return nil, fs.ErrNotExist },
+			wantMissing: true,
+		},
+		"inaccessible": {
+			stat:    func(string) (os.FileInfo, error) { return nil, fs.ErrPermission },
+			wantErr: "accessing required directory .claude/skills: permission denied",
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			missing, err := checkPreflightDirectory(".claude/skills", tt.stat)
+			assert.Equal(t, tt.wantMissing, missing)
+			if tt.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tt.wantErr)
+			}
+		})
+	}
+}
 
 func TestPreflightTestFixtures(t *testing.T) {
 	tests := map[string]struct {

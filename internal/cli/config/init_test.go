@@ -22,6 +22,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPrintClaudeAuthStatusError(t *testing.T) {
+	t.Parallel()
+	tests := map[string]struct {
+		status      cliagent.ClaudeAuthStatus
+		wantContain []string
+		wantEmpty   bool
+	}{
+		"available status prints nothing": {
+			status:    cliagent.ClaudeAuthStatus{},
+			wantEmpty: true,
+		},
+		"local status failure is actionable": {
+			status: cliagent.ClaudeAuthStatus{AuthStatusError: "checking Claude authentication: exit status 1"},
+			wantContain: []string{
+				"Claude auth status unavailable",
+				"claude auth status --json",
+				"no live API request was made",
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			var out bytes.Buffer
+			printClaudeAuthStatusError(&out, tt.status)
+			if tt.wantEmpty {
+				assert.Empty(t, out.String())
+			}
+			for _, value := range tt.wantContain {
+				assert.Contains(t, out.String(), value)
+			}
+		})
+	}
+}
+
 func TestRunInit_InstallsCommands(t *testing.T) {
 	// Cannot run in parallel due to working directory change and global mocks
 

@@ -103,11 +103,7 @@ func runPreflightChecksForAgent(agent cliagent.Agent) (*PreflightResult, error) 
 			fmt.Sprintf("%s agent validation failed: %v", agent.Name(), err))
 	}
 
-	for _, dir := range preflightDirectories(agent) {
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			result.MissingDirs = append(result.MissingDirs, dir+"/")
-		}
-	}
+	applyPreflightDirectoryChecks(result, preflightDirectories(agent))
 
 	// Get git root for helpful error messages
 	if root, err := getGitRoot(); err == nil {
@@ -121,6 +117,34 @@ func runPreflightChecksForAgent(agent cliagent.Agent) (*PreflightResult, error) 
 	}
 
 	return result, nil
+}
+
+func applyPreflightDirectoryChecks(result *PreflightResult, dirs []string) {
+	for _, dir := range dirs {
+		missing, err := checkPreflightDirectory(dir, os.Stat)
+		if err != nil {
+			result.Passed = false
+			result.FailedChecks = append(result.FailedChecks, err.Error())
+			continue
+		}
+		if missing {
+			result.MissingDirs = append(result.MissingDirs, dir+"/")
+		}
+	}
+}
+
+func checkPreflightDirectory(
+	dir string,
+	stat func(string) (os.FileInfo, error),
+) (bool, error) {
+	_, err := stat(dir)
+	if err == nil {
+		return false, nil
+	}
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	return false, fmt.Errorf("accessing required directory %s: %w", dir, err)
 }
 
 // preflightDirectories returns the directories applicable to the agent.

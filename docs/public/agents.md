@@ -185,7 +185,7 @@ autospec implement --agent cline
 Available for all workflow commands: `run`, `prep`, `specify`, `plan`, `tasks`, `implement`.
 
 Preflight checks follow the effective agent. Claude projects retain the
-`.claude/commands/` compatibility check, while Codex, jcode, OpenCode, and
+`.claude/skills/` requirement, while Codex, jcode, OpenCode, and
 other agents do not need Claude-specific directories.
 
 ### Named Configuration Profiles
