@@ -63,6 +63,10 @@ jcode:
   socket_path: ""               # optional existing runtime socket
   binary: ""                    # private mode: jcode executable
   home: ""                      # private mode: persistent home, or temporary
+  session_profile: bounded       # experimental SDK session profile
+  max_turns: 8                   # positive whole number; 0 or omitted = unset
+  token_budget: 16000            # positive whole number; 0 or omitted = unset
+  deadline: "2026-08-23T10:00:00+02:00" # RFC3339 with explicit offset
   inherit_logins: false
   startup_timeout: 30s
   cleanup_timeout: 30s
@@ -96,6 +100,38 @@ jcode:
 temporary state when the execution ends. Keep login inheritance disabled for
 untrusted or multi-tenant work. `auto` tries the shared bridge first and falls
 back to an SDK-owned private runtime when the shared bridge is absent.
+
+The four session controls above are experimental and are transferred only when
+`jcode.runner: sdk` is selected explicitly. `session_profile` maps to
+`CreateSessionOptions.Profile`; `max_turns`, `token_budget`, and `deadline` map
+to the corresponding typed `SendOptions` fields. Each control may be used by
+itself, or all four may be combined as shown. Omitting a control preserves the
+SDK zero value and introduces no implicit profile or limit.
+
+Stand-alone examples are `session_profile: bounded`, `max_turns: 8`,
+`token_budget: 16000`, and `deadline: "2026-08-23T08:00:00Z"`, each under a
+`jcode` block that explicitly sets `runner: sdk`.
+
+Limits must be positive whole numbers when nonzero. Deadlines must be RFC3339
+timestamps ending in `Z` or a signed numeric offset such as `+02:00` or
+`-07:00`. For example, this sets only a UTC deadline:
+
+```yaml
+jcode:
+  runner: sdk
+  deadline: "2026-08-23T08:00:00Z"
+```
+
+Blank profiles, negative limits, malformed timestamps, and offset-free values
+such as `2026-08-23T08:00:00` are rejected. A syntactically valid deadline in
+the past, such as `2020-01-01T00:00:00Z`, remains configuration-valid; the SDK
+owns its execution-time behavior and Autospec preserves the SDK error with
+operation context.
+
+These controls never change the default runner. The `exec` and `custom` runners
+do not interpret or emit them, and official exec argv remains unchanged.
+Autospec does not add credentials, authentication settings, max-tool-steps, or
+arbitrary extra arguments through this experimental contract.
 
 Recovery is bounded. `reconnect_attempts` applies only to a shared bridge and
 `restart_attempts` applies only to a private runtime started by this run. The

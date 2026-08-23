@@ -1124,6 +1124,10 @@ When `agent_preset: jcode`, the `jcode` settings control runtime ownership:
 | `jcode.retry_delay` | `250ms` | Delay between recovery attempts, 0-5m |
 | `jcode.provider` | empty | Official CLI provider ID |
 | `jcode.provider_profile` | empty | Named provider profile |
+| `jcode.session_profile` | empty | Experimental SDK-only profile; maps to `CreateSessionOptions.Profile` |
+| `jcode.max_turns` | `0` (unset) | Experimental SDK-only positive turn limit; maps to `SendOptions.MaxTurns` |
+| `jcode.token_budget` | `0` (unset) | Experimental SDK-only positive token limit; maps to `SendOptions.TokenBudget` |
+| `jcode.deadline` | empty | Experimental SDK-only explicit-offset RFC3339 value; maps to `SendOptions.Deadline` |
 | `jcode.trace` | `false` | Log tool activity and token usage to stderr |
 | `jcode.tool_profile` | empty | Tool profile such as `full`, `minimal`, `lite`, or `none` |
 | `jcode.tools` | empty | Comma-separated explicit tool allow-list |
@@ -1131,6 +1135,33 @@ When `agent_preset: jcode`, the `jcode` settings control runtime ownership:
 | `jcode.disable_base_tools` | `false` | Hide built-in tools unless explicitly enabled |
 | `jcode.mcp_tools` | empty | `auto`, `eager`, or `deferred` MCP exposure |
 | `jcode.mcp_tools_token_threshold` | `0` | Auto-to-deferred threshold; zero uses the CLI default |
+
+The four experimental session controls are active only when `jcode.runner` is
+explicitly `sdk`. Omitted string values and zero numeric values remain unset,
+so they do not introduce an implicit profile, limit, or deadline. Nonzero turn
+and token limits must be positive whole numbers. A session profile, either
+limit, or a deadline may be configured independently or in combination:
+
+```yaml
+jcode:
+  runner: sdk
+  session_profile: bounded
+  max_turns: 8
+  token_budget: 16000
+  deadline: "2026-08-23T10:00:00+02:00"
+```
+
+Deadlines must include an explicit UTC or numeric offset. Values ending in `Z`,
+such as `2026-08-23T08:00:00Z`, and signed offsets, such as
+`2026-08-23T10:00:00+02:00`, are valid. An offset-free value such as
+`2026-08-23T08:00:00` is invalid. Syntactically valid past deadlines pass
+configuration validation unchanged so the SDK can apply its authoritative
+runtime policy and return an actionable error.
+
+The default runner remains `exec`. Exec and custom runners never translate,
+serialize, log as runner arguments, or otherwise emit these four values. This
+contract does not provide max-tool-steps, arbitrary extra arguments,
+credentials, tokens, or authentication configuration.
 
 Connect mode never starts or stops a shared daemon. Auto mode prefers a healthy
 shared bridge and falls back to a private SDK-owned runtime. Only a runtime

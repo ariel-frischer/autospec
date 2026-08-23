@@ -15,6 +15,7 @@ import (
 	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 var stageModelEffortCases = map[string]struct {
@@ -173,6 +174,102 @@ func TestConfiguration_GetAgent_TransfersJcodeSDKSessionControls(t *testing.T) {
 	assert.Equal(t, int64(7), options.FieldByName("MaxTurns").Int())
 	assert.Equal(t, int64(4096), options.FieldByName("TokenBudget").Int())
 	assert.Equal(t, "2026-08-23T08:00:00Z", options.FieldByName("Deadline").String())
+}
+
+func TestJcodeSDKSessionControlContractStaysSynchronized(t *testing.T) {
+	t.Parallel()
+
+	var templateDefaults map[string]interface{}
+	require.NoError(t, yaml.Unmarshal([]byte(GetDefaultConfigTemplate()), &templateDefaults))
+	runtimeDefaults := GetDefaults()
+	tests := jcodeSDKContractCases()
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assertJcodeConfigField(t, tt)
+			assertJcodeSchemaAndDefaults(t, tt, templateDefaults, runtimeDefaults)
+			require.NoError(t, validateJcodeConfig(tt.config, "config"))
+			assert.Equal(t, tt.value, jcodeSDKOptionValue(t, tt.config, tt.field))
+		})
+	}
+	assertUnsupportedJcodeControlsAbsent(t)
+}
+
+type jcodeSDKContractCase struct {
+	key        string
+	field      string
+	schemaType ConfigValueType
+	zero       interface{}
+	value      interface{}
+	config     JcodeConfig
+}
+
+func jcodeSDKContractCases() map[string]jcodeSDKContractCase {
+	return map[string]jcodeSDKContractCase{
+		"session profile": {key: "session_profile", field: "SessionProfile", schemaType: TypeString, zero: "", value: "bounded", config: JcodeConfig{SessionProfile: "bounded"}},
+		"maximum turns":   {key: "max_turns", field: "MaxTurns", schemaType: TypeInt, zero: 0, value: 7, config: JcodeConfig{MaxTurns: 7}},
+		"token budget":    {key: "token_budget", field: "TokenBudget", schemaType: TypeInt, zero: 0, value: 4096, config: JcodeConfig{TokenBudget: 4096}},
+		"deadline":        {key: "deadline", field: "Deadline", schemaType: TypeString, zero: "", value: "2026-08-23T08:00:00Z", config: JcodeConfig{Deadline: "2026-08-23T08:00:00Z"}},
+	}
+}
+
+func assertJcodeConfigField(t *testing.T, tt jcodeSDKContractCase) {
+	t.Helper()
+	field, ok := reflect.TypeOf(JcodeConfig{}).FieldByName(tt.field)
+	require.True(t, ok)
+	assert.Equal(t, tt.key+",omitempty", field.Tag.Get("yaml"))
+	assert.Equal(t, tt.key, field.Tag.Get("koanf"))
+}
+
+func assertJcodeSchemaAndDefaults(t *testing.T, tt jcodeSDKContractCase, template, runtime map[string]interface{}) {
+	t.Helper()
+	path := "jcode." + tt.key
+	known, ok := KnownKeys[path]
+	require.True(t, ok, "KnownKeys missing %s", path)
+	assert.Equal(t, tt.schemaType, known.Type)
+	assert.Equal(t, tt.zero, known.Default)
+	assert.Equal(t, tt.zero, nestedConfigDefault(t, template, tt.key))
+	assert.Equal(t, tt.zero, nestedConfigDefault(t, runtime, tt.key))
+}
+
+func nestedConfigDefault(t *testing.T, defaults map[string]interface{}, key string) interface{} {
+	t.Helper()
+	jcodeDefaults, ok := defaults["jcode"].(map[string]interface{})
+	require.True(t, ok)
+	value, ok := jcodeDefaults[key]
+	require.True(t, ok, "jcode defaults missing %s", key)
+	return value
+}
+
+func jcodeSDKOptionValue(t *testing.T, config JcodeConfig, field string) interface{} {
+	t.Helper()
+	config.Runner = JcodeRunnerSDK
+	agent, err := (&Configuration{AgentPreset: "jcode", Jcode: config}).GetAgent()
+	require.NoError(t, err)
+	sdkAgent, ok := agent.(*cliagent.Jcode)
+	require.True(t, ok)
+	value := reflect.ValueOf(sdkAgent).Elem().FieldByName("options").FieldByName(field)
+	if value.Kind() == reflect.Int {
+		return int(value.Int())
+	}
+	return value.String()
+}
+
+func assertUnsupportedJcodeControlsAbsent(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{"jcode.max_tool_steps", "jcode.extra_args", "jcode.credentials"} {
+		assert.NotContains(t, KnownKeys, key)
+	}
+	configType := reflect.TypeOf(JcodeConfig{})
+	for _, field := range []string{"MaxToolSteps", "ExtraArgs", "Credentials"} {
+		_, ok := configType.FieldByName(field)
+		assert.False(t, ok)
+	}
+	agent, err := (&Configuration{AgentPreset: "jcode", Jcode: JcodeConfig{SessionProfile: "bounded"}}).GetAgent()
+	require.NoError(t, err)
+	_, isExec := agent.(*cliagent.JcodeExec)
+	assert.True(t, isExec, "SDK controls must not change the default runner")
 }
 
 func TestConfiguration_GetAgent_IsolatesJcodeSDKSessionControls(t *testing.T) {
