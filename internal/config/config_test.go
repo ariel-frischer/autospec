@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -172,6 +173,81 @@ func TestConfiguration_GetAgent_TransfersJcodeSDKSessionControls(t *testing.T) {
 	assert.Equal(t, int64(7), options.FieldByName("MaxTurns").Int())
 	assert.Equal(t, int64(4096), options.FieldByName("TokenBudget").Int())
 	assert.Equal(t, "2026-08-23T08:00:00Z", options.FieldByName("Deadline").String())
+}
+
+func TestConfiguration_GetAgent_IsolatesJcodeSDKSessionControls(t *testing.T) {
+	binDir, customBinary := installJcodeCommandFixture(t)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	workDir := t.TempDir()
+
+	tests := map[string]struct {
+		runner JcodeRunner
+		binary string
+	}{
+		"omitted runner defaults to exec": {},
+		"explicit exec":                   {runner: JcodeRunnerExec},
+		"custom runner":                   {runner: JcodeRunnerCustom, binary: customBinary},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			baseline := jcodeExecCommandSnapshot(t, JcodeConfig{Runner: tt.runner, Binary: tt.binary}, workDir)
+			withControls := JcodeConfig{
+				Runner: tt.runner, Binary: tt.binary, SessionProfile: "bounded",
+				MaxTurns: 7, TokenBudget: 4096, Deadline: "2026-08-23T08:00:00Z",
+			}
+			wantRunner := JcodeRunnerExec
+			if tt.runner == JcodeRunnerCustom {
+				wantRunner = JcodeRunnerCustom
+			}
+			require.Equal(t, wantRunner, withControls.EffectiveRunner())
+			require.Equal(t, baseline, jcodeExecCommandSnapshot(t, withControls, workDir))
+		})
+	}
+}
+
+type execCommandSnapshot struct {
+	path string
+	args []string
+	dir  string
+	env  string
+}
+
+func jcodeExecCommandSnapshot(t *testing.T, jcodeConfig JcodeConfig, workDir string) execCommandSnapshot {
+	t.Helper()
+	agent, err := (&Configuration{AgentPreset: "jcode", Jcode: jcodeConfig}).GetAgent()
+	require.NoError(t, err)
+	execAgent, ok := agent.(*cliagent.JcodeExec)
+	require.True(t, ok, "non-SDK runner must construct the exec adapter")
+	cmd, err := execAgent.BuildCommand("prompt", cliagent.ExecOptions{
+		WorkDir: workDir, Env: map[string]string{"JCODE_TEST": "isolated"},
+	})
+	require.NoError(t, err)
+	return execCommandSnapshot{
+		path: cmd.Path, args: cmd.Args, dir: cmd.Dir,
+		env: commandEnvValue(cmd.Env, "JCODE_TEST"),
+	}
+}
+
+func commandEnvValue(env []string, key string) string {
+	prefix := key + "="
+	for _, entry := range env {
+		if strings.HasPrefix(entry, prefix) {
+			return strings.TrimPrefix(entry, prefix)
+		}
+	}
+	return ""
+}
+
+func installJcodeCommandFixture(t *testing.T) (string, string) {
+	t.Helper()
+	binDir := t.TempDir()
+	name := "jcode"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	binary := filepath.Join(binDir, name)
+	require.NoError(t, os.WriteFile(binary, []byte("fixture"), 0o755))
+	return binDir, binary
 }
 
 func TestLoad_LocalOverride(t *testing.T) {
