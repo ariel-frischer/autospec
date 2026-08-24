@@ -4,7 +4,7 @@ versions:
         added:
             - Web documentation now covers native jcode runtimes, named profiles, stage-specific model and reasoning settings, and current agent setup
             - Workflow stages can now persist independent models for constitution, specify, clarify, plan, tasks, checklist, analyze, and implement
-            - Autospec now supports jcode through the native Go SDK, with connect and isolated private runtime modes
+            - Autospec now supports the experimental jcode Go SDK for connect and isolated private runtime modes; the official upstream `jcode` CLI `run` mode remains the default
             - Autospec can use native jcode as the repository workflow agent, including the OpenRouter-backed cheap profile with stage-specific reasoning settings
             - Named configuration profiles can now be selected with `--profile`; explicit `--config` paths remain available as an alternative
             - Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
