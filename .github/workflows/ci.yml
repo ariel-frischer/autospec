@@ -10,6 +10,26 @@ permissions:
   contents: read
 
 jobs:
+  main-video-history-boundary:
+    name: Main Video History Boundary
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full candidate ancestry
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.1"
+
+      - name: Reject video history on main candidate
+        run: go run ./cmd/mainboundary
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

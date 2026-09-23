@@ -65,6 +65,22 @@ cd site && bundle exec jekyll serve --livereload
 
 The sync is automated in GitHub Actions - generated files are not committed.
 
+## Main release candidate boundary
+
+Keep ongoing source development on `dev`; do not merge `dev` wholesale into
+`main`. A future release should start from the current `main` lineage and
+curate only non-video changes into a candidate branch, without rewriting
+existing history. Before proposing a PR or MR targeting `main`, run
+`go run ./cmd/mainboundary` at the candidate repository root with complete
+Git history. The command rejects any `video/` directory in the HEAD tree or
+any commit reachable from HEAD, even if a later commit removed it. Ignored or
+untracked local media does not affect the check, but `.gitignore` and local
+hooks are not remote branch protection. The uniquely named GitHub and GitLab
+main-candidate CI jobs repeat the full-history check; configure provider
+branch rules to require a passing check and a reviewed PR/MR before any
+release. If full history or a required provider check cannot be guaranteed,
+do not update `main`.
+
 ## Quick Links
 
 - [Project README](../README.md) - Installation and overview

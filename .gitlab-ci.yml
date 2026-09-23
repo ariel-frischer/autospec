@@ -50,6 +50,16 @@ lint:bash:
     - find . -name '*.sh' -type f -not -path './.specify/*' -not -path '*/.autospec/*' | xargs shellcheck -x --severity=warning
 
 # Test Jobs
+test:main-video-history-boundary:
+  stage: test
+  variables:
+    GIT_DEPTH: "0"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - go run ./cmd/mainboundary
+
 test:go:
   extends: .manual-on-dev
   stage: test
