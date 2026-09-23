@@ -40,21 +40,19 @@ func runGuard(dir string) error {
 		return fmt.Errorf("full Git ancestry required (shallow or unknown repository state)")
 	}
 
-	commits, err := gitOutput(dir, "rev-list", "HEAD")
+	path, err := gitOutput(dir, "ls-tree", "-d", "--name-only", "HEAD", "--", "video")
 	if err != nil {
-		return fmt.Errorf("enumerating HEAD ancestry: %w", err)
+		return fmt.Errorf("inspecting candidate HEAD tree: %w", err)
 	}
-	if strings.TrimSpace(commits) == "" {
-		return fmt.Errorf("HEAD ancestry is empty")
+	if strings.TrimSpace(path) != "" {
+		return fmt.Errorf("video/ exists in HEAD tree")
 	}
-	for _, commit := range strings.Fields(commits) {
-		path, err := gitOutput(dir, "ls-tree", "-d", "--name-only", commit, "--", "video")
-		if err != nil {
-			return fmt.Errorf("inspecting candidate tree: %w", err)
-		}
-		if strings.TrimSpace(path) != "" {
-			return fmt.Errorf("video/ exists in HEAD ancestry at commit %s", commit)
-		}
+	commit, err := gitOutput(dir, "rev-list", "--full-history", "--max-count=1", "HEAD", "--", "video/")
+	if err != nil {
+		return fmt.Errorf("checking HEAD path history: %w", err)
+	}
+	if strings.TrimSpace(commit) != "" {
+		return fmt.Errorf("video/ exists in HEAD ancestry at commit %s", strings.TrimSpace(commit))
 	}
 	return nil
 }

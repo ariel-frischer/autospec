@@ -47,6 +47,16 @@ func TestMainBoundary(t *testing.T) {
 			gitTest(t, dir, "rm", "video/source.go")
 			gitTest(t, dir, "commit", "-qm", "remove video")
 		}, wantErr: true},
+		"video added and removed on merged branch": {setup: func(t *testing.T, dir string) {
+			gitTest(t, dir, "checkout", "-qb", "topic")
+			writeTestFile(t, dir, "video/source.go", "package video\n")
+			gitTest(t, dir, "add", "video/source.go")
+			gitTest(t, dir, "commit", "-qm", "add video on topic")
+			gitTest(t, dir, "rm", "video/source.go")
+			gitTest(t, dir, "commit", "-qm", "remove video on topic")
+			gitTest(t, dir, "checkout", "-q", "-")
+			gitTest(t, dir, "merge", "--no-ff", "-qm", "merge topic", "topic")
+		}, wantErr: true},
 		"ignored and untracked media": {setup: func(t *testing.T, dir string) {
 			writeTestFile(t, dir, ".gitignore", "video/*.mp4\n")
 			writeTestFile(t, dir, "video/ignored.mp4", "media")
@@ -88,6 +98,29 @@ func TestMainBoundary(t *testing.T) {
 				t.Errorf("error should name prohibited path: %v", err)
 			}
 		})
+	}
+}
+
+func TestMainBoundaryDeepCleanHistory(t *testing.T) {
+	dir := t.TempDir()
+	gitTest(t, dir, "init", "-q")
+	writeTestFile(t, dir, "README.md", "clean\n")
+	gitTest(t, dir, "add", "README.md")
+	gitTest(t, dir, "commit", "-qm", "initial")
+	for range 50 {
+		gitTest(t, dir, "commit", "--allow-empty", "-qm", "clean")
+	}
+	trace := filepath.Join(t.TempDir(), "git.trace")
+	t.Setenv("GIT_TRACE", trace)
+	if err := runGuard(dir); err != nil {
+		t.Fatalf("deep clean ancestry rejected: %v", err)
+	}
+	contents, err := os.ReadFile(trace)
+	if err != nil {
+		t.Fatalf("reading Git invocation trace: %v", err)
+	}
+	if calls := strings.Count(string(contents), "git ls-tree"); calls > 1 {
+		t.Fatalf("checked %d trees using separate Git processes; want at most HEAD", calls)
 	}
 }
 
