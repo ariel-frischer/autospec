@@ -37,12 +37,13 @@ type Repository interface {
 	Head() (*plumbing.Reference, error)
 }
 
-// DefaultOpener implements Opener using go-git's PlainOpen
+// DefaultOpener implements Opener using go-git, resolving linked worktrees
+// through their common git dir.
 type DefaultOpener struct{}
 
 // Open opens a git repository at the given path using go-git
 func (d *DefaultOpener) Open(path string) (Repository, error) {
-	repo, err := git.PlainOpen(path)
+	repo, err := git.PlainOpenWithOptions(path, &git.PlainOpenOptions{EnableDotGitCommonDir: true})
 	if err != nil {
 		return nil, fmt.Errorf("opening repository: %w", err)
 	}

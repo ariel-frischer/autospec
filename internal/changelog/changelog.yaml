@@ -13,6 +13,7 @@ versions:
             - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
             - '`autospec doctor` now reports Claude Code 2.1.281, Codex CLI 0.155.1, and OpenCode 1.18.31 as the latest smoke-tested versions'
         fixed:
+            - Branch-based spec detection and branch listing now work inside linked git worktrees, including those created by `autospec worktree`
             - Preflight checks are now agent-aware and no longer require Claude-specific `.claude/skills/` directories for Codex or Jcode projects
             - Claude preflight now distinguishes missing from inaccessible `.claude/skills/` directories, and `autospec init` checks authentication locally with `claude auth status --json` instead of a live provider request
             - '`autospec init --help` now lists Jcode and every other production agent accepted by `--ai`'

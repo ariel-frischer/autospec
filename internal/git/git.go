@@ -54,7 +54,8 @@ func openRepo(path string) (*git.Repository, error) {
 	logDebug("[git] opening repository at %s", path)
 
 	repo, err := git.PlainOpenWithOptions(path, &git.PlainOpenOptions{
-		DetectDotGit: true,
+		DetectDotGit:          true,
+		EnableDotGitCommonDir: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("opening repository at %s: %w", path, err)
