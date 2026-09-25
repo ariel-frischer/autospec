@@ -1330,7 +1330,8 @@ func TestConfiguration_GetAgent_JcodeDefaultsToExec(t *testing.T) {
 }
 
 func TestConfiguration_GetAgent_JcodeExplicitRunners(t *testing.T) {
-	t.Parallel()
+	binDir, _ := installJcodeCommandFixture(t)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	tests := map[string]struct {
 		runner       JcodeRunner
@@ -1364,7 +1365,7 @@ func TestConfiguration_GetAgent_JcodeExplicitRunners(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Sequential: parent sets PATH to a jcode fixture.
 			cfg := Configuration{AgentPreset: "jcode", Jcode: JcodeConfig{
 				Runner: tt.runner, Binary: tt.binary,
 			}}
@@ -1399,7 +1400,8 @@ func TestConfiguration_GetAgent_JcodeExplicitRunners(t *testing.T) {
 }
 
 func TestConfiguration_JcodeExplicitSelectionFixtures(t *testing.T) {
-	t.Parallel()
+	binDir, _ := installJcodeCommandFixture(t)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	tests := map[string]struct {
 		fixture   string
@@ -1428,7 +1430,7 @@ func TestConfiguration_JcodeExplicitSelectionFixtures(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			// Sequential: parent sets PATH to a jcode fixture.
 			if tt.wantError != "" {
 				if tt.fixture == "jcode-unsupported.yaml" {
 					err := requireJcodeFixtureError(t, tt.fixture)
