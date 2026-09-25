@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workflow help now describes `--reasoning-effort` as an agent-neutral setting
 - Jcode CLI workflows now place wrapper flags before `run`, suppress update and self-development behavior, and omit custom-fork-only arguments
 - Experimental Jcode SDK workflows now render as native SDK execution instead of a misleading unsupported-command error, and cancel owned turns when local output streaming fails
+- Cancelled, timed-out, or interrupted headless agent runs on Linux and macOS now stop the agent's whole process group, including tool and MCP subprocesses, before autospec returns, so no leftover process can keep editing the workspace
+- `Ctrl+C` and `SIGTERM` now stop the running agent and its subprocesses cleanly instead of leaving them running, and an interrupted stage no longer uses up a retry attempt
+- `autospec artifact <type> --schema` now works for every artifact type before any spec or artifact exists, and the specify prompt treats its inline schema as authoritative
+- The CLI reference now states that `status` takes the spec name as a positional argument and has no `--spec` flag
 
 ### Security
 - Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2

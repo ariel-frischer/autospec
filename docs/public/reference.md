@@ -99,7 +99,7 @@ Run selected workflow stages with flexible stage selection
 
 **Canonical Stage Order**: constitution → specify → clarify → plan → tasks → checklist → analyze → implement
 
-**Feature Selection**: When a workflow command needs an existing feature directory, autospec resolves it in this order: explicit command selection (`--spec` or positional spec argument), persisted project-local active feature state, then branch-prefix fallback. Commands that create or select a feature may update the persisted active feature so later `plan`, `tasks`, `implement`, `status`, `prereqs`, and artifact lookups can target the same directory from a differently named branch. If persisted state points at a deleted spec directory, autospec ignores that stale selection and continues to branch-prefix fallback.
+**Feature Selection**: When a workflow command needs an existing feature directory, autospec resolves it in this order: explicit command selection (the `--spec` flag on `run`, `all`, and `prep`, or a positional spec argument on `status` and `implement`), persisted project-local active feature state, then branch-prefix fallback. Commands that create or select a feature may update the persisted active feature so later `plan`, `tasks`, `implement`, `status`, `prereqs`, and artifact lookups can target the same directory from a differently named branch. If persisted state points at a deleted spec directory, autospec ignores that stale selection and continues to branch-prefix fallback.
 
 **Examples**:
 ```bash
@@ -434,7 +434,7 @@ Check current feature status and progress
 
 **Description**: Display detected spec, which artifact files exist (spec.yaml, plan.yaml, tasks.yaml), task completion progress, and risk summary (if plan.yaml contains risks).
 
-Without a `spec-name`, status reports the currently resolved active feature. Resolution uses persisted project-local active feature state before falling back to the current branch prefix. A `spec-name` argument is explicit selection and overrides persisted state.
+Without a `spec-name`, status reports the currently resolved active feature. Resolution uses persisted project-local active feature state before falling back to the current branch prefix. A `spec-name` argument is explicit selection and overrides persisted state. `status` has no `--spec` flag; pass the spec name as the positional argument (`autospec status 003-feature`).
 
 **Flags**:
 - `-v, --verbose`: Show phase-by-phase breakdown

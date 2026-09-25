@@ -114,127 +114,41 @@ func TestArtifactCommand_ValidTasks(t *testing.T) {
 	}
 }
 
-func TestArtifactCommand_SchemaSpec(t *testing.T) {
-	// Create temp specs directory for config loading
-	tmpDir := t.TempDir()
-	specsDir := filepath.Join(tmpDir, "specs")
-	specDir := filepath.Join(specsDir, "001-test")
-	if err := os.MkdirAll(specDir, 0o755); err != nil {
-		t.Fatalf("failed to create spec dir: %v", err)
-	}
-	// Create spec.yaml so detection works
-	if err := os.WriteFile(filepath.Join(specDir, "spec.yaml"), []byte("feature:\n  branch: test\n"), 0o644); err != nil {
-		t.Fatalf("failed to create spec.yaml: %v", err)
-	}
-
-	// Create config file pointing to our specs dir
-	configFile := filepath.Join(tmpDir, "config.yml")
-	configContent := fmt.Sprintf("specs_dir: %s\n", specsDir)
-	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
-		t.Fatalf("failed to create config: %v", err)
-	}
-
-	// Set schema flag
-	oldSchemaFlag := artifactSchemaFlag
-	artifactSchemaFlag = true
-	defer func() { artifactSchemaFlag = oldSchemaFlag }()
-
-	var stdout, stderr bytes.Buffer
-	err := runArtifactCommand([]string{"spec"}, configFile, &stdout, &stderr)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-		t.Logf("stderr: %s", stderr.String())
-	}
-
-	output := stdout.String()
-	if !strings.Contains(output, "Schema for spec") {
-		t.Errorf("output should contain 'Schema for spec', got: %s", output)
-	}
-
-	if !strings.Contains(output, "feature") {
-		t.Errorf("output should contain 'feature' field, got: %s", output)
-	}
-
-	if !strings.Contains(output, "user_stories") {
-		t.Errorf("output should contain 'user_stories' field, got: %s", output)
-	}
-}
-
-func TestArtifactCommand_SchemaPlan(t *testing.T) {
-	// Create temp specs directory for config loading
-	tmpDir := t.TempDir()
-	specsDir := filepath.Join(tmpDir, "specs")
-	specDir := filepath.Join(specsDir, "001-test")
-	if err := os.MkdirAll(specDir, 0o755); err != nil {
-		t.Fatalf("failed to create spec dir: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(specDir, "plan.yaml"), []byte("plan:\n  branch: test\n"), 0o644); err != nil {
-		t.Fatalf("failed to create plan.yaml: %v", err)
-	}
-
-	configFile := filepath.Join(tmpDir, "config.yml")
-	configContent := fmt.Sprintf("specs_dir: %s\n", specsDir)
-	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
-		t.Fatalf("failed to create config: %v", err)
+// TestArtifactCommand_Schema verifies --schema works for every artifact type
+// without an existing artifact or spec directory, as agents probe it while
+// creating the first artifact.
+func TestArtifactCommand_Schema(t *testing.T) {
+	tests := map[string]struct {
+		arg       string
+		wantTitle string
+		wantField string
+	}{
+		"spec":         {arg: "spec", wantTitle: "Schema for spec", wantField: "user_stories"},
+		"plan":         {arg: "plan", wantTitle: "Schema for plan", wantField: "technical_context"},
+		"tasks":        {arg: "tasks", wantTitle: "Schema for tasks", wantField: "phases"},
+		"analysis":     {arg: "analysis", wantTitle: "Schema for analysis", wantField: "findings"},
+		"checklist":    {arg: "checklist", wantTitle: "Schema for checklist", wantField: "categories"},
+		"constitution": {arg: "constitution", wantTitle: "Schema for constitution", wantField: "principles"},
+		"missing path": {arg: "specs/999-missing/plan.yaml", wantTitle: "Schema for plan", wantField: "technical_context"},
 	}
 
 	oldSchemaFlag := artifactSchemaFlag
 	artifactSchemaFlag = true
 	defer func() { artifactSchemaFlag = oldSchemaFlag }()
 
-	var stdout, stderr bytes.Buffer
-	err := runArtifactCommand([]string{"plan"}, configFile, &stdout, &stderr)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-		t.Logf("stderr: %s", stderr.String())
-	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configFile := filepath.Join(tmpDir, "config.yml")
+			configContent := fmt.Sprintf("specs_dir: %s\n", filepath.Join(tmpDir, "specs"))
+			require.NoError(t, os.WriteFile(configFile, []byte(configContent), 0o644))
 
-	output := stdout.String()
-	if !strings.Contains(output, "Schema for plan") {
-		t.Errorf("output should contain 'Schema for plan', got: %s", output)
-	}
-
-	if !strings.Contains(output, "technical_context") {
-		t.Errorf("output should contain 'technical_context' field, got: %s", output)
-	}
-}
-
-func TestArtifactCommand_SchemaTasks(t *testing.T) {
-	// Create temp specs directory for config loading
-	tmpDir := t.TempDir()
-	specsDir := filepath.Join(tmpDir, "specs")
-	specDir := filepath.Join(specsDir, "001-test")
-	if err := os.MkdirAll(specDir, 0o755); err != nil {
-		t.Fatalf("failed to create spec dir: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(specDir, "tasks.yaml"), []byte("tasks:\n  branch: test\n"), 0o644); err != nil {
-		t.Fatalf("failed to create tasks.yaml: %v", err)
-	}
-
-	configFile := filepath.Join(tmpDir, "config.yml")
-	configContent := fmt.Sprintf("specs_dir: %s\n", specsDir)
-	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
-		t.Fatalf("failed to create config: %v", err)
-	}
-
-	oldSchemaFlag := artifactSchemaFlag
-	artifactSchemaFlag = true
-	defer func() { artifactSchemaFlag = oldSchemaFlag }()
-
-	var stdout, stderr bytes.Buffer
-	err := runArtifactCommand([]string{"tasks"}, configFile, &stdout, &stderr)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-		t.Logf("stderr: %s", stderr.String())
-	}
-
-	output := stdout.String()
-	if !strings.Contains(output, "Schema for tasks") {
-		t.Errorf("output should contain 'Schema for tasks', got: %s", output)
-	}
-
-	if !strings.Contains(output, "phases") {
-		t.Errorf("output should contain 'phases' field, got: %s", output)
+			var stdout, stderr bytes.Buffer
+			err := runArtifactCommand([]string{tt.arg}, configFile, &stdout, &stderr)
+			require.NoError(t, err, "stderr: %s", stderr.String())
+			require.Contains(t, stdout.String(), tt.wantTitle)
+			require.Contains(t, stdout.String(), tt.wantField)
+		})
 	}
 }
 

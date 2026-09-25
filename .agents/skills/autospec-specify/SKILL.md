@@ -55,7 +55,7 @@ Given that feature description, do this:
 
 3. **Generate spec.yaml**: Create the YAML specification file with this **exact structure**.
 
-   **Schema reference**: Run `autospec artifact spec --schema` to see the full schema if unsure.
+   The structure below is the authoritative schema; follow it directly. Optionally run `autospec artifact spec --schema` for field details; if that probe is unavailable or fails in your environment, continue with the structure below and rely on the validation step instead.
 
    ```yaml
    # ============ REQUIRED SECTIONS ============

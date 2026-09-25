@@ -112,29 +112,18 @@ func parseArtifactArgs(args []string, specsDir, stateDir string) (*artifactArgs,
 	}
 
 	firstArg := args[0]
-
-	// Check if first arg is a path (contains .yaml or .yml extension)
-	isPath := strings.HasSuffix(firstArg, ".yaml") || strings.HasSuffix(firstArg, ".yml")
-
-	if isPath {
-		// Path-only invocation: infer type from filename
-		artType, err := validation.InferArtifactTypeFromFilename(firstArg)
-		if err != nil {
-			return nil, fmt.Errorf("%w\nValid artifact filenames: %s",
-				err, strings.Join(validation.ValidArtifactFilenames(), ", "))
-		}
-		result.artType = artType
-		result.filePath = firstArg
-		result.isPathArg = true
-		return result, nil
-	}
-
-	// First arg is a type
-	artType, err := validation.ParseArtifactType(firstArg)
+	artType, isPath, err := artifactTypeFromArg(firstArg)
 	if err != nil {
 		return nil, err
 	}
 	result.artType = artType
+
+	if isPath {
+		// Path-only invocation: type inferred from filename
+		result.filePath = firstArg
+		result.isPathArg = true
+		return result, nil
+	}
 
 	if len(args) == 2 {
 		// Explicit type + path: backward compatible
@@ -155,6 +144,21 @@ func parseArtifactArgs(args []string, specsDir, stateDir string) (*artifactArgs,
 	result.selectionSource = source
 
 	return result, nil
+}
+
+// artifactTypeFromArg resolves the artifact type from a type name or an
+// artifact path (type inferred from the filename).
+func artifactTypeFromArg(arg string) (validation.ArtifactType, bool, error) {
+	if !strings.HasSuffix(arg, ".yaml") && !strings.HasSuffix(arg, ".yml") {
+		artType, err := validation.ParseArtifactType(arg)
+		return artType, false, err
+	}
+	artType, err := validation.InferArtifactTypeFromFilename(arg)
+	if err != nil {
+		return "", true, fmt.Errorf("%w\nValid artifact filenames: %s",
+			err, strings.Join(validation.ValidArtifactFilenames(), ", "))
+	}
+	return artType, true, nil
 }
 
 // resolveArtifactPath resolves the artifact path from the current spec directory.
@@ -189,6 +193,12 @@ func runArtifactCommandWithCmd(cmd *cobra.Command, args []string, configPath str
 }
 
 func runArtifactCommandWithConfig(configPath string, args []string, loadConfig func(string) (*config.Configuration, error), out, errOut io.Writer) error {
+	// --schema only needs the artifact type: never load config or detect the
+	// active spec, so the schema is available before any artifact exists.
+	if artifactSchemaFlag {
+		return runArtifactSchema(args, out, errOut)
+	}
+
 	// Load configuration
 	cfg, err := loadConfig(configPath)
 	if err != nil {
@@ -199,32 +209,12 @@ func runArtifactCommandWithConfig(configPath string, args []string, loadConfig f
 	// Parse arguments
 	parsed, err := parseArtifactArgs(args, cfg.SpecsDir, cfg.StateDir)
 	if err != nil {
-		fmt.Fprintf(errOut, "Error: %v\n", err)
-		if strings.Contains(err.Error(), "invalid artifact type") {
-			fmt.Fprintf(errOut, "Valid types: %s\n", strings.Join(validation.ValidArtifactTypes(), ", "))
-		}
+		printArtifactArgsError(err, errOut)
 		return NewExitError(ExitInvalidArguments)
 	}
 
-	// Handle --schema flag
-	if artifactSchemaFlag {
-		return printSchema(parsed.artType, out)
-	}
-
-	// Check if file exists
-	if _, err := os.Stat(parsed.filePath); os.IsNotExist(err) {
-		fmt.Fprintf(errOut, "Error: file not found: %s\n", parsed.filePath)
-		if parsed.isTypeOnly {
-			fmt.Fprintf(errOut, "Hint: The %s.yaml file does not exist in the detected spec directory\n", parsed.artType)
-		}
-		return NewExitError(ExitInvalidArguments)
-	}
-
-	// Check if path is a directory
-	if info, _ := os.Stat(parsed.filePath); info != nil && info.IsDir() {
-		fmt.Fprintf(errOut, "Error: path is a directory, not a file: %s\n", parsed.filePath)
-		fmt.Fprintf(errOut, "Hint: Specify the full path to the %s.yaml file\n", parsed.artType)
-		return NewExitError(ExitInvalidArguments)
+	if err := checkArtifactFile(parsed, errOut); err != nil {
+		return err
 	}
 
 	// Print spec identification for auto-detected paths
@@ -247,6 +237,45 @@ func runArtifactCommandWithConfig(configPath string, args []string, loadConfig f
 
 	// Format and display results
 	return formatValidationResult(result, parsed.filePath, parsed.artType, out, errOut)
+}
+
+// checkArtifactFile reports a missing or directory artifact path.
+func checkArtifactFile(parsed *artifactArgs, errOut io.Writer) error {
+	info, err := os.Stat(parsed.filePath)
+	if os.IsNotExist(err) {
+		fmt.Fprintf(errOut, "Error: file not found: %s\n", parsed.filePath)
+		if parsed.isTypeOnly {
+			fmt.Fprintf(errOut, "Hint: The %s.yaml file does not exist in the detected spec directory\n", parsed.artType)
+		}
+		return NewExitError(ExitInvalidArguments)
+	}
+	if info != nil && info.IsDir() {
+		fmt.Fprintf(errOut, "Error: path is a directory, not a file: %s\n", parsed.filePath)
+		fmt.Fprintf(errOut, "Hint: Specify the full path to the %s.yaml file\n", parsed.artType)
+		return NewExitError(ExitInvalidArguments)
+	}
+	return nil
+}
+
+// runArtifactSchema prints the schema for the artifact type named by args[0].
+func runArtifactSchema(args []string, out, errOut io.Writer) error {
+	if len(args) == 0 {
+		printArtifactArgsError(fmt.Errorf("no arguments provided"), errOut)
+		return NewExitError(ExitInvalidArguments)
+	}
+	artType, _, err := artifactTypeFromArg(args[0])
+	if err != nil {
+		printArtifactArgsError(err, errOut)
+		return NewExitError(ExitInvalidArguments)
+	}
+	return printSchema(artType, out)
+}
+
+func printArtifactArgsError(err error, errOut io.Writer) {
+	fmt.Fprintf(errOut, "Error: %v\n", err)
+	if strings.Contains(err.Error(), "invalid artifact type") {
+		fmt.Fprintf(errOut, "Valid types: %s\n", strings.Join(validation.ValidArtifactTypes(), ", "))
+	}
 }
 
 // printSpecIdentification prints the spec identification message when using auto-detection.
