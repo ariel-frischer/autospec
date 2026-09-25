@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-25
+
 ### Added
 - Jcode is now a supported workflow agent (`autospec init --ai jcode` or `agent_preset: jcode`), running the official upstream `jcode` CLI by default with provider, provider profile, socket, trace, tool policy, and MCP exposure settings
 - [Experimental] Opt-in Jcode Go SDK runner (`jcode.runner: sdk`) using [`github.com/ariel-frischer/jcode-go`](https://github.com/ariel-frischer/jcode-go) v0.1.7, with connect, private, and auto runtime policies, bounded reconnect/restart recovery, named session profiles, model and reasoning-effort settings, and turn, token, and deadline limits
@@ -433,7 +435,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.11.6...HEAD
+[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/ariel-frischer/autospec/compare/v0.11.6...v0.12.0
 [0.11.6]: https://github.com/ariel-frischer/autospec/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/ariel-frischer/autospec/compare/v0.11.4...v0.11.5
 [0.11.4]: https://github.com/ariel-frischer/autospec/compare/v0.11.3...v0.11.4
