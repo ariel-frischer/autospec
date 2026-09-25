@@ -21,11 +21,11 @@ Build features systematically with AI-powered specification workflows.
 Built with a **multi-agent architecture** and inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Autospec reimagines the specification workflow with **YAML-first artifacts** for programmatic access and validation. These principles ensure reliable, performant, and maintainable software that developers 
 can trust for their critical development workflows.
 
-Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), and [OpenCode](https://opencode.ai).
+Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), [OpenCode](https://opencode.ai), and [Jcode](https://github.com/1jehuang/jcode).
 
-### Jcode Go SDK
+### Jcode Go SDK (experimental)
 
-Autospec's opt-in native jcode SDK runner works with the published [`github.com/ariel-frischer/jcode-go`](https://pkg.go.dev/github.com/ariel-frischer/jcode-go) module. This is Ariel Frischer's unofficial community SDK for upstream Jcode; the official CLI runner remains the default.
+Autospec runs the official `jcode` CLI by default. An opt-in native runner (`jcode.runner: sdk`) uses the published [`github.com/ariel-frischer/jcode-go`](https://pkg.go.dev/github.com/ariel-frischer/jcode-go) module, Ariel Frischer's unofficial community SDK for upstream Jcode.
 
 ## 📦 Installation
 
@@ -44,6 +44,9 @@ curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/instal
 - **OS Notifications** — Native desktop notifications with custom sound support
 - **History Tracking** — View and filter command execution history with status, duration, and exit codes
 - **Auto-Commit** — Automatic git commit creation with .gitignore management and conventional commit messages
+- **Multi-Agent** — Claude Code, Codex CLI, OpenCode, and Jcode, plus custom agent commands
+- **Per-Stage Models & Profiles** — Pick a model per stage (`models.<stage>`) and switch whole config sets with `--profile`
+- **Clean Interruption** — Ctrl+C, timeouts, and cancellation stop the agent and all its subprocesses
 
 ## ✨ What Makes Autospec Different?
 
@@ -65,7 +68,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
 
 ### Prerequisites
 
-- [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), or [OpenCode](https://opencode.ai)
+- [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), [OpenCode](https://opencode.ai), or [Jcode](https://github.com/1jehuang/jcode)
 - Git
 
 ### Initialize Your Project
@@ -81,6 +84,7 @@ Originally inspired by [GitHub SpecKit](https://github.com/github/spec-kit), Aut
    autospec init ~/projects/myapp   # Initialize at specific path
    autospec init --ai codex         # Configure Codex
    autospec init --ai opencode      # Configure specific agent
+   autospec init --ai jcode         # Configure Jcode
    autospec init --ai claude,codex,opencode  # Configure multiple agents
    autospec init --project          # Project-level permissions (default: global)
    ```
@@ -147,10 +151,15 @@ autospec run -tlzi
 # All core with skip confirmations (-y)
 autospec run -a -y "Feature description"
 
-# Use a specific agent (claude, codex, or opencode)
+# Use a specific agent (claude, codex, opencode, or jcode)
 autospec run -a --agent opencode "Add REST API endpoints"
 autospec run -a --agent claude "Add unit tests"
 autospec run -a --agent codex "Add CLI smoke tests"
+autospec run -a --agent jcode "Refactor config loading"
+
+# Override the model for one run, or load a named config profile
+autospec run -a --model gpt-5.6-terra -e high "Add billing exports"
+autospec run -a --profile cheap "Add a feature"
 ```
 
 ### Shortcut Commands
@@ -290,13 +299,19 @@ tasks:
 
 Priority: Environment vars > Project config > User config > Defaults
 
+Named profiles (`~/.config/autospec/profiles/<name>.yml` or `.autospec/profiles/<name>.yml`) layer on top for one command with `--profile <name>`. Manage them with `autospec config profiles` and `autospec config create <name>`.
+
 ### All Settings
 
 ```yaml
 # .autospec/config.yml
 
 # Agent configuration
-agent_preset: ""                      # Empty falls back to claude; built-in: claude | codex | opencode
+agent_preset: ""                      # Empty falls back to claude; built-in: claude | codex | opencode | jcode
+model: ""                             # Default workflow model (empty = agent default)
+# models:                             # Optional per-stage overrides (constitution, specify, clarify,
+#   plan: provider/plan-model         #   plan, tasks, checklist, analyze, implement)
+reasoning_effort: ""                  # Codex (and Jcode SDK) reasoning effort; per-stage via reasoning_efforts.<stage>
 skip_permissions: true                # Autonomous mode for supported agents
 custom_agent_cmd: ""                  # Custom command template with {{PROMPT}} placeholder
 # custom_agent:                       # Structured agent config (alternative to custom_agent_cmd)
@@ -442,7 +457,7 @@ Use these when you prefer chat-based iteration over autospec's automated (`-p`) 
 |----------|-------------|
 | [Quickstart Guide](docs/public/quickstart.md) | Complete your first workflow in 10 minutes |
 | [CLI Reference](docs/public/reference.md) | Full command reference with all flags and options |
-| [Agent Configuration](docs/public/agents.md) | Claude, Codex, OpenCode, and custom agent configuration |
+| [Agent Configuration](docs/public/agents.md) | Claude, Codex, OpenCode, Jcode, and custom agent configuration; models and profiles |
 | [Worktree Management](docs/public/worktree.md) | Run multiple features in parallel with git worktrees |
 | [Claude Settings](docs/public/claude-settings.md) | Sandboxing, permissions, and Claude Code configuration |
 | [Codex Settings](docs/public/codex-settings.md) | Codex CLI auth, sandboxing, and yolo mode |
