@@ -23,10 +23,6 @@ can trust for their critical development workflows.
 
 Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://developers.openai.com/codex/cli/reference), [OpenCode](https://opencode.ai), and [Jcode](https://github.com/1jehuang/jcode).
 
-### Jcode Go SDK (experimental)
-
-Autospec runs the official `jcode` CLI by default. An opt-in native runner (`jcode.runner: sdk`) uses the published [`github.com/ariel-frischer/jcode-go`](https://pkg.go.dev/github.com/ariel-frischer/jcode-go) module, Ariel Frischer's unofficial community SDK for upstream Jcode.
-
 ## 📦 Installation
 
 ```bash
@@ -380,6 +376,10 @@ custom_agent_cmd: "claude -p --model claude-sonnet-4-5-20250929 {{PROMPT}}"
 ```
 
 See [Agent Configuration](docs/public/agents.md) for complete details including OpenCode setup and environment variables.
+
+### Jcode Go SDK
+
+Autospec's opt-in native jcode SDK runner (`jcode.runner: sdk`) works with the published [`github.com/ariel-frischer/jcode-go`](https://pkg.go.dev/github.com/ariel-frischer/jcode-go) module. This is Ariel Frischer's unofficial community SDK for upstream Jcode; the official CLI runner remains the default.
 
 ### Commands
 
