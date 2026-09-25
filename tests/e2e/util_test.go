@@ -20,17 +20,17 @@ import (
 // generated project layout and does not need a jcode executable.
 func TestE2E_SetupAutospecInitAgentLayouts(t *testing.T) {
 	tests := map[string]struct {
-		preset             testutil.AgentPreset
-		wantClaudeCommands bool
+		preset           testutil.AgentPreset
+		wantClaudeSkills bool
 	}{
-		"claude retains command directory": {
-			preset:             testutil.AgentClaude,
-			wantClaudeCommands: true,
+		"claude retains skills directory": {
+			preset:           testutil.AgentClaude,
+			wantClaudeSkills: true,
 		},
-		"codex omits Claude command directory": {
+		"codex omits Claude skills directory": {
 			preset: testutil.AgentCodex,
 		},
-		"jcode omits Claude command directory": {
+		"jcode omits Claude skills directory": {
 			preset: testutil.AgentPreset("jcode"),
 		},
 	}
@@ -39,12 +39,12 @@ func TestE2E_SetupAutospecInitAgentLayouts(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			env := testutil.NewE2EEnvWithAgent(t, tt.preset)
 			env.SetupAutospecInit()
-			assertE2EAgentLayout(t, env, tt.preset, tt.wantClaudeCommands)
+			assertE2EAgentLayout(t, env, tt.preset, tt.wantClaudeSkills)
 		})
 	}
 }
 
-func assertE2EAgentLayout(t *testing.T, env *testutil.E2EEnv, preset testutil.AgentPreset, wantClaudeCommands bool) {
+func assertE2EAgentLayout(t *testing.T, env *testutil.E2EEnv, preset testutil.AgentPreset, wantClaudeSkills bool) {
 	t.Helper()
 	autospecDir := filepath.Join(env.TempDir(), ".autospec")
 	configPath := filepath.Join(autospecDir, "config.yml")
@@ -53,8 +53,8 @@ func assertE2EAgentLayout(t *testing.T, env *testutil.E2EEnv, preset testutil.Ag
 	config, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 	require.Contains(t, string(config), "agent_preset: "+string(preset))
-	_, err = os.Stat(filepath.Join(env.TempDir(), ".claude", "commands"))
-	if wantClaudeCommands {
+	_, err = os.Stat(filepath.Join(env.TempDir(), ".claude", "skills"))
+	if wantClaudeSkills {
 		require.NoError(t, err)
 		return
 	}
