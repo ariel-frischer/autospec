@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 const promptPlaceholder = "{{PROMPT}}"
@@ -220,38 +219,9 @@ func (c *CustomAgent) runCommand(ctx context.Context, cmd *exec.Cmd, opts ExecOp
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("starting custom agent: %w", err)
-	}
-
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
-
-	start := time.Now()
-	var err error
-	select {
-	case <-ctx.Done():
-		_ = cmd.Process.Kill()
-		<-done
-		return nil, fmt.Errorf("executing custom agent: %w", ctx.Err())
-	case err = <-done:
-	}
-	duration := time.Since(start)
-
-	result := &Result{
-		Duration: duration,
-		Stdout:   stdoutBuf.String(),
-		Stderr:   stderrBuf.String(),
-	}
-
+	result, err := runAgentResult(ctx, cmd, !opts.Interactive, &stdoutBuf, &stderrBuf)
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			result.ExitCode = exitErr.ExitCode()
-		} else {
-			return nil, fmt.Errorf("executing custom agent: %w", err)
-		}
+		return nil, fmt.Errorf("executing custom agent: %w", err)
 	}
 	return result, nil
 }

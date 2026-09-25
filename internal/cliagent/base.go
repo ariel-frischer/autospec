@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
-	"time"
 )
 
 // BaseAgent provides shared implementation for common agent operations.
@@ -381,38 +380,9 @@ func (b *BaseAgent) runCommand(ctx context.Context, cmd *exec.Cmd, opts ExecOpti
 		cmd.Stderr = &stderrBuf
 	}
 
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("starting %s: %w", b.AgentName, err)
-	}
-
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
-
-	start := time.Now()
-	var err error
-	select {
-	case <-ctx.Done():
-		_ = cmd.Process.Kill()
-		<-done // Wait for goroutine to exit
-		return nil, fmt.Errorf("executing %s: %w", b.AgentName, ctx.Err())
-	case err = <-done:
-	}
-	duration := time.Since(start)
-
-	result := &Result{
-		Duration: duration,
-		Stdout:   stdoutBuf.String(),
-		Stderr:   stderrBuf.String(),
-	}
-
+	result, err := runAgentResult(ctx, cmd, !opts.Interactive, &stdoutBuf, &stderrBuf)
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			result.ExitCode = exitErr.ExitCode()
-		} else {
-			return nil, fmt.Errorf("executing %s: %w", b.AgentName, err)
-		}
+		return nil, fmt.Errorf("executing %s: %w", b.AgentName, err)
 	}
 	return result, nil
 }

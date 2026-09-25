@@ -1,7 +1,9 @@
 package workflow
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1270,6 +1272,7 @@ func TestHandleExecutionFailure(t *testing.T) {
 		wantRetryCount    int
 		wantExhausted     bool
 		wantErrorContains string
+		execErr           error
 	}{
 		"first failure increments retry count": {
 			initialRetryCount: 0,
@@ -1298,6 +1301,13 @@ func TestHandleExecutionFailure(t *testing.T) {
 			wantRetryCount:    3,
 			wantExhausted:     false,
 			wantErrorContains: "command execution failed",
+		},
+		"interrupted run does not consume retry budget": {
+			initialRetryCount: 1,
+			maxRetries:        3,
+			wantRetryCount:    1,
+			wantErrorContains: "context canceled",
+			execErr:           fmt.Errorf("agent custom command failed: %w", context.Canceled),
 		},
 	}
 
@@ -1339,7 +1349,10 @@ func TestHandleExecutionFailure(t *testing.T) {
 				TotalStages: 4,
 			}
 
-			execErr := errors.New("claude execution error")
+			execErr := tc.execErr
+			if execErr == nil {
+				execErr = errors.New("claude execution error")
+			}
 
 			// Call handleExecutionFailure
 			returnErr := executor.handleExecutionFailure(result, retryState, stageInfo, execErr)
@@ -1353,6 +1366,9 @@ func TestHandleExecutionFailure(t *testing.T) {
 				assert.True(t, result.Exhausted)
 			}
 			assert.Equal(t, tc.wantRetryCount, result.RetryCount)
+			persisted, err := retry.LoadRetryState(stateDir, "test-spec", "specify", tc.maxRetries)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantRetryCount, persisted.Count, "persisted retry count")
 
 			// Verify result.Error is set correctly
 			assert.Contains(t, result.Error.Error(), "command execution failed")

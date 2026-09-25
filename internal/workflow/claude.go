@@ -10,6 +10,7 @@ import (
 
 	"github.com/ariel-frischer/autospec/internal/cliagent"
 	"github.com/ariel-frischer/autospec/internal/config"
+	"github.com/ariel-frischer/autospec/internal/shutdown"
 )
 
 // ClaudeExecutor handles CLI agent command execution.
@@ -133,12 +134,14 @@ func (c *ClaudeExecutor) executeWithAgentOptions(prompt string, interactive bool
 	return nil
 }
 
-// createTimeoutContext creates a context with optional timeout
+// createTimeoutContext creates the agent execution context. It derives from
+// the process shutdown context so SIGINT/SIGTERM cancel running agents.
 func (c *ClaudeExecutor) createTimeoutContext() (context.Context, context.CancelFunc) {
+	parent := shutdown.Context()
 	if c.Timeout > 0 {
-		return context.WithTimeout(context.Background(), time.Duration(c.Timeout)*time.Second)
+		return context.WithTimeout(parent, time.Duration(c.Timeout)*time.Second)
 	}
-	return context.Background(), nil
+	return parent, nil
 }
 
 // FormatCommand returns a human-readable command string for display and error messages.

@@ -14,6 +14,7 @@ import (
 	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/cli/stages"
 	"github.com/ariel-frischer/autospec/internal/cli/util"
+	"github.com/ariel-frischer/autospec/internal/shutdown"
 	"github.com/spf13/cobra"
 )
 
@@ -56,9 +57,12 @@ Source: https://github.com/ariel-frischer/autospec`,
   autospec implement`,
 }
 
-// Execute runs the root command
+// Execute runs the root command. SIGINT/SIGTERM cancel the command context so
+// running agent process groups are reaped before autospec exits.
 func Execute() error {
-	return rootCmd.Execute()
+	ctx, stop := shutdown.Install()
+	defer stop()
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func init() {

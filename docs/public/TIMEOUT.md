@@ -159,8 +159,8 @@ exit 1
 
 ### What Happens When a Timeout Occurs
 
-1. **Process Termination**: The running command is sent a `SIGKILL` signal
-2. **Immediate Stop**: The process cannot ignore this signal and terminates immediately
+1. **Process Termination**: On Linux and macOS, headless agents run in their own process group. The whole group (the agent plus any tool, MCP, or background processes it started) receives `SIGTERM`, then `SIGKILL` if it has not exited within 3 seconds. On other platforms only the agent process is killed.
+2. **Reaped Before Return**: autospec returns only after the process group is gone, so no agent descendant can keep modifying the workspace afterwards. The same cleanup runs when you interrupt autospec with `Ctrl+C` or `SIGTERM`, and after a headless agent exits normally.
 3. **Error Return**: A `TimeoutError` is returned with details
 4. **Exit Code 5**: The CLI exits with code 5 (specific to timeouts)
 5. **Helpful Message**: Error message includes:

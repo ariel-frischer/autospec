@@ -1,6 +1,8 @@
 package workflow
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -477,6 +479,13 @@ func (e *Executor) handleExecutionFailure(result *StageResult, retryState *retry
 
 	// Send error notification (non-blocking)
 	e.sendErrorNotification(stageInfo.Name, result.Error)
+
+	// An interrupted run (SIGINT/SIGTERM) is not an agent failure; keep the
+	// retry budget intact for the next invocation.
+	if errors.Is(err, context.Canceled) {
+		result.RetryCount = retryState.Count
+		return result.Error
+	}
 
 	_, retryErr := e.handleRetryIncrement(result, retryState, err, "retry limit exhausted")
 	return retryErr
