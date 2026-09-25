@@ -210,8 +210,9 @@ Public changelog entries must describe user-visible behavior: CLI changes, confi
 
 - `dev` (GitLab `origin` only) is the integration branch; never push `dev` to GitHub (`gh`).
 - `main` is frozen on both providers and must stay free of `video/` history (enforced by `go run ./cmd/mainboundary`). Never merge `dev` into `main`; cherry-pick onto a branch from `gh/main`.
-- Releases, README/docs/dependency syncs to `main`, freeze/unfreeze, and Dependabot PR triage follow the private `release` skill (`.agents/skills/release/SKILL.md`). Each `main` update needs Ariel's approval and ends with both freezes restored.
-- Dependabot PRs: never merge in the GitHub UI. Close them if `main` already has the version; otherwise cherry-pick to `dev` and sync to `main` via the skill.
+- Releases, README/docs/dependency syncs to `main`, freeze/unfreeze, and Dependabot PR triage follow the private `release` skill (`.agents/skills/release/SKILL.md`). Ariel syncs `main` manually: never start, propose, or schedule a `main` sync, release, or CI repair unless Ariel explicitly asks. Land work on `dev` only.
+- Save CI minutes: when asked to sync, batch all commits onto the PR branch before the first push (every push runs the full GitHub CI), and skip GitLab MRs for syncs.
+- Dependabot PRs: never merge in the GitHub UI. When asked, close them if `main` already has the version; otherwise cherry-pick to `dev` and leave the `main` sync to Ariel.
 - `make test` skips E2E and integration suites. Before any `main` update, also run `go test -tags=e2e ./tests/e2e/...` and `go test -tags=integration ./tests/integration/...` with agent CLIs removed from PATH, as CI does.
 
 ## Git Commits in Sandbox Mode
