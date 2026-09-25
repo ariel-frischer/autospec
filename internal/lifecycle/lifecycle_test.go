@@ -305,22 +305,25 @@ func TestRunDurationAccuracy(t *testing.T) {
 	handler := &mockHandler{}
 	sleepDuration := 10 * time.Millisecond
 
+	start := time.Now()
 	_ = Run(handler, "sleep-cmd", func() error {
 		time.Sleep(sleepDuration)
 		return nil
 	})
+	elapsed := time.Since(start)
 
 	calls := handler.getCommandCalls()
 	if len(calls) != 1 {
 		t.Fatalf("got %d calls, want 1", len(calls))
 	}
 
-	// Allow 5ms tolerance for timing variance
+	// The reported duration must cover the work and cannot exceed the wall
+	// time observed around Run; a fixed upper tolerance flakes under load.
 	if calls[0].duration < sleepDuration {
 		t.Errorf("duration %v less than sleep %v", calls[0].duration, sleepDuration)
 	}
-	if calls[0].duration > sleepDuration+5*time.Millisecond {
-		t.Errorf("duration %v too much greater than sleep %v", calls[0].duration, sleepDuration)
+	if calls[0].duration > elapsed {
+		t.Errorf("duration %v exceeds observed elapsed %v", calls[0].duration, elapsed)
 	}
 }
 
