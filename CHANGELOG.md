@@ -8,30 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Web documentation now covers native jcode runtimes, named profiles, stage-specific model and reasoning settings, and current agent setup
-- Workflow stages can now persist independent models for constitution, specify, clarify, plan, tasks, checklist, analyze, and implement
-- Autospec now supports the experimental jcode Go SDK for connect and isolated private runtime modes; the official upstream `jcode` CLI `run` mode remains the default
-- Autospec can use native jcode as the repository workflow agent, including the OpenRouter-backed cheap profile with stage-specific reasoning settings
-- Named configuration profiles can now be selected with `--profile`; explicit `--config` paths remain available as an alternative
-- Configuration profiles can be created, listed, activated, and selected for one command with `autospec config` and global `--profile`
-- Autospec now consumes the experimental [`github.com/ariel-frischer/jcode-go`](https://github.com/ariel-frischer/jcode-go) v0.1.7 SDK with race-free owned turns, without requiring a sibling jcode checkout
-- Explicit `jcode.runner: sdk` sessions can select a named session profile and set positive turn, token, and explicit-offset RFC3339 deadline limits; the default and official exec runner remain unchanged
-- Agent-aware preflight no longer requires Claude-specific `.claude/skills/` directories for Codex or jcode projects
-- Claude preflight now distinguishes missing from inaccessible `.claude/skills/` directories, while initialization uses local `claude auth status --json` checks with direct retry guidance and no live provider request
-- Native jcode workflows now support connect, private, and auto runtime policies with bounded reconnect/restart recovery
+- Jcode is now a supported workflow agent (`autospec init --ai jcode` or `agent_preset: jcode`), running the official upstream `jcode` CLI by default with provider, provider profile, socket, trace, tool policy, and MCP exposure settings
+- [Experimental] Opt-in Jcode Go SDK runner (`jcode.runner: sdk`) using [`github.com/ariel-frischer/jcode-go`](https://github.com/ariel-frischer/jcode-go) v0.1.7, with connect, private, and auto runtime policies, bounded reconnect/restart recovery, named session profiles, model and reasoning-effort settings, and turn, token, and deadline limits
+- Named configuration profiles can be created, listed, and activated with `autospec config`, and selected for one command with global `--profile`; explicit `--config` paths still work
+- Workflow stages can now persist independent models (`models.<stage>`) for constitution, specify, clarify, plan, tasks, checklist, analyze, and implement
+- Web documentation now covers Jcode runtimes, named profiles, stage-specific model and reasoning settings, and current agent setup
 
 ### Changed
-- The README now identifies the published `github.com/ariel-frischer/jcode-go` module as Autospec's unofficial, opt-in Jcode SDK integration
 - Model selection now follows CLI, stage-specific, top-level, then agent-default precedence, while Codex composes stage models with its independent reasoning-effort settings
-- Jcode uses the official upstream CLI wrapper by default, while Ariel Frischer's experimental [`jcode-go`](https://github.com/ariel-frischer/jcode-go) SDK remains available through explicit `jcode.runner: sdk` configuration, including model and reasoning-effort session settings
-- Jcode exec configuration now supports provider, provider profile, socket, trace, tool policy, and MCP exposure settings
+- `autospec doctor` now reports Claude Code 2.1.281, Codex CLI 0.155.1, and OpenCode 1.18.31 as the latest smoke-tested versions
 
 ### Fixed
-- `autospec init --help` now lists jcode and every other production agent accepted by `--ai`
-- Workflow help now describes `--reasoning-effort` as an agent-neutral setting supported by the experimental Jcode SDK as well as Codex
+- Preflight checks are now agent-aware and no longer require Claude-specific `.claude/skills/` directories for Codex or Jcode projects
+- Claude preflight now distinguishes missing from inaccessible `.claude/skills/` directories, and `autospec init` checks authentication locally with `claude auth status --json` instead of a live provider request
+- `autospec init --help` now lists Jcode and every other production agent accepted by `--ai`
+- Workflow help now describes `--reasoning-effort` as an agent-neutral setting
 - Jcode CLI workflows now place wrapper flags before `run`, suppress update and self-development behavior, and omit custom-fork-only arguments
-- Experimental Jcode SDK workflows now render as native SDK execution instead of showing a misleading unsupported-command error
-- Experimental Jcode SDK workflows now cancel owned turns when local output streaming fails and preserve cancellation errors
+- Experimental Jcode SDK workflows now render as native SDK execution instead of a misleading unsupported-command error, and cancel owned turns when local output streaming fails
 
 ### Security
 - Updated `github.com/go-git/go-git/v5` from v5.19.1 to v5.19.2
