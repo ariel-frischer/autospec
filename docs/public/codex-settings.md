@@ -81,14 +81,16 @@ top-level `model`, then the Codex CLI default. Reasoning precedence is CLI
 default. CLI overrides apply only to that invocation and do not rewrite either
 persistent setting.
 
-The Codex 0.145.0-alpha.23 catalog reports these visible models and efforts:
+The Codex 0.155.1 catalog reports these visible models and efforts:
 
 | Model | Default | Supported efforts |
 |-------|---------|-------------------|
+| `gpt-6-astra`, `gpt-6-sol` | `medium` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `gpt-6-luna` | `medium` | `low`, `medium`, `high`, `xhigh`, `max` |
 | `gpt-5.6-sol` | `low` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
 | `gpt-5.6-terra` | `medium` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
 | `gpt-5.6-luna` | `medium` | `low`, `medium`, `high`, `xhigh`, `max` |
-| `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex-spark`, `codex-auto-review` | varies | `low`, `medium`, `high`, `xhigh` |
+| `gpt-5.5` | `medium` | `low`, `medium`, `high`, `xhigh` |
 
 Run `codex debug models` to inspect the catalog available to your installed version.
 

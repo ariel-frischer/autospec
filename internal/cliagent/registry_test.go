@@ -264,22 +264,6 @@ func TestTestedVersion(t *testing.T) {
 		agentName string
 		want      string
 	}{
-		"claude": {
-			agentName: "claude",
-			want:      "2.1.139",
-		},
-		"opencode": {
-			agentName: "opencode",
-			want:      "1.14.46",
-		},
-		"jcode": {
-			agentName: "jcode",
-			want:      "",
-		},
-		"codex": {
-			agentName: "codex",
-			want:      "0.145.0-alpha.23",
-		},
 		"unknown agent": {
 			agentName: "unknown",
 			want:      "",

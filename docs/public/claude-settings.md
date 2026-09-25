@@ -2,7 +2,7 @@
 
 *Last updated: 2026-05-13*
 
-> **Verified with:** Claude Code 2.1.139 (2026-05-13)
+> **Verified with:** Claude Code 2.1.281 (2026-09-25)
 
 Configuration guide for Claude Code settings relevant to autospec workflows.
 

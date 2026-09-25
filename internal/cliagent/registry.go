@@ -186,11 +186,11 @@ func Doctor() []AgentStatus {
 func TestedVersion(agentName string) string {
 	switch agentName {
 	case "claude":
-		return "2.1.139"
+		return "2.1.281"
 	case "codex":
-		return "0.145.0-alpha.23"
+		return "0.155.1"
 	case "opencode":
-		return "1.14.46"
+		return "1.18.31"
 	default:
 		return ""
 	}
