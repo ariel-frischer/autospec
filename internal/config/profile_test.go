@@ -144,13 +144,13 @@ func TestLoadWithOptions_ProfileOverlay(t *testing.T) {
 	require.NoError(t, err)
 	profilePath := ProfilePath(userDir, "cheap")
 	require.NoError(t, os.MkdirAll(filepath.Dir(profilePath), 0o755))
-	profile := "agent_preset: codex\nmodel: openai/gpt-5.6-luna\nreasoning_efforts:\n  specify: xhigh\n  plan: max\n"
+	profile := "agent_preset: codex\nmodel: openai/gpt-6-luna\nreasoning_efforts:\n  specify: xhigh\n  plan: max\n"
 	require.NoError(t, os.WriteFile(profilePath, []byte(profile), 0o644))
 
 	cfg, err := LoadWithOptions(LoadOptions{Profile: "cheap"})
 	require.NoError(t, err)
 	assert.Equal(t, "codex", cfg.AgentPreset)
-	assert.Equal(t, "openai/gpt-5.6-luna", cfg.Model)
+	assert.Equal(t, "openai/gpt-6-luna", cfg.Model)
 	assert.Equal(t, "xhigh", cfg.ReasoningEfforts.Specify)
 	assert.Equal(t, "max", cfg.ReasoningEfforts.Plan)
 }

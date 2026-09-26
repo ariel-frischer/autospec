@@ -232,7 +232,7 @@ func TestValidateStageModelsAcceptOpaqueIdentifiers(t *testing.T) {
 		model string
 	}{
 		"constitution": {model: "anthropic/claude-opus:latest"},
-		"specify":      {model: "openai:gpt-5.6@2026-08-01"},
+		"specify":      {model: "openai:gpt-6@2026-08-01"},
 		"clarify":      {model: "provider/custom.model-v2"},
 		"plan":         {model: "org/model_name+extended"},
 		"tasks":        {model: "vendor/model:task-specialist"},

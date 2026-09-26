@@ -1533,13 +1533,13 @@ func TestLoad_GenericModelConfig(t *testing.T) {
 			want:          "claude-sonnet-4-5",
 		},
 		"env model": {
-			env:  map[string]string{"AUTOSPEC_MODEL": "gpt-5.4-codex"},
-			want: "gpt-5.4-codex",
+			env:  map[string]string{"AUTOSPEC_MODEL": "gpt-6-luna"},
+			want: "gpt-6-luna",
 		},
 		"env model overrides yaml model": {
 			configContent: "model: claude-sonnet-4-5\n",
-			env:           map[string]string{"AUTOSPEC_MODEL": "gpt-5.4-codex"},
-			want:          "gpt-5.4-codex",
+			env:           map[string]string{"AUTOSPEC_MODEL": "gpt-6-luna"},
+			want:          "gpt-6-luna",
 		},
 		"default empty model": {
 			want: "",

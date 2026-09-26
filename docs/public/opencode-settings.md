@@ -22,7 +22,7 @@ The `opencode.json` file at your project root configures OpenCode behavior:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "anthropic/claude-opus-4-5-20251101",
+  "model": "anthropic/claude-opus-5-5",
   "permission": {
     "bash": {
       "autospec *": "allow"
@@ -30,10 +30,10 @@ The `opencode.json` file at your project root configures OpenCode behavior:
   },
   "agent": {
     "build": {
-      "model": "anthropic/claude-opus-4-5-20251101"
+      "model": "anthropic/claude-opus-5-5"
     },
     "plan": {
-      "model": "anthropic/claude-opus-4-5-20251101"
+      "model": "anthropic/claude-opus-5-5"
     }
   }
 }
@@ -205,12 +205,11 @@ Models are specified as `provider/model-id`:
 
 | Model | ID |
 |-------|-----|
-| Claude Opus 4.5 (pinned) | `anthropic/claude-opus-4-5-20251101` |
-| Claude Opus 4.5 (latest) | `anthropic/claude-opus-4-5-latest` |
-| Claude Sonnet 4 | `anthropic/claude-sonnet-4-20250514` |
-| Claude Haiku 4 | `anthropic/claude-haiku-4-20250514` |
+| Claude Opus 5.5 | `anthropic/claude-opus-5-5` |
+| Claude Sonnet 5 | `anthropic/claude-sonnet-5` |
+| Claude Haiku 4.5 | `anthropic/claude-haiku-4-5` |
 
-> **Tip**: Use date-pinned versions for production. The `-latest` alias auto-updates and may cause unexpected changes.
+> **Tip**: Run `opencode models anthropic` to list the IDs available to your installed version.
 
 ### Setting Default Model
 
@@ -218,20 +217,20 @@ For autospec workflow commands, use the generic workflow model setting:
 
 ```yaml
 agent_preset: opencode
-model: anthropic/claude-opus-4-5-20251101
+model: anthropic/claude-opus-5-5
 models:
-  plan: anthropic/claude-opus-4-5-latest
-  implement: anthropic/claude-sonnet-4-20250514
+  checklist: anthropic/claude-sonnet-5
+  analyze: anthropic/claude-sonnet-5
 ```
 
-In this example, `plan` and `implement` use their stage-specific models. Other
+In this example, `checklist` and `analyze` use their stage-specific models. Other
 stages fall back to top-level `model`. Supported stage keys are `constitution`,
 `specify`, `clarify`, `plan`, `tasks`, `checklist`, `analyze`, and `implement`.
 
 For one-off runs, use the generic CLI flag:
 
 ```bash
-autospec implement --agent opencode --model anthropic/claude-opus-4-5-latest
+autospec implement --agent opencode --model anthropic/claude-sonnet-5
 ```
 
 Autospec passes the selected model through the unchanged
@@ -244,7 +243,7 @@ OpenCode's own config can still define a default for non-autospec usage:
 
 ```json
 {
-  "model": "anthropic/claude-opus-4-5-20251101"
+  "model": "anthropic/claude-opus-5-5"
 }
 ```
 
@@ -256,10 +255,10 @@ Configure different models for different agent modes:
 {
   "agent": {
     "build": {
-      "model": "anthropic/claude-opus-4-5-20251101"
+      "model": "anthropic/claude-opus-5-5"
     },
     "plan": {
-      "model": "anthropic/claude-sonnet-4-20250514"
+      "model": "anthropic/claude-sonnet-5"
     }
   }
 }

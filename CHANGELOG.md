@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Agent documentation now includes ready-to-use profile examples for Codex with GPT-6, Claude Code and OpenCode with Opus 5.5, jcode with Opus 5.5, and low-cost OpenRouter runs, and all model examples use current GPT-6 and Claude 5 model IDs
+- Documentation now states that reasoning effort applies to Codex and jcode, while Claude Code and OpenCode receive only the model
+
 ## [0.12.0] - 2026-09-25
 
 ### Added

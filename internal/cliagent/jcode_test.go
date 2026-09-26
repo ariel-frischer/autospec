@@ -258,14 +258,14 @@ func TestJcodeAgent_ExecuteConfiguresSessionBeforePrompt(t *testing.T) {
 	}
 
 	_, err := agent.Execute(context.Background(), "prompt", ExecOptions{
-		Model:           "openai/gpt-5.6-luna",
+		Model:           "openai/gpt-6-luna",
 		ReasoningEffort: "max",
 	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	want := []JcodeSessionSettings{{Model: "openai/gpt-5.6-luna", ReasoningEffort: "max"}}
+	want := []JcodeSessionSettings{{Model: "openai/gpt-6-luna", ReasoningEffort: "max"}}
 	if !reflect.DeepEqual(settings, want) {
 		t.Fatalf("settings = %#v, want %#v", settings, want)
 	}
@@ -403,7 +403,7 @@ func TestJcodeExec_BuildCommandContract(t *testing.T) {
 
 	cmd, err := agent.BuildCommand("fixture prompt", ExecOptions{
 		WorkDir:         workDir,
-		Model:           "openai/gpt-5.6-luna",
+		Model:           "openai/gpt-6-luna",
 		ReasoningEffort: "max",
 		Env:             map[string]string{"JCODE_FIXTURE_ENV": "isolated"},
 	})
@@ -418,7 +418,7 @@ func TestJcodeExec_BuildCommandContract(t *testing.T) {
 		"--tool-profile", "minimal", "--tools", "bash,read",
 		"--disabled-tools", "write", "--disable-base-tools",
 		"--mcp-tools", "deferred", "--mcp-tools-token-threshold", "4096",
-		"--model", "openai/gpt-5.6-luna",
+		"--model", "openai/gpt-6-luna",
 		"run", "fixture prompt",
 	}, cmd.Args)
 	require.Contains(t, cmd.Env, "JCODE_FIXTURE_ENV=isolated")
@@ -438,15 +438,15 @@ func TestJcodeExec_BuildCommandOmitsForkOnlyOptions(t *testing.T) {
 		},
 		"arbitrary extra arguments are omitted": {
 			opts: ExecOptions{
-				Model:           "openai:gpt-5.6-sol",
+				Model:           "openai:gpt-6-sol",
 				ReasoningEffort: "medium",
 				ExtraArgs: []string{
-					"--model", "openai:gpt-5.6-sol",
+					"--model", "openai:gpt-6-sol",
 					"-c", "model_reasoning_effort=medium",
 					"--trace",
 				},
 			},
-			want: []string{binary, "--quiet", "--no-update", "--no-selfdev", "--model", "openai:gpt-5.6-sol", "run", "prompt"},
+			want: []string{binary, "--quiet", "--no-update", "--no-selfdev", "--model", "openai:gpt-6-sol", "run", "prompt"},
 		},
 	}
 
@@ -468,7 +468,7 @@ func TestJcodeExec_ExecuteTransportsPromptAndOptions(t *testing.T) {
 	workDir := t.TempDir()
 	opts := jcodeFixtureOptions(logPath)
 	opts.WorkDir = workDir
-	opts.Model = "openai/gpt-5.6-luna"
+	opts.Model = "openai/gpt-6-luna"
 	opts.ReasoningEffort = "high"
 	opts.Env["JCODE_FIXTURE_ENV"] = "isolated"
 	result, err := NewJcodeExecWithOptions(binary, JcodeExecOptions{Trace: true}).Execute(context.Background(), "fixture prompt", opts)
@@ -482,7 +482,7 @@ func TestJcodeExec_ExecuteTransportsPromptAndOptions(t *testing.T) {
 	require.Contains(t, got, "env_fixture: isolated")
 	for _, want := range []string{
 		"  - --quiet\n", "  - --no-update\n", "  - --no-selfdev\n", "  - --trace\n",
-		"  - --model\n", "  - openai/gpt-5.6-luna\n", "  - run\n", "  - fixture prompt\n",
+		"  - --model\n", "  - openai/gpt-6-luna\n", "  - run\n", "  - fixture prompt\n",
 	} {
 		require.Contains(t, got, want)
 	}

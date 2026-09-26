@@ -80,7 +80,7 @@ Exec mode also supports stable upstream wrapper settings:
 
 ```yaml
 agent_preset: jcode
-model: gpt-5.4
+model: gpt-6-sol
 jcode:
   runner: exec
   provider: openai
@@ -215,28 +215,72 @@ with `--profile`.
 Manage profiles with `autospec config profiles` and `autospec config create NAME
 [--force]`.
 
-Example `cheap.yml`:
+Each profile is a partial config file: set only the keys it changes. Example
+profiles, saved as `~/.config/autospec/profiles/<name>.yml`:
+
+`codex-gpt6.yml`: Codex CLI with GPT-6 Astra for specification and planning,
+Sol for everything else:
+
+```yaml
+agent_preset: codex
+model: gpt-6-sol
+reasoning_effort: medium
+models:
+  specify: gpt-6-astra
+  plan: gpt-6-astra
+reasoning_efforts:
+  specify: high
+  plan: high
+```
+
+`claude-opus.yml`: Claude Code with Opus 5.5, and Sonnet 5 for the checklist
+stage. Claude Code receives the model only; reasoning effort is not passed.
+
+```yaml
+agent_preset: claude
+model: claude-opus-5-5
+models:
+  checklist: claude-sonnet-5
+```
+
+`jcode-opus.yml`: Opus 5.5 through jcode's Claude login, medium effort for every
+stage except planning:
 
 ```yaml
 agent_preset: jcode
-jcode:
-  mode: connect
-model: openrouter:openai/gpt-5.6-luna
+model: claude:claude-opus-5-5
+reasoning_effort: medium
+reasoning_efforts:
+  plan: high
+```
+
+`opencode-opus.yml`: OpenCode's `build` agent with Opus 5.5:
+
+```yaml
+agent_preset: opencode
+opencode_agent: build
+model: anthropic/claude-opus-5-5
+```
+
+`cheap.yml`: GPT-6 Luna through jcode's OpenRouter provider, with maximum
+effort for specification and planning:
+
+```yaml
+agent_preset: jcode
+model: openrouter:openai/gpt-6-luna
+reasoning_effort: xhigh
 reasoning_efforts:
   specify: max
   plan: max
-  constitution: xhigh
-  clarify: xhigh
-  tasks: xhigh
-  checklist: xhigh
-  analyze: xhigh
-  implement: xhigh
 ```
 
-Credentials are not stored in profiles. jcode owns provider selection,
-authentication, and credentials. Configure its OpenRouter provider and
-`OPENROUTER_API_KEY` through jcode's own user-level configuration. Autospec only
-selects the jcode session model and reasoning effort for each workflow stage.
+Check the merged result before a run with `autospec config show --profile NAME`.
+
+Credentials are not stored in profiles. Each agent keeps its own login: Claude
+Code, Codex, and OpenCode use their own authentication, and jcode owns provider
+selection and credentials, including OpenRouter's `OPENROUTER_API_KEY` and the
+Claude subscription login. Autospec only selects the agent, model, and reasoning
+effort for each workflow stage.
 
 ## Configuration Priority
 
@@ -527,7 +571,7 @@ custom_agent:
 ### Using a Custom Model with Claude
 
 ```yaml
-custom_agent_cmd: "claude --model claude-3-opus {{PROMPT}}"
+custom_agent_cmd: "claude --model claude-opus-5-5 {{PROMPT}}"
 ```
 
 ### Piping Output Through a Filter
@@ -662,16 +706,16 @@ opencode_agent: build
 Autospec workflow commands can pass a model to supported agents when they launch stages. Use the generic `--model` flag for one run:
 
 ```bash
-autospec plan --agent claude --model claude-opus-4-5-20251101
-autospec run -a "Add billing exports" --agent codex --model gpt-5.6-terra --reasoning-effort high
-autospec run -a "Add billing exports" --agent opencode --model anthropic/claude-sonnet-4-20250514
+autospec plan --agent claude --model claude-opus-5-5
+autospec run -a "Add billing exports" --agent codex --model gpt-6-sol --reasoning-effort high
+autospec run -a "Add billing exports" --agent opencode --model anthropic/claude-opus-5-5
 ```
 
 Persist a default workflow model in autospec config:
 
 ```yaml
 agent_preset: codex
-model: gpt-5.6-terra
+model: gpt-6-sol
 reasoning_effort: high
 reasoning_efforts:
   specify: low
@@ -681,7 +725,7 @@ reasoning_efforts:
 
 Model selection is scoped to autospec workflow agent execution. It does not rewrite Claude, Codex, or OpenCode's own global defaults for non-autospec usage.
 
-`reasoning_effort`, `--reasoning-effort`, and its `-e` shorthand apply only to Codex. Autospec passes the value through to Codex, so new model IDs and effort levels can work without an autospec release.
+`reasoning_effort`, `--reasoning-effort`, and its `-e` shorthand apply to Codex and jcode; Claude Code and OpenCode receive only the model. Autospec passes the value through, so new model IDs and effort levels can work without an autospec release.
 
 Stage-specific `reasoning_efforts` values override the top-level default. A CLI effort overrides every stage for that invocation.
 
@@ -709,7 +753,7 @@ OpenCode uses two configuration locations:
 
 Project-level settings override user-level settings.
 
-#### Setting Opus 4.5 as Default Model
+#### Setting Opus 5.5 as Default Model
 
 Create or update your configuration file:
 
@@ -718,13 +762,13 @@ Create or update your configuration file:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "anthropic/claude-opus-4-5-20251101",
+  "model": "anthropic/claude-opus-5-5",
   "agent": {
     "build": {
-      "model": "anthropic/claude-opus-4-5-20251101"
+      "model": "anthropic/claude-opus-5-5"
     },
     "plan": {
-      "model": "anthropic/claude-opus-4-5-20251101"
+      "model": "anthropic/claude-opus-5-5"
     }
   }
 }
@@ -735,13 +779,13 @@ Create or update your configuration file:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "anthropic/claude-opus-4-5-20251101",
+  "model": "anthropic/claude-opus-5-5",
   "agent": {
     "build": {
-      "model": "anthropic/claude-opus-4-5-20251101"
+      "model": "anthropic/claude-opus-5-5"
     },
     "plan": {
-      "model": "anthropic/claude-opus-4-5-20251101"
+      "model": "anthropic/claude-opus-5-5"
     }
   }
 }
@@ -755,12 +799,9 @@ Common Anthropic models:
 
 | Model | ID | Notes |
 |-------|-----|-------|
-| Claude Opus 4.5 (pinned) | `anthropic/claude-opus-4-5-20251101` | Recommended for production |
-| Claude Opus 4.5 (latest) | `anthropic/claude-opus-4-5-latest` | Dev/testing only, auto-updates |
-| Claude Sonnet 4 | `anthropic/claude-sonnet-4-20250514` | |
-| Claude Haiku 4 | `anthropic/claude-haiku-4-20250514` | |
-
-> **Note**: Use date-pinned versions (e.g., `-20251101`) for production to ensure consistent behavior. The `-latest` alias auto-updates and may cause unexpected changes.
+| Claude Opus 5.5 | `anthropic/claude-opus-5-5` | Recommended for workflows |
+| Claude Sonnet 5 | `anthropic/claude-sonnet-5` | Faster, lower cost |
+| Claude Haiku 4.5 | `anthropic/claude-haiku-4-5` | Lightweight stages |
 
 Use `/models` in OpenCode to list all available models for your authenticated providers.
 

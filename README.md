@@ -154,7 +154,7 @@ autospec run -a --agent codex "Add CLI smoke tests"
 autospec run -a --agent jcode "Refactor config loading"
 
 # Override the model for one run, or load a named config profile
-autospec run -a --model gpt-5.6-terra -e high "Add billing exports"
+autospec run -a --model gpt-6-sol -e high "Add billing exports"
 autospec run -a --profile cheap "Add a feature"
 ```
 
@@ -365,14 +365,14 @@ custom_agent:
   args:
     - -p
     - --model
-    - claude-sonnet-4-5-20250929
+    - claude-sonnet-5
     - "{{PROMPT}}"
 ```
 
 Or as a single command string:
 
 ```yaml
-custom_agent_cmd: "claude -p --model claude-sonnet-4-5-20250929 {{PROMPT}}"
+custom_agent_cmd: "claude -p --model claude-sonnet-5 {{PROMPT}}"
 ```
 
 See [Agent Configuration](docs/public/agents.md) for complete details including OpenCode setup and environment variables.

@@ -223,10 +223,10 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 		"codex receives model and reasoning effort": {
 			agent: cliagent.NewCodex(),
 			cfg: config.Configuration{
-				Model:           "gpt-5.6-terra",
+				Model:           "gpt-6-sol",
 				ReasoningEffort: "max",
 			},
-			want: []string{"--model", "gpt-5.6-terra", "-c", "model_reasoning_effort=max"},
+			want: []string{"--model", "gpt-6-sol", "-c", "model_reasoning_effort=max"},
 		},
 		"codex receives matching stage model and reasoning effort": {
 			agent: cliagent.NewCodex(),
@@ -293,10 +293,10 @@ func TestExecutorExtraArgsForStageAppliesWorkflowModel(t *testing.T) {
 		"jcode receives configured model and reasoning effort": {
 			agent: cliagent.NewJcodeExec("jcode"),
 			cfg: config.Configuration{
-				Model:           "openai/gpt-5.6-luna",
+				Model:           "openai/gpt-6-luna",
 				ReasoningEffort: "high",
 			},
-			want: []string{"--model", "openai/gpt-5.6-luna", "-c", "model_reasoning_effort=high"},
+			want: []string{"--model", "openai/gpt-6-luna", "-c", "model_reasoning_effort=high"},
 		},
 	}
 
@@ -324,12 +324,12 @@ func TestExecutorJcodeModelAndReasoningOptionsRemainStableAcrossRetry(t *testing
 	executor := &Executor{
 		Claude: &ClaudeExecutor{Agent: cliagent.NewJcodeExec("jcode")},
 		Config: config.Configuration{
-			Model:           "openai/gpt-5.6-luna",
+			Model:           "openai/gpt-6-luna",
 			ReasoningEffort: "max",
 		},
 	}
 
-	want := []string{"--model", "openai/gpt-5.6-luna", "-c", "model_reasoning_effort=max"}
+	want := []string{"--model", "openai/gpt-6-luna", "-c", "model_reasoning_effort=max"}
 	if got := executor.extraArgsForStage(StageImplement); !reflect.DeepEqual(got, want) {
 		t.Fatalf("initial extra args = %#v, want %#v", got, want)
 	}

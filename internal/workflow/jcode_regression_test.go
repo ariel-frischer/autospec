@@ -33,13 +33,13 @@ func TestJcodeWorkflow_PropagatesModelAndReasoningOptions(t *testing.T) {
 	executor := &Executor{
 		Claude: &ClaudeExecutor{Agent: agent},
 		Config: config.Configuration{
-			Model:           "openai/gpt-5.6-luna",
+			Model:           "openai/gpt-6-luna",
 			ReasoningEffort: "high",
 		},
 	}
 
 	require.NoError(t, executor.execute("prompt", StagePlan))
-	require.Equal(t, "openai/gpt-5.6-luna", agent.opts.Model)
+	require.Equal(t, "openai/gpt-6-luna", agent.opts.Model)
 	require.Equal(t, "high", agent.opts.ReasoningEffort)
-	require.Equal(t, []string{"--model", "openai/gpt-5.6-luna", "-c", "model_reasoning_effort=high"}, agent.opts.ExtraArgs)
+	require.Equal(t, []string{"--model", "openai/gpt-6-luna", "-c", "model_reasoning_effort=high"}, agent.opts.ExtraArgs)
 }
