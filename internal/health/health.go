@@ -1,7 +1,6 @@
 // Package health provides dependency health checks for autospec. It validates that
-// required external tools (Claude CLI) are available and properly configured,
+// the configured agent's CLI (and, for Claude, its settings) is available,
 // returning structured reports used by the 'autospec doctor' command.
-// Note: Git CLI check was removed since go-git library is used for core operations.
 package health
 
 import (
@@ -43,9 +42,10 @@ type HealthReport struct {
 	AgentsPassed bool
 }
 
-// RunHealthChecks runs all health checks and returns a report.
-// Note: Git CLI check was removed since go-git library is used for core operations.
-func RunHealthChecks() *HealthReport {
+// RunHealthChecks runs the core checks for the configured agent plus the
+// installed-agent inventory. Claude gets its CLI and settings checks; other
+// agents are checked only for their own CLI.
+func RunHealthChecks(agent cliagent.Agent) *HealthReport {
 	report := &HealthReport{
 		Checks:       make([]CheckResult, 0),
 		AgentChecks:  make([]cliagent.AgentStatus, 0),
@@ -53,18 +53,11 @@ func RunHealthChecks() *HealthReport {
 		AgentsPassed: true,
 	}
 
-	// Check Claude CLI
-	claudeCheck := CheckClaudeCLI()
-	report.Checks = append(report.Checks, claudeCheck)
-	if !claudeCheck.Passed {
-		report.Passed = false
-	}
-
-	// Check Claude settings
-	settingsCheck := CheckClaudeSettings()
-	report.Checks = append(report.Checks, settingsCheck)
-	if !settingsCheck.Passed {
-		report.Passed = false
+	for _, check := range coreChecks(agent) {
+		report.Checks = append(report.Checks, check)
+		if !check.Passed {
+			report.Passed = false
+		}
 	}
 
 	// Check registered agents (production builds only check production agents)
@@ -78,6 +71,23 @@ func RunHealthChecks() *HealthReport {
 	}
 
 	return report
+}
+
+// coreChecks returns the pass/fail checks that apply to the configured agent.
+func coreChecks(agent cliagent.Agent) []CheckResult {
+	if strings.EqualFold(agent.Name(), "claude") {
+		return []CheckResult{CheckClaudeCLI(), CheckClaudeSettings()}
+	}
+	return []CheckResult{CheckAgentCLI(agent)}
+}
+
+// CheckAgentCLI reports whether a non-Claude agent's CLI is usable.
+func CheckAgentCLI(agent cliagent.Agent) CheckResult {
+	name := agent.Name() + " CLI"
+	if err := agent.Validate(); err != nil {
+		return CheckResult{Name: name, Passed: false, Message: err.Error()}
+	}
+	return CheckResult{Name: name, Passed: true, Message: agent.Name() + " CLI found"}
 }
 
 // filterAgentChecks returns only production agents (claude, opencode).

@@ -3,6 +3,8 @@
 package e2e
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -457,6 +459,46 @@ func TestE2E_DoctorCommand(t *testing.T) {
 			require.True(t, foundMatch,
 				"output should contain one of %v\nstdout: %s\nstderr: %s",
 				tt.wantOutSubstr, result.Stdout, result.Stderr)
+		})
+	}
+}
+
+// TestE2E_DoctorFollowsConfiguredAgent verifies doctor checks the configured
+// agent instead of always requiring Claude CLI and Claude settings.
+func TestE2E_DoctorFollowsConfiguredAgent(t *testing.T) {
+	tests := map[string]struct {
+		agent        testutil.AgentPreset
+		removeBinary string
+		wantExitCode int
+		wantOutput   string
+	}{
+		"codex project passes without Claude settings": {
+			agent:        testutil.AgentCodex,
+			wantExitCode: shared.ExitSuccess,
+			wantOutput:   "✓ codex CLI",
+		},
+		"missing configured agent fails": {
+			agent:        testutil.AgentCodex,
+			removeBinary: "codex",
+			wantExitCode: 1,
+			wantOutput:   "✗ codex CLI",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			env := testutil.NewE2EEnvWithAgent(t, tt.agent)
+			env.InitGitRepo()
+			env.SetupAutospecInit()
+			if tt.removeBinary != "" {
+				require.NoError(t, os.Remove(filepath.Join(env.BinDir(), tt.removeBinary)))
+			}
+
+			result := env.Run("doctor")
+
+			require.Equal(t, tt.wantExitCode, result.ExitCode, "stdout=%s\nstderr=%s", result.Stdout, result.Stderr)
+			require.Contains(t, result.Stdout, tt.wantOutput)
+			require.NotContains(t, result.Stdout, "Claude settings")
 		})
 	}
 }

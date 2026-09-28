@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `autospec history` now reads the configured `state_dir`, so runs in projects initialized with `autospec init --project` (which use `./.autospec/state`) appear in history
+- `autospec doctor` now checks the configured agent: Codex, OpenCode, and Jcode projects no longer fail on missing Claude CLI or Claude settings, and a missing configured agent CLI now fails the check
+- `autospec status` now counts phases with no tasks as complete, matching how `autospec implement` selects phases
 
 ## [0.12.0] - 2026-09-25
 

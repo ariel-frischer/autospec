@@ -5,7 +5,10 @@
 package health
 
 import (
+	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,21 +27,61 @@ func TestCheckClaudeCLI(t *testing.T) {
 	// In a real environment, claude should be available
 }
 
-// TestRunHealthChecks tests running all health checks.
-// Note: Git CLI check was removed since go-git library is used for core operations.
+// TestRunHealthChecks verifies that core checks follow the configured agent:
+// Claude gets its CLI and settings checks, other agents only their own CLI check.
 func TestRunHealthChecks(t *testing.T) {
-	report := RunHealthChecks()
-	assert.NotNil(t, report)
-	assert.Equal(t, 2, len(report.Checks), "Should have 2 health checks (Claude CLI, Claude settings)")
-
-	// Verify all checks are present
-	checkNames := make(map[string]bool)
-	for _, check := range report.Checks {
-		checkNames[check.Name] = true
+	tests := map[string]struct {
+		agent      cliagent.Agent
+		wantChecks []string
+		wantPassed *bool
+	}{
+		"claude runs Claude CLI and settings checks": {
+			agent:      &healthFakeAgent{name: "claude"},
+			wantChecks: []string{"Claude CLI", "Claude settings"},
+		},
+		"codex skips Claude checks": {
+			agent:      &healthFakeAgent{name: "codex"},
+			wantChecks: []string{"codex CLI"},
+			wantPassed: boolPtr(true),
+		},
+		"missing non-Claude agent fails the report": {
+			agent:      &healthFakeAgent{name: "jcode", validateErr: errors.New("jcode not found in PATH")},
+			wantChecks: []string{"jcode CLI"},
+			wantPassed: boolPtr(false),
+		},
 	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			report := RunHealthChecks(tt.agent)
 
-	assert.True(t, checkNames["Claude CLI"], "Should check Claude CLI")
-	assert.True(t, checkNames["Claude settings"], "Should check Claude settings")
+			names := make([]string, 0, len(report.Checks))
+			for _, check := range report.Checks {
+				names = append(names, check.Name)
+			}
+			assert.Equal(t, tt.wantChecks, names)
+			if tt.wantPassed != nil {
+				assert.Equal(t, *tt.wantPassed, report.Passed)
+			}
+		})
+	}
+}
+
+func boolPtr(v bool) *bool { return &v }
+
+type healthFakeAgent struct {
+	name        string
+	validateErr error
+}
+
+func (f *healthFakeAgent) Name() string                { return f.name }
+func (f *healthFakeAgent) Version() (string, error)    { return "test", nil }
+func (f *healthFakeAgent) Validate() error             { return f.validateErr }
+func (f *healthFakeAgent) Capabilities() cliagent.Caps { return cliagent.Caps{} }
+func (f *healthFakeAgent) BuildCommand(string, cliagent.ExecOptions) (*exec.Cmd, error) {
+	return exec.Command("fake-agent"), nil
+}
+func (f *healthFakeAgent) Execute(context.Context, string, cliagent.ExecOptions) (*cliagent.Result, error) {
+	return &cliagent.Result{}, nil
 }
 
 // TestFormatReport tests the report formatting.
@@ -246,45 +289,7 @@ func TestCheckClaudeSettingsInDir(t *testing.T) {
 	}
 }
 
-// TestRunHealthChecksIncludesClaudeSettings verifies Claude settings check is included.
-// Note: Git CLI check was removed since go-git library is used for core operations.
-func TestRunHealthChecksIncludesClaudeSettings(t *testing.T) {
-	report := RunHealthChecks()
-	assert.NotNil(t, report)
-	assert.GreaterOrEqual(t, len(report.Checks), 2, "Should have at least 2 health checks (Claude CLI, Claude settings)")
-
-	// Verify Claude settings check is present
-	hasClaudeSettings := false
-	for _, check := range report.Checks {
-		if check.Name == "Claude settings" {
-			hasClaudeSettings = true
-			break
-		}
-	}
-	assert.True(t, hasClaudeSettings, "Should include Claude settings check")
-}
-
 // Additional tests to improve coverage to 85%
-
-func TestRunHealthChecks_AllChecksPresent(t *testing.T) {
-	t.Parallel()
-
-	report := RunHealthChecks()
-	require.NotNil(t, report)
-
-	// Verify report structure
-	checkMap := make(map[string]CheckResult)
-	for _, check := range report.Checks {
-		checkMap[check.Name] = check
-	}
-
-	// Both checks should be present (Git CLI check removed - using go-git)
-	_, hasClaudeCLI := checkMap["Claude CLI"]
-	_, hasSettings := checkMap["Claude settings"]
-
-	assert.True(t, hasClaudeCLI, "Should have Claude CLI check")
-	assert.True(t, hasSettings, "Should have Claude settings check")
-}
 
 func TestRunHealthChecks_ReportPassedStatus(t *testing.T) {
 	tests := map[string]struct {
@@ -445,7 +450,7 @@ func TestCheckClaudeSettingsInDir_EmptyFile(t *testing.T) {
 func TestRunHealthChecks_IncludesAgentChecks(t *testing.T) {
 	t.Parallel()
 
-	report := RunHealthChecks()
+	report := RunHealthChecks(&healthFakeAgent{name: "claude"})
 	require.NotNil(t, report)
 
 	// AgentChecks should be populated (may be empty if no agents registered, but slice should exist)

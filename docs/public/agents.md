@@ -496,7 +496,7 @@ Use `autospec doctor` to verify agent availability and configuration.
 
 ## Checking Agent Status
 
-The `autospec doctor` command shows the status of available agents.
+The `autospec doctor` command checks the configured agent (`agent_preset`, Claude when unset), then lists installed agents. Claude projects also check Claude settings; other agents check only their own CLI. A missing configured agent CLI exits 1.
 
 **Production builds** check supported agents (claude, codex, opencode):
 
@@ -504,7 +504,6 @@ The `autospec doctor` command shows the status of available agents.
 $ autospec doctor
 
 ✓ Claude CLI: Claude CLI found
-✓ Git: Git found
 ✓ Claude settings: Bash(autospec:*) permission configured
 
 CLI Agents:
