@@ -5,7 +5,7 @@ All notable changes to autospec will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.12.1] - 2026-09-27
 
 ### Changed
 - Agent documentation now includes ready-to-use profile examples for Codex with GPT-6, Claude Code and OpenCode with Opus 5.5, jcode with Opus 5.5, and low-cost OpenRouter runs, and all model examples use current GPT-6 and Claude 5 model IDs
@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `autospec history` now reads the configured `state_dir`, so runs in projects initialized with `autospec init --project` (which use `./.autospec/state`) appear in history
 - `autospec doctor` now checks the configured agent: Codex, OpenCode, and Jcode projects no longer fail on missing Claude CLI or Claude settings, and a missing configured agent CLI now fails the check
 - `autospec status` now counts phases with no tasks as complete, matching how `autospec implement` selects phases
+
+### Security
+- Updated the documentation site's `rubyzip` gem from v2.4.1 to v3.4.0
 
 ## [0.12.0] - 2026-09-25
 
@@ -445,7 +448,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy bash scripts in `scripts/` (scheduled for removal)
 - Bats tests in `tests/` (being replaced by Go tests)
 
-[Unreleased]: https://github.com/ariel-frischer/autospec/compare/v0.12.0...HEAD
+[0.12.1]: https://github.com/ariel-frischer/autospec/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/ariel-frischer/autospec/compare/v0.11.6...v0.12.0
 [0.11.6]: https://github.com/ariel-frischer/autospec/compare/v0.11.5...v0.11.6
 [0.11.5]: https://github.com/ariel-frischer/autospec/compare/v0.11.4...v0.11.5
