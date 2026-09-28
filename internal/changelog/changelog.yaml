@@ -1,5 +1,6 @@
 project: autospec
 versions:
+    unreleased: {}
     0.12.1:
         date: 2026-09-27
         changed:
