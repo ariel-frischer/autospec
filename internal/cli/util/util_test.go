@@ -225,18 +225,6 @@ func TestVersionInfo_Variables(t *testing.T) {
 	assert.NotEmpty(t, BuildDate, "BuildDate should have a default value")
 }
 
-func TestGetDefaultStateDir(t *testing.T) {
-	t.Parallel()
-
-	// Test that getDefaultStateDir returns a non-empty path
-	stateDir := getDefaultStateDir()
-	// On most systems, this should return a valid path
-	// It may be empty if $HOME is not set, which is unlikely
-	assert.NotEmpty(t, stateDir, "State directory should be set")
-	assert.Contains(t, stateDir, ".autospec", "State directory should contain .autospec")
-	assert.Contains(t, stateDir, "state", "State directory should contain state")
-}
-
 func TestStatusCmd_Aliases(t *testing.T) {
 	// Cannot run in parallel - accesses global command state
 
@@ -1132,16 +1120,6 @@ func TestCenterText_UnicodeRunes(t *testing.T) {
 	// Test with unicode characters (counted as runes, not bytes)
 	result := shared.CenterText("Hi", 10)
 	assert.Equal(t, "    Hi", result)
-}
-
-func TestGetDefaultStateDir_ContainsExpectedPath(t *testing.T) {
-	t.Parallel()
-
-	stateDir := getDefaultStateDir()
-	if stateDir != "" {
-		assert.Contains(t, stateDir, ".autospec")
-		assert.Contains(t, stateDir, "state")
-	}
 }
 
 // Test history command with various scenarios

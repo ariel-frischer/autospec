@@ -6,8 +6,6 @@ package cli
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -529,21 +527,6 @@ func TestHistoryOutputFormat(t *testing.T) {
 	assert.Contains(t, output, "plan")
 	assert.Contains(t, output, "2m30s")
 	assert.Contains(t, output, "1m15s")
-}
-
-func TestHistoryDir(t *testing.T) {
-	t.Parallel()
-
-	// Skip if HOME is not set
-	home := os.Getenv("HOME")
-	if home == "" {
-		t.Skip("HOME not set")
-	}
-
-	// Test that getDefaultStateDir would return expected path
-	// Since we can't access the unexported function, we verify via the command behavior
-	expectedPath := filepath.Join(home, ".autospec", "state")
-	assert.NotEmpty(t, expectedPath)
 }
 
 // TestRunHistory_StatusDisplay tests that the status column appears in output.

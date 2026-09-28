@@ -2,8 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/ariel-frischer/autospec/internal/cli/shared"
 	"github.com/ariel-frischer/autospec/internal/history"
@@ -17,8 +15,12 @@ var historyCmd = &cobra.Command{
 	Long:         `View a log of all autospec command executions with timestamp, command name, spec, exit code, and duration.`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		stateDir := getDefaultStateDir()
-		return runHistoryWithStateDir(cmd, stateDir)
+		configPath, _ := cmd.Flags().GetString("config")
+		cfg, err := shared.LoadConfig(cmd, configPath)
+		if err != nil {
+			return fmt.Errorf("loading config: %w", err)
+		}
+		return runHistoryWithStateDir(cmd, cfg.StateDir)
 	},
 }
 
@@ -28,15 +30,6 @@ func init() {
 	historyCmd.Flags().IntP("limit", "n", 0, "Limit to last N entries (most recent)")
 	historyCmd.Flags().Bool("clear", false, "Clear all history")
 	historyCmd.Flags().String("status", "", "Filter by status (running, completed, failed, cancelled)")
-}
-
-// getDefaultStateDir returns the default state directory path.
-func getDefaultStateDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".autospec", "state")
 }
 
 // runHistoryWithStateDir runs the history command with a custom state directory.
