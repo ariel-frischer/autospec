@@ -50,6 +50,7 @@ docs/
 | [events.md](internal/events.md) | Event system architecture |
 | [YAML-STRUCTURED-OUTPUT.md](internal/YAML-STRUCTURED-OUTPUT.md) | YAML artifact schemas |
 | [risks.md](internal/risks.md) | Risk documentation in plan.yaml |
+| [roadmap.md](internal/roadmap.md) | Unscheduled ideas, incl. demand-driven agent presets |
 
 ## Site Generation
 

@@ -88,6 +88,7 @@ autospec implement         # Execute tasks
 | `docs/internal/risks.md` | Risk documentation in plan.yaml |
 | `docs/internal/cclean.md` | claude-clean tool for transforming streaming JSON output |
 | `docs/internal/changelog-yaml.md` | Developer workflow for YAML-first changelog and release notes |
+| `docs/internal/roadmap.md` | Unscheduled ideas; demand-driven agent preset candidates |
 
 ### Public (User-Focused)
 

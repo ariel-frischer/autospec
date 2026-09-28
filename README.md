@@ -476,6 +476,10 @@ cd autospec
 make install
 ```
 
+## 🗺️ Roadmap
+
+Unscheduled ideas, including candidate agent presets (Cursor CLI, Copilot CLI, Amp, Qwen Code, omp), live in [docs/internal/roadmap.md](docs/internal/roadmap.md). Agent presets are demand-driven: [open an issue](https://github.com/ariel-frischer/autospec/issues) if you want one. Until then, any agent with a headless mode works via [custom agent configuration](docs/public/agents.md).
+
 ## 🤝 Contributing
 
 Contributions welcome! See [CONTRIBUTORS.md](CONTRIBUTORS.md) for development guidelines.
