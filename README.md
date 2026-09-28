@@ -29,6 +29,9 @@ Supported agents: [Claude Code](https://claude.ai/code), [Codex CLI](https://dev
 curl -fsSL https://raw.githubusercontent.com/ariel-frischer/autospec/main/install.sh | sh
 ```
 
+https://github.com/user-attachments/assets/85b6be0f-1ec6-4121-b5ef-91ca3fd20f11
+
+
 ## 🎯 Key Features
 
 - **Automated Workflow Orchestration** — Runs stages in dependency order with automatic retry on failure
