@@ -15,9 +15,7 @@ import (
 )
 
 // TestE2E_SetupAutospecInitAgentLayouts verifies that isolated initialization
-// keeps Claude-only directories scoped to the Claude preset. The jcode preset
-// is represented as a literal here because this fixture only inspects the
-// generated project layout and does not need a jcode executable.
+// keeps Claude-only directories scoped to the Claude preset.
 func TestE2E_SetupAutospecInitAgentLayouts(t *testing.T) {
 	tests := map[string]struct {
 		preset           testutil.AgentPreset
@@ -31,7 +29,7 @@ func TestE2E_SetupAutospecInitAgentLayouts(t *testing.T) {
 			preset: testutil.AgentCodex,
 		},
 		"jcode omits Claude skills directory": {
-			preset: testutil.AgentPreset("jcode"),
+			preset: testutil.AgentJcode,
 		},
 	}
 

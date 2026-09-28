@@ -17,6 +17,8 @@
 #   MOCK_SPEC_NAME      - Spec name for artifact generation (default: 001-test-feature)
 #   MOCK_VERSION_INFO   - JSON version data for update command testing (optional)
 #   MOCK_NETWORK_STATUS - Connectivity status: connected/disconnected (optional)
+#   MOCK_SPAWN_CHILD_PIDFILE - When set, spawn a long-sleeping grandchild, write
+#                         its PID to this file, and block (signal-cleanup tests)
 #
 # Usage:
 #   export MOCK_RESPONSE_FILE=/tmp/response.yaml
@@ -483,6 +485,14 @@ generate_artifact() {
 main() {
     # Log the call with all arguments
     log_call "$@"
+
+    # Spawn a long-lived grandchild and block until killed (signal cleanup tests)
+    if [[ -n "${MOCK_SPAWN_CHILD_PIDFILE:-}" ]]; then
+        sleep 300 >/dev/null 2>&1 &
+        echo "$!" > "${MOCK_SPAWN_CHILD_PIDFILE}.tmp"
+        mv "${MOCK_SPAWN_CHILD_PIDFILE}.tmp" "${MOCK_SPAWN_CHILD_PIDFILE}"
+        wait
+    fi
 
     # Apply delay if configured (for timeout testing)
     if [[ "${DELAY}" -gt 0 ]]; then

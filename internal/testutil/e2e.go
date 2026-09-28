@@ -31,6 +31,8 @@ const (
 	AgentOpencode AgentPreset = "opencode"
 	// AgentCodex uses the mock-codex.sh script.
 	AgentCodex AgentPreset = "codex"
+	// AgentJcode uses the mock-jcode.sh script.
+	AgentJcode AgentPreset = "jcode"
 )
 
 // E2EEnv provides an isolated environment for E2E testing.
@@ -49,6 +51,7 @@ type E2EEnv struct {
 	mockDelay       int
 	mockDelaySet    bool
 	agentPreset     AgentPreset
+	extraEnv        map[string]string
 }
 
 // CommandResult captures the result of running an autospec command.
@@ -127,6 +130,7 @@ func (e *E2EEnv) setupMockAgent() {
 	e.setupMockClaude()
 	e.setupMockOpencode()
 	e.setupMockCodex()
+	e.installMockScript("mock-jcode.sh", "jcode")
 }
 
 func (e *E2EEnv) setupMockClaude() {
@@ -173,6 +177,20 @@ func (e *E2EEnv) setupMockCodex() {
 	}
 	if err := os.WriteFile(codexPath, content, 0o755); err != nil {
 		e.t.Fatalf("writing mock codex binary: %v", err)
+	}
+}
+
+// installMockScript copies a mock script from tests/mocks/scripts into the
+// bin directory under the given executable name.
+func (e *E2EEnv) installMockScript(scriptName, binName string) {
+	e.t.Helper()
+
+	content, err := os.ReadFile(e.findMockScriptPath(scriptName))
+	if err != nil {
+		e.t.Fatalf("reading %s: %v", scriptName, err)
+	}
+	if err := os.WriteFile(filepath.Join(e.binDir, binName), content, 0o755); err != nil {
+		e.t.Fatalf("writing mock %s binary: %v", binName, err)
 	}
 }
 
@@ -270,11 +288,17 @@ func (e *E2EEnv) captureAndSanitizeEnv() {
 // Run executes an autospec command in the isolated E2E environment.
 func (e *E2EEnv) Run(args ...string) CommandResult {
 	e.t.Helper()
+	return e.RunIn(e.tempDir, args...)
+}
+
+// RunIn executes an autospec command with dir as the working directory.
+func (e *E2EEnv) RunIn(dir string, args ...string) CommandResult {
+	e.t.Helper()
 
 	start := time.Now()
 
 	cmd := exec.Command(filepath.Join(e.binDir, "autospec"), args...)
-	cmd.Dir = e.tempDir
+	cmd.Dir = dir
 	cmd.Env = e.buildIsolatedEnv()
 
 	var stdout, stderr bytes.Buffer
@@ -282,12 +306,15 @@ func (e *E2EEnv) Run(args ...string) CommandResult {
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
+	return newCommandResult(err, &stdout, &stderr, time.Since(start))
+}
 
+func newCommandResult(err error, stdout, stderr *bytes.Buffer, elapsed time.Duration) CommandResult {
 	result := CommandResult{
 		ExitCode: 0,
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
-		Duration: time.Since(start),
+		Duration: elapsed,
 	}
 
 	if err != nil {
@@ -299,6 +326,54 @@ func (e *E2EEnv) Run(args ...string) CommandResult {
 	}
 
 	return result
+}
+
+// AsyncCommand is an autospec process started by Start.
+type AsyncCommand struct {
+	cmd    *exec.Cmd
+	stdout *bytes.Buffer
+	stderr *bytes.Buffer
+	start  time.Time
+	done   chan error
+}
+
+// Start launches an autospec command in the isolated E2E environment without
+// waiting for it to exit. The process is killed at test cleanup if still running.
+func (e *E2EEnv) Start(args ...string) *AsyncCommand {
+	e.t.Helper()
+
+	cmd := exec.Command(filepath.Join(e.binDir, "autospec"), args...)
+	cmd.Dir = e.tempDir
+	cmd.Env = e.buildIsolatedEnv()
+	async := &AsyncCommand{cmd: cmd, stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{}, done: make(chan error, 1)}
+	cmd.Stdout = async.stdout
+	cmd.Stderr = async.stderr
+
+	async.start = time.Now()
+	if err := cmd.Start(); err != nil {
+		e.t.Fatalf("starting autospec: %v", err)
+	}
+	go func() { async.done <- cmd.Wait() }()
+	e.t.Cleanup(func() { _ = cmd.Process.Kill() })
+	return async
+}
+
+// Signal sends sig to the autospec process.
+func (a *AsyncCommand) Signal(sig os.Signal) error {
+	if err := a.cmd.Process.Signal(sig); err != nil {
+		return fmt.Errorf("signaling autospec: %w", err)
+	}
+	return nil
+}
+
+// Wait waits up to timeout for the process to exit. ok is false on timeout.
+func (a *AsyncCommand) Wait(timeout time.Duration) (result CommandResult, ok bool) {
+	select {
+	case err := <-a.done:
+		return newCommandResult(err, a.stdout, a.stderr, time.Since(a.start)), true
+	case <-time.After(timeout):
+		return CommandResult{}, false
+	}
 }
 
 func (e *E2EEnv) buildIsolatedEnv() []string {
@@ -330,6 +405,10 @@ func (e *E2EEnv) buildIsolatedEnv() []string {
 	// Add mock delay if configured (for timeout testing)
 	if e.mockDelaySet {
 		env = append(env, fmt.Sprintf("MOCK_DELAY=%d", e.mockDelay))
+	}
+
+	for key, val := range e.extraEnv {
+		env = append(env, key+"="+val)
 	}
 
 	// Add safe environment variables from original environment
@@ -487,6 +566,16 @@ func (e *E2EEnv) SetMockDelay(seconds int) {
 	e.t.Helper()
 	e.mockDelay = seconds
 	e.mockDelaySet = true
+}
+
+// SetEnv adds an environment variable passed to autospec (and inherited by the
+// mock agents) on subsequent Run/RunIn/Start calls.
+func (e *E2EEnv) SetEnv(key, value string) {
+	e.t.Helper()
+	if e.extraEnv == nil {
+		e.extraEnv = make(map[string]string)
+	}
+	e.extraEnv[key] = value
 }
 
 // SetAgentPreset switches the agent preset used by autospec commands.
