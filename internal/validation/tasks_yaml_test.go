@@ -487,8 +487,11 @@ func TestGetTaskStats_EmptyPhases(t *testing.T) {
 	assert.Equal(t, 0, stats.TotalTasks)
 	assert.Equal(t, 0, stats.CompletedTasks)
 	assert.Equal(t, 2, stats.TotalPhases)
-	// Empty phases are technically "complete" (no uncompleted tasks)
-	assert.Equal(t, 0, stats.CompletedPhases) // But IsComplete requires TotalTasks > 0
+	// Empty phases have no remaining work, matching implement's phase selection.
+	assert.Equal(t, 2, stats.CompletedPhases)
+	for _, phase := range stats.PhaseStats {
+		assert.True(t, phase.IsComplete, "phase %d", phase.Number)
+	}
 }
 
 func TestTasksYAML_MetaFields(t *testing.T) {

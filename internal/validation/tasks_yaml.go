@@ -161,7 +161,7 @@ func GetTaskStats(tasksPath string) (*TaskStats, error) {
 			}
 		}
 
-		phaseStat.IsComplete = phaseStat.TotalTasks > 0 && phaseStat.CompletedTasks == phaseStat.TotalTasks
+		phaseStat.IsComplete = phaseStat.CompletedTasks == phaseStat.TotalTasks
 		if phaseStat.IsComplete {
 			stats.CompletedPhases++
 		}
