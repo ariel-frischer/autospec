@@ -4,6 +4,11 @@ versions:
         changed:
             - Agent documentation now includes ready-to-use profile examples for Codex with GPT-6, Claude Code and OpenCode with Opus 5.5, jcode with Opus 5.5, and low-cost OpenRouter runs, and all model examples use current GPT-6 and Claude 5 model IDs
             - Documentation now states that reasoning effort applies to Codex and jcode, while Claude Code and OpenCode receive only the model
+        fixed:
+            - '`autospec history` now reads the configured `state_dir`, so runs in projects initialized with `autospec init --project` (which use `./.autospec/state`) appear in history'
+        internal:
+            changed:
+                - E2E tests now cover named profiles, model precedence, the jcode exec command line, schema output without a spec, linked-worktree spec detection, signal cleanup, and agent-scoped init using mock agents
     0.12.0:
         date: 2026-09-25
         added:
