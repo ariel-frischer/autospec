@@ -8,8 +8,8 @@ autospec supports multiple CLI-based AI coding agents through a unified agent ab
 
 | Agent | Binary | Description | Status |
 |-------|--------|-------------|--------|
-| `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.281 |
-| `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.155.1 |
+| `claude` | `claude` | Anthropic's Claude Code CLI (default) | ✅ Supported; smoke-tested with 2.1.319 |
+| `codex` | `codex` | OpenAI Codex CLI | ✅ Supported; smoke-tested with 0.167.0 |
 | `opencode` | `opencode` | OpenCode AI coding CLI | ✅ Supported; smoke-tested with 1.18.31 |
 | `jcode` | `jcode` | Official Jcode CLI | ✅ Supported; SDK integration remains an explicit opt-in |
 
@@ -507,8 +507,8 @@ $ autospec doctor
 ✓ Claude settings: Bash(autospec:*) permission configured
 
 CLI Agents:
-  ✓ claude: installed (2.1.281 (Claude Code); tested 2.1.281)
-  ✓ codex: installed (codex-cli 0.155.1; tested 0.155.1)
+  ✓ claude: installed (2.1.319 (Claude Code); tested 2.1.319)
+  ✓ codex: installed (codex-cli 0.167.0; tested 0.167.0)
   ✓ opencode: installed (v1.18.31; tested 1.18.31)
 ```
 
@@ -518,9 +518,9 @@ CLI Agents:
 $ autospec doctor
 
 CLI Agents:
-  ✓ claude: installed (2.1.281 (Claude Code); tested 2.1.281)
+  ✓ claude: installed (2.1.319 (Claude Code); tested 2.1.319)
   ○ cline: not found in PATH
-  ✓ codex: installed (codex-cli 0.155.1; tested 0.155.1)
+  ✓ codex: installed (codex-cli 0.167.0; tested 0.167.0)
   ○ gemini: not found in PATH
   ○ goose: not found in PATH
   ✓ opencode: installed (v1.18.31; tested 1.18.31)

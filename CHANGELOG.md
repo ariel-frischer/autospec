@@ -9,8 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Model examples now use GPT-6.1 Sol (`gpt-6.1-sol`) and Claude Sonnet 5.5 and Haiku 5.5, and the Codex settings page documents that Codex 0.167 defaults GPT-6 Astra, 6.1 Sol, and 6.1 Terra to `low` reasoning effort, so set `reasoning_effort` for deeper workflow stages
+- Building from source now requires Go 1.26 or later; Go 1.25 is no longer supported upstream
+- `autospec doctor` now reports Claude Code 2.1.319 and Codex CLI 0.167.0 as the latest smoke-tested versions
 
 ### Security
+- Release binaries are now built with Go 1.26.11, picking up standard-library fixes for `net/http`, `net/url`, `crypto/tls`, `crypto/x509`, and `encoding/asn1`, and dependencies are updated to `golang.org/x/crypto` v0.59.0 (SSH channel denial-of-service fixes), `golang.org/x/net` v0.62.0, and `go-git` v5.19.3
 - Updated the documentation site's `addressable` gem from v2.9.0 to v2.9.1
 
 ## [0.12.1] - 2026-09-27
