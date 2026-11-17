@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Model examples now use GPT-6.1 Sol (`gpt-6.1-sol`) and Claude Sonnet 5.5 and Haiku 5.5, and the Codex settings page documents that Codex 0.167 defaults GPT-6 Astra, 6.1 Sol, and 6.1 Terra to `low` reasoning effort, so set `reasoning_effort` for deeper workflow stages
+
+### Security
+- Updated the documentation site's `addressable` gem from v2.9.0 to v2.9.1
+
 ## [0.12.1] - 2026-09-27
 
 ### Changed

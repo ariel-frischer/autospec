@@ -80,7 +80,7 @@ Exec mode also supports stable upstream wrapper settings:
 
 ```yaml
 agent_preset: jcode
-model: gpt-6-sol
+model: gpt-6.1-sol
 jcode:
   runner: exec
   provider: openai
@@ -219,11 +219,11 @@ Each profile is a partial config file: set only the keys it changes. Example
 profiles, saved as `~/.config/autospec/profiles/<name>.yml`:
 
 `codex-gpt6.yml`: Codex CLI with GPT-6 Astra for specification and planning,
-Sol for everything else:
+GPT-6.1 Sol for everything else:
 
 ```yaml
 agent_preset: codex
-model: gpt-6-sol
+model: gpt-6.1-sol
 reasoning_effort: medium
 models:
   specify: gpt-6-astra
@@ -233,14 +233,14 @@ reasoning_efforts:
   plan: high
 ```
 
-`claude-opus.yml`: Claude Code with Opus 5.5, and Sonnet 5 for the checklist
+`claude-opus.yml`: Claude Code with Opus 5.5, and Sonnet 5.5 for the checklist
 stage. Claude Code receives the model only; reasoning effort is not passed.
 
 ```yaml
 agent_preset: claude
 model: claude-opus-5-5
 models:
-  checklist: claude-sonnet-5
+  checklist: claude-sonnet-5-5
 ```
 
 `jcode-opus.yml`: Opus 5.5 through jcode's Claude login, medium effort for every
@@ -706,7 +706,7 @@ Autospec workflow commands can pass a model to supported agents when they launch
 
 ```bash
 autospec plan --agent claude --model claude-opus-5-5
-autospec run -a "Add billing exports" --agent codex --model gpt-6-sol --reasoning-effort high
+autospec run -a "Add billing exports" --agent codex --model gpt-6.1-sol --reasoning-effort high
 autospec run -a "Add billing exports" --agent opencode --model anthropic/claude-opus-5-5
 ```
 
@@ -714,7 +714,7 @@ Persist a default workflow model in autospec config:
 
 ```yaml
 agent_preset: codex
-model: gpt-6-sol
+model: gpt-6.1-sol
 reasoning_effort: high
 reasoning_efforts:
   specify: low
@@ -799,8 +799,8 @@ Common Anthropic models:
 | Model | ID | Notes |
 |-------|-----|-------|
 | Claude Opus 5.5 | `anthropic/claude-opus-5-5` | Recommended for workflows |
-| Claude Sonnet 5 | `anthropic/claude-sonnet-5` | Faster, lower cost |
-| Claude Haiku 4.5 | `anthropic/claude-haiku-4-5` | Lightweight stages |
+| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5` | Faster, lower cost |
+| Claude Haiku 5.5 | `anthropic/claude-haiku-5-5` | Lightweight stages |
 
 Use `/models` in OpenCode to list all available models for your authenticated providers.
 

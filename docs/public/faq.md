@@ -76,13 +76,13 @@ autospec implement --tasks
 
 Session splitting dramatically reduces costs due to how API billing works—each turn pays for the **entire conversation context**:
 
-| Strategy | Input Tokens | Cost (Opus 4.5) | Savings |
+| Strategy | Input Tokens | Cost (Opus 4.5 rates at measurement) | Savings |
 |----------|-------------|-----------------|---------|
 | Single session (38 tasks) | ~49.6M | ~$257 | baseline |
 | Per-phase (10 sessions) | ~8.5M | ~$51 | **80%** |
 | Per-task (38 sessions) | ~6.6M | ~$42 | **83%** |
 
-*Based on analysis of a real 38-task, 10-phase spec. See [research/claude-opus-4.5-context-performance.md](research/claude-opus-4.5-context-performance.md) for methodology.*
+*Based on analysis of a real 38-task, 10-phase spec, priced at Opus 4.5 API rates when measured. Current models have larger context windows and different prices, but the per-turn context cost that drives the savings is unchanged. See [research/claude-opus-4.5-context-performance.md](research/claude-opus-4.5-context-performance.md) for methodology.*
 
 **Why single sessions cost so much:**
 - Starting context: ~35K tokens

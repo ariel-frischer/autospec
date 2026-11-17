@@ -40,11 +40,11 @@ Set a persistent Codex model and reasoning effort in autospec config:
 
 ```yaml
 agent_preset: codex
-model: gpt-6-sol
+model: gpt-6.1-sol
 reasoning_effort: medium
 models:
   specify: gpt-6-astra
-  implement: gpt-6-sol
+  implement: gpt-6.1-sol
 reasoning_efforts:
   specify: high
   implement: xhigh
@@ -67,7 +67,7 @@ reasoning_efforts:
 Or override both for one workflow run:
 
 ```bash
-autospec run -a "Add billing exports" --agent codex --model gpt-6-sol --reasoning-effort xhigh
+autospec run -a "Add billing exports" --agent codex --model gpt-6.1-sol --reasoning-effort xhigh
 ```
 
 Use the equivalent `-e xhigh` shorthand for faster typing.
@@ -81,12 +81,17 @@ top-level `model`, then the Codex CLI default. Reasoning precedence is CLI
 default. CLI overrides apply only to that invocation and do not rewrite either
 persistent setting.
 
-The Codex 0.155.1 catalog reports these current models and efforts:
+The Codex 0.167.0 catalog reports these current models and efforts:
 
 | Model | Default | Supported efforts |
 |-------|---------|-------------------|
-| `gpt-6-astra`, `gpt-6-sol` | `medium` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra` | `low` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
 | `gpt-6-luna` | `medium` | `low`, `medium`, `high`, `xhigh`, `max` |
+
+GPT-6.1 Sol replaces `gpt-6-sol`, which remains in the catalog with a `medium`
+default. Because Astra, 6.1 Sol, and 6.1 Terra default to `low`, set
+`reasoning_effort` (and `high` or above for `specify` and `plan`) when you want
+workflow stages to reason more deeply than Codex's default.
 
 Older `gpt-5.x` models remain in the catalog for compatibility; prefer GPT-6.
 Run `codex debug models` to inspect the catalog available to your installed version.

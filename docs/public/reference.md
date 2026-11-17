@@ -1204,7 +1204,7 @@ use_subscription: false
 **Example**:
 ```yaml
 agent_preset: jcode
-model: gpt-6-sol
+model: gpt-6.1-sol
 ```
 
 **Environment**: `AUTOSPEC_MODEL`
@@ -1244,7 +1244,7 @@ Every generated stage default is empty. An empty or absent stage value falls bac
 **Example**:
 ```yaml
 agent_preset: jcode
-model: gpt-6-sol
+model: gpt-6.1-sol
 reasoning_effort: high
 ```
 

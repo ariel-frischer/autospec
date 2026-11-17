@@ -206,8 +206,8 @@ Models are specified as `provider/model-id`:
 | Model | ID |
 |-------|-----|
 | Claude Opus 5.5 | `anthropic/claude-opus-5-5` |
-| Claude Sonnet 5 | `anthropic/claude-sonnet-5` |
-| Claude Haiku 4.5 | `anthropic/claude-haiku-4-5` |
+| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5` |
+| Claude Haiku 5.5 | `anthropic/claude-haiku-5-5` |
 
 > **Tip**: Run `opencode models anthropic` to list the IDs available to your installed version.
 
@@ -219,8 +219,8 @@ For autospec workflow commands, use the generic workflow model setting:
 agent_preset: opencode
 model: anthropic/claude-opus-5-5
 models:
-  checklist: anthropic/claude-sonnet-5
-  analyze: anthropic/claude-sonnet-5
+  checklist: anthropic/claude-sonnet-5-5
+  analyze: anthropic/claude-sonnet-5-5
 ```
 
 In this example, `checklist` and `analyze` use their stage-specific models. Other
@@ -230,7 +230,7 @@ stages fall back to top-level `model`. Supported stage keys are `constitution`,
 For one-off runs, use the generic CLI flag:
 
 ```bash
-autospec implement --agent opencode --model anthropic/claude-sonnet-5
+autospec implement --agent opencode --model anthropic/claude-sonnet-5-5
 ```
 
 Autospec passes the selected model through the unchanged
@@ -258,7 +258,7 @@ Configure different models for different agent modes:
       "model": "anthropic/claude-opus-5-5"
     },
     "plan": {
-      "model": "anthropic/claude-sonnet-5"
+      "model": "anthropic/claude-sonnet-5-5"
     }
   }
 }
