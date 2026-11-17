@@ -9,7 +9,7 @@ stages:
   - build
 
 variables:
-  GO_VERSION: "1.25.1"
+  GO_VERSION: "1.26.11"
 
 # Make all jobs manual on dev branch
 .manual-on-dev:

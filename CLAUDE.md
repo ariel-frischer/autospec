@@ -8,7 +8,7 @@ Guidance for Claude Code when working with this repository.
 
 ## Prerequisites
 
-- **Go 1.25+**: Check with `go version`
+- **Go 1.26+**: Check with `go version`
 - **Claude CLI**: Authenticated (`claude --version`)
 - **Make, golangci-lint**: For build/lint (`make lint`)
 

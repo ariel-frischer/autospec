@@ -1,5 +1,5 @@
 [tools]
-go = "1.25.10"
+go = "1.26.11"
 "aqua:golangci/golangci-lint" = "2.11.4"
 "aqua:goreleaser/goreleaser" = "2.13.1"
 "aqua:koalaman/shellcheck" = "0.11.0"

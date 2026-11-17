@@ -468,7 +468,7 @@ Use these when you prefer chat-based iteration over autospec's automated (`-p`) 
 
 ## 📥 Build from Source
 
-Requires Go 1.25+
+Requires Go 1.26+
 
 ```bash
 git clone https://github.com/ariel-frischer/autospec.git

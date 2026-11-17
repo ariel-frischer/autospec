@@ -8,7 +8,7 @@ Before you begin, ensure you have:
 
 - **Supported agent**: Claude Code, Codex CLI, OpenCode, or the native jcode integration configured for your project
 - **Git** (recommended): For branch-based spec detection
-- **Go 1.25+** (if building from source): For compilation
+- **Go 1.26+** (if building from source): For compilation
 - **Command Line Familiarity**: Basic terminal/shell knowledge
 
 Verify your agent installation:

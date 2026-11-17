@@ -4,7 +4,7 @@ Guidance for AI coding agents working with this repository.
 
 ## Prerequisites
 
-- **Go 1.25+**: Check with `go version`
+- **Go 1.26+**: Check with `go version`
 - **AI coding agent CLI**: Authenticated and configured
 - **Make, golangci-lint**: For build/lint (`make lint`)
 
